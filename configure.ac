@@ -1,0 +1,705 @@
+# -*- mode: m4; -*-
+# -*- Autoconf -*-
+# Process this file with autoconf to produce a configure script.
+# $Id$
+
+sinclude(m4/az_python.m4)
+
+AC_PREREQ(2.59)
+AC_INIT([dionaea], [0.1.0], [nepenthesdev@gmail.com])
+AM_INIT_AUTOMAKE([dionaea], [0.1.0])
+AC_REVISION([$Id$])
+
+AC_PREFIX_DEFAULT(/opt/dionaea)
+AC_CONFIG_SRCDIR([include/dionaea.h])
+AM_CONFIG_HEADER([config.h])
+# AM_MAINTAINER_MODE
+
+CFLAGS="${CFLAGS} -std=c99 -D_GNU_SOURCE"
+
+AC_CANONICAL_HOST
+AC_C_CONST
+AC_C_BIGENDIAN
+
+# Checks for programs.
+AC_PROG_CC
+AC_PROG_MAKE_SET
+AC_PROG_LIBTOOL
+
+AC_CHECK_HEADERS([stdint.h stdlib.h string.h strings.h unistd.h])
+
+# Checks for typedefs, structures, and compiler characteristics.
+AC_C_INLINE
+AC_TYPE_UID_T
+AC_STRUCT_TM
+AC_TYPE_SIZE_T
+AC_TYPE_SIGNAL
+
+# Checks for library functions.
+AC_FUNC_ERROR_AT_LINE
+AC_TYPE_SIGNAL
+AC_CHECK_FUNCS([strndup inet_ntoa  memmove memset strdup strerror])
+
+
+dnl **************************************************
+dnl * libev                                          *
+dnl **************************************************
+
+AC_SUBST([LIB_EV_CFLAGS])
+AC_SUBST([LIB_EV_LIBS])
+
+
+enable_ev="yes"
+
+AC_ARG_ENABLE(ev, [  --enable-ev      enable support for libev],
+			[enable_ev="$enableval"],[enable_ev="yes"])
+
+AC_ARG_WITH(ev-include,
+			[  --with-ev-include=DIR  libev include dir],
+				      [ev_inc="$withval"],[ev_inc=no])
+AC_ARG_WITH(ev-lib,
+			[  --with-ev-lib=DIR  libev library dir],
+			[ev_lib="$withval"],[ev_lib=no])
+
+
+if test x$enable_ev = "xyes" ; then
+	OLD_CPPFLAGS=${CPPFLAGS};
+	if test x$ev_inc != "xno"; then
+		CPPFLAGS="${CPPFLAGS} -I${ev_inc}"
+	fi
+	
+	AC_CHECK_HEADER(ev.h,[enable_ev=yes],[enable_ev=no])
+	
+	if test x$enable_ev = "xyes" ; then
+		OLD_LDFLAGS=${LDFLAGS}
+		if test x$ev_lib != "xno"; then
+			LDFLAGS="${LDFLAGS}  -L${ev_lib}"
+		fi
+	
+		AC_CHECK_LIB([ev],[ev_loop],enable_ev="yes", enable_ev="no")
+	
+		if test x$enable_ev = "xyes" ; then
+			if test x$ev_lib != "xno"; then
+				LIB_EV_LIBS="-L$ev_lib -lev"
+			else
+				LIB_EV_LIBS="-lev"
+			fi
+			if test x$ev_inc != "xno"; then
+				LIB_EV_CFLAGS="-I$ev_inc"
+			else
+				LIB_EV_CFLAGS=""
+			fi
+			AC_DEFINE([HAVE_LIBEV], [1], [Define to 1 to compile with ev support])
+		fi
+	fi
+	CPPFLAGS=${OLD_CPPFLAGS}
+	LDFLAGS=${OLD_LDFLAGS}
+fi
+
+
+dnl **************************************************
+dnl * libemu                                         *
+dnl **************************************************
+
+AC_SUBST([LIB_EMU_CFLAGS])
+AC_SUBST([LIB_EMU_LIBS])
+
+
+enable_emu="yes"
+
+AC_ARG_ENABLE(emu, [  --enable-emu      enable support for libemu],
+			[enable_emu="$enableval"],[enable_emu="yes"])
+
+AC_ARG_WITH(emu-include,
+			[  --with-emu-include=DIR  libemu include dir],
+				      [emu_inc="$withval"],[emu_inc=no])
+AC_ARG_WITH(emu-lib,
+			[  --with-emu-lib=DIR  libemu library dir],
+			[emu_lib="$withval"],[emu_lib=no])
+
+
+if test x$enable_emu = "xyes" ; then
+	OLD_CPPFLAGS=${CPPFLAGS};
+	if test x$emu_inc != "xno"; then
+		CPPFLAGS="${CPPFLAGS} -I${emu_inc}"
+	fi
+	
+	AC_CHECK_HEADER(emu/emu.h,[enable_emu=yes],[enable_emu=no])
+	
+	if test x$enable_emu = "xyes" ; then
+		OLD_LDFLAGS=${LDFLAGS}
+		if test x$emu_lib != "xno"; then
+			LDFLAGS="${LDFLAGS}  -L${emu_lib}"
+		fi
+	
+		AC_CHECK_LIB([emu],[emu_new],enable_emu="yes", enable_emu="no")
+	
+		if test x$enable_emu = "xyes" ; then
+			if test x$emu_lib != "xno"; then
+				LIB_EMU_LIBS="-L$emu_lib -lemu"
+			else
+				LIB_EMU_LIBS="-lemu"
+			fi
+			if test x$emu_inc != "xno"; then
+				LIB_EMU_CFLAGS="-I$emu_inc"
+			else
+				LIB_EMU_CFLAGS=""
+			fi
+			AC_DEFINE([HAVE_LIBEMU], [1], [Define to 1 to compile with emu support])
+		fi
+	fi
+	CPPFLAGS=${OLD_CPPFLAGS}
+	LDFLAGS=${OLD_LDFLAGS}
+fi
+
+
+dnl **************************************************
+dnl * libcspm                                         *
+dnl **************************************************
+
+AC_SUBST([LIB_CSPM_CFLAGS])
+AC_SUBST([LIB_CSPM_LIBS])
+
+
+enable_cspm="yes"
+
+AC_ARG_ENABLE(cspm, [  --enable-cspm      enable support for libcspm],
+			[enable_cspm="$enableval"],[enable_cspm="yes"])
+
+AC_ARG_WITH(cspm-include,
+			[  --with-cspm-include=DIR  libcspm include dir],
+				      [cspm_inc="$withval"],[cspm_inc=no])
+AC_ARG_WITH(cspm-lib,
+			[  --with-cspm-lib=DIR  libcspm library dir],
+			[cspm_lib="$withval"],[cspm_lib=no])
+
+
+if test x$enable_cspm = "xyes" ; then
+	OLD_CPPFLAGS=${CPPFLAGS};
+	if test x$cspm_inc != "xno"; then
+		CPPFLAGS="${CPPFLAGS} -I${cspm_inc}"
+	fi
+	
+	AC_CHECK_HEADER(cspm/cspm.h,[enable_cspm=yes],[enable_cspm=no])
+	
+	if test x$enable_cspm = "xyes" ; then
+		OLD_LDFLAGS=${LDFLAGS}
+		if test x$cspm_lib != "xno"; then
+			LDFLAGS="${LDFLAGS}  -L${cspm_lib}"
+		fi
+	
+		AC_CHECK_LIB([cspm],[cspm_new],enable_cspm="yes", enable_cspm="no")
+	
+		if test x$enable_cspm = "xyes" ; then
+			if test x$cspm_lib != "xno"; then
+				LIB_CSPM_LIBS="-L$cspm_lib -lcspm"
+			else
+				LIB_CSPM_LIBS="-lcspm"
+			fi
+			if test x$cspm_inc != "xno"; then
+				LIB_CSPM_CFLAGS="-I$cspm_inc"
+			else
+				LIB_CSPM_CFLAGS=""
+			fi
+			AC_DEFINE([HAVE_LIBCSPM], [1], [Define to 1 to compile with cspm support])
+		fi
+	fi
+	CPPFLAGS=${OLD_CPPFLAGS}
+	LDFLAGS=${OLD_LDFLAGS}
+fi
+
+
+dnl **************************************************
+dnl * libudns                                         *
+dnl **************************************************
+
+AC_SUBST([LIB_UDNS_CFLAGS])
+AC_SUBST([LIB_UDNS_LIBS])
+
+
+enable_udns="yes"
+
+AC_ARG_ENABLE(udns, [  --enable-udns      enable support for libudns],
+			[enable_udns="$enableval"],[enable_udns="yes"])
+
+AC_ARG_WITH(udns-include,
+			[  --with-udns-include=DIR  libudns include dir],
+				      [udns_inc="$withval"],[udns_inc=no])
+AC_ARG_WITH(udns-lib,
+			[  --with-udns-lib=DIR  libudns library dir],
+			[udns_lib="$withval"],[udns_lib=no])
+
+
+if test x$enable_udns = "xyes" ; then
+	OLD_CPPFLAGS=${CPPFLAGS};
+	if test x$udns_inc != "xno"; then
+		CPPFLAGS="${CPPFLAGS} -I${udns_inc}"
+	fi
+	
+	AC_CHECK_HEADER(udns.h,[enable_udns=yes],[enable_udns=no])
+	
+	if test x$enable_udns = "xyes" ; then
+		OLD_LDFLAGS=${LDFLAGS}
+		if test x$udns_lib != "xno"; then
+			LDFLAGS="${LDFLAGS}  -L${udns_lib}"
+		fi
+	
+		AC_CHECK_LIB([udns],[dns_submit_p],enable_udns="yes", enable_udns="no")
+	
+		if test x$enable_udns = "xyes" ; then
+			if test x$udns_lib != "xno"; then
+				LIB_UDNS_LIBS="-L$udns_lib -ludns"
+			else
+				LIB_UDNS_LIBS="-ludns"
+			fi
+			if test x$udns_inc != "xno"; then
+				LIB_UDNS_CFLAGS="-I$udns_inc"
+			else
+				LIB_UDNS_CFLAGS=""
+			fi
+			AC_DEFINE([HAVE_LIBUDNS], [1], [Define to 1 to compile with udns support])
+		fi
+	fi
+	CPPFLAGS=${OLD_CPPFLAGS}
+	LDFLAGS=${OLD_LDFLAGS}
+fi
+
+
+dnl **************************************************
+dnl * libssl                                          *
+dnl **************************************************
+
+
+AC_SUBST([LIB_SSL_CFLAGS])
+AC_SUBST([LIB_SSL_LIBS])
+
+
+enable_ssl="yes"
+
+AC_ARG_ENABLE(ssl, [  --enable-ssl      enable support for libssl],
+			[enable_ssl="$enableval"],[enable_ssl="yes"])
+
+AC_ARG_WITH(ssl-include,
+			[  --with-ssl-include=DIR  libssl include dir],
+				      [ssl_inc="$withval"],[ssl_inc=no])
+AC_ARG_WITH(ssl-lib,
+			[  --with-ssl-lib=DIR  libssl library dir],
+			[ssl_lib="$withval"],[ssl_lib=no])
+
+
+if test x$enable_ssl = "xyes" ; then
+	OLD_CPPFLAGS=${CPPFLAGS};
+	if test x$ssl_inc != "xno"; then
+		CPPFLAGS="${CPPFLAGS} -I${ssl_inc}"
+	fi
+	
+	AC_CHECK_HEADER(openssl/ssl.h,[enable_ssl=yes],[enable_ssl=no])
+	
+	if test x$enable_ssl = "xyes" ; then
+		OLD_LDFLAGS=${LDFLAGS}
+		if test x$ssl_lib != "xno"; then
+			LDFLAGS="${LDFLAGS}  -L${ssl_lib}"
+		fi
+	
+		AC_CHECK_LIB([ssl],[SSLv23_method],enable_ssl="yes", enable_ssl="no")
+	
+		if test x$enable_ssl = "xyes" ; then
+			if test x$ssl_lib != "xno"; then
+				LIB_SSL_LIBS="-L$ssl_lib -lssl"
+			else
+				LIB_SSL_LIBS="-lssl"
+			fi
+			if test x$ssl_inc != "xno"; then
+				LIB_SSL_CFLAGS="-I$ssl_inc"
+			else
+				LIB_SSL_CFLAGS=""
+			fi
+			AC_DEFINE([HAVE_LIBSSL], [1], [Define to 1 to compile with ssl support])
+		fi
+	fi
+	CPPFLAGS=${OLD_CPPFLAGS}
+	LDFLAGS=${OLD_LDFLAGS}
+fi
+
+dnl **************************************************
+dnl * libpcap                                        *
+dnl **************************************************
+
+
+AC_SUBST([LIB_PCAP_CFLAGS])
+AC_SUBST([LIB_PCAP_LIBS])
+
+
+enable_pcap="yes"
+
+AC_ARG_ENABLE(pcap, [  --enable-pcap      enable support for libpcap],
+			[enable_pcap="$enableval"],[enable_pcap="yes"])
+
+AC_ARG_WITH(pcap-include,
+			[  --with-pcap-include=DIR  libpcap include dir],
+				      [pcap_inc="$withval"],[pcap_inc=no])
+AC_ARG_WITH(pcap-lib,
+			[  --with-pcap-lib=DIR  libpcap library dir],
+			[pcap_lib="$withval"],[pcap_lib=no])
+
+
+if test x$enable_pcap = "xyes" ; then
+	OLD_CPPFLAGS=${CPPFLAGS};
+	if test x$pcap_inc != "xno"; then
+		CPPFLAGS="${CPPFLAGS} -I${pcap_inc}"
+	fi
+	
+	AC_CHECK_HEADER(pcap.h,[enable_pcap=yes],[enable_pcap=no])
+	
+	if test x$enable_pcap = "xyes" ; then
+		OLD_LDFLAGS=${LDFLAGS}
+		if test x$pcap_lib != "xno"; then
+			LDFLAGS="${LDFLAGS}  -L${pcap_lib}"
+		fi
+	
+		AC_CHECK_LIB([pcap],[pcap_open_live],enable_pcap="yes", enable_pcap="no")
+	
+		if test x$enable_pcap = "xyes" ; then
+			if test x$pcap_lib != "xno"; then
+				LIB_PCAP_LIBS="-L$pcap_lib -lpcap"
+			else
+				LIB_PCAP_LIBS="-lpcap"
+			fi
+			if test x$pcap_inc != "xno"; then
+				LIB_PCAP_CFLAGS="-I$pcap_inc"
+			else
+				LIB_PCAP_CFLAGS=""
+			fi
+			AC_DEFINE([HAVE_LIBPCAP], [1], [Define to 1 to compile with pcap support])
+		fi
+	fi
+	CPPFLAGS=${OLD_CPPFLAGS}
+	LDFLAGS=${OLD_LDFLAGS}
+fi
+
+dnl **************************************************
+dnl * libnetfilter_queue                                        *
+dnl **************************************************
+
+
+AC_SUBST([LIB_NETFILTER_QUEUE_CFLAGS])
+AC_SUBST([LIB_NETFILTER_QUEUE_LIBS])
+
+
+enable_netfilter_queue="yes"
+
+AC_ARG_ENABLE(netfilter_queue, [  --enable-netfilter_queue      enable support for libnetfilter_queue],
+			[enable_netfilter_queue="$enableval"],[enable_netfilter_queue="yes"])
+
+AC_ARG_WITH(netfilter_queue-include,
+			[  --with-netfilter_queue-include=DIR  libnetfilter_queue include dir],
+				      [netfilter_queue_inc="$withval"],[netfilter_queue_inc=no])
+AC_ARG_WITH(netfilter_queue-lib,
+			[  --with-netfilter_queue-lib=DIR  libnetfilter_queue library dir],
+			[netfilter_queue_lib="$withval"],[netfilter_queue_lib=no])
+
+
+if test x$enable_netfilter_queue = "xyes" ; then
+	OLD_CPPFLAGS=${CPPFLAGS};
+	if test x$netfilter_queue_inc != "xno"; then
+		CPPFLAGS="${CPPFLAGS} -I${netfilter_queue_inc}"
+	fi
+	
+	AC_CHECK_HEADER(libnetfilter_queue/libnetfilter_queue.h,[enable_netfilter_queue=yes],[enable_netfilter_queue=no])
+	
+	if test x$enable_netfilter_queue = "xyes" ; then
+		OLD_LDFLAGS=${LDFLAGS}
+		if test x$netfilter_queue_lib != "xno"; then
+			LDFLAGS="${LDFLAGS}  -L${netfilter_queue_lib}"
+		fi
+	
+		AC_CHECK_LIB([netfilter_queue],[nfq_open],enable_netfilter_queue="yes", enable_netfilter_queue="no")
+	
+		if test x$enable_netfilter_queue = "xyes" ; then
+			if test x$netfilter_queue_lib != "xno"; then
+				LIB_NETFILTER_QUEUE_LIBS="-L$netfilter_queue_lib -lnetfilter_queue"
+			else
+				LIB_NETFILTER_QUEUE_LIBS="-lnetfilter_queue"
+			fi
+			if test x$netfilter_queue_inc != "xno"; then
+				LIB_NETFILTER_QUEUE_CFLAGS="-I$netfilter_queue_inc"
+			else
+				LIB_NETFILTER_QUEUE_CFLAGS=""
+			fi
+			AC_DEFINE([HAVE_LIBNETFILTER_QUEUE], [1], [Define to 1 to compile with netfilter_queue support])
+		fi
+	fi
+	CPPFLAGS=${OLD_CPPFLAGS}
+	LDFLAGS=${OLD_LDFLAGS}
+fi
+
+
+dnl **************************************************
+dnl * glib                                           *
+dnl **************************************************
+
+
+AC_SUBST([LIB_GLIB_CFLAGS])
+AC_SUBST([LIB_GLIB_LIBS])
+
+PKG_CHECK_MODULES(glib, glib-2.0)
+PKG_CHECK_MODULES(gthread, gthread-2.0)
+PKG_CHECK_MODULES(gmodule, gmodule-2.0)
+
+LIB_GLIB_CFLAGS=${glib_CFLAGS} 
+LIB_GLIB_CFLAGS+=${gthread_CFLAGS}
+LIB_GLIB_CFLAGS+=${gmodule_CFLAGS}
+
+LIB_GLIB_LIBS=${glib_LIBS} 
+LIB_GLIB_LIBS+=${gthread_LIBS}
+LIB_GLIB_LIBS+=${gmodule_LIBS}
+
+enable_glib="yes"
+
+
+
+dnl **************************************************
+dnl * python                                         *
+dnl **************************************************
+
+enable_python="no"
+
+AZ_PYTHON_DEFAULT( )
+AZ_PYTHON_ENABLE( )             # Optional
+AZ_PYTHON_WITH( )               # Optional
+AZ_PYTHON_PATH( )               # or AZ_PYTHON_INSIST( )
+# if $PYTHON is not defined, then the following do nothing.
+AZ_PYTHON_VERSION_ENSURE( [2.5] )
+AZ_PYTHON_CSPEC
+AZ_PYTHON_LSPEC
+
+if $PYTHON ; then
+	enable_python="yes"
+fi
+
+dnl **************************************************
+dnl * cython                                         *
+dnl **************************************************
+
+enable_cython="yes"
+AC_SUBST([CYTHON_BIN])
+AC_ARG_ENABLE(cython, [  --enable-cython      enable support for cython],
+			[enable_cython="$enableval"],[enable_cython="yes"])
+
+AC_ARG_WITH(cython-dir,
+			[  --with-cython-dir=DIR  basedir of cython],
+				      [cython_dir="$withval"],[cython_dir=$PATH])
+
+if test x$enable_cython = "xyes" ; then
+	AC_PATH_PROG(CYTHON_BIN, cython, "no", $cython_dir)
+	if test "x$CYTHON_BIN" == "xno" ; then
+		enable_cython="no"
+	fi
+fi
+
+
+
+dnl **************************************************
+dnl * liblcfg                                        *
+dnl **************************************************
+
+AC_SUBST([LIB_LCFG_CFLAGS])
+AC_SUBST([LIB_LCFG_LIBS])
+
+
+enable_lcfg="yes"
+
+AC_ARG_ENABLE(lcfg, [  --enable-lcfg      enable support for liblcfg],
+			[enable_lcfg="$enableval"],[enable_lcfg="yes"])
+
+AC_ARG_WITH(lcfg-include,
+			[  --with-lcfg-include=DIR  liblcfg include dir],
+				      [lcfg_inc="$withval"],[lcfg_inc=no])
+AC_ARG_WITH(lcfg-lib,
+			[  --with-lcfg-lib=DIR  liblcfg library dir],
+			[lcfg_lib="$withval"],[lcfg_lib=no])
+
+
+if test x$enable_lcfg = "xyes" ; then
+	OLD_CPPFLAGS=${CPPFLAGS};
+	if test x$lcfg_inc != "xno"; then
+		CPPFLAGS="${CPPFLAGS} -I${lcfg_inc}"
+	fi
+	
+	AC_CHECK_HEADER(lcfg/lcfg.h,[enable_lcfg=yes],[enable_lcfg=no])
+	
+	if test x$enable_lcfg = "xyes" ; then
+		OLD_LDFLAGS=${LDFLAGS}
+		if test x$lcfg_lib != "xno"; then
+			LDFLAGS="${LDFLAGS}  -L${lcfg_lib}"
+		fi
+	
+		AC_CHECK_LIB([lcfg],[lcfg_new],enable_lcfg="yes", enable_lcfg="no")
+		if test x$enable_lcfg = "xyes" ; then
+			if test x$lcfg_lib != "xno"; then
+				LIB_LCFG_LIBS="-L$lcfg_lib -llcfg"
+			else
+				LIB_LCFG_LIBS="-llcfg"
+			fi
+			if test x$lcfg_inc != "xno"; then
+				LIB_LCFG_CFLAGS="-I$lcfg_inc"
+			else
+				LIB_LCFG_CFLAGS=""
+			fi
+			AC_DEFINE([HAVE_LIBLCFG], [1], [Define to 1 to compile with lcfg support])
+		fi
+	fi
+	CPPFLAGS=${OLD_CPPFLAGS}
+	LDFLAGS=${OLD_LDFLAGS}
+fi
+
+if test x$enable_lcfg = "xno" ; then
+	AC_MSG_ERROR([liblcfg is missing - install it please - download from http://liblcfg.carnivore.it])
+fi
+
+
+dnl **************************************************
+dnl * libloudmouth                                        *
+dnl **************************************************
+
+AC_SUBST([LIB_LOUDMOUTH_CFLAGS])
+AC_SUBST([LIB_LOUDMOUTH_LIBS])
+
+
+enable_loudmouth="no"
+
+
+dnl PKG_CHECK_MODULES(VARIABLE-PREFIX, MODULES, [ACTION-IF-FOUND],
+dnl [ACTION-IF-NOT-FOUND])
+
+PKG_CHECK_MODULES(loudmouth, loudmouth,[enable_loudmouth="yes"],[enable_loudmouth="no"])
+
+if test x$enable_loudmouth = "xno"; then
+	PKG_CHECK_MODULES(loudmouth, loudmouth-1.0,[enable_loudmouth="yes"],[enable_loudmouth="no"])
+fi
+
+if test x$enable_loudmouth = "xyes"; then
+	LIB_LOUDMOUTH_CFLAGS=${loudmouth_CFLAGS} 
+	LIB_LOUDMOUTH_LIBS=${loudmouth_LIBS} 
+fi
+
+
+dnl **************************************************
+dnl * module building                                *
+dnl **************************************************
+
+AM_CONDITIONAL([BUILD_CSPM_MODULE], [ test x$enable_cspm = "xyes" ])
+AM_CONDITIONAL([BUILD_EMU_MODULE], [ test x$enable_emu = "xyes" ])
+AM_CONDITIONAL([BUILD_NFQ_MODULE], [ test x$enable_netfilter_queue = "xyes" ])
+AM_CONDITIONAL([BUILD_PCAP_MODULE], [ test x$enable_pcap = "xyes" ])
+AM_CONDITIONAL([BUILD_LOUDMOUTH_MODULE], [ test x$enable_loudmouth = "xyes" ])
+AM_CONDITIONAL([BUILD_PYTHON_MODULE], [ test x$enable_python = "xyes" ])
+AM_CONDITIONAL([BUILD_CYTHON_MODULE], [ test x$enable_python = "xyes" && test x$enable_cython = "xyes" ])
+
+CFLAGS="${CFLAGS} ${LIB_EV_CFLAGS} ${LIB_GLIB_CFLAGS} ${LIB_LCFG_CFLAGS} -Wstrict-prototypes"
+
+
+## debug
+
+
+AC_MSG_CHECKING(whether debug code generation should be enabled)
+AC_ARG_ENABLE([debug],
+		[AS_HELP_STRING(--enable-debug, enable debug code generation [[default=yes]])],
+		[enable_debug=${enableval}], [enable_debug="yes"])
+if test x"$enable_debug" = "xyes"; then
+	AC_DEFINE([DEBUG], 1, [enable debug code generation])
+else
+	AC_DEFINE([NDEBUG], 1, [don't enable debug code generation])
+fi
+AC_MSG_RESULT($enable_debug)
+
+
+
+AC_DEFUN([AC_DEFINE_DIR], [
+  prefix_NONE=
+  exec_prefix_NONE=
+  test "x$prefix" = xNONE && prefix_NONE=yes && prefix=$ac_default_prefix
+  test "x$exec_prefix" = xNONE && exec_prefix_NONE=yes && exec_prefix=$prefix
+dnl In Autoconf 2.60, ${datadir} refers to ${datarootdir}, which in turn
+dnl refers to ${prefix}.  Thus we have to use `eval' twice.
+  eval ac_define_dir="\"[$]$2\""
+  eval ac_define_dir="\"$ac_define_dir\""
+  AC_SUBST($1, "$ac_define_dir")
+  AC_DEFINE_UNQUOTED($1, "$ac_define_dir", [$3])
+  test "$prefix_NONE" && prefix=NONE
+  test "$exec_prefix_NONE" && exec_prefix=NONE
+])
+
+AC_DEFINE_DIR(PREFIX, prefix, [default working directory])
+AC_DEFINE_DIR(LOCALESTATEDIR, localstatedir, [where to put logs etc])
+AC_DEFINE_DIR(LIBDIR, libdir, [where to look for plugins])
+AC_DEFINE_DIR(SYSCONFDIR, [sysconfdir], [System configuration dir])
+AC_DEFINE_DIR(DATADIR, [datadir], [The directory for installing idiosyncratic read-only architecture-independent data.])
+AC_DEFINE_DIR(DATAROOTDIR, [datarootdir], [The root of the directory tree for read-only architecture-independent data files.])
+
+AC_CONFIG_FILES([Makefile
+				src/Makefile
+				include/Makefile
+				modules/Makefile])
+
+                 
+AC_OUTPUT
+
+echo
+echo "*** dionaea configuration ***"
+echo ""
+echo "debug                              : $enable_debug"
+echo ""
+echo "ev                                 : $enable_ev"
+echo " - cflags                          : $LIB_EV_CFLAGS"
+echo " - libs                            : $LIB_EV_LIBS"
+echo ""
+echo "glib                               : $enable_glib"
+echo " - cflags                          : $LIB_GLIB_CFLAGS"
+echo " - libs                            : $LIB_GLIB_LIBS"
+echo ""
+echo "python                             : $enable_python"
+echo " - binary                          : $PYTHON"
+echo " - cflags                          : $PYTHON_CSPEC"
+echo " - libs                            : $PYTHON_LSPEC"
+echo ""
+echo "cython                             : $enable_cython"
+echo " - binary                          : $CYTHON_BIN"
+echo ""
+echo "lcfg                               : $enable_lcfg"
+echo " - cflags                          : $LIB_LCFG_CFLAGS"
+echo " - libs                            : $LIB_LCFG_LIBS"
+echo ""
+echo "ssl                                : $enable_ssl"
+echo " - cflags                          : $LIB_SSL_CFLAGS"
+echo " - libs                            : $LIB_SSL_LIBS"
+echo ""
+echo "emu                                : $enable_emu"
+echo " - cflags                          : $LIB_EMU_CFLAGS"
+echo " - libs                            : $LIB_EMU_LIBS"
+echo ""
+echo "udns                               : $enable_udns"
+echo " - cflags                          : $LIB_UDNS_CFLAGS"
+echo " - libs                            : $LIB_UDNS_LIBS"
+echo ""
+echo "pcap                               : $enable_pcap"
+echo " - cflags                          : $LIB_PCAP_CFLAGS"
+echo " - libs                            : $LIB_PCAP_LIBS"
+echo ""
+echo "netfilter_queue                    : $enable_netfilter_queue"
+echo " - cflags                          : $LIB_NETFILTER_QUEUE_CFLAGS"
+echo " - libs                            : $LIB_NETFILTER_QUEUE_LIBS"
+echo ""
+echo "cspm                               : $enable_cspm"
+echo " - cflags                          : $LIB_CSPM_CFLAGS"
+echo " - libs                            : $LIB_CSPM_LIBS"
+echo ""
+echo "loudmouth                          : $enable_loudmouth"
+echo " - cflags                          : $LIB_LOUDMOUTH_CFLAGS"
+echo " - libs                            : $LIB_LOUDMOUTH_LIBS"
+
+
+
+
+
+
