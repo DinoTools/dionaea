@@ -497,6 +497,11 @@ int main (int argc, char *argv[])
 	g_message("udns version %s",  UDNS_VERSION);
 
 
+	// glib thread init
+	if ( !g_thread_supported () )
+		g_thread_init (NULL);
+
+
 	// modules
 	d->modules = g_malloc0(sizeof(struct modules));
 		struct lcfgx_tree_node *n;
@@ -533,7 +538,7 @@ int main (int argc, char *argv[])
 
 
 	// loop
-
+	ev_loop(d->loop,0);
 
 	// kill privileged child
 

@@ -694,7 +694,8 @@ AC_DEFINE_DIR(DATAROOTDIR, [datarootdir], [The root of the directory tree for re
 AC_CONFIG_FILES([Makefile
 				src/Makefile
 				include/Makefile
-				modules/Makefile])
+				modules/Makefile
+				modules/nc/Makefile])
 
                  
 AC_OUTPUT

@@ -125,6 +125,9 @@ struct connection *connection_new(enum connection_type type)
 
 	con->stats.io_out.throttle.last_throttle = ev_now(CL);
 	con->stats.io_out.throttle.interval_start = ev_now(CL);
+	con->stats.io_in.throttle.last_throttle = ev_now(CL);
+	con->stats.io_in.throttle.interval_start = ev_now(CL);
+
 	refcount_init(&con->refcount);
 	con->events.close_timeout.repeat = 10.0;
 	con->events.connecting_timeout.repeat = 5.0;
@@ -782,6 +785,9 @@ void connection_disconnect(struct connection *con)
 	if ( ev_is_active(&con->events.throttle_io_out_timeout) )
 		ev_timer_stop(CL,  &con->events.throttle_io_out_timeout);
 
+	if ( ev_is_active(&con->events.throttle_io_in_timeout) )
+		ev_timer_stop(CL,  &con->events.throttle_io_in_timeout);
+
 	if ( ev_is_active(&con->events.close_timeout) )
 		ev_timer_stop(CL,  &con->events.close_timeout);
 
@@ -1038,7 +1044,7 @@ void connection_throttle_io_out_set(struct connection *con, uint32_t max_bytes_p
 
 int connection_throttle(struct connection *con, struct connection_throttle *thr)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 
 	if ( thr->max_bytes_per_second == 0 )
 		return 64*1024;
@@ -1049,7 +1055,8 @@ int connection_throttle(struct connection *con, struct connection_throttle *thr)
 	double last_throttle;
 	last_throttle = ev_now(CL) - thr->last_throttle;
 
-	if ( last_throttle > 1000 )
+	g_debug("last_throttle %f", last_throttle);
+	if ( last_throttle > 1.0 )
 	{
 		g_debug("resetting connection");
 		connection_throttle_reset(thr);
@@ -1078,7 +1085,16 @@ int connection_throttle(struct connection *con, struct connection_throttle *thr)
 
 		if ( &con->stats.io_in.throttle == thr )
 		{
-
+			g_debug("throttle: io_in");
+			ev_io_stop(CL, &con->events.io_in);
+			if ( !ev_is_active(&con->events.throttle_io_in_timeout) )
+			{
+				if ( slp < 0.200 )
+					slp = 0.200;
+				ev_timer_init(&con->events.throttle_io_in_timeout, connection_throttle_io_in_timeout_cb, slp+thr->sleep_adjust, 0.);
+				ev_timer_start(CL, &con->events.throttle_io_in_timeout);
+			}
+			return 0;
 		} else
 		if ( &con->stats.io_out.throttle == thr )
 		{
@@ -1095,7 +1111,7 @@ int connection_throttle(struct connection *con, struct connection_throttle *thr)
 		}
 	} else
 	{
-		bytes = (delta+250)* thr->max_bytes_per_second / 1000;
+		bytes = (delta+0.250)* thr->max_bytes_per_second;
 		bytes -= thr->interval_bytes;
 		g_debug("throttle: can do %i bytes", bytes);
 	}
@@ -1204,7 +1220,10 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 		// create protocol specific data
 		accepted->protocol.ctx = con->protocol.ctx_new(accepted);
 //		stream_processors_init(accepted);
+		accepted->stats.io_in.throttle.max_bytes_per_second = con->stats.io_in.throttle.max_bytes_per_second;
+		accepted->stats.io_out.throttle.max_bytes_per_second = con->stats.io_out.throttle.max_bytes_per_second;
 		connection_established(accepted);
+
 	}
 }
 
@@ -1298,21 +1317,30 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	int size, buf_size;
 
 	/* determine how many bytes we can recv */
-//	if (ioctl(con->socket, SIOCINQ, &buf_size) != 0)
+	if (ioctl(con->socket, SIOCINQ, &buf_size) != 0)
 		buf_size=1024;
 
 	g_debug("can recv %i bytes", buf_size);
 
-//	buf_size++;
-
 	unsigned char buf[buf_size];
+
+
+	int recv_throttle = connection_throttle(con, &con->stats.io_in.throttle);
+	int recv_size = MIN(buf_size, recv_throttle);
+
+	g_debug("io_in: throttle can %i want %i", buf_size, recv_size);
+
+	if ( recv_size == 0 )
+		return;
 
 	GString *new_in = g_string_sized_new(buf_size);
 
-	while ( (size = recv(con->socket, buf, buf_size, 0)) > 0 )
+	while ( (size = recv(con->socket, buf, recv_size, 0)) > 0 )
 	{
-//		g_debug("%i %.*s", size, size, buf);
 		g_string_append_len(new_in, (gchar *)buf, size);
+		recv_size -= size;
+		if ( recv_size <= 0 )
+			break;
 	}
 
 	if ( con->spd != NULL )
@@ -1324,10 +1352,11 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 		con->transport.tcp.io_in = old_in;
 	}
 
+	connection_throttle_update(con, &con->stats.io_in.throttle, new_in->len);
 	// append
 	g_string_append_len(con->transport.tcp.io_in, new_in->str, new_in->len);
 
-	if ( size==0 )
+	if ( size==0 )//&& size != MIN(buf_size, recv_throttle) )
 	{
 		g_debug("remote closed connection");
 		if ( new_in->len > 0 )
@@ -1335,7 +1364,7 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 		connection_tcp_disconnect(con);
 	} else
-	if ( size == -1 && errno == EAGAIN )
+	if ( (size == -1 && errno == EAGAIN) || size == MIN(buf_size, recv_throttle) )
 	{
 		g_debug("EAGAIN");
 		if ( ev_is_active(&con->events.connect_timeout) )
@@ -2037,10 +2066,15 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	else
 		con = CONOFF_IO_OUT(w);
 
-	unsigned char buf[1024];
+	int recv_throttle = connection_throttle(con, &con->stats.io_in.throttle);
+	g_debug("recv throttle %i\n", recv_throttle);
+	if ( recv_throttle == 0 )
+		return;
+
+	unsigned char buf[recv_throttle];
 
 	int err=0;
-	if ( (err = SSL_read(con->transport.ssl.ssl, buf, 1024)) > 0 )
+	if ( (err = SSL_read(con->transport.ssl.ssl, buf, recv_throttle)) > 0 )
 	{
 		g_debug("SSL_read %i %.*s", err, err, buf);
 		g_string_append_len(con->transport.ssl.io_in, (gchar *)buf, err);
@@ -2102,6 +2136,7 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	} else
 	if ( err > 0 )
 	{
+		connection_throttle_update(con, &con->stats.io_in.throttle, err);
 		if ( ev_is_active(&con->events.connect_timeout) )
 			ev_timer_again(EV_A_  &con->events.connect_timeout);
 
@@ -2178,6 +2213,10 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 		accepted->protocol.ctx = accepted->protocol.ctx_new(accepted);
 
 		accepted->events.io_in.events = EV_READ;
+
+		accepted->stats.io_in.throttle.max_bytes_per_second = con->stats.io_in.throttle.max_bytes_per_second;
+		accepted->stats.io_out.throttle.max_bytes_per_second = con->stats.io_out.throttle.max_bytes_per_second;
+
 		connection_tls_accept_again_cb(EV_A_ &accepted->events.io_in, 0);
 	}
 
@@ -2503,12 +2542,11 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 			if ( ret == packet->data->len )
 		{
 			g_string_free(packet->data, TRUE);
-			free(packet);
+			g_free(packet);
 			con->transport.udp.io_out = g_list_delete_link(con->transport.udp.io_out, elem);
 		} else
 		{
 			perror("sendto");
-			exit(-1);
 		}
 	}
 //	g_debug(" done");
@@ -2523,6 +2561,8 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 	{
 		ev_io_stop(EV_A_ &con->events.io_out);
 	}
+	if ( ev_is_active(&con->events.connect_timeout) )
+		ev_timer_again(CL, &con->events.connect_timeout);
 }
 
 void connection_udp_connect_timeout_cb(EV_P_ struct ev_timer *w, int revents)

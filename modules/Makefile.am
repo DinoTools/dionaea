@@ -2,8 +2,5 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-
-
-
-SUBDIRS = 
-DIST_SUBDIRS = 
+SUBDIRS = nc
+DIST_SUBDIRS = nc

@@ -231,13 +231,13 @@ void connection_close(struct connection *con);
 void connection_close_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
 void connection_established(struct connection *con);
-//void connection_throttle_io_in_set(struct ev_loop *loop, struct connection *con, uint32_t max_bytes_per_second);
+void connection_throttle_io_in_set(struct connection *con, uint32_t max_bytes_per_second);
 void connection_throttle_io_out_set(struct connection *con, uint32_t max_bytes_per_second);
 
 int	connection_throttle(struct connection *con, struct connection_throttle *thr);
 void connection_throttle_update(struct connection *con, struct connection_throttle *thr, int bytes);
 
-//void connection_throttle_io_in_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
+void connection_throttle_io_in_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 void connection_throttle_io_out_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 void connection_throttle_reset(struct connection_throttle *thr);
 
