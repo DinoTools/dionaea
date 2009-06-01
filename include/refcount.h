@@ -25,33 +25,18 @@
  *
  *******************************************************************************/
 
-#ifndef HAVE_DIONAEA_H
-#define HAVE_DIONAEA_H
+#include <stdbool.h>
+#include <glib.h>
 
-struct lcfg;
-struct lcfgx_tree_node;
-
-struct dns;
-struct modules;
-
-struct dionaea
+struct refcount
 {
-	struct
-	{
-		struct lcfg *config;
-		struct lcfgx_tree_node *root;
-	} config;
-
-
-	struct dns *dns;
-
-	struct ev_loop *loop;
-
-	struct modules *modules;
+	GMutex *mutex;
+	int refs;
 };
 
+void refcount_init(struct refcount *rc);
+void refcount_exit(struct refcount *rc);
+void refcount_inc(struct refcount *rc);
+void refcount_dec(struct refcount *rc);
+bool refcount_is_zero(struct refcount *rc);
 
-
-extern struct dionaea *g_dionaea;
-
-#endif

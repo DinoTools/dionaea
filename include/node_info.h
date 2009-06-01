@@ -25,33 +25,44 @@
  *
  *******************************************************************************/
 
-#ifndef HAVE_DIONAEA_H
-#define HAVE_DIONAEA_H
+#include <stdbool.h>
+#include <stdint.h>
+#include <netinet/in.h>
 
-struct lcfg;
-struct lcfgx_tree_node;
+#define PORT_STRLEN 5
+#define IFNAM_STRLEN 16
+#define INET_STRLEN INET6_ADDRSTRLEN 
 
-struct dns;
-struct modules;
+#define NODE_STRLEN 1 + INET_STRLEN + 1 + 1 + IFNAM_STRLEN + 1  + 1 + PORT_STRLEN
 
-struct dionaea
+struct node_info
 {
+	struct sockaddr_storage addr;
+	int domain; // socket domain
+	char ip_string[INET_STRLEN+1];
+	char port_string[PORT_STRLEN+1];
+	uint16_t port;
+	char node_string[NODE_STRLEN+1];
+
+	char iface_scope[IFNAM_STRLEN+1]; // required for ipv6 scope id
+	char *hostname;
+
+
 	struct
 	{
-		struct lcfg *config;
-		struct lcfgx_tree_node *root;
-	} config;
+		char **resolved_addresses;
+		uint8_t resolved_address_count;
+		uint8_t current_address;
 
-
-	struct dns *dns;
-
-	struct ev_loop *loop;
-
-	struct modules *modules;
+		struct dns_query *a;
+		struct dns_query *aaaa;
+	} dns;
 };
 
-
-
-extern struct dionaea *g_dionaea;
-
-#endif
+bool node_info_set(struct node_info *node, struct sockaddr_storage *sa);
+void node_info_add_addr(struct node_info *pi, const char *addr);
+char *node_info_get_ip_string(struct node_info *node);
+char *node_info_get_port_string(struct node_info *node);
+void node_info_set_port(struct node_info *node, uint16_t port);
+void node_info_addr_clear(struct node_info *node);
+const char *node_info_get_next_addr(struct node_info *node);

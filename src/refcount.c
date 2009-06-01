@@ -25,33 +25,42 @@
  *
  *******************************************************************************/
 
-#ifndef HAVE_DIONAEA_H
-#define HAVE_DIONAEA_H
 
-struct lcfg;
-struct lcfgx_tree_node;
+#include "refcount.h"
 
-struct dns;
-struct modules;
-
-struct dionaea
+void refcount_init(struct refcount *rc)
 {
-	struct
-	{
-		struct lcfg *config;
-		struct lcfgx_tree_node *root;
-	} config;
+	rc->refs = 0;
+	rc->mutex = g_mutex_new();
+}
 
+void refcount_exit(struct refcount *rc)
+{
+	g_mutex_free(rc->mutex);
+}
 
-	struct dns *dns;
+void refcount_inc(struct refcount *rc)
+{
+	g_mutex_lock(rc->mutex);
+	rc->refs++;
+	g_mutex_unlock(rc->mutex);
+}
 
-	struct ev_loop *loop;
+void refcount_dec(struct refcount *rc)
+{
+	g_mutex_lock(rc->mutex);
+	rc->refs--;
+	g_mutex_unlock(rc->mutex);
+}
 
-	struct modules *modules;
-};
+bool refcount_is_zero(struct refcount *rc)
+{
+	bool ret = false;
 
+	g_mutex_lock(rc->mutex);
+	if ( rc->refs == 0 )
+		ret = true;
+	g_mutex_unlock(rc->mutex);
+	return ret;
+}
 
-
-extern struct dionaea *g_dionaea;
-
-#endif

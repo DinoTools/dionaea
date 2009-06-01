@@ -25,33 +25,32 @@
  *
  *******************************************************************************/
 
-#ifndef HAVE_DIONAEA_H
-#define HAVE_DIONAEA_H
+#ifndef HAVE_PROTOCOL_H
+#define HAVE_PROTOCOL_H
 
-struct lcfg;
-struct lcfgx_tree_node;
+#include <stdbool.h>
 
-struct dns;
-struct modules;
+struct connection;
 
-struct dionaea
+typedef void (*protocol_handler_established)(struct connection *con);
+typedef void (*protocol_handler_connect_error)(struct connection *con);
+typedef unsigned int (*protocol_handler_io_in)(struct connection *con, void *context, unsigned char *data, uint32_t size);
+
+typedef bool (*protocol_handler_disconnect)(struct connection *con, void *context);
+typedef bool (*protocol_handler_timeout)(struct connection *con, void *context);
+typedef void *(*protocol_handler_ctx_new)(struct connection *con);
+typedef void (*protocol_handler_ctx_free)(void *data);
+
+struct protocol
 {
-	struct
-	{
-		struct lcfg *config;
-		struct lcfgx_tree_node *root;
-	} config;
-
-
-	struct dns *dns;
-
-	struct ev_loop *loop;
-
-	struct modules *modules;
+	protocol_handler_ctx_new  ctx_new;
+	protocol_handler_ctx_free ctx_free;
+	protocol_handler_established established;
+	protocol_handler_connect_error connect_error;
+	protocol_handler_timeout timeout;
+	protocol_handler_disconnect disconnect;
+	protocol_handler_io_in io_in;
+	void *ctx;
 };
-
-
-
-extern struct dionaea *g_dionaea;
 
 #endif

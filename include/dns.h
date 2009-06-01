@@ -25,33 +25,21 @@
  *
  *******************************************************************************/
 
-#ifndef HAVE_DIONAEA_H
-#define HAVE_DIONAEA_H
+#include <ev.h>
 
-struct lcfg;
-struct lcfgx_tree_node;
+struct dns_ctx;
 
-struct dns;
-struct modules;
-
-struct dionaea
+struct dns
 {
-	struct
-	{
-		struct lcfg *config;
-		struct lcfgx_tree_node *root;
-	} config;
-
-
-	struct dns *dns;
-
-	struct ev_loop *loop;
-
-	struct modules *modules;
+	struct dns_ctx *dns;
+	struct ev_timer dns_timeout;
+	struct ev_io io_in;
+	int socket;
 };
 
+void udns_io_in_cb(EV_P_ struct ev_io *w, int revents);
+void udns_timeout_cb(EV_P_ struct ev_timer *w, int revents);
+void udns_set_timeout_cb(struct dns_ctx *ctx, int timeout, void *data);
 
 
-extern struct dionaea *g_dionaea;
 
-#endif

@@ -25,33 +25,8 @@
  *
  *******************************************************************************/
 
-#ifndef HAVE_DIONAEA_H
-#define HAVE_DIONAEA_H
+#include <stdbool.h>
+#include <stdint.h>
 
-struct lcfg;
-struct lcfgx_tree_node;
+bool parse_addr(const char* addr, const char * iface, uint16_t port, struct sockaddr_storage* sa, int* socket_domain, socklen_t* sizeof_sa);
 
-struct dns;
-struct modules;
-
-struct dionaea
-{
-	struct
-	{
-		struct lcfg *config;
-		struct lcfgx_tree_node *root;
-	} config;
-
-
-	struct dns *dns;
-
-	struct ev_loop *loop;
-
-	struct modules *modules;
-};
-
-
-
-extern struct dionaea *g_dionaea;
-
-#endif

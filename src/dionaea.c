@@ -46,9 +46,21 @@
 #include <lcfg/lcfg.h>
 #include <lcfgx/lcfgx_tree.h>
 
+#include <ev.h>
+#include <udns.h>
+#include <openssl/ssl.h>
 
-#include "dionaea.h"
 #include "config.h"
+
+#ifdef HAVE_LIBGC
+#include <gc.h>
+#endif
+
+#include "config.h"
+#include "dionaea.h"
+#include "dns.h"
+#include "modules.h"
+
 
 void show_version(void);
 void show_help(bool defaults);
@@ -57,6 +69,10 @@ void show_help(bool defaults);
 #undef G_LOG_DOMAIN
 #define G_LOG_DOMAIN "dionaea"
 #endif
+
+
+
+struct dionaea *g_dionaea = NULL;
 
 
 struct options
@@ -75,6 +91,7 @@ struct options
 	gchar *workingdir;
 	gchar *config;
 	bool daemon;
+	char *garbage;
 
 };
 
@@ -85,11 +102,20 @@ bool options_parse(struct options* options, int argc, char* argv[])
 	{
 		int option_index = 0;
 		static struct option long_options[] = {
+			{ "config",			1, 0, 'c' },
+			{ "daemonize",		1, 0, 'D' },
+			{ "group",			1, 0, 'g' },
+			{ "garbage",		1, 0, 'G' },
 			{ "help", 			0, 0, 'h' },
+			{ "large-help",		0, 0, 'H' },
+			{ "user", 			1, 0, 'u' },
+			{ "chroot",			1, 0, 'r' },
+			{ "version",		0, 0, 'V' },
+			{ "workingdir",		0, 0, 'w' },
 			{ 0, 0, 0, 0 }
 		};
 
-		int c = getopt_long(argc, argv, "c:Dg:hHr:u:Vw:", long_options, (int *)&option_index);
+		int c = getopt_long(argc, argv, "c:Dg:G:hHr:u:Vw:", long_options, (int *)&option_index);
 		if (c == -1)
 			break;
 
@@ -107,14 +133,20 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			options->group.name = g_strdup(optarg);
             break;
 
+#ifdef HAVE_LIBGC
+		case 'G':
+			options->garbage = g_strdup(optarg);
+			break;
+#endif
+
 		case 'h':
 			show_help(false);
-			return false;
+			exit(0);
 			break;
 
 		case 'H':
 			show_help(true);
-			return false;
+			exit(0);
 			break;
 
 		case 'r':
@@ -127,7 +159,7 @@ bool options_parse(struct options* options, int argc, char* argv[])
 
 		case 'V':
 			show_version();
-			return false;
+			exit(0);
 			break;
 
 		case 'w':
@@ -145,7 +177,7 @@ bool options_parse(struct options* options, int argc, char* argv[])
 	}
 
 	if ( options->config == NULL )
-		options->config = g_strdup(PREFIX"/etc/dionaea/dionaea.conf");
+		options->config = strdup(PREFIX"/etc/dionaea/dionaea.conf");
 
 	return true;
 }
@@ -191,7 +223,15 @@ bool options_validate(struct options *opt)
 			opt->group.id = grp->gr_gid;
 		}
 	}
-
+	
+	if ( opt->garbage != NULL )
+	{
+		if ( strcmp(opt->garbage, "collect" ) != 0 && strcmp(opt->garbage, "debug" ) != 0 )
+		{
+			g_error("Invalid garbage mode %s\n", opt->garbage);
+			return false;
+		}
+	}
 	return true;
 }
 
@@ -293,27 +333,30 @@ void show_help(bool defaults)
 
 	help_info myopts[]=
 	{
-        {"c",	"config=FILE",		"use FILE as configuration file",				SYSCONFDIR "/nepenthes.conf"	},
-		{"D",	"daemonize",		"run as daemon",						0						},
-		{"h",	"help",				"display help",							0						},
-		{"H",	"large-help",		"display help with default values",		0						},
-        {"r",	"chroot=DIR",		"chroot to DIR after startup",				"don't chroot"		},
-		{"u",	"user=USER",				"switch to USER after startup",	"keep current opt->user.name"},
+        {"c",	"config=FILE",			"use FILE as configuration file",				SYSCONFDIR "/nepenthes.conf"	},
+		{"D",	"daemonize",			"run as daemon",						0						},
 		{"g",	"group=GROUP",			"switch to GROUP after startup (use with -u)", "keep current group"},
-		{"V",	"version",			"show version",							""						},
+#ifdef HAVE_LIBGC
+		{"G",	"garbage=[collect|debug]","garbage collect,  usefull to debug memory leaks, does NOT work with valgrind",	0						},	
+#endif
+		{"h",	"help",					"display help",							0						},
+		{"H",	"large-help",			"display help with default values",		0						},
+		{"u",	"user=USER",			"switch to USER after startup",	"keep current user"},
+        {"r",	"chroot=DIR",			"chroot to DIR after startup",				"don't chroot"		},
+		{"V",	"version",				"show version",							""						},
 		{"w",	"workingdir=DIR",		"set the process' working dir to DIR",			PREFIX		},
 	};
 	show_version();
 
 	for ( int i=0;i<sizeof(myopts)/sizeof(help_info);i++ )
 	{
-		printf("  -%s, --%-19s %s\n", myopts[i].info,
+		printf("  -%s, --%-25s %s\n", myopts[i].info,
 			myopts[i].verbose,
 			myopts[i].description);
 		
 		if( defaults == true && myopts[i].standard )
 		{
-			printf("                              Default value/behaviour: %s\n", myopts[i].standard);
+			printf("%-35s Default value/behaviour: %s\n", "", myopts[i].standard);
 		}
 	}
 }
@@ -343,8 +386,17 @@ void stdout_logger(const gchar *log_domain,
 	if ( log_level &  G_LOG_LEVEL_DEBUG)
 		level = "debug";
 
+	time_t stamp;
+	if ( g_dionaea != NULL && g_dionaea->loop != NULL)
+		stamp = ev_now(g_dionaea->loop);
+	else
+		stamp = time(NULL);
 
-	printf("%s-%s: %s", level, log_domain, message);
+	struct tm t;
+	localtime_r(&stamp, &t);
+	printf("[%02d%02d%04d %02d:%02d:%02d] %s-%s: %s\n", 
+		   t.tm_mday, t.tm_mon + 1, t.tm_year + 1900, t.tm_hour, t.tm_min, t.tm_sec, 
+		   log_domain, level, message);
 }
 
 
@@ -352,19 +404,44 @@ int main (int argc, char *argv[])
 {
 	g_log_set_default_handler(stdout_logger, NULL);
 
-	struct options *opt = g_malloc0(sizeof(struct options));
+	struct options *opt = malloc(sizeof(struct options));
+	memset(opt, 0, sizeof(struct options));
 
 	if ( options_parse(opt, argc, argv) == false)
-		return 1;
+		g_error("Could not parse options!\n");
+
+	if ( options_validate(opt) == false )
+		g_error("Invalid options");
+
+
+	// gc
+	if ( opt->garbage != NULL)
+	{
+		g_message("gc mode %s", opt->garbage);
+		if ( g_mem_gc_friendly != TRUE )
+			g_error("export G_DEBUG=gc-friendly\nexport G_SLICE=always-malloc\n for gc");
+
+		
+		static GMemVTable memory_vtable =
+		{
+			.malloc = GC_malloc,
+			.realloc = GC_realloc,
+			.free   = GC_free,
+		};
+
+		g_mem_set_vtable(&memory_vtable);
+		if ( strcmp(opt->garbage, "debug") == 0)
+			GC_find_leak = 1;
+		
+	}
 
 	if ( opt->workingdir != NULL && chdir(opt->workingdir) != 0)
 		g_error("Invalid directory %s (%s)", opt->workingdir, strerror(errno));
 
 
-	if ( options_validate(opt) == false )
-		g_error("Invalid options");
 
 	struct dionaea *d = g_malloc0(sizeof(struct dionaea));
+	g_dionaea = d;
 
 	// config
 	if ( (d->config.config = lcfg_new(opt->config)) == NULL)
@@ -381,19 +458,62 @@ int main (int argc, char *argv[])
 		g_error("Could not daemonize (%s)", strerror(errno));
 
 	// libev
+	d->loop = ev_default_loop(0);
+	g_message("libev api version is %i.%i", ev_version_major(), ev_version_minor());
+	{
+		int b = ev_backend(d->loop);
 
+		const char *backend[] = 
+		{
+			"select",
+			"poll",
+			"epoll",
+			"kqueue",
+			"devpoll",
+			"port"
+		};
+		for ( int i=0; i<sizeof(backend)/sizeof(const char *); i++ )
+			if ( b == 1 << i )
+				g_message("libev backend is %s", backend[i]);
+	}
+
+	// ssl
+	SSL_load_error_strings();
+	SSL_library_init();
+	SSL_COMP_add_compression_method(0xe0, COMP_zlib());
+	g_message("OpenSSL version %s", OPENSSL_VERSION_TEXT);
+
+
+	// udns 
+	d->dns = g_malloc0(sizeof(struct dns));
+	dns_init(NULL , 0);
+	d->dns->dns = dns_new(NULL);
+	dns_init(d->dns->dns, 0);
+	dns_set_tmcbck(d->dns->dns, udns_set_timeout_cb, g_dionaea->loop);
+	d->dns->socket = dns_open(g_dionaea->dns->dns);
+	ev_io_init(&d->dns->io_in, udns_io_in_cb, d->dns->socket, EV_READ);
+	ev_io_start(g_dionaea->loop, &d->dns->io_in);
+	ev_timer_init(&d->dns->dns_timeout, udns_timeout_cb, 0., 0.);
+	g_message("udns version %s",  UDNS_VERSION);
+
+
+	// modules
+	d->modules = g_malloc0(sizeof(struct modules));
+		struct lcfgx_tree_node *n;
+	if( lcfgx_get_map(g_dionaea->config.root, &n, "modules") == LCFGX_PATH_FOUND_TYPE_OK )
+		modules_load(n);
+	else
+		g_warning("dionaea is useless without modules");
+
+	modules_config();
+	modules_prepare();
+
+	modules_new();
 
 	// privileged child
 
 
-	// udns 
-	
-		
 	// glib threadpool
-
-
-	// modules
-
 
 	// chroot
 	if ( opt->root != NULL && chroot(opt->root) != 0 )

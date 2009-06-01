@@ -264,6 +264,60 @@ if test x$enable_udns = "xyes" ; then
 	LDFLAGS=${OLD_LDFLAGS}
 fi
 
+dnl **************************************************
+dnl * libgc                                         *
+dnl **************************************************
+
+AC_SUBST([LIB_GC_CFLAGS])
+AC_SUBST([LIB_GC_LIBS])
+
+
+enable_gc="yes"
+
+AC_ARG_ENABLE(gc, [  --enable-gc      enable support for libgc],
+			[enable_gc="$enableval"],[enable_gc="yes"])
+
+AC_ARG_WITH(gc-include,
+			[  --with-gc-include=DIR  libgc include dir],
+				      [gc_inc="$withval"],[gc_inc=no])
+AC_ARG_WITH(gc-lib,
+			[  --with-gc-lib=DIR  libgc library dir],
+			[gc_lib="$withval"],[gc_lib=no])
+
+
+if test x$enable_gc = "xyes" ; then
+	OLD_CPPFLAGS=${CPPFLAGS};
+	if test x$gc_inc != "xno"; then
+		CPPFLAGS="${CPPFLAGS} -I${gc_inc}"
+	fi
+	
+	AC_CHECK_HEADER(gc.h,[enable_gc=yes],[enable_gc=no])
+	
+	if test x$enable_gc = "xyes" ; then
+		OLD_LDFLAGS=${LDFLAGS}
+		if test x$gc_lib != "xno"; then
+			LDFLAGS="${LDFLAGS}  -L${gc_lib}"
+		fi
+	
+		AC_CHECK_LIB([gc],[GC_gcollect],enable_gc="yes", enable_gc="no")
+	
+		if test x$enable_gc = "xyes" ; then
+			if test x$gc_lib != "xno"; then
+				LIB_GC_LIBS="-L$gc_lib -lgc"
+			else
+				LIB_GC_LIBS="-lgc"
+			fi
+			if test x$gc_inc != "xno"; then
+				LIB_GC_CFLAGS="-I$gc_inc"
+			else
+				LIB_GC_CFLAGS=""
+			fi
+			AC_DEFINE([HAVE_LIBGC], [1], [Define to 1 to compile with gc support])
+		fi
+	fi
+	CPPFLAGS=${OLD_CPPFLAGS}
+	LDFLAGS=${OLD_LDFLAGS}
+fi
 
 dnl **************************************************
 dnl * libssl                                          *
@@ -697,6 +751,10 @@ echo ""
 echo "loudmouth                          : $enable_loudmouth"
 echo " - cflags                          : $LIB_LOUDMOUTH_CFLAGS"
 echo " - libs                            : $LIB_LOUDMOUTH_LIBS"
+echo ""
+echo "gc                                 : $enable_gc"
+echo " - cflags                          : $LIB_GC_CFLAGS"
+echo " - libs                            : $LIB_GC_LIBS"
 
 
 
