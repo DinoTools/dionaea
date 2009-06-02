@@ -1319,6 +1319,7 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	/* determine how many bytes we can recv */
 	if (ioctl(con->socket, SIOCINQ, &buf_size) != 0)
 		buf_size=1024;
+	buf_size++;
 
 	g_debug("can recv %i bytes", buf_size);
 
