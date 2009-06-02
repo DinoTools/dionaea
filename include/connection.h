@@ -308,6 +308,8 @@ void connection_tls_disconnect(struct connection *con);
 
 void connection_tls_error(struct connection *con);
 
+void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents);
+
 bool connection_type_from_string(const char *type_str, enum connection_type *type);
 
 struct dns_ctx;

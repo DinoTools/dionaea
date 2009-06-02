@@ -179,6 +179,7 @@ bool bind_local(struct connection *con)
 		{
 			perror("bind");
 			close(con->socket);
+			con->socket = -1;
 			return false;
 		}
 
@@ -243,6 +244,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 			{
 				perror("bind");
 				close(con->socket);
+				con->socket = -1;
 				return false;
 			}
 		}
@@ -355,9 +357,12 @@ void connection_close(struct connection *con)
 		break;
 
 	case connection_type_tls:
-		con->transport.ssl.state = connection_state_close;
-		if ( con->transport.ssl.io_out->len == 0 && con->transport.ssl.io_out_again->len == 0 )
-			connection_tls_shutdown_cb(CL, &con->events.io_in, 0);
+		if ( con->transport.ssl.ssl != NULL )
+		{
+			if ( con->transport.ssl.io_out->len == 0 && con->transport.ssl.io_out_again->len == 0 )
+				connection_tls_shutdown_cb(CL, &con->events.io_in, 0);
+		}else
+			connection_tls_disconnect(con);
 		break;
 
 	
@@ -670,10 +675,10 @@ void connection_connect_next_addr(struct connection *con)
 
 	if ( addr == NULL )
 	{
-		con->protocol.connect_error(con);
+		con->protocol.error(con, EHOSTUNREACH);
+		connection_close(con);
 	}
 }
-
 
 void connection_connect(struct connection* con, const char* addr, uint16_t port, const char *iface_scope)
 {
@@ -694,13 +699,31 @@ void connection_connect(struct connection* con, const char* addr, uint16_t port,
 
 	con->remote.hostname = strdup(addr);
 
+	switch ( con->type )
+	{
+	case connection_type_tcp:
+		con->transport.tcp.type = connection_tcp_connect;
+		break;
+
+	case connection_type_tls:
+		con->transport.ssl.type = connection_tls_connect;
+		break;
+
+	case connection_type_udp:
+		con->transport.ssl.type = connection_udp_connect;
+		break;
+
+	case connection_type_io:
+		break;
+	}
+
+
 	if ( !parse_addr(addr, NULL, port, &sa, &socket_domain, &sizeof_sa))
 	{
 		connection_connect_resolve(con);
 	} else
 	{
 		node_info_add_addr(&con->remote, addr);
-
 		connection_connect_next_addr(con);
 	}
 }
@@ -733,7 +756,6 @@ void connection_reconnect(struct connection *con)
 	{
 		connection_reconnect_timeout_cb(CL, &con->events.reconnect_timeout, 0);
 	}
-
 }
 
 void connection_reconnect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
@@ -750,13 +772,21 @@ void connection_reconnect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 
 	ev_timer_stop(EV_A_ w);
 
-	if ( !parse_addr(con->remote.hostname, NULL, ntohs(con->remote.port), &sa, &socket_domain, &sizeof_sa) && 
-		 con->remote.dns.resolved_address_count == con->remote.dns.current_address)
-	{
-		node_info_addr_clear(&con->remote);
-		connection_connect_resolve(con);
+	if ( !parse_addr(con->remote.hostname, NULL, ntohs(con->remote.port), &sa, &socket_domain, &sizeof_sa) )
+	{ /* domain */
+		if ( con->remote.dns.resolved_address_count == con->remote.dns.current_address )
+		{ /* tried all resolved ips already */
+			node_info_addr_clear(&con->remote);
+			connection_connect_resolve(con);
+		}else
+		{ /* try next */
+			connection_connect_next_addr(con);
+		}
 	} else
-	{
+	{ /* single ip(s) */ 
+		if ( con->remote.dns.resolved_address_count == con->remote.dns.current_address )
+			/* reset and reconnect */
+			con->remote.dns.current_address = 0;
 		connection_connect_next_addr(con);
 	}
 }
@@ -794,7 +824,8 @@ void connection_disconnect(struct connection *con)
 	if ( ev_is_active(&con->events.handshake_timeout) )
 		ev_timer_stop(CL,  &con->events.handshake_timeout);
 
-	close(con->socket);
+	if ( con->socket != -1 )
+		close(con->socket);
 	con->socket = -1;
 }
 
@@ -896,6 +927,11 @@ void connection_listen_timeout_set(struct connection *con, double timeout_interv
 	{
 	case connection_type_tcp:
 		ev_timer_init(&con->events.listen_timeout, connection_tcp_listen_timeout_cb, 0., timeout_interval_ms);
+		ev_timer_again(CL, &con->events.listen_timeout);
+		break;
+
+	case connection_type_tls:
+		ev_timer_init(&con->events.listen_timeout, connection_tls_listen_timeout_cb, 0., timeout_interval_ms);
 		ev_timer_again(CL, &con->events.listen_timeout);
 		break;
 
@@ -1179,11 +1215,6 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 		struct sockaddr_storage sa;
 		socklen_t sizeof_sa = sizeof(struct sockaddr_storage);
 
-		// clear accept timeout, reset
-		ev_clear_pending(EV_A_ &con->events.listen_timeout);
-		ev_timer_again(EV_A_  &con->events.listen_timeout);
-
-
 		int accepted_socket = accept(con->socket, (struct sockaddr *)&sa, &sizeof_sa);
 
 		if ( accepted_socket == -1 )//&& (errno == EAGAIN || errno == EWOULDBLOCK) )
@@ -1223,7 +1254,12 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 		accepted->stats.io_in.throttle.max_bytes_per_second = con->stats.io_in.throttle.max_bytes_per_second;
 		accepted->stats.io_out.throttle.max_bytes_per_second = con->stats.io_out.throttle.max_bytes_per_second;
 		connection_established(accepted);
+	}
 
+	if ( ev_is_active(&con->events.listen_timeout) )
+	{
+		ev_clear_pending(EV_A_ &con->events.listen_timeout);
+		ev_timer_again(EV_A_  &con->events.listen_timeout);
 	}
 }
 
@@ -1648,7 +1684,7 @@ static int ssl_tmp_key_init_dh(struct connection *con, int bits, int idx)
 #define MYSSL_TMP_KEY_INIT_RSA(s, bits) \
     ssl_tmp_key_init_rsa(s, bits, SSL_TMP_KEY_RSA_##bits)
 
-#define MODSSL_TMP_KEY_INIT_DH(s, bits) \
+#define MYSSL_TMP_KEY_INIT_DH(s, bits) \
     ssl_tmp_key_init_dh(s, bits, SSL_TMP_KEY_DH_##bits)
 
 int ssl_tmp_keys_init(struct connection *con)
@@ -1663,8 +1699,8 @@ int ssl_tmp_keys_init(struct connection *con)
 
     g_message("Init: Generating temporary DH parameters (512/1024 bits)");
 
-    if (MODSSL_TMP_KEY_INIT_DH(con, 512) ||
-        MODSSL_TMP_KEY_INIT_DH(con, 1024)) {
+    if (MYSSL_TMP_KEY_INIT_DH(con, 512) ||
+        MYSSL_TMP_KEY_INIT_DH(con, 1024)) {
         return -1;
     }
 
@@ -1854,7 +1890,7 @@ bool connection_tls_mkcert(struct connection *con)
 
 
 	return true;
-	err:
+err:
 	return false;
 
 }
@@ -2221,8 +2257,11 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 		connection_tls_accept_again_cb(EV_A_ &accepted->events.io_in, 0);
 	}
 
-	ev_clear_pending(EV_A_ &con->events.listen_timeout);
-	ev_timer_again(EV_A_  &con->events.listen_timeout);
+	if ( ev_is_active(&con->events.listen_timeout) )
+	{
+		ev_clear_pending(EV_A_ &con->events.listen_timeout);
+		ev_timer_again(EV_A_  &con->events.listen_timeout);
+	}
 }
 
 void connection_tls_accept_again_cb (EV_P_ struct ev_io *w, int revents)
@@ -2485,6 +2524,13 @@ void connection_tls_error(struct connection *con)
 		g_debug("SSL ERROR %s\t%s", con->transport.ssl.ssl_error_string, SSL_state_string_long(con->transport.ssl.ssl));
 }
 
+void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
+{
+	puts(__PRETTY_FUNCTION__);
+	struct connection *con = CONOFF_LISTEN_TIMEOUT(w);
+	connection_tls_disconnect(con);
+}
+
 /*
  *
  * connection udp
@@ -2603,7 +2649,8 @@ void connection_dns_resolve_timeout_cb(EV_P_ struct ev_timer *w, int revent)
 	if ( con->remote.dns.aaaa != NULL )
 		dns_cancel(g_dionaea->dns->dns, con->remote.dns.aaaa);
 
-	con->protocol.connect_error(con);
+	con->protocol.error(con, ETIME);
+	connection_close(con);
 
 }
 
@@ -2708,6 +2755,14 @@ void connection_connect_resolve_action(struct connection *con)
 	if ( con->remote.dns.a == NULL && con->remote.dns.aaaa == NULL )
 	{
 		ev_timer_stop(g_dionaea->loop, &con->events.dns_timeout);
+
+		if ( con->remote.dns.resolved_address_count == 0 )
+		{
+			con->protocol.error(con, EADDRNOTAVAIL);
+			connection_close(con);
+			return;
+		}
+
 		qsort(con->remote.dns.resolved_addresses, con->remote.dns.resolved_address_count, sizeof(char *), cmp_ip_address_stringp);
 		int i;
 		for(i=0;i<con->remote.dns.resolved_address_count;i++)

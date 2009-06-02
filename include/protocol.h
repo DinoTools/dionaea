@@ -33,7 +33,15 @@
 struct connection;
 
 typedef void (*protocol_handler_established)(struct connection *con);
-typedef void (*protocol_handler_connect_error)(struct connection *con);
+typedef void (*protocol_handler_error)(struct connection *con, int error);
+
+/* 
+protocol error codes 
+ ETIME - timeout resolving the domain
+ EHOSTUNREACH - could not connect to (resolved) host
+ EADDRNOTAVAIL - domain resolved to nothing
+*/
+
 typedef unsigned int (*protocol_handler_io_in)(struct connection *con, void *context, unsigned char *data, uint32_t size);
 
 typedef bool (*protocol_handler_disconnect)(struct connection *con, void *context);
@@ -46,7 +54,7 @@ struct protocol
 	protocol_handler_ctx_new  ctx_new;
 	protocol_handler_ctx_free ctx_free;
 	protocol_handler_established established;
-	protocol_handler_connect_error connect_error;
+	protocol_handler_error error;
 	protocol_handler_timeout timeout;
 	protocol_handler_disconnect disconnect;
 	protocol_handler_io_in io_in;

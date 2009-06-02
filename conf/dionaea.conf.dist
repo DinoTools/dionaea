@@ -1,0 +1,190 @@
+modules = {
+
+	/* nc is a test module */
+	nc = 
+	{
+		services = [
+/*			{
+				proto = "redir"
+				type = "tcp"
+				host = "::"
+				port = "4711"
+			},
+			{
+				proto = "redir"
+				type = "tcp"
+				host = "::"
+				port = "12344"
+			},
+			{
+				proto = "sink"
+				type = "tcp"
+				host = "::"
+				port = "12345"
+				throttle = {
+					in = "8192"
+				}
+				timeout = {
+					listen = "15"
+					connect = "15"
+				}
+			},
+			{
+				proto = "source"
+				type = "tcp"
+				host = "::"
+				port = "12346"
+				throttle = {
+					out = "8192"
+				}
+				timeout = {
+					listen = "15"
+					connect = "15"
+				}
+			},
+			{
+				proto = "redir"
+				type = "tcp"
+				host = "::"
+				port = "12347"
+				throttle = {
+					in = "8192"
+					out = "8192"
+				}
+				timeout = {
+					listen = "15"
+					connect = "15"
+				}
+			},			
+			{
+				proto = "redir"
+				type = "tls"
+				host = "::"
+				port = "12444"
+				timeout = {
+					listen = "15"
+					connect = "15"
+				}
+			},
+*/
+			{
+				proto = "sink"
+				type = "tls"
+				host = "::"
+				port = "12445"
+				throttle = {
+//					in = "8192"
+				}
+				timeout = {
+//					listen = "15"
+					connect = "5"
+				}
+			},
+			{
+				proto = "source"
+				type = "tls"
+				host = "::"
+				port = "12446"
+				throttle = {
+					out = "8192"
+				}
+				timeout = {
+					listen = "15"
+					connect = "15"
+				}
+			},
+/*			{
+				proto = "redir"
+				type = "tls"
+				host = "::"
+				port = "12447"
+				throttle = {
+					in = "8192"
+					out = "8192"
+				}
+				timeout = {
+					listen = "15"
+					connect = "15"
+				}
+			},
+			{
+				proto = "source"
+				type = "udp"
+				host = "::"
+				port = "12544"
+				timeout = {
+					connect = "15"
+				}
+			},
+			{
+				proto = "sink"
+				type = "udp"
+				host = "::"
+				port = "12545"
+				timeout = {
+					connect = "15"
+				}
+			},
+			{
+				proto = "redir"
+				type = "udp"
+				host = "::"
+				port = "12546"
+				timeout = {
+					connect = "15"
+				}
+			}
+*/
+		]
+
+		clients = [
+/*			{
+				proto = "source"
+				type = "tcp"
+				host = "127.0.0.1"
+				port = "13344"
+				timeout = {
+					connecting = "5"
+					connect = "15"
+					reconnect = "5"
+				}
+			},
+			{
+				proto = "redir"
+				type = "tcp"
+				host = "ip6-localhost"
+				port = "13345"
+				timeout = {
+					connecting = "5"
+					connect = "15"
+					reconnect = "5"
+				}
+			},
+			{
+				proto = "redir"
+				type = "tls"
+				host = "localhost"
+				port = "13346"
+				timeout = {
+					connecting = "5"
+					connect = "15"
+					reconnect = "5"
+				}
+			}, */
+			{
+				proto = "source"
+				type = "tls"
+				host = "ip6-localhost"
+				port = "12445"
+				timeout = {
+					reconnect = "1"
+					connect = "1"
+				}
+
+			}
+		]
+
+	}
+}
+
+
