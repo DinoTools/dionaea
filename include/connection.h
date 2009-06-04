@@ -50,43 +50,34 @@ struct ev_timer;
 struct ev_loop;
 
 
+enum connection_transport
+{
+	connection_transport_udp,
+	connection_transport_tcp,
+	connection_transport_tls,
+	connection_transport_io,
+};
+
 enum connection_type
 {
-	connection_type_udp,
-	connection_type_tcp,
-	connection_type_tls,
-	connection_type_io,
-};
-
-enum connection_udp_type
-{
-	connection_udp_bind, 
-	connection_udp_connect, 
-};
-
-enum connection_tcp_type
-{
-	connection_tcp_accept, 
-	connection_tcp_connect, 
-	connection_tcp_listen, 
-
-};
-
-enum connection_tls_type
-{
-	connection_tls_accept, 
-	connection_tls_connect, 
-	connection_tls_listen, 
+	connection_type_none,
+	connection_type_accept, 
+	connection_type_bind, 
+	connection_type_connect, 
+	connection_type_listen, 
 };
 
 enum connection_state
 {
+	connection_state_none,
+	connection_state_resolve,
 	connection_state_connecting,
+	connection_state_handshake,
 	connection_state_connected,
-	connection_state_close
+	connection_state_shutdown,
+	connection_state_close,
+	connection_state_reconnect,
 };
-
-
 
 struct connection;
 
@@ -119,16 +110,17 @@ typedef void (*event_fn)(struct connection *con);
 
 struct connection
 {
-	enum connection_type type;
+	enum connection_transport trans;
 	struct node_info local;     
 	struct node_info remote;    
+
+	enum connection_type type; 
+	enum connection_state state;
+
 	union 
 	{
-
 		struct
 		{
-			enum connection_udp_type type; 
-			enum connection_state state;
 			struct node_info src; 
 			struct node_info dst; 
 
@@ -138,9 +130,6 @@ struct connection
 
 		struct
 		{
-			enum connection_tcp_type type; 
-			enum connection_state state; 
-		
 			GString *io_in;
 			GString *io_out;
 
@@ -155,10 +144,7 @@ struct connection
 
 		struct
 		{
-			enum connection_tls_type type;
-			enum connection_state state; 
-
-			SSL_METHOD      *meth;
+			const SSL_METHOD      *meth;
 			SSL_CTX         *ctx;
 			SSL *ssl;
 
@@ -171,7 +157,7 @@ struct connection
 			char ssl_error_string[256];
 
 			void           *pTmpKeys[SSL_TMP_KEY_MAX];
-		} ssl;
+		} tls;
 	}transport;
 
 	struct
@@ -215,7 +201,7 @@ struct connection
 
 
 
-struct connection *connection_new(enum connection_type type);
+struct connection *connection_new(enum connection_transport type);
 void connection_free(struct connection *con);
 void connection_free_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
@@ -244,6 +230,8 @@ void connection_throttle_reset(struct connection_throttle *thr);
 void connection_send(struct connection *con, const void *data, uint32_t size);
 void connection_send_string(struct connection *con, const char *str);
 
+void connection_set_type(struct connection *con, enum connection_type type);
+void connection_set_state(struct connection *con, enum connection_state state);
 
 void connection_reconnect_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
@@ -310,7 +298,7 @@ void connection_tls_error(struct connection *con);
 
 void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents);
 
-bool connection_type_from_string(const char *type_str, enum connection_type *type);
+bool connection_type_from_string(const char *type_str, enum connection_transport *type);
 
 struct dns_ctx;
 void connection_connect_resolve(struct connection *con);

@@ -81,13 +81,13 @@ static bool nc_new(struct dionaea *d)
 		for(struct lcfgx_tree_node *it = v->value.elements; it != NULL; it = it->next)
 		{
 			struct lcfgx_tree_node *node;
-			enum connection_type type = connection_type_tcp;
+			enum connection_transport trans = connection_transport_tcp;
 	
 			if(lcfgx_get_string(it, &node, "type") == LCFGX_PATH_FOUND_TYPE_OK)
-				if ( connection_type_from_string(node->value.string.data, &type) == false)
+				if ( connection_type_from_string(node->value.string.data, &trans) == false)
 					continue;
 	
-			struct connection *con = connection_new(type);
+			struct connection *con = connection_new(trans);
 	
 			char *host = "::";
 			if(lcfgx_get_string(it, &node, "host") == LCFGX_PATH_FOUND_TYPE_OK)
