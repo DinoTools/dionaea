@@ -43,11 +43,9 @@
 #include "config.h"
 #include "modules.h"
 #include "dionaea.h"
+#include "log.h"
 
-#ifdef G_LOG_DOMAIN
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "modules"
-#endif
+#define D_LOG_DOMAIN "modules"
 
 struct module *module_new(const char *name, const char *module_path)
 {
@@ -171,7 +169,7 @@ void modules_new(void)
 	for (it = g_list_first(g_dionaea->modules->modules); it != NULL; it = g_list_next(it))
 	{
 		struct module *m = it->data;
-		printf("new module %s %p fn %p\n", g_module_name(m->module), it->data, m->api.new);
+		g_message("new module %s %p fn %p\n", g_module_name(m->module), it->data, m->api.new);
 
 		if(m->api.new != NULL)
 			m->api.new(g_dionaea);

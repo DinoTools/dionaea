@@ -38,11 +38,11 @@
 #include "dionaea.h"
 
 #include "nc.h"
+#include "log.h"
 
-#ifdef G_LOG_DOMAIN
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "nc"
-#endif
+#define D_LOG_DOMAIN "nc"
+
+
 
 
 static struct 
@@ -70,10 +70,10 @@ static bool nc_new(struct dionaea *d)
 //	if(lcfgx_get_list(nc_runtime.config, &v, "services") != LCFGX_PATH_FOUND_TYPE_OK)
 //		return false;
 
-	lcfgx_tree_dump(nc_runtime.config, 0);
+//	lcfgx_tree_dump(nc_runtime.config, 0);
 	for (v = nc_runtime.config->value.elements; v != NULL; v = v->next)
 	{
-		g_message("node %s\n", (char *)v->key);
+		g_message("node %s", (char *)v->key);
 		if (strcmp(v->key, "services" ) != 0 && 
 			strcmp(v->key, "clients" ) != 0 )
 			continue;
@@ -109,7 +109,7 @@ static bool nc_new(struct dionaea *d)
 	
 			if(lcfgx_get_string(it, &node, "throttle.in") == LCFGX_PATH_FOUND_TYPE_OK)
 				connection_throttle_io_in_set(con, atoi(node->value.string.data));
-			g_message("throttle in %s\n", (char *)node->value.string.data);
+			g_message("throttle in %s", (char *)node->value.string.data);
 	
 			if(lcfgx_get_string(it, &node, "throttle.out") == LCFGX_PATH_FOUND_TYPE_OK)
 				connection_throttle_io_out_set(con, atoi(node->value.string.data));
@@ -164,7 +164,7 @@ static bool nc_hup(struct lcfgx_tree_node *node)
 
 struct module_api *module_init(struct dionaea *d)
 {
-    printf("%s:%i %s dionaea %p\n",__FILE__, __LINE__, __PRETTY_FUNCTION__, d);
+    g_debug("%s:%i %s dionaea %p",__FILE__, __LINE__, __PRETTY_FUNCTION__, d);
 	static struct module_api nc_api =
 	{
 		.config = &nc_config,
@@ -219,12 +219,12 @@ struct protocol proto_nc_redir =
 
 void proto_nc_established(struct connection *con)
 {
-	printf("%s con %p ctx %p\n",__PRETTY_FUNCTION__, con, con->protocol.ctx);
+	g_debug("%s con %p ctx %p",__PRETTY_FUNCTION__, con, con->protocol.ctx);
 }
 
 void proto_nc_established_source(struct connection *con)
 {
-	printf("%s con %p ctx %p\n",__PRETTY_FUNCTION__, con, con->protocol.ctx);
+	g_debug("%s con %p ctx %p",__PRETTY_FUNCTION__, con, con->protocol.ctx);
 	char *x = g_malloc0(1024*1024);
 	connection_send(con, x, 1024*1024);
 	g_free(x);
@@ -233,19 +233,19 @@ void proto_nc_established_source(struct connection *con)
 
 void proto_nc_error(struct connection *con, int error)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	g_message("error %i %s", error, strerror(error));
 }
 
 uint32_t proto_nc_io_in(struct connection *con, void *context, unsigned char *data, uint32_t size)
 {
-	printf("%s con %p ctx %p data %p size %i\n",__PRETTY_FUNCTION__, con, context, data, size);
+	g_debug("%s con %p ctx %p data %p size %i",__PRETTY_FUNCTION__, con, context, data, size);
 	return size;
 }
 
 uint32_t proto_nc_io_in_redir(struct connection *con, void *context, unsigned char *data, uint32_t size)
 {
-	printf("%s con %p ctx %p data %p size %i\n",__PRETTY_FUNCTION__, con, context, data, size);
+	g_debug("%s con %p ctx %p data %p size %i",__PRETTY_FUNCTION__, con, context, data, size);
 	connection_send(con, data, size);
 	return size;
 }
@@ -253,7 +253,7 @@ uint32_t proto_nc_io_in_redir(struct connection *con, void *context, unsigned ch
 
 bool proto_nc_disconnect(struct connection *con, void *context)
 {
-	printf("%s con %p ctx %p \n",__PRETTY_FUNCTION__, con, context);
+	g_debug("%s con %p ctx %p ",__PRETTY_FUNCTION__, con, context);
 	if (con->events.reconnect_timeout.repeat > 0.)
 		return true;
 	return false;
@@ -261,7 +261,7 @@ bool proto_nc_disconnect(struct connection *con, void *context)
 
 bool proto_nc_timeout(struct connection *con, void *context)
 {
-	printf("%s con %p ctx %p \n",__PRETTY_FUNCTION__, con, context);
+	g_debug("%s con %p ctx %p ",__PRETTY_FUNCTION__, con, context);
 	return false;
 }
 
@@ -269,14 +269,14 @@ bool proto_nc_timeout(struct connection *con, void *context)
 
 void *proto_nc_ctx_new(struct connection *con)
 {
-	printf("%s con %p ctx %p\n", __PRETTY_FUNCTION__, con, con->protocol.ctx);
+	g_debug("%s con %p ctx %p", __PRETTY_FUNCTION__, con, con->protocol.ctx);
 	return NULL;
 }
 
 
 void proto_nc_ctx_free(void *context)
 {
-	printf("%s ctx %p \n",__PRETTY_FUNCTION__, context);
+	g_debug("%s ctx %p ",__PRETTY_FUNCTION__, context);
 }
 
 

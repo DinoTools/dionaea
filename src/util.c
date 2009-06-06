@@ -36,13 +36,9 @@
 #include <glib.h>
 
 #include "util.h"
+#include "log.h"
 
-
-#ifdef G_LOG_DOMAIN
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "util"
-#endif
-
+#define D_LOG_DOMAIN "util"
 
 
 bool parse_addr(const char *addr, const char *iface, uint16_t port, struct sockaddr_storage *sa, int *socket_domain, socklen_t *sizeof_sa)

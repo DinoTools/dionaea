@@ -38,11 +38,10 @@
 
 #include "node_info.h"
 #include "util.h"
+#include "log.h"
 
-#ifdef G_LOG_DOMAIN
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "node_info"
-#endif
+#define D_LOG_DOMAIN "node_info"
+
 
 bool node_info_set(struct node_info *node, struct sockaddr_storage *sa)
 {

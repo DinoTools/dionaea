@@ -54,10 +54,7 @@
 #include <udns.h>
 #include <glib.h>
 
-#ifdef G_LOG_DOMAIN
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "connection"
-#endif
+#define D_LOG_DOMAIN "connection"
 
 #define CL g_dionaea->loop
 
@@ -65,6 +62,7 @@
 #include "connection.h"
 #include "dns.h"
 #include "util.h"
+#include "log.h"
 
 #define CONOFF(x)							((void *)x - sizeof(struct connection))
 #define CONOFF_IO_IN(x)  					((struct connection *)(((void *)x) - offsetof (struct connection, events.io_in)))
@@ -177,7 +175,7 @@ bool bind_local(struct connection *con)
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)); 
 		if ( bind(con->socket, (struct sockaddr *)&sa, sizeof_sa) != 0 )
 		{
-			perror("bind");
+			g_warning("Could not bind %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
 			close(con->socket);
 			con->socket = -1;
 			return false;
@@ -205,7 +203,7 @@ bool bind_local(struct connection *con)
 
 bool connection_bind(struct connection *con, const char *addr, uint16_t port, const char *iface_scope)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	struct sockaddr_storage sa;
 	memset(&sa, 0,  sizeof(struct sockaddr_storage));
 
@@ -238,11 +236,10 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)); 
 		if ( bind(con->socket, (struct sockaddr *)&sa, sizeof_sa) != 0 )
 		{
-			perror("bind");
-			g_debug("domain is %i", socket_domain);
+			g_warning("Could not bind %s:%i (%s)", con->local.hostname, con->local.port, strerror(errno));
 			if ( port != 0 && errno == EADDRINUSE )
 			{
-				perror("bind");
+				g_warning("Could not bind %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
 				close(con->socket);
 				con->socket = -1;
 				return false;
@@ -275,7 +272,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 bool connection_listen(struct connection *con, int len)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 
 	switch ( con->trans )
 	{
@@ -286,7 +283,7 @@ bool connection_listen(struct connection *con, int len)
 		if ( listen(con->socket, len) != 0 )
 		{
 			close(con->socket);
-			perror("listen");
+			g_warning("Could not listen %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
 			return false;
 		}
 		connection_set_nonblocking(con);
@@ -302,7 +299,7 @@ bool connection_listen(struct connection *con, int len)
 		if ( listen(con->socket, 15) != 0 )
 		{
 			close(con->socket);
-			perror("listen");
+			g_warning("Could not listen %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
 			return false;
 		}
 		connection_set_nonblocking(con);
@@ -326,7 +323,7 @@ bool connection_listen(struct connection *con, int len)
 
 void connection_close(struct connection *con)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 
 	if ( !ev_is_active(&con->events.close_timeout) && con->type != connection_type_listen && 
 		 (con->trans == connection_transport_tcp ||	con->trans == connection_transport_tls )
@@ -481,7 +478,7 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 
 void connection_set_nonblocking(struct connection *con)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	int flags = fcntl(con->socket, F_GETFL, 0);
 	flags |= O_NONBLOCK;        
 	fcntl(con->socket, F_SETFL, flags);
@@ -489,7 +486,7 @@ void connection_set_nonblocking(struct connection *con)
 
 void connection_set_blocking(struct connection *con)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	int flags = fcntl(con->socket, F_GETFL, 0);
 	flags |= ~O_NONBLOCK;        
 	fcntl(con->socket, F_SETFL, flags);
@@ -498,7 +495,7 @@ void connection_set_blocking(struct connection *con)
 
 void connection_connect_next_addr(struct connection *con)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 
 	const char *addr;
 	while ( (addr = node_info_get_next_addr(&con->remote)) != NULL )
@@ -548,17 +545,9 @@ void connection_connect_next_addr(struct connection *con)
 
 			if ( ret == -1 )
 			{
-				if ( errno == ENETUNREACH )
-				{
-					perror("connect");
-					close(con->socket);
-					con->socket = -1;
-					continue;
-				} else
-					if ( errno == EINPROGRESS )
+				if ( errno == EINPROGRESS )
 				{
 					// set connecting timer
-					perror("connect");
 					if ( ev_is_active(&con->events.connecting_timeout) )
 						ev_timer_stop(CL, &con->events.connecting_timeout);
 					ev_timer_init(&con->events.connecting_timeout, connection_tcp_connecting_timeout_cb, 0., con->events.connecting_timeout.repeat);
@@ -575,7 +564,7 @@ void connection_connect_next_addr(struct connection *con)
 					return;
 				} else
 				{
-					perror("connect");
+					g_warning("Could not connect %s:%i (%s)", con->remote.hostname, ntohs(con->remote.port), strerror(errno));
 					close(con->socket);
 					con->socket = -1;
 					continue;
@@ -585,9 +574,6 @@ void connection_connect_next_addr(struct connection *con)
 			{
 				connection_established(con);
 				return;
-			} else
-			{
-				perror("connect");
 			}
 
 			break;
@@ -606,17 +592,9 @@ void connection_connect_next_addr(struct connection *con)
 
 			if ( ret == -1 )
 			{
-				if ( errno == ENETUNREACH )
-				{
-					perror("connect");
-					close(con->socket);
-					con->socket = -1;
-					continue;
-				} else
-					if ( errno == EINPROGRESS )
+				if ( errno == EINPROGRESS )
 				{
 					// set connecting timer
-					perror("connect");
 					if ( ev_is_active(&con->events.connecting_timeout) )
 						ev_timer_stop(CL, &con->events.connecting_timeout);
 					ev_timer_init(&con->events.connecting_timeout, connection_tls_connecting_timeout_cb, 0., con->events.connecting_timeout.repeat);
@@ -628,7 +606,7 @@ void connection_connect_next_addr(struct connection *con)
 					return;
 				} else
 				{
-					perror("connect");
+					g_warning("Could not connect %s:%i (%s)", con->remote.hostname, ntohs(con->remote.port), strerror(errno));
 					close(con->socket);
 					con->socket = -1;
 					continue;
@@ -656,7 +634,7 @@ void connection_connect_next_addr(struct connection *con)
 			{
 				ret = connect(con->socket, (struct sockaddr *)&sa, sizeof_sa);
 				if ( ret != 0 )
-					perror("connect");
+					g_warning("Could not connect %s:%i (%s)", con->remote.hostname, ntohs(con->remote.port), strerror(errno));
 			}
 			connection_node_set_local(con);
 			connection_node_set_remote(con);
@@ -865,7 +843,7 @@ void connection_send_string(struct connection *con, const char *str)
 
 void connection_connect_timeout_set(struct connection *con, double timeout_interval_ms)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 
 	switch ( con->trans )
 	{
@@ -911,7 +889,7 @@ double connection_connect_timeout_get(struct connection *con)
 
 void connection_listen_timeout_set(struct connection *con, double timeout_interval_ms)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	switch ( con->trans )
 	{
 	case connection_transport_tcp:
@@ -937,7 +915,7 @@ double connection_listen_timeout_get(struct connection *con)
 
 void connection_handshake_timeout_set(struct connection *con, double timeout_interval_ms)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	switch ( con->trans )
 	{
 	case connection_transport_tls:
@@ -962,7 +940,7 @@ double connection_handshake_timeout_get(struct connection *con)
 
 void connection_connecting_timeout_set(struct connection *con, double timeout_interval_ms)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	switch ( con->trans )
 	{
 	case connection_transport_tcp:
@@ -985,7 +963,7 @@ double connection_connecting_timeout_get(struct connection *con)
 
 void connection_established(struct connection *con)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	ev_io_stop(CL, &con->events.io_in);
 	ev_io_stop(CL, &con->events.io_out);
 
@@ -1052,14 +1030,14 @@ void connection_established(struct connection *con)
 
 void connection_throttle_io_in_set(struct connection *con, uint32_t max_bytes_per_second)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	con->stats.io_in.throttle.max_bytes_per_second = max_bytes_per_second;
 }
 
 
 void connection_throttle_io_out_set(struct connection *con, uint32_t max_bytes_per_second)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	con->stats.io_out.throttle.max_bytes_per_second = max_bytes_per_second;
 }
 
@@ -1158,14 +1136,14 @@ void connection_throttle_update(struct connection *con, struct connection_thrott
 
 void connection_throttle_io_in_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {                                      
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_THROTTLE_IO_IN_TIMEOUT(w);
 	ev_io_start(EV_A_ &con->events.io_in);
 }                                      
 
 void connection_throttle_io_out_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_THROTTLE_IO_OUT_TIMEOUT(w);
 	ev_io_start(EV_A_ &con->events.io_out);
 }
@@ -1252,7 +1230,7 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 void connection_tcp_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_LISTEN_TIMEOUT(w);
 	connection_tcp_disconnect(con);
 }
@@ -1284,7 +1262,7 @@ void connection_tcp_connecting_cb(EV_P_ struct ev_io *w, int revents)
 	if ( ret != 0 || socket_error != 0 )
 	{
 		errno = socket_error;
-		perror("getsockopt");
+//		perror("getsockopt");
 //		con->protocol.connect_error(con);
 //    	connection_tcp_disconnect(EV_A_ con);
 
@@ -1404,7 +1382,7 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 	} else
 	{
-		perror("recv");
+		g_warning("recv failed (%s)", strerror(errno));
 		connection_tcp_disconnect(con);
 	}
 	con->stats.io_in.traffic += new_in->len;
@@ -1842,7 +1820,7 @@ bool connection_tls_mkcert(struct connection *con)
 	X509_NAME_add_entry_by_txt(name,"CN",
 							   MBSTRING_ASC, (const unsigned char *)"Nepenthes Development Team", -1, -1, 0);
 	X509_NAME_add_entry_by_txt(name,"O",
-							   MBSTRING_ASC, (const unsigned char *)"nepenthes.it", -1, -1, 0);
+							   MBSTRING_ASC, (const unsigned char *)"dionaea.carnivore.it", -1, -1, 0);
 	X509_NAME_add_entry_by_txt(name,"OU",
 							   MBSTRING_ASC, (const unsigned char *)"anv", -1, -1, 0);
 
@@ -1986,7 +1964,7 @@ void connection_tls_io_out_cb(EV_P_ struct ev_io *w, int revents)
 
 void connection_tls_shutdown_cb(EV_P_ struct ev_io *w, int revents)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 
 	struct connection *con = NULL;
 
@@ -2383,7 +2361,7 @@ void connection_tls_accept_again_cb (EV_P_ struct ev_io *w, int revents)
 
 void connection_tls_accept_again_timeout_cb (EV_P_ struct ev_timer *w, int revents)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_HANDSHAKE_TIMEOUT(w);
 
 	connection_tls_disconnect(con);
@@ -2427,8 +2405,6 @@ void connection_tls_connecting_cb(EV_P_ struct ev_io *w, int revents)
 	if ( ret != 0 || socket_error != 0 )
 	{
 		errno = socket_error;
-		perror("connect");
-
 		ev_io_stop(EV_A_ &con->events.io_out);
 		close(con->socket);
 		connection_connect_next_addr(con);
@@ -2560,7 +2536,7 @@ void connection_tls_error(struct connection *con)
 
 void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_LISTEN_TIMEOUT(w);
 	connection_tls_disconnect(con);
 }
@@ -2575,7 +2551,7 @@ void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 
 void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_IO_IN(w);
 	struct sockaddr_storage sa;
 	socklen_t sizeof_sa = sizeof(struct sockaddr_storage);
@@ -2594,7 +2570,7 @@ void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_IO_OUT(w);
 
 	GList *elem;
@@ -2690,7 +2666,7 @@ void connection_dns_resolve_timeout_cb(EV_P_ struct ev_timer *w, int revent)
 
 void connection_connect_resolve(struct connection *con)
 {
-	puts(__PRETTY_FUNCTION__);
+	g_debug(__PRETTY_FUNCTION__);
 
 	g_debug("submitting dns %s", con->remote.hostname);
 
@@ -2903,7 +2879,7 @@ void connection_set_type(struct connection *con, enum connection_type type)
 	enum connection_type old_type;
 	old_type = con->type;
 	con->type = type;
-	g_message("connection %p %s -> %s %s->%s", con, con->local.node_string, con->remote.node_string, connection_type_str[old_type], connection_type_str[type]);
+	g_message("connection %p type %s -> %s %s->%s", con, con->local.node_string, con->remote.node_string, connection_type_str[old_type], connection_type_str[type]);
 }
 
 void connection_set_state(struct connection *con, enum connection_state state)
@@ -2922,6 +2898,6 @@ void connection_set_state(struct connection *con, enum connection_state state)
 	enum connection_state old_state;
 	old_state = con->state;
 	con->state = state;
-	g_message("connection %p %s %s -> %s %s->%s", con, connection_type_str[con->type], con->local.node_string, con->remote.node_string, connection_state_str[old_state], connection_state_str[state]);
+	g_message("connection %p state %s %s -> %s %s->%s", con, connection_type_str[con->type], con->local.node_string, con->remote.node_string, connection_state_str[old_state], connection_state_str[state]);
 }
 

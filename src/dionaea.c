@@ -60,16 +60,12 @@
 #include "dionaea.h"
 #include "dns.h"
 #include "modules.h"
-
+#include "log.h"
 
 void show_version(void);
 void show_help(bool defaults);
 
-#ifdef G_LOG_DOMAIN
-#undef G_LOG_DOMAIN
-#define G_LOG_DOMAIN "dionaea"
-#endif
-
+#define D_LOG_DOMAIN "dionaea"
 
 
 struct dionaea *g_dionaea = NULL;
@@ -93,6 +89,14 @@ struct options
 	bool daemon;
 	char *garbage;
 
+	struct
+	{
+		char *str;
+		int mask;
+		char *domain;
+		struct domain_match *domains;
+		int domaincount;
+	}stdout_filter;
 };
 
 
@@ -108,6 +112,8 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			{ "garbage",		1, 0, 'G' },
 			{ "help", 			0, 0, 'h' },
 			{ "large-help",		0, 0, 'H' },
+			{ "log-levels",		0, 0, 'l' },
+			{ "log-domains",	0, 0, 'L' },
 			{ "user", 			1, 0, 'u' },
 			{ "chroot",			1, 0, 'r' },
 			{ "version",		0, 0, 'V' },
@@ -115,7 +121,7 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			{ 0, 0, 0, 0 }
 		};
 
-		int c = getopt_long(argc, argv, "c:Dg:G:hHr:u:Vw:", long_options, (int *)&option_index);
+		int c = getopt_long(argc, argv, "c:Dg:G:hHl:L:r:u:Vw:", long_options, (int *)&option_index);
 		if (c == -1)
 			break;
 
@@ -148,6 +154,15 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			show_help(true);
 			exit(0);
 			break;
+
+		case 'l':
+			options->stdout_filter.str = g_strdup(optarg);
+			break;
+
+		case 'L':
+			options->stdout_filter.domain = g_strdup(optarg);
+			break;
+
 
 		case 'r':
 			options->root = g_strdup(optarg);
@@ -232,6 +247,40 @@ bool options_validate(struct options *opt)
 			return false;
 		}
 	}
+
+	if ( opt->stdout_filter.str != NULL )
+	{
+		char **flags = g_strsplit(opt->stdout_filter.str, ",", 0);
+		for ( unsigned int i=0; flags[i] != NULL; i++ )
+		{
+			for ( unsigned int j=0; log_level_mapping[j].name != NULL; j++)
+			{
+				if ( strcmp(log_level_mapping[j].name, flags[i]) == 0 )
+				{
+					opt->stdout_filter.mask |= log_level_mapping[j].mask;
+					goto found_flag;
+				}
+			}
+			g_error("%s is not a valid message filter flag", flags[i]);
+			return false;
+found_flag:
+			continue;
+		}
+	}
+
+	if ( opt->stdout_filter.domain != NULL )
+	{
+		char **flags = g_strsplit(opt->stdout_filter.domain, ",", 0);
+		for ( unsigned int i=0; flags[i] != NULL; i++ )
+		{
+			opt->stdout_filter.domaincount++;
+			opt->stdout_filter.domains = g_realloc(opt->stdout_filter.domains, sizeof(struct domain_match *) * opt->stdout_filter.domaincount);
+			opt->stdout_filter.domains[opt->stdout_filter.domaincount-1].domain = g_strdup(flags[i]);
+			opt->stdout_filter.domains[opt->stdout_filter.domaincount-1].pattern = g_pattern_spec_new(flags[i]);
+		}
+	}
+
+
 	return true;
 }
 
@@ -341,6 +390,8 @@ void show_help(bool defaults)
 #endif
 		{"h",	"help",					"display help",							0						},
 		{"H",	"large-help",			"display help with default values",		0						},
+		{"l",	"log-levels=WHAT",		"which levels to log, valid values all, debug, info, message, warning, critical, error, combine using ,",	0},
+		{"L",	"log-domains=WHAT",		"which domains use * and ? wildcards",	0},
 		{"u",	"user=USER",			"switch to USER after startup",	"keep current user"},
         {"r",	"chroot=DIR",			"chroot to DIR after startup",				"don't chroot"		},
 		{"V",	"version",				"show version",							""						},
@@ -366,25 +417,45 @@ void stdout_logger(const gchar *log_domain,
 			const gchar *message,
             gpointer user_data)
 {
+	const char *level = NULL;
 
-	char *level = NULL;
-	if ( log_level &  G_LOG_LEVEL_ERROR)
-		level = "error";
-	else
-	if ( log_level &  G_LOG_LEVEL_CRITICAL)
-		level = "critical";
-	else
-	if ( log_level &  G_LOG_LEVEL_WARNING)
-		level = "warning";
-	else
-	if ( log_level &  G_LOG_LEVEL_MESSAGE)
-		level = "message";
-	else
-	if ( log_level &  G_LOG_LEVEL_INFO)
-		level = "info";
-	else
-	if ( log_level &  G_LOG_LEVEL_DEBUG)
-		level = "debug";
+	char *log_domain_work = g_strdup(log_domain);
+
+#ifndef NDEBUG
+	char *x = strstr(log_domain_work, " ");
+	*x = '\0';
+#endif
+
+	if ( user_data != NULL )
+	{
+		struct options *opt = user_data;
+		if ( (log_level & opt->stdout_filter.mask ) == 0 )
+			return;
+
+		if ( !log_domain )
+			goto domain_matched;
+		for ( unsigned int i=0; i <  opt->stdout_filter.domaincount; i++)
+		{
+			if ( g_pattern_match(opt->stdout_filter.domains[i].pattern, 
+								 strlen(log_domain_work), 
+								 log_domain_work,  NULL) == TRUE)
+				goto domain_matched;
+		}
+		g_free(log_domain_work);
+		return;
+	}
+
+domain_matched:
+	g_free(log_domain_work);
+
+	for ( unsigned int i=0; log_level_mapping[i].name != NULL; i++)
+	{
+		if ( log_level & log_level_mapping[i].mask )
+		{
+			level = log_level_mapping[i].name;
+			break;
+		}
+	}
 
 	time_t stamp;
 	if ( g_dionaea != NULL && g_dionaea->loop != NULL)
@@ -402,6 +473,7 @@ void stdout_logger(const gchar *log_domain,
 
 int main (int argc, char *argv[])
 {
+	show_version();
 	g_log_set_default_handler(stdout_logger, NULL);
 
 	struct options *opt = malloc(sizeof(struct options));
@@ -413,6 +485,7 @@ int main (int argc, char *argv[])
 	if ( options_validate(opt) == false )
 		g_error("Invalid options");
 
+	g_log_set_default_handler(stdout_logger, opt);
 
 	// gc
 	if ( opt->garbage != NULL)
@@ -481,7 +554,7 @@ int main (int argc, char *argv[])
 	SSL_load_error_strings();
 	SSL_library_init();
 	SSL_COMP_add_compression_method(0xe0, COMP_zlib());
-	g_message("OpenSSL version %s", OPENSSL_VERSION_TEXT);
+	g_message("%s",	SSLeay_version(SSLEAY_VERSION));
 
 
 	// udns 
@@ -545,4 +618,16 @@ int main (int argc, char *argv[])
 	return 0;
 }
 
+
+struct log_level_map log_level_mapping[] = 
+{
+	{"error",		G_LOG_LEVEL_ERROR},
+	{"critical", 	G_LOG_LEVEL_CRITICAL},
+	{"warning", 	G_LOG_LEVEL_WARNING},
+	{"message",		G_LOG_LEVEL_MESSAGE},
+	{"info",		G_LOG_LEVEL_INFO},
+	{"debug",		G_LOG_LEVEL_DEBUG},
+	{"all",			G_LOG_LEVEL_MASK},
+	{ NULL, 0 }
+};
 

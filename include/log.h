@@ -25,34 +25,37 @@
  *
  *******************************************************************************/
 
-#ifndef HAVE_DIONAEA_H
-#define HAVE_DIONAEA_H
 
-struct lcfg;
-struct lcfgx_tree_node;
+#include <glib.h>
 
-struct dns;
-struct modules;
-
-struct dionaea
+struct log_level_map
 {
-	struct
-	{
-		struct lcfg *config;
-		struct lcfgx_tree_node *root;
-	} config;
-
-	struct dns *dns;
-
-	struct ev_loop *loop;
-
-	struct modules *modules;
+	const char *name;
+	int mask;
 };
 
+struct domain_match
+{
+	char *domain;
+	GPatternSpec *pattern;
+};
+
+extern struct log_level_map log_level_mapping[];
 
 
-extern struct dionaea *g_dionaea;
+#define STRINGIFY(x) #x
+#define TOSTRING(x) STRINGIFY(x)
+#define AT __FILE__ ":" TOSTRING(__LINE__)
 
-
-
+#ifdef G_LOG_DOMAIN
+#undef G_LOG_DOMAIN
+#ifdef NDEBUG
+#define G_LOG_DOMAIN D_LOG_DOMAIN
+#else
+#define G_LOG_DOMAIN D_LOG_DOMAIN " " AT
+#endif /* NDEBUG */
 #endif
+
+
+#define g_info(...) g_log(G_LOG_DOMAIN,	G_LOG_LEVEL_INFO, __VA_ARGS__)
+
