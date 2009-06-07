@@ -581,7 +581,8 @@ void connection_connect_next_addr(struct connection *con)
 
 		case connection_transport_tls:
 			// create protocol specific data
-			con->protocol.ctx = con->protocol.ctx_new(con);
+			if(con->protocol.ctx == NULL)
+				con->protocol.ctx = con->protocol.ctx_new(con);
 
 			g_debug("ssl");
 			if ( con->socket <= 0 )
@@ -2832,7 +2833,7 @@ void connection_connect_resolve_aaaa_cb(struct dns_ctx *ctx, void *result, void 
 }
 
 
-bool connection_type_from_string(const char *type_str, enum connection_transport *type)
+bool connection_transport_from_string(const char *type_str, enum connection_transport *type)
 {
 	if ( strcmp(type_str, "tcp") == 0 )
 		*type = connection_transport_tcp;

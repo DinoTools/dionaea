@@ -1,0 +1,87 @@
+#********************************************************************************
+#*                               Dionaea
+#*                           - catches bugs -
+#*
+#*
+#*
+#* Copyright (C) 2009  Paul Baecher & Markus Koetter
+#* 
+#* This program is free software; you can redistribute it and/or
+#* modify it under the terms of the GNU General Public License
+#* as published by the Free Software Foundation; either version 2
+#* of the License, or (at your option) any later version.
+#* 
+#* This program is distributed in the hope that it will be useful,
+#* but WITHOUT ANY WARRANTY; without even the implied warranty of
+#* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#* GNU General Public License for more details.
+#* 
+#* You should have received a copy of the GNU General Public License
+#* along with this program; if not, write to the Free Software
+#* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#* 
+#* 
+#*             contact nepenthesdev@gmail.com  
+#*
+#*******************************************************************************/
+
+from distutils.core import setup
+from distutils.extension import Extension
+from Cython.Distutils import build_ext
+
+
+cflags=''
+cflags+='@LIB_GLIB_CFLAGS@' # glib
+cflags+=' '
+cflags+='@LIB_EV_CFLAGS@' # libev
+cflags+=' '
+cflags+='@LIB_LCFG_CFLAGS@' #liblcfg
+cflags+=' '
+cflags+='@PYTHON_CSPEC@' # python
+
+libs=''
+libs+='@PYTHON_LSPEC@' # python
+
+
+
+include_dir_dict = {}
+extra_compile_dict = {}
+for i in cflags.split():
+	if i.startswith('-I'):
+		include_dir_dict[i[2:]] = 1
+	else:
+		extra_compile_dict[i] = 1
+
+
+library_dict = {}
+library_dir_dict = {}
+library_other_dict = {}
+
+for i in libs.split():
+	if i.startswith('-l'):
+		library_dict[i[2:]] = 1
+	elif i.startswith('-L'):
+		library_dir_dict[i[2:]] = 1
+	else:
+		library_other_dict[i] = 1
+
+ext_modules=[
+	Extension("python", 
+		['binding.pyx', 'module.c'], 
+		language="c",
+		include_dirs=['../../include', '../../'] + [k for k in sorted(include_dir_dict)],
+		extra_compile_args=[k for k in sorted(extra_compile_dict)],
+		libraries=[k for k in sorted(library_dict)],
+		library_dirs=[k for k in sorted(library_dir_dict)],
+		extra_link_args=[k for k in sorted(library_other_dict)],
+		undef_macros=[('NDEBUG')],
+		define_macros=[('_GNU_SOURCE',None)]
+	),
+]
+
+setup(
+	name = 'dionaea',
+	cmdclass = {'build_ext': build_ext},
+	ext_modules = ext_modules,
+) 
+

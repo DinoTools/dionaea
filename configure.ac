@@ -523,7 +523,7 @@ AZ_PYTHON_ENABLE( )             # Optional
 AZ_PYTHON_WITH( )               # Optional
 AZ_PYTHON_PATH( )               # or AZ_PYTHON_INSIST( )
 # if $PYTHON is not defined, then the following do nothing.
-AZ_PYTHON_VERSION_ENSURE( [2.5] )
+AZ_PYTHON_VERSION_ENSURE( [3.0] )
 AZ_PYTHON_CSPEC
 AZ_PYTHON_LSPEC
 
@@ -695,7 +695,9 @@ AC_CONFIG_FILES([Makefile
 				src/Makefile
 				include/Makefile
 				modules/Makefile
-				modules/nc/Makefile])
+				modules/nc/Makefile
+				modules/python/Makefile
+				modules/python/setup.py])
 
                  
 AC_OUTPUT

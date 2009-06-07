@@ -1,10 +1,15 @@
 modules = {
 
+	python = {
+		/* files not prefixed with / will be loaded relative to PREFIX/lib/dionaea/python/ */
+		files = ["log.py"]
+	}
+
 	/* nc is a test module */
-	nc = 
+/*	nc = 
 	{
 		services = [
-/*			{
+			{
 				proto = "redir"
 				type = "tcp"
 				host = "::"
@@ -66,17 +71,17 @@ modules = {
 					connect = "15"
 				}
 			},
-*/
+
 			{
 				proto = "sink"
 				type = "tls"
 				host = "::"
 				port = "12445"
 				throttle = {
-//					in = "8192"
+					in = "8192"
 				}
 				timeout = {
-//					listen = "15"
+					listen = "15"
 					connect = "5"
 				}
 			},
@@ -93,7 +98,7 @@ modules = {
 					connect = "15"
 				}
 			},
-/*			{
+			{
 				proto = "redir"
 				type = "tls"
 				host = "::"
@@ -134,11 +139,10 @@ modules = {
 					connect = "15"
 				}
 			}
-*/
 		]
 
 		clients = [
-/*			{
+			{
 				proto = "source"
 				type = "tcp"
 				host = "127.0.0.1"
@@ -170,7 +174,7 @@ modules = {
 					connect = "15"
 					reconnect = "5"
 				}
-			}, */
+			}, 
 			{
 				proto = "source"
 				type = "tls"
@@ -185,6 +189,7 @@ modules = {
 		]
 
 	}
+ */
 }
 
 

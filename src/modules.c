@@ -53,7 +53,7 @@ struct module *module_new(const char *name, const char *module_path)
 
     if ( module == NULL )
     {
-        g_warning("could not load %s\n%s\n",module_path, g_module_error());
+        g_warning("could not load %s %s",module_path, g_module_error());
         return NULL;
     }
 
@@ -144,7 +144,7 @@ void modules_config(void)
 	GList *it;
 	for (it = g_list_first(g_dionaea->modules->modules); it != NULL; it = g_list_next(it))
 	{
-		g_message("configure module %p\n", it->data);
+		g_message("configure module %p", it->data);
 		struct module *m = it->data;
 		if(m->api.config != NULL)
 			m->api.config(m->config);
@@ -156,7 +156,7 @@ void modules_prepare(void)
 	GList *it;
 	for (it = g_list_first(g_dionaea->modules->modules); it != NULL; it = g_list_next(it))
 	{
-		g_message("prepare module %p\n", it->data);
+		g_message("prepare module %p", it->data);
 		struct module *m = it->data;
 		if(m->api.prepare != NULL)
 			m->api.prepare();
@@ -169,7 +169,7 @@ void modules_new(void)
 	for (it = g_list_first(g_dionaea->modules->modules); it != NULL; it = g_list_next(it))
 	{
 		struct module *m = it->data;
-		g_message("new module %s %p fn %p\n", g_module_name(m->module), it->data, m->api.new);
+		g_message("new module %s %p fn %p", g_module_name(m->module), it->data, m->api.new);
 
 		if(m->api.new != NULL)
 			m->api.new(g_dionaea);
@@ -182,7 +182,7 @@ void modules_free(void)
 	for (it = g_list_first(g_dionaea->modules->modules); it != NULL; it = g_list_next(it))
 	{
 		struct module *m = it->data;
-		g_message("free module %s %p fn %p\n", g_module_name(m->module), it->data, m->api.free);
+		g_message("free module %s %p fn %p", g_module_name(m->module), it->data, m->api.free);
 
 		if(m->api.free != NULL)
 			m->api.free();
@@ -199,12 +199,12 @@ void modules_hup(void)
 
 		if(m->api.hup == NULL)
 		{
-			g_message("module %s does not support hup\n", m->name);
+			g_message("module %s does not support hup", m->name);
 			continue;
 		}
 
 
-		g_message("re-configure module %s\n", m->name);
+		g_message("re-configure module %s", m->name);
 
 		char *path;
 		if (asprintf(&path, "modules.%s", m->name) == -1)

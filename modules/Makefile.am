@@ -2,5 +2,5 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-SUBDIRS = nc
-DIST_SUBDIRS = nc
+SUBDIRS = nc python
+DIST_SUBDIRS = nc python

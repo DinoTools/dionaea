@@ -274,9 +274,9 @@ found_flag:
 		for ( unsigned int i=0; flags[i] != NULL; i++ )
 		{
 			opt->stdout_filter.domaincount++;
-			opt->stdout_filter.domains = g_realloc(opt->stdout_filter.domains, sizeof(struct domain_match *) * opt->stdout_filter.domaincount);
-			opt->stdout_filter.domains[opt->stdout_filter.domaincount-1].domain = g_strdup(flags[i]);
-			opt->stdout_filter.domains[opt->stdout_filter.domaincount-1].pattern = g_pattern_spec_new(flags[i]);
+			opt->stdout_filter.domains = g_realloc(opt->stdout_filter.domains, sizeof(struct domain_match) * (i+1));
+			opt->stdout_filter.domains[i].domain = g_strdup(flags[i]);
+			opt->stdout_filter.domains[i].pattern = g_pattern_spec_new(flags[i]);
 		}
 	}
 
@@ -419,12 +419,7 @@ void stdout_logger(const gchar *log_domain,
 {
 	const char *level = NULL;
 
-	char *log_domain_work = g_strdup(log_domain);
-
-#ifndef NDEBUG
-	char *x = strstr(log_domain_work, " ");
-	*x = '\0';
-#endif
+	char *log_domain_work;
 
 	if ( user_data != NULL )
 	{
@@ -433,7 +428,16 @@ void stdout_logger(const gchar *log_domain,
 			return;
 
 		if ( !log_domain )
-			goto domain_matched;
+			goto no_log_domain;
+
+#ifdef DEBUG
+		log_domain_work =  g_strdup(log_domain);
+		char *x = strstr(log_domain_work, " ");
+		*x = '\0';
+#else 
+		log_domain_work == log_domain;
+#endif
+
 		for ( unsigned int i=0; i <  opt->stdout_filter.domaincount; i++)
 		{
 			if ( g_pattern_match(opt->stdout_filter.domains[i].pattern, 
@@ -441,13 +445,17 @@ void stdout_logger(const gchar *log_domain,
 								 log_domain_work,  NULL) == TRUE)
 				goto domain_matched;
 		}
-		g_free(log_domain_work);
+		if ( log_domain_work != log_domain )
+			g_free(log_domain_work);
 		return;
+
+	domain_matched:
+		if ( log_domain_work != log_domain )
+			g_free(log_domain_work);
 	}
 
-domain_matched:
-	g_free(log_domain_work);
 
+no_log_domain:
 	for ( unsigned int i=0; log_level_mapping[i].name != NULL; i++)
 	{
 		if ( log_level & log_level_mapping[i].mask )

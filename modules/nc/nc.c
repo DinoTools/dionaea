@@ -84,7 +84,7 @@ static bool nc_new(struct dionaea *d)
 			enum connection_transport trans = connection_transport_tcp;
 	
 			if(lcfgx_get_string(it, &node, "type") == LCFGX_PATH_FOUND_TYPE_OK)
-				if ( connection_type_from_string(node->value.string.data, &trans) == false)
+				if ( connection_transport_from_string(node->value.string.data, &trans) == false)
 					continue;
 	
 			struct connection *con = connection_new(trans);
