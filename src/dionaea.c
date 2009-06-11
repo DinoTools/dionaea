@@ -435,7 +435,7 @@ void stdout_logger(const gchar *log_domain,
 		char *x = strstr(log_domain_work, " ");
 		*x = '\0';
 #else 
-		log_domain_work == log_domain;
+		log_domain_work = (char *)log_domain;
 #endif
 
 		for ( unsigned int i=0; i <  opt->stdout_filter.domaincount; i++)

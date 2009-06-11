@@ -156,12 +156,10 @@ void log_wrap(char *name, int number, char *file, int line, char *msg)
 	if ( number == 20 )	
 		log_level = G_LOG_LEVEL_INFO;
 	if ( number == 30 )	
-		log_level = G_LOG_LEVEL_MESSAGE;
-	if ( number == 40 )	
 		log_level = G_LOG_LEVEL_WARNING;
-	if ( number == 50 )	
+	if ( number == 40 )	
 		log_level = G_LOG_LEVEL_ERROR;
-	if ( number == 60 )	
+	if ( number == 50 )	
 		log_level = G_LOG_LEVEL_CRITICAL;
 
 	g_log(log_domain, log_level, "%s", msg);

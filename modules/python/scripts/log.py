@@ -36,12 +36,7 @@ class DionaeaLogHandler(logging.Handler):
 
 logger = logging.getLogger('')
 logger.setLevel(logging.DEBUG)
-# create console handler and set level to debug
-dlh = DionaeaLogHandler()
-formatter = logging.Formatter('%(name)-12s: %(levelname)-8s %(message)s')
-dlh.setFormatter(formatter)
-dlh.setLevel(logging.DEBUG)
-logger.addHandler(dlh)
+logger.addHandler(DionaeaLogHandler())
 
 # "application" code
 logger.debug("debug message")
