@@ -41,6 +41,7 @@ cdef extern from "../../include/connection.h":
 	ctypedef void (*protocol_handler_error)(c_connection_ *con, int error)
 	ctypedef int (*protocol_handler_timeout)(c_connection_ *con, void *context)
 	ctypedef unsigned int (*protocol_handler_io_in)(c_connection_ *con, void *context, char *data, int size)
+	ctypedef void (*protocol_handler_io_out)(c_connection_ *con, void *context)
 	ctypedef int (*protocol_handler_disconnect)(c_connection_ *con, void *context)
 	ctypedef struct c_protocol "struct protocol":
 		protocol_handler_ctx_new  			ctx_new
@@ -50,6 +51,7 @@ cdef extern from "../../include/connection.h":
 		protocol_handler_timeout 			timeout
 		protocol_handler_disconnect 		disconnect
 		protocol_handler_io_in 				io_in
+		protocol_handler_io_out 			io_out
 		void *ctx
 
 	ctypedef struct c_node_info "struct node_info":
@@ -61,16 +63,36 @@ cdef extern from "../../include/connection.h":
 	char *c_node_info_get_ip_string "node_info_get_ip_string" (c_node_info *node)
 	char *c_node_info_get_port_string "node_info_get_port_string" (c_node_info *node)
 
-	ctypedef struct c_connection "struct connection":
-		c_protocol protocol
-		c_node_info remote
-		c_node_info local
-
 	ctypedef enum c_connection_transport "enum connection_transport":
 		pass
 
+	ctypedef enum c_connection_state "enum connection_state":
+		pass
+
+	ctypedef struct c_connection_throttle_info "struct connection_throttle_info":
+		pass
+
+	double c_connection_throttle_info_speed_get "connection_throttle_info_speed_get"(c_connection_throttle_info *)
+	double c_connection_throttle_info_limit_get "connection_throttle_info_limit_get"(c_connection_throttle_info *throttle)
+	void c_connection_throttle_info_limit_set "connection_throttle_info_limit_set"(c_connection_throttle_info *, double)
+
+
+	ctypedef struct c_connection_stats "struct connection_stats":
+		c_connection_throttle_info io_in
+		c_connection_throttle_info io_out
+
+	ctypedef struct c_connection "struct connection":
+		c_connection_transport trans
+		c_protocol protocol
+		c_connection_state state
+		c_node_info remote
+		c_node_info local
+		c_connection_stats stats
+
 
 	bint c_connection_transport_from_string "connection_transport_from_string" (char *, c_connection_transport *)
+	char *c_connection_transport_to_string "connection_transport_to_string"(c_connection_transport)
+	char *c_connection_state_to_string "connection_state_to_string"(c_connection_state)
 	c_connection *c_connection_new "connection_new" (c_connection_transport)
 	void c_connection_free "connection_free"(c_connection *)
 	int c_connection_bind "connection_bind" (c_connection *, char *, int, char *)
@@ -108,7 +130,7 @@ cdef class node_info:
 		self.thisptr = NULL
 
 	def __init__(self):
-		self.none = None
+		pass
 	
 	property host:
 		def __get__(self): 
@@ -119,6 +141,54 @@ cdef class node_info:
 			return c_ntohs(self.thisptr.port)
 		def __set__(self, port):
 			c_node_info_set_port(self.thisptr, port)
+
+cdef class connection_throttle_info:
+	"""throttle information"""
+	cdef c_connection_throttle_info *thisptr
+	def __cinit__(self):
+		self.thisptr = NULL
+	def __init__(self):
+		pass
+	property throttle:
+		def __get__(self):
+			return c_connection_throttle_info_limit_get(self.thisptr)
+		def __set__(self, limit):
+			c_connection_throttle_info_limit_set(self.thisptr, limit)
+	property speed:
+		def __get__(self):
+			return c_connection_throttle_info_speed_get(self.thisptr)
+			
+cdef connection_throttle_info connection_throttle_info_from(c_connection_throttle_info *info):
+	cdef connection_throttle_info instance
+	instance = NEW_C_NODE_INFO_CLASS(connection_throttle_info)
+	instance.thisptr = info
+	return instance
+		
+#cdef class connection_stats:
+#	"""stats about in/out traffic"""
+#	cdef c_connection_stats *thisptr
+#	def __cinit__(self):
+#		self.thisptr = NULL
+#	def __init__(self):
+#		pass
+#	property _in:
+#		def __get__(self):
+#			return connection_throttle_info_from(&self.thisptr.io_in)
+#		
+#	property _out:
+#		def __get__(self):
+#			return connection_throttle_info_from(&self.thisptr.io_out)
+#
+#
+#cdef connection_stats connection_stats_from(c_connection_stats *stats):
+#	cdef connection_stats instance
+#	instance = NEW_C_NODE_INFO_CLASS(connection_stats)
+#	instance.thisptr = stats
+#	return instance
+	
+
+	
+
 
 cdef extern from "./module.h":
 	cdef node_info NEW_C_NODE_INFO_CLASS "PY_NEW"(object T)
@@ -162,6 +232,7 @@ cdef class connection:
 			self.thisptr.protocol.error = <protocol_handler_error>connect_error_cb
 			self.thisptr.protocol.timeout = <protocol_handler_timeout>timeout_cb
 			self.thisptr.protocol.io_in = <protocol_handler_io_in> io_in_cb
+			self.thisptr.protocol.io_out = <protocol_handler_io_out> io_out_cb
 			self.thisptr.protocol.disconnect = <protocol_handler_disconnect> disconnect_cb
 			self.thisptr.protocol.ctx = <void *>self;
 #		else:
@@ -183,6 +254,9 @@ cdef class connection:
 		"""
 		return 0
 
+	def learn(self, p):
+		pass
+
 	def timeout(self):
 		"""callback for established connection timeouts, return 1 to reestablish the connection"""
 		return True
@@ -197,6 +271,9 @@ cdef class connection:
 #		print(data)
 		return len(data)
 
+	def io_out(self):
+		"""callback for flushed out buffer"""
+		pass
 		
 	def bind(self, addr, port, iface=u''):
 		"""bind the connection to a given addr and  port, iface is optional (for ipv6 local scope)"""
@@ -237,7 +314,7 @@ cdef class connection:
 
 		c_connection_connect(self.thisptr,addr_utf8,port,iface_utf8)
 
-	def io_out(self, data):
+	def send(self, data):
 		"""send something to the remote"""
 		if self.thisptr == NULL:
 			raise ReferenceError('the object requested does not exist')
@@ -255,6 +332,7 @@ cdef class connection:
 		if self.thisptr == NULL:
 			raise ReferenceError('the object requested does not exist')
 		c_connection_close(self.thisptr)
+
 
 	property remote:
 		def __get__(self): 
@@ -324,6 +402,31 @@ cdef class connection:
 				raise ReferenceError('the object requested does not exist')
 			c_connection_handshake_timeout_set(self.thisptr, to)
 
+	property transport:
+		def __get__(self):
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			return c_connection_transport_to_string(self.thisptr.trans).decode()
+
+	property status:
+		def __get__(self):
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			return c_connection_state_to_string(self.thisptr.state).decode()
+
+	property _in:
+		def __get__(self):
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			return connection_throttle_info_from(&self.thisptr.stats.io_in)	
+
+	property _out:
+		def __get__(self):
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			return connection_throttle_info_from(&self.thisptr.stats.io_out)
+
+
 	create = staticmethod(connection_new)
 
 def connection_new(type):
@@ -348,6 +451,7 @@ cdef connection _factory(c_connection *con):
 	instance.thisptr = con
 	INIT_C_CONNECTION_CLASS(parent,instance)
 	c_connection_protocol_ctx_set(con, <void *>instance)
+	instance.learn(parent)
 	return instance
 
 cdef void _garbage(void *context):
@@ -356,6 +460,7 @@ cdef void _garbage(void *context):
 	instance = <connection>context;
 	instance.thisptr = NULL
 	DECREF(instance)
+
 
 cdef void established_cb(c_connection *con) except *:
 #	print "established_cb"
@@ -369,11 +474,20 @@ cdef int io_in_cb(c_connection *con, void *context, void *data, int size) except
 	instance = <connection>context
 	return instance.io_in(stringfrom(<char *>data, size))
 	
+cdef int io_out_cb(c_connection *con, void *context) except *:
+#	print "io_out_cb"
+	cdef connection instance
+	instance = <connection>context
+	instance.io_out()
+	
 cdef int disconnect_cb(c_connection *con, void *context) except *:
 #	print "disconnect_cb"
 	cdef connection instance
 	instance = <connection>context
-	return instance.disconnect()
+	r = instance.disconnect()
+	if r == 0:
+		instance.thisptr = NULL
+	return r
 
 cdef void connect_error_cb(c_connection *con, int err) except *:
 #	print "connect_error_cb"
@@ -394,6 +508,5 @@ def dlhfn(name, number, path, line, msg):
 		path = path.encode()
 	if isinstance(msg, unicode):
 		msg = msg.encode()
-
 	c_log_wrap(name, number, path, line, msg)
 	

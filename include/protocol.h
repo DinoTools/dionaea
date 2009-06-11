@@ -43,6 +43,7 @@ protocol error codes
 */
 
 typedef unsigned int (*protocol_handler_io_in)(struct connection *con, void *context, unsigned char *data, uint32_t size);
+typedef void (*protocol_handler_io_out)(struct connection *con, void *context);
 
 typedef bool (*protocol_handler_disconnect)(struct connection *con, void *context);
 typedef bool (*protocol_handler_timeout)(struct connection *con, void *context);
@@ -58,6 +59,7 @@ struct protocol
 	protocol_handler_timeout timeout;
 	protocol_handler_disconnect disconnect;
 	protocol_handler_io_in io_in;
+	protocol_handler_io_out io_out;
 	void *ctx;
 };
 

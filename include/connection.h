@@ -44,6 +44,14 @@
 #include "refcount.h"
 #include "node_info.h"
 
+typedef void (*event_fn)(struct connection *con);
+
+#define SSL_TMP_KEY_RSA_512  (0)
+#define SSL_TMP_KEY_RSA_1024 (1)
+#define SSL_TMP_KEY_DH_512   (2)
+#define SSL_TMP_KEY_DH_1024  (3)
+#define SSL_TMP_KEY_MAX      (4)
+
 struct ev_loop;
 struct ev_io;
 struct ev_timer;
@@ -96,17 +104,21 @@ struct connection_throttle
 	double last_throttle;
 	double interval_stop;
 	double sleep_adjust;
+};
 
+struct connection_throttle_info
+{
+	uint64_t    traffic;
+	struct connection_throttle throttle;
 };
 
 
-typedef void (*event_fn)(struct connection *con);
+struct connection_stats
+{
+	struct timeval start;
+	struct connection_throttle_info io_in, io_out;
+};
 
-#define SSL_TMP_KEY_RSA_512  (0)
-#define SSL_TMP_KEY_RSA_1024 (1)
-#define SSL_TMP_KEY_DH_512   (2)
-#define SSL_TMP_KEY_DH_1024  (3)
-#define SSL_TMP_KEY_MAX      (4)
 
 struct connection
 {
@@ -160,15 +172,7 @@ struct connection
 		} tls;
 	}transport;
 
-	struct
-	{
-		struct timeval start;
-		struct 
-		{
-			uint64_t	traffic;
-			struct connection_throttle throttle;
-		} io_in,io_out;
-	} stats;
+	struct connection_stats stats;
 
 	struct protocol protocol;
 
@@ -195,8 +199,19 @@ struct connection
 //	struct bistream *bistream;
 	struct stream_processor_data *spd;
 	struct refcount refcount;
-
+	unsigned int flags;
 };
+
+enum connection_flags
+{
+	connection_busy_sending = 0
+};
+
+#define connection_flag_set(c, fl)     (c)->flags |= 1 << (fl)
+#define connection_flag_toggle(c, fl)  (c)->flags ^= 1 << (fl)
+#define connection_flag_unset(c, fl)   (c)->flags &= ~(1 << (fl))
+#define connection_flag_isset(c, fl)   (c)->flags & ( 1 << (fl))
+
 
 
 
@@ -217,6 +232,11 @@ void connection_close(struct connection *con);
 void connection_close_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
 void connection_established(struct connection *con);
+
+double connection_throttle_info_speed_get(struct connection_throttle_info *throttle_info);
+double connection_throttle_info_limit_get(struct connection_throttle_info *throttle_info);
+void connection_throttle_info_limit_set(struct connection_throttle_info *throttle_info, double limit);
+
 void connection_throttle_io_in_set(struct connection *con, uint32_t max_bytes_per_second);
 void connection_throttle_io_out_set(struct connection *con, uint32_t max_bytes_per_second);
 
@@ -299,6 +319,9 @@ void connection_tls_error(struct connection *con);
 void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents);
 
 bool connection_transport_from_string(const char *type_str, enum connection_transport *type);
+const char *connection_transport_to_string(enum	connection_transport trans);
+
+const char *connection_state_to_string(enum connection_state state);
 
 struct dns_ctx;
 void connection_connect_resolve(struct connection *con);

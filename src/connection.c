@@ -288,6 +288,7 @@ bool connection_listen(struct connection *con, int len)
 		}
 		connection_set_nonblocking(con);
 		ev_io_init(&con->events.io_in, connection_tcp_accept_cb, con->socket, EV_READ);
+		ev_set_priority(&con->events.io_in, EV_MAXPRI);
 		ev_io_start(CL, &con->events.io_in);
 		return true;
 		break;
@@ -308,6 +309,7 @@ bool connection_listen(struct connection *con, int len)
 //		connection_tls_set_key(con,"/tmp/server.pem",SSL_FILETYPE_PEM);
 //		SSL_CTX_set_timeout(con->transport.ssl.ctx, 15);
 		ssl_tmp_keys_init(con);
+		ev_set_priority(&con->events.io_in, EV_MAXPRI);
 		ev_io_init(&con->events.io_in, connection_tls_accept_cb, con->socket, EV_READ);
 		ev_io_start(CL, &con->events.io_in);
 		return true;
@@ -344,6 +346,9 @@ void connection_close(struct connection *con)
 			{
 				shutdown(con->socket, SHUT_RD);
 				connection_set_state(con, connection_state_shutdown);
+			}else
+			{
+				connection_set_state(con, connection_state_close);
 			}
 		}else
 		{
@@ -410,6 +415,7 @@ void connection_close_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 void connection_free(struct connection *con)
 {
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+	ev_timer_stop(CL, &con->events.free);
 	ev_timer_init(&con->events.free, connection_free_cb, 0., .5);
 	ev_timer_again(CL, &con->events.free);
 }
@@ -429,7 +435,7 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 	action_connection_free(action);
 #endif
 
-	ev_timer_stop(EV_A_ &con->events.free);
+	ev_timer_stop(EV_A_ w);
 
 	switch ( con->trans )
 	{
@@ -792,6 +798,9 @@ void connection_disconnect(struct connection *con)
 	if ( ev_is_active(&con->events.handshake_timeout) )
 		ev_timer_stop(CL,  &con->events.handshake_timeout);
 
+	if ( ev_is_active(&con->events.reconnect_timeout) )
+		ev_timer_stop(CL,  &con->events.reconnect_timeout);
+
 	if ( con->socket != -1 )
 		close(con->socket);
 	con->socket = -1;
@@ -808,14 +817,14 @@ void connection_send(struct connection *con, const void *data, uint32_t size)
 		// flush as much as possible
 		// revents=0 indicates send() might return 0
 		// in this case we do not close & free the connection
-		if ( con->state == connection_state_connected )
+		if ( con->state == connection_state_connected && !connection_flag_isset(con, connection_busy_sending) )
 			connection_tcp_io_out_cb(g_dionaea->loop, &con->events.io_out, 0);
 		break;
 
 	case connection_transport_tls:
 		g_string_append_len(con->transport.tls.io_out, (gchar *)data, size);
 		// flush as much as possible
-		if ( con->state == connection_state_connected )
+		if ( con->state == connection_state_connected && !connection_flag_isset(con, connection_busy_sending))
 			connection_tls_io_out_cb(g_dionaea->loop, &con->events.io_out, 0);
 		break;
 
@@ -1028,18 +1037,33 @@ void connection_established(struct connection *con)
 }
 
 
+double connection_throttle_info_speed_get(struct connection_throttle_info *throttle_info)
+{
+	double delta = ev_now(g_dionaea->loop) - throttle_info->throttle.interval_start;
+	return throttle_info->throttle.interval_bytes / delta;
+}
+
+double connection_throttle_info_limit_get(struct connection_throttle_info *throttle_info)
+{
+	return throttle_info->throttle.max_bytes_per_second;
+}
+
+void connection_throttle_info_limit_set(struct connection_throttle_info *throttle_info, double limit)
+{
+	throttle_info->throttle.max_bytes_per_second = limit;
+}
 
 void connection_throttle_io_in_set(struct connection *con, uint32_t max_bytes_per_second)
 {
 	g_debug(__PRETTY_FUNCTION__);
-	con->stats.io_in.throttle.max_bytes_per_second = max_bytes_per_second;
+	connection_throttle_info_limit_set(&con->stats.io_in, max_bytes_per_second);
 }
 
 
 void connection_throttle_io_out_set(struct connection *con, uint32_t max_bytes_per_second)
 {
 	g_debug(__PRETTY_FUNCTION__);
-	con->stats.io_out.throttle.max_bytes_per_second = max_bytes_per_second;
+	connection_throttle_info_limit_set(&con->stats.io_out, max_bytes_per_second);
 }
 
 int connection_throttle(struct connection *con, struct connection_throttle *thr)
@@ -1076,10 +1100,10 @@ int connection_throttle(struct connection *con, struct connection_throttle *thr)
 	{ // we sent to much
 		double slp = expect - delta;
 
-		if ( slp < 0.200 && bytes > 0 )
+		if ( slp + thr->sleep_adjust < 0.200 && bytes > 0 )
 		{
 			thr->sleep_adjust = slp;
-			g_debug("throttle: discarding sleep do %i bytes", bytes);
+			g_debug("throttle: discarding sleep %f do %i bytes", slp, bytes);
 			return bytes;
 		}
 
@@ -1319,12 +1343,10 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	/* determine how many bytes we can recv */
 	if (ioctl(con->socket, SIOCINQ, &buf_size) != 0)
 		buf_size=1024;
-	buf_size++;
+	if ( buf_size == 0 )
+		buf_size++;
 
 	g_debug("can recv %i bytes", buf_size);
-
-	unsigned char buf[buf_size];
-
 
 	int recv_throttle = connection_throttle(con, &con->stats.io_in.throttle);
 	int recv_size = MIN(buf_size, recv_throttle);
@@ -1333,6 +1355,8 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 	if ( recv_size == 0 )
 		return;
+
+	unsigned char buf[buf_size];
 
 	GString *new_in = g_string_sized_new(buf_size);
 
@@ -1390,6 +1414,7 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	g_string_free(new_in, TRUE);
 }
 
+
 void connection_tcp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 {
 	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
@@ -1406,9 +1431,6 @@ void connection_tcp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 
 	if ( ev_is_active(&con->events.connect_timeout) )
 		ev_timer_again(EV_A_  &con->events.connect_timeout);
-
-
-
 
 	if ( size > 0 )
 	{
@@ -1427,16 +1449,31 @@ void connection_tcp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 		g_string_erase(con->transport.tcp.io_out, 0 , size);
 		if ( con->transport.tcp.io_out->len == 0 )
 		{
-			ev_io_stop(EV_A_ w);
+			if ( ev_is_active(&con->events.io_out) )
+				ev_io_stop(EV_A_ w);
 			if ( con->state == connection_state_close )
 				connection_tcp_disconnect(con);
+			else
+			if ( con->protocol.io_out != NULL )
+			{ /* avoid recursion at any costs */
+				connection_flag_set(con, connection_busy_sending);
+				con->protocol.io_out(con, con->protocol.ctx);
+				connection_flag_unset(con, connection_busy_sending);
+				if ( con->transport.tcp.io_out->len > 0 )
+					ev_io_start(CL, &con->events.io_out);
+			}
+		}else
+		{
+			if ( !ev_is_active(&con->events.io_out) )
+				ev_io_start(EV_A_ w);
 		}
 	} else
 		if ( size == -1 )
 	{
 		if ( errno == EAGAIN || errno == EWOULDBLOCK )
 		{
-
+			if ( !ev_is_active(&con->events.io_out) )
+				ev_io_start(CL, &con->events.io_out);
 		} else
 			if ( revents != 0 )
 			connection_tcp_disconnect(con);
@@ -1870,6 +1907,7 @@ void connection_tls_io_out_cb(EV_P_ struct ev_io *w, int revents)
 	else
 		con = CONOFF_IO_OUT(w);
 
+
 	if ( con->transport.tls.io_out_again->len == 0 )
 	{
 		GString *io_out_again = con->transport.tls.io_out_again;
@@ -1900,9 +1938,6 @@ void connection_tls_io_out_cb(EV_P_ struct ev_io *w, int revents)
 		connection_tls_error(con);
 		switch ( action )
 		{
-		case SSL_ERROR_NONE:
-			g_debug("%s:%i", __FILE__,  __LINE__);
-			break;
 		case SSL_ERROR_ZERO_RETURN:
 			g_debug("%s:%i", __FILE__,  __LINE__);
 			if ( revents != 0 )
@@ -1913,10 +1948,25 @@ void connection_tls_io_out_cb(EV_P_ struct ev_io *w, int revents)
 
 		case SSL_ERROR_WANT_READ:
 			g_debug("SSL_WANT_READ %s:%i", __FILE__,  __LINE__);
+
+			if ( ev_is_active(&con->events.io_in) && revents != EV_READ )
+			{
+				ev_io_stop(CL, &con->events.io_in);
+				ev_io_init(&con->events.io_in, connection_tls_io_out_cb, con->socket, EV_READ);
+				ev_io_start(CL, &con->events.io_in);
+			}
+
+			if ( ev_is_active(&con->events.io_out) )
+				ev_io_stop(CL, &con->events.io_out);
 			break;
 
 		case SSL_ERROR_WANT_WRITE:
 			g_debug("SSL_WANT_WRITE %s:%i", __FILE__,  __LINE__);
+			if ( !ev_is_active(&con->events.io_out) )
+				ev_io_start(CL, &con->events.io_out);
+
+			if ( ev_is_active(&con->events.io_in) )
+				ev_io_stop(CL, &con->events.io_in);
 			break;
 
 		case SSL_ERROR_WANT_ACCEPT:
@@ -1934,6 +1984,11 @@ void connection_tls_io_out_cb(EV_P_ struct ev_io *w, int revents)
 		case SSL_ERROR_SSL:
 			g_debug("SSL_ERROR_SSL %s:%i", __FILE__,  __LINE__);
 			break;
+
+		case SSL_ERROR_NONE:
+			g_debug("%s:%i", __FILE__,  __LINE__);
+			break;
+
 		}
 	} else
 	{
@@ -1941,6 +1996,25 @@ void connection_tls_io_out_cb(EV_P_ struct ev_io *w, int revents)
 
 		if ( size == con->transport.tls.io_out_again_size )
 		{
+			/* restore io handlers to fit default */
+			if ( ev_is_active(&con->events.io_in) && ev_cb(&con->events.io_in) != connection_tls_io_in_cb )
+				ev_io_stop(CL, &con->events.io_in);
+
+			if ( !ev_is_active(&con->events.io_in) )
+			{
+				ev_io_init(&con->events.io_in, connection_tls_io_in_cb, con->socket, EV_READ);
+				ev_io_start(CL, &con->events.io_in);
+			}
+
+			if ( ev_is_active(&con->events.io_out) && ev_cb(&con->events.io_out) != connection_tls_io_out_cb )
+				ev_io_stop(CL, &con->events.io_out);
+
+			if ( !ev_is_active(&con->events.io_out) )
+			{
+				ev_io_init(&con->events.io_out, connection_tls_io_out_cb, con->socket, EV_WRITE);
+				ev_io_start(CL, &con->events.io_out);
+			}
+
 			connection_throttle_update(con, &con->stats.io_out.throttle, size);
 
 			g_string_erase(con->transport.tls.io_out_again, 0 , con->transport.tls.io_out_again_size);
@@ -1949,10 +2023,24 @@ void connection_tls_io_out_cb(EV_P_ struct ev_io *w, int revents)
 			if ( con->transport.tls.io_out_again->len == 0 && con->transport.tls.io_out->len == 0 )
 			{
 				g_debug("connection is flushed");
-				ev_io_stop(EV_A_ w);
+				if ( ev_is_active(&con->events.io_out) )
+					ev_io_stop(EV_A_ &con->events.io_out);
+
 				if ( con->state == connection_state_close )
 					connection_tls_shutdown_cb(EV_A_ w, revents);
+				else
+				if ( con->protocol.io_out != NULL )
+				{
+					/* avoid recursion */
+					connection_flag_set(con, connection_busy_sending);
+					con->protocol.io_out(con, con->protocol.ctx);
+					connection_flag_unset(con, connection_busy_sending);
+					if ( con->transport.tls.io_out->len > 0 )
+						ev_io_start(CL, &con->events.io_out);
+				}
 			}
+
+
 
 		} else
 		{
@@ -2150,15 +2238,24 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 		case SSL_ERROR_WANT_READ:
 			g_debug("SSL_WANT_READ %s:%i", __FILE__,  __LINE__);
-			// FIXME EAGAIN
+			if ( ev_is_active(&con->events.io_out) )
+				ev_io_stop(CL, &con->events.io_out);
+
+			if ( !ev_is_active(&con->events.io_in) )
+				ev_io_start(CL, &con->events.io_in);
 			break;
 
 		case SSL_ERROR_WANT_WRITE:
 			g_debug("SSL_WANT_WRITE %s:%i", __FILE__,  __LINE__);
-/*			ev_io_stop(EV_A_ &con->events.io_out);
-			ev_io_init(&con->events.io_out, connection_tls_io_in_cb, con->socket, EV_WRITE);
- 			ev_io_start(EV_A_ &con->events.io_out);
- */
+			if ( ev_is_active(&con->events.io_in) )
+				ev_io_stop(CL, &con->events.io_in);
+
+			if ( ev_is_active( &con->events.io_out ) && revents != EV_WRITE)
+			{
+				ev_io_stop(EV_A_ &con->events.io_out);
+				ev_io_init(&con->events.io_out, connection_tls_io_in_cb, con->socket, EV_WRITE);
+				ev_io_start(EV_A_ &con->events.io_out);
+			}
 			break;
 
 		case SSL_ERROR_WANT_ACCEPT:
@@ -2187,6 +2284,26 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	} else
 	if ( err > 0 )
 	{
+
+		/* restore io handlers to fit default */
+		if ( ev_is_active(&con->events.io_in) && ev_cb(&con->events.io_in) != connection_tls_io_in_cb )
+			ev_io_stop(CL, &con->events.io_in);
+
+		if ( !ev_is_active(&con->events.io_in) )
+		{
+			ev_io_init(&con->events.io_in, connection_tls_io_in_cb, con->socket, EV_READ);
+			ev_io_start(CL, &con->events.io_in);
+		}
+
+		if ( ev_is_active(&con->events.io_out) && ev_cb(&con->events.io_out) != connection_tls_io_out_cb )
+			ev_io_stop(CL, &con->events.io_out);
+
+		if ( !ev_is_active(&con->events.io_out) )
+		{
+			ev_io_init(&con->events.io_out, connection_tls_io_out_cb, con->socket, EV_WRITE);
+		}
+
+
 		connection_throttle_update(con, &con->stats.io_in.throttle, err);
 		if ( ev_is_active(&con->events.connect_timeout) )
 			ev_timer_again(EV_A_  &con->events.connect_timeout);
@@ -2194,11 +2311,10 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 		con->protocol.io_in(con, con->protocol.ctx, (unsigned char *)con->transport.tls.io_in->str, con->transport.tls.io_in->len);
 		con->transport.tls.io_in->len = 0;
-//		SSL_renegotiate(con->transport.ssl.ssl);
 
-		if ( (con->transport.tls.io_out->len > 0 || con->transport.tls.io_out_again->len > 0 ) && !ev_is_active(&con->events.io_out) )
+		if ( (con->transport.tls.io_out->len > 0 || con->transport.tls.io_out_again->len > 0 ) && 
+			 !ev_is_active(&con->events.io_out) )
 			ev_io_start(EV_A_ &con->events.io_out);
-
 	}
 }
 
@@ -2590,14 +2706,17 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 
 		if ( ret == -1 )
 		{
-			if ( errno != EAGAIN )
+			if ( errno == EAGAIN )
+			{
+
+			}else
 			{
 				g_debug("domain %i size %i", ((struct sockaddr *)&packet->to)->sa_family, size);
 				perror("sendto");
 			}
 			break;
 		} else
-			if ( ret == packet->data->len )
+		if ( ret == packet->data->len )
 		{
 			g_string_free(packet->data, TRUE);
 			g_free(packet);
@@ -2832,7 +2951,6 @@ void connection_connect_resolve_aaaa_cb(struct dns_ctx *ctx, void *result, void 
 	connection_connect_resolve_action(con);
 }
 
-
 bool connection_transport_from_string(const char *type_str, enum connection_transport *type)
 {
 	if ( strcmp(type_str, "tcp") == 0 )
@@ -2845,6 +2963,18 @@ bool connection_transport_from_string(const char *type_str, enum connection_tran
 		return false;
 
 	return true;
+}
+
+const char *connection_transport_to_string(enum	connection_transport trans)
+{
+	static const char *connection_transport_str[] = 
+	{
+		"udp",
+		"tls",
+		"tcp",
+		"io"
+	};
+	return connection_transport_str[trans];
 }
 
 void connection_protocol_set(struct connection *con, struct protocol *proto)
@@ -2864,15 +2994,22 @@ void *connection_protocol_ctx_get(struct connection *con)
 	return con->protocol.ctx;
 }
 
-const char *connection_type_str[] = 
-{
-	"none",
-	"accept", 
-	"bind", 
-	"connect", 
-	"listen", 
 
-};
+const char *connection_type_to_string(enum connection_type type)
+{
+	static const char *connection_type_str[] = 
+	{
+		"none",
+		"accept", 
+		"bind", 
+		"connect", 
+		"listen", 
+	
+	};
+	return connection_type_str[type];
+}
+
+
 
 
 void connection_set_type(struct connection *con, enum connection_type type)
@@ -2880,12 +3017,18 @@ void connection_set_type(struct connection *con, enum connection_type type)
 	enum connection_type old_type;
 	old_type = con->type;
 	con->type = type;
-	g_message("connection %p type %s -> %s %s->%s", con, con->local.node_string, con->remote.node_string, connection_type_str[old_type], connection_type_str[type]);
+	g_message("connection %p type %s -> %s %s->%s", 
+			  con, 
+			  con->local.node_string, 
+			  con->remote.node_string, 
+			  connection_type_to_string(old_type), 
+			  connection_type_to_string(type));
 }
 
-void connection_set_state(struct connection *con, enum connection_state state)
+
+const char *connection_state_to_string(enum connection_state state)
 {
-	const char *connection_state_str[] = 
+	static const char *connection_state_str[] = 
 	{
 		"none",
 		"resolve",
@@ -2896,9 +3039,22 @@ void connection_set_state(struct connection *con, enum connection_state state)
 		"close",
 		"reconnect"
 	};
+	return connection_state_str[state];
+}
+
+void connection_set_state(struct connection *con, enum connection_state state)
+{
 	enum connection_state old_state;
 	old_state = con->state;
 	con->state = state;
-	g_message("connection %p state %s %s -> %s %s->%s", con, connection_type_str[con->type], con->local.node_string, con->remote.node_string, connection_state_str[old_state], connection_state_str[state]);
+	g_message("connection %p state %s %s -> %s %s->%s", 
+			  con, 
+			  connection_type_to_string(con->type), 
+			  con->local.node_string, 
+			  con->remote.node_string, 
+			  connection_state_to_string(old_state), 
+			  connection_state_to_string(state));
 }
+
+
 
