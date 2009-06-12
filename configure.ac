@@ -647,8 +647,7 @@ AM_CONDITIONAL([BUILD_EMU_MODULE], [ test x$enable_emu = "xyes" ])
 AM_CONDITIONAL([BUILD_NFQ_MODULE], [ test x$enable_netfilter_queue = "xyes" ])
 AM_CONDITIONAL([BUILD_PCAP_MODULE], [ test x$enable_pcap = "xyes" ])
 AM_CONDITIONAL([BUILD_LOUDMOUTH_MODULE], [ test x$enable_loudmouth = "xyes" ])
-AM_CONDITIONAL([BUILD_PYTHON_MODULE], [ test x$enable_python = "xyes" ])
-AM_CONDITIONAL([BUILD_CYTHON_MODULE], [ test x$enable_python = "xyes" && test x$enable_cython = "xyes" ])
+AM_CONDITIONAL([BUILD_PYTHON_MODULE], [ test x$enable_python = "xyes" && test x$enable_cython = "xyes" ])
 
 CFLAGS="${CFLAGS} ${LIB_EV_CFLAGS} ${LIB_GLIB_CFLAGS} ${LIB_LCFG_CFLAGS} -Wstrict-prototypes"
 

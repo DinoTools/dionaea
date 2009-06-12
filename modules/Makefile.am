@@ -2,5 +2,9 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-SUBDIRS = nc python
+if BUILD_PYTHON_MODULE
+python_dir = python 
+endif
+
+SUBDIRS = nc $(python_dir)
 DIST_SUBDIRS = nc python

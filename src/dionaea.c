@@ -360,7 +360,7 @@ void show_help(bool defaults)
 
 	help_info myopts[]=
 	{
-        {"c",	"config=FILE",			"use FILE as configuration file",				SYSCONFDIR "/nepenthes.conf"	},
+        {"c",	"config=FILE",			"use FILE as configuration file",				SYSCONFDIR "/dionaea.conf"	},
 		{"D",	"daemonize",			"run as daemon",						0						},
 		{"g",	"group=GROUP",			"switch to GROUP after startup (use with -u)", "keep current group"},
 #ifdef HAVE_LIBGC

@@ -26,7 +26,6 @@
 #*******************************************************************************/
 
 import weakref
-import logging
 
 cdef extern from "../../include/connection.h":
 
@@ -58,7 +57,6 @@ cdef extern from "../../include/connection.h":
 		char *ip_string
 		char *port_string
 		int port
-
 
 	char *c_node_info_get_ip_string "node_info_get_ip_string" (c_node_info *node)
 	char *c_node_info_get_port_string "node_info_get_port_string" (c_node_info *node)

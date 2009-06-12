@@ -2,7 +2,9 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-all: clean
+all: binding.c
+
+binding.c: binding.pyx module.c module.h
 	python setup.py build
 
 install: all
