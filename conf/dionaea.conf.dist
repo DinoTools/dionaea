@@ -1,7 +1,14 @@
+logging = {
+	// file not starting with / is taken relative to LOCALESTATEDIR (e.g. /opt/dionaea/var)
+	file = "log/dionaea.log"
+	levels = "all"
+	domains = "*"
+}
+
 modules = {
 
 	python = {
-		/* files not prefixed with / will be loaded relative to PREFIX/lib/dionaea/python/ */
+		// files not prefixed with / will be loaded relative to PREFIX/lib/dionaea/python/ 
 		files = ["log.py"]
 	}
 

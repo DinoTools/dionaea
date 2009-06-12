@@ -13,3 +13,4 @@ install-data-local:
 	if [ ! -e $(DESTDIR)$(sysconfdir)/dionaea/dionaea.conf ]; then \
 		$(INSTALL_DATA) $(srcdir)/conf/dionaea.conf.dist $(DESTDIR)$(sysconfdir)/dionaea/dionaea.conf; \
 	fi
+	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/log

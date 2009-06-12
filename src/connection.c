@@ -63,6 +63,7 @@
 #include "dns.h"
 #include "util.h"
 #include "log.h"
+#include "pchild.h"
 
 #define CONOFF(x)							((void *)x - sizeof(struct connection))
 #define CONOFF_IO_IN(x)  					((struct connection *)(((void *)x) - offsetof (struct connection, events.io_in)))
@@ -173,7 +174,7 @@ bool bind_local(struct connection *con)
 	case connection_transport_tcp:
 		setsockopt(con->socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)); 
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)); 
-		if ( bind(con->socket, (struct sockaddr *)&sa, sizeof_sa) != 0 )
+		if ( pchild_sent_bind(con->socket, (struct sockaddr *)&sa, sizeof_sa) != 0 )
 		{
 			g_warning("Could not bind %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
 			close(con->socket);
@@ -236,7 +237,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)); 
 		if ( bind(con->socket, (struct sockaddr *)&sa, sizeof_sa) != 0 )
 		{
-			g_warning("Could not bind %s:%i (%s)", con->local.hostname, con->local.port, strerror(errno));
+			g_warning("Could not bind %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
 			if ( port != 0 && errno == EADDRINUSE )
 			{
 				g_warning("Could not bind %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
@@ -479,7 +480,7 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 	refcount_exit(&con->refcount);
 
 	memset(con, 0, sizeof(struct connection));
-	free(con);
+	g_free(con);
 }
 
 void connection_set_nonblocking(struct connection *con)
@@ -2532,6 +2533,9 @@ void connection_tls_connecting_cb(EV_P_ struct ev_io *w, int revents)
 	connection_node_set_remote(con);
 
 	g_debug("connection %s -> %s", con->local.node_string, con->remote.node_string);
+
+	if ( con->transport.tls.ssl != NULL )
+		SSL_free(con->transport.tls.ssl);
 
 	con->transport.tls.ssl = SSL_new(con->transport.tls.ctx);
 	SSL_set_fd(con->transport.tls.ssl, con->socket);

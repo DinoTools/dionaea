@@ -13,5 +13,7 @@ noinst_HEADERS += log.h
 noinst_HEADERS += protocol.h
 noinst_HEADERS += modules.h
 noinst_HEADERS += connection.h
+noinst_HEADERS += pchild.h
+noinst_HEADERS += signals.h
 
 

@@ -25,42 +25,39 @@
  *
  *******************************************************************************/
 
-#ifndef HAVE_DIONAEA_H
-#define HAVE_DIONAEA_H
+#include <stdio.h>
+#include <unistd.h>
+#include <ev.h>
+#include <glib.h>
 
-struct lcfg;
-struct lcfgx_tree_node;
+#include "dionaea.h"
+#include "signals.h"
+#include "modules.h"
+#include "log.h"
 
-struct dns;
-struct modules;
-struct pchild;
-struct logging;
+#define D_LOG_DOMAIN "log"
 
-struct dionaea
+void sigint_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 {
-	struct
+	g_warning("%s loop %p w %p revents %i",__PRETTY_FUNCTION__, loop, w, revents);
+	ev_unloop (loop, EVUNLOOP_ALL);
+}
+
+void sighup_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
+{
+	g_warning("%s loop %p w %p revents %i",__PRETTY_FUNCTION__, loop, w, revents);
+
+	// modules ...
+	modules_hup();
+
+	// loggers hup
+	for (GList *it = g_dionaea->logging->loggers; it != NULL; it = it->next)
 	{
-		struct lcfg *config;
-		struct lcfgx_tree_node *root;
-	} config;
-
-	struct dns *dns;
-
-	struct ev_loop *loop;
-
-	struct modules *modules;
-
-	struct pchild *pchild;
-
-	struct logging *logging;
-
-	struct signals *signals;
-};
+		struct logger *l = it->data;
+		g_message("Logger %p hup %p", l, l->log);
+		if (l->hup != NULL)
+			l->hup(l->data);
+	}
+}
 
 
-
-extern struct dionaea *g_dionaea;
-
-
-
-#endif

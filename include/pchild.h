@@ -25,42 +25,14 @@
  *
  *******************************************************************************/
 
-#ifndef HAVE_DIONAEA_H
-#define HAVE_DIONAEA_H
 
-struct lcfg;
-struct lcfgx_tree_node;
-
-struct dns;
-struct modules;
-struct pchild;
-struct logging;
-
-struct dionaea
+struct pchild
 {
-	struct
-	{
-		struct lcfg *config;
-		struct lcfgx_tree_node *root;
-	} config;
-
-	struct dns *dns;
-
-	struct ev_loop *loop;
-
-	struct modules *modules;
-
-	struct pchild *pchild;
-
-	struct logging *logging;
-
-	struct signals *signals;
+	int fd;
 };
 
 
-
-extern struct dionaea *g_dionaea;
-
-
-
-#endif
+struct pchild *pchild_new(void);
+bool pchild_init(void);
+int pchild_sent_bind(int sx, struct sockaddr *s, socklen_t size);
+typedef void (*pchild_cmd)(int s);

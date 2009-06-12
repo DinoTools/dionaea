@@ -121,9 +121,9 @@ void node_info_addr_clear(struct node_info *node)
 	int i;
 	for ( i=0;i<node->dns.resolved_address_count; i++ )
 	{
-		free(node->dns.resolved_addresses[i]);
+		g_free(node->dns.resolved_addresses[i]);
 	}
-	free(node->dns.resolved_addresses);
+	g_free(node->dns.resolved_addresses);
 	node->dns.resolved_addresses = NULL;
 	node->dns.resolved_address_count = 0;
 	node->dns.current_address=0;

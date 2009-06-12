@@ -61,6 +61,8 @@
 #include "dns.h"
 #include "modules.h"
 #include "log.h"
+#include "pchild.h"
+#include "signals.h"
 
 void show_version(void);
 void show_help(bool defaults);
@@ -91,12 +93,12 @@ struct options
 
 	struct
 	{
-		char *str;
-		int mask;
-		char *domain;
-		struct domain_match *domains;
-		int domaincount;
-	}stdout_filter;
+		char *levels;
+		char *domains;
+		struct log_filter *filter;
+	}stdout;
+
+	char *pidfile;
 };
 
 
@@ -116,12 +118,13 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			{ "log-domains",	0, 0, 'L' },
 			{ "user", 			1, 0, 'u' },
 			{ "chroot",			1, 0, 'r' },
+			{ "pid-file",		1, 0, 'p' },
 			{ "version",		0, 0, 'V' },
 			{ "workingdir",		0, 0, 'w' },
 			{ 0, 0, 0, 0 }
 		};
 
-		int c = getopt_long(argc, argv, "c:Dg:G:hHl:L:r:u:Vw:", long_options, (int *)&option_index);
+		int c = getopt_long(argc, argv, "c:Dg:G:hHl:L:p:r:u:Vw:", long_options, (int *)&option_index);
 		if (c == -1)
 			break;
 
@@ -156,13 +159,17 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			break;
 
 		case 'l':
-			options->stdout_filter.str = g_strdup(optarg);
+			options->stdout.levels = g_strdup(optarg);
 			break;
 
 		case 'L':
-			options->stdout_filter.domain = g_strdup(optarg);
+			options->stdout.domains = g_strdup(optarg);
 			break;
 
+
+		case 'p':
+			options->pidfile = g_strdup(optarg);
+			break;
 
 		case 'r':
 			options->root = g_strdup(optarg);
@@ -248,38 +255,9 @@ bool options_validate(struct options *opt)
 		}
 	}
 
-	if ( opt->stdout_filter.str != NULL )
-	{
-		char **flags = g_strsplit(opt->stdout_filter.str, ",", 0);
-		for ( unsigned int i=0; flags[i] != NULL; i++ )
-		{
-			for ( unsigned int j=0; log_level_mapping[j].name != NULL; j++)
-			{
-				if ( strcmp(log_level_mapping[j].name, flags[i]) == 0 )
-				{
-					opt->stdout_filter.mask |= log_level_mapping[j].mask;
-					goto found_flag;
-				}
-			}
-			g_error("%s is not a valid message filter flag", flags[i]);
-			return false;
-found_flag:
-			continue;
-		}
-	}
-
-	if ( opt->stdout_filter.domain != NULL )
-	{
-		char **flags = g_strsplit(opt->stdout_filter.domain, ",", 0);
-		for ( unsigned int i=0; flags[i] != NULL; i++ )
-		{
-			opt->stdout_filter.domaincount++;
-			opt->stdout_filter.domains = g_realloc(opt->stdout_filter.domains, sizeof(struct domain_match) * (i+1));
-			opt->stdout_filter.domains[i].domain = g_strdup(flags[i]);
-			opt->stdout_filter.domains[i].pattern = g_pattern_spec_new(flags[i]);
-		}
-	}
-
+	opt->stdout.filter = log_filter_new(opt->stdout.domains, opt->stdout.levels);
+	if ( opt->stdout.filter == NULL )
+		return false;
 
 	return true;
 }
@@ -393,6 +371,7 @@ void show_help(bool defaults)
 		{"l",	"log-levels=WHAT",		"which levels to log, valid values all, debug, info, message, warning, critical, error, combine using ,",	0},
 		{"L",	"log-domains=WHAT",		"which domains use * and ? wildcards",	0},
 		{"u",	"user=USER",			"switch to USER after startup",	"keep current user"},
+		{"p",	"pid-file=FILE",		"write pid to file",	0},
         {"r",	"chroot=DIR",			"chroot to DIR after startup",				"don't chroot"		},
 		{"V",	"version",				"show version",							""						},
 		{"w",	"workingdir=DIR",		"set the process' working dir to DIR",			PREFIX		},
@@ -411,78 +390,16 @@ void show_help(bool defaults)
 		}
 	}
 }
-
-void stdout_logger(const gchar *log_domain, 
-			GLogLevelFlags log_level,
-			const gchar *message,
-            gpointer user_data)
+static void log_ev_fatal_error (const char *msg)
 {
-	const char *level = NULL;
-
-	char *log_domain_work;
-
-	if ( user_data != NULL )
-	{
-		struct options *opt = user_data;
-		if ( (log_level & opt->stdout_filter.mask ) == 0 )
-			return;
-
-		if ( !log_domain )
-			goto no_log_domain;
-
-#ifdef DEBUG
-		log_domain_work =  g_strdup(log_domain);
-		char *x = strstr(log_domain_work, " ");
-		*x = '\0';
-#else 
-		log_domain_work = (char *)log_domain;
-#endif
-
-		for ( unsigned int i=0; i <  opt->stdout_filter.domaincount; i++)
-		{
-			if ( g_pattern_match(opt->stdout_filter.domains[i].pattern, 
-								 strlen(log_domain_work), 
-								 log_domain_work,  NULL) == TRUE)
-				goto domain_matched;
-		}
-		if ( log_domain_work != log_domain )
-			g_free(log_domain_work);
-		return;
-
-	domain_matched:
-		if ( log_domain_work != log_domain )
-			g_free(log_domain_work);
-	}
-
-
-no_log_domain:
-	for ( unsigned int i=0; log_level_mapping[i].name != NULL; i++)
-	{
-		if ( log_level & log_level_mapping[i].mask )
-		{
-			level = log_level_mapping[i].name;
-			break;
-		}
-	}
-
-	time_t stamp;
-	if ( g_dionaea != NULL && g_dionaea->loop != NULL)
-		stamp = ev_now(g_dionaea->loop);
-	else
-		stamp = time(NULL);
-
-	struct tm t;
-	localtime_r(&stamp, &t);
-	printf("[%02d%02d%04d %02d:%02d:%02d] %s-%s: %s\n", 
-		   t.tm_mday, t.tm_mon + 1, t.tm_year + 1900, t.tm_hour, t.tm_min, t.tm_sec, 
-		   log_domain, level, message);
+	g_error("%s",msg);
 }
 
 
 int main (int argc, char *argv[])
 {
 	show_version();
-	g_log_set_default_handler(stdout_logger, NULL);
+	g_log_set_default_handler(logger_stdout_log, NULL);
 
 	struct options *opt = malloc(sizeof(struct options));
 	memset(opt, 0, sizeof(struct options));
@@ -493,11 +410,11 @@ int main (int argc, char *argv[])
 	if ( options_validate(opt) == false )
 		g_error("Invalid options");
 
-	g_log_set_default_handler(stdout_logger, opt);
-
+	g_log_set_default_handler(logger_stdout_log, opt->stdout.filter);
 	// gc
 	if ( opt->garbage != NULL)
 	{
+#ifdef HAVE_LIBGC
 		g_message("gc mode %s", opt->garbage);
 		if ( g_mem_gc_friendly != TRUE )
 			g_error("export G_DEBUG=gc-friendly\nexport G_SLICE=always-malloc\n for gc");
@@ -513,13 +430,15 @@ int main (int argc, char *argv[])
 		g_mem_set_vtable(&memory_vtable);
 		if ( strcmp(opt->garbage, "debug") == 0)
 			GC_find_leak = 1;
-		
+
+		// set libev allocator
+		typedef void *(*moron)(void *ptr, long size);
+		ev_set_allocator((moron)GC_realloc);
+#endif
 	}
 
 	if ( opt->workingdir != NULL && chdir(opt->workingdir) != 0)
 		g_error("Invalid directory %s (%s)", opt->workingdir, strerror(errno));
-
-
 
 	struct dionaea *d = g_malloc0(sizeof(struct dionaea));
 	g_dionaea = d;
@@ -533,10 +452,73 @@ int main (int argc, char *argv[])
 
 	d->config.root = lcfgx_tree_new(d->config.config);
 
+
+	// logging 
+	d->logging = g_malloc0(sizeof(struct logging));
+
+	// no daemon logs to stdout by default
+	if ( opt->daemon == false )
+	{
+		struct logger *l = logger_new(logger_stdout_log, NULL, NULL, NULL, opt->stdout.filter);
+		d->logging->loggers = g_list_append(d->logging->loggers, l);
+	}
+	
+	// log to file - if specified in config
+	struct lcfgx_tree_node *f;
+	if( lcfgx_get_string(g_dionaea->config.root, &f, "logging.file") == LCFGX_PATH_FOUND_TYPE_OK )
+	{
+		char *file = f->value.string.data;
+		char *domains = NULL;
+		char *levels = NULL;
+
+		if ( lcfgx_get_string(g_dionaea->config.root, &f, "logging.domains") == LCFGX_PATH_FOUND_TYPE_OK )
+			domains = f->value.string.data;
+
+		if ( lcfgx_get_string(g_dionaea->config.root, &f, "logging.levels") == LCFGX_PATH_FOUND_TYPE_OK )
+			levels = f->value.string.data;
+
+		g_debug("Logfile %s %s %s", file, domains, levels);
+		struct log_filter *lf = log_filter_new(domains, levels);
+		if ( lf == NULL )
+			return -1;
+
+		struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
+		if ( *file != '/' )
+		{
+			fd->file = g_malloc0(PATH_MAX+1);
+			g_snprintf(fd->file, PATH_MAX, "%s/log/dionaea.log", LOCALESTATEDIR);
+		}else
+			fd->file = g_strdup(file);
+
+		fd->filter = lf;
+
+		struct logger *l = logger_new(logger_file_log, logger_file_open, logger_file_hup, logger_file_close, fd);
+		d->logging->loggers = g_list_append(d->logging->loggers, l);
+	}
+
+	for ( GList *it = d->logging->loggers; it != NULL; it = it->next	 )
+	{	
+		struct logger *l = it->data;
+		if ( l->open != NULL )
+			l->open(l->data);
+	}
+
 	// daemon
 	if ( opt->daemon &&	
 		 daemon(1, 0) != 0)
 		g_error("Could not daemonize (%s)", strerror(errno));
+
+	// pidfile
+	if ( opt->pidfile != NULL )
+	{
+		FILE *p = fopen(opt->pidfile,"w+");
+		if ( p == NULL )
+			g_error("Could not write pid file to %s", opt->pidfile);
+		char pidstr[16];
+		int len = snprintf(pidstr, 15, "%i", getpid());
+		fwrite(pidstr, len, 1, p);
+		fclose(p);
+	}
 
 	// libev
 	d->loop = ev_default_loop(0);
@@ -557,6 +539,8 @@ int main (int argc, char *argv[])
 			if ( b == 1 << i )
 				g_message("libev backend is %s", backend[i]);
 	}
+	ev_set_syserr_cb(log_ev_fatal_error);
+
 
 	// ssl
 	SSL_load_error_strings();
@@ -585,7 +569,7 @@ int main (int argc, char *argv[])
 
 	// modules
 	d->modules = g_malloc0(sizeof(struct modules));
-		struct lcfgx_tree_node *n;
+	struct lcfgx_tree_node *n;
 	if( lcfgx_get_map(g_dionaea->config.root, &n, "modules") == LCFGX_PATH_FOUND_TYPE_OK )
 		modules_load(n);
 	else
@@ -594,9 +578,15 @@ int main (int argc, char *argv[])
 	modules_config();
 	modules_prepare();
 
-	modules_new();
-
 	// privileged child
+	d->pchild = pchild_new();
+	if ( pchild_init() == false)
+		g_error("Could not init privileged child!");
+
+	// maybe a little late, but want to avoid having dups of the fd in the child
+	g_log_set_default_handler(log_multiplexer, NULL);
+
+	modules_new();
 
 
 	// glib threadpool
@@ -616,8 +606,14 @@ int main (int argc, char *argv[])
 
 
 	// signals
+	d->signals = g_malloc0(sizeof(struct signals));
+	ev_signal_init(&d->signals->sigint,  sigint_cb, SIGINT);
+	ev_signal_start(d->loop, &d->signals->sigint);
+	ev_signal_init(&d->signals->sighup,  sighup_cb, SIGHUP);
+	ev_signal_start(d->loop, &d->signals->sighup);
 
 
+	g_debug("looping");
 	// loop
 	ev_loop(d->loop,0);
 
@@ -625,17 +621,3 @@ int main (int argc, char *argv[])
 
 	return 0;
 }
-
-
-struct log_level_map log_level_mapping[] = 
-{
-	{"error",		G_LOG_LEVEL_ERROR},
-	{"critical", 	G_LOG_LEVEL_CRITICAL},
-	{"warning", 	G_LOG_LEVEL_WARNING},
-	{"message",		G_LOG_LEVEL_MESSAGE},
-	{"info",		G_LOG_LEVEL_INFO},
-	{"debug",		G_LOG_LEVEL_DEBUG},
-	{"all",			G_LOG_LEVEL_MASK},
-	{ NULL, 0 }
-};
-

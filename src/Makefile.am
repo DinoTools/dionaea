@@ -24,3 +24,6 @@ dionaea_SOURCES += node_info.c
 dionaea_SOURCES += util.c
 dionaea_SOURCES += connection.c
 dionaea_SOURCES += modules.c
+dionaea_SOURCES += pchild.c
+dionaea_SOURCES += log.c
+dionaea_SOURCES += signals.c

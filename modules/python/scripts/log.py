@@ -39,11 +39,11 @@ logger.setLevel(logging.DEBUG)
 logger.addHandler(DionaeaLogHandler())
 
 # "application" code
-logger.debug("debug message")
+#logger.debug("debug message")
 #logger.info("info message")
 #logger.warn("warn message")
-#logger.error("error message")
 #logger.critical("critical message")
+#logger.error("error message")
 #
 #logx = logging.getLogger("logx")
 #logx.warn("x")
