@@ -1194,10 +1194,6 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
 	struct connection *con = CONOFF_IO_IN(w);
 
-	g_debug("w %p w->data %p con %p offset %lu offsetof %lu", w, con, w->data, 
-		   (unsigned long int)w->data - (unsigned long int)w,
-		   offsetof(struct connection, events.io_in));
-
 	while ( 1 )
 	{
 
