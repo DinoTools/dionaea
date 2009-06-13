@@ -405,10 +405,14 @@ int main (int argc, char *argv[])
 	memset(opt, 0, sizeof(struct options));
 
 	if ( options_parse(opt, argc, argv) == false)
+	{	
 		g_error("Could not parse options!\n");
+	}
 
 	if ( options_validate(opt) == false )
+	{	
 		g_error("Invalid options");
+	}
 
 	g_log_set_default_handler(logger_stdout_log, opt->stdout.filter);
 	// gc
@@ -438,17 +442,23 @@ int main (int argc, char *argv[])
 	}
 
 	if ( opt->workingdir != NULL && chdir(opt->workingdir) != 0)
+	{	
 		g_error("Invalid directory %s (%s)", opt->workingdir, strerror(errno));
+	}
 
 	struct dionaea *d = g_malloc0(sizeof(struct dionaea));
 	g_dionaea = d;
 
 	// config
 	if ( (d->config.config = lcfg_new(opt->config)) == NULL)
+	{	
 		g_error("config not found");
+	}
 
 	if( lcfg_parse(d->config.config) != lcfg_status_ok )
+	{	
 		g_error("lcfg error: %s\n", lcfg_error_get(d->config.config));
+	}
 
 	d->config.root = lcfgx_tree_new(d->config.config);
 
@@ -504,16 +514,19 @@ int main (int argc, char *argv[])
 	}
 
 	// daemon
-	if ( opt->daemon &&	
-		 daemon(1, 0) != 0)
+	if ( opt->daemon &&	daemon(1, 0) != 0)
+	{	
 		g_error("Could not daemonize (%s)", strerror(errno));
+	}
 
 	// pidfile
 	if ( opt->pidfile != NULL )
 	{
 		FILE *p = fopen(opt->pidfile,"w+");
 		if ( p == NULL )
+		{	
 			g_error("Could not write pid file to %s", opt->pidfile);
+		}
 		char pidstr[16];
 		int len = snprintf(pidstr, 15, "%i", getpid());
 		fwrite(pidstr, len, 1, p);
@@ -581,7 +594,9 @@ int main (int argc, char *argv[])
 	// privileged child
 	d->pchild = pchild_new();
 	if ( pchild_init() == false)
+	{	
 		g_error("Could not init privileged child!");
+	}
 
 	// maybe a little late, but want to avoid having dups of the fd in the child
 	g_log_set_default_handler(log_multiplexer, NULL);
@@ -593,16 +608,22 @@ int main (int argc, char *argv[])
 
 	// chroot
 	if ( opt->root != NULL && chroot(opt->root) != 0 )
+	{
 		g_error("Could not chroot(\"%s\") (%s)", opt->root, strerror(errno));
+	}
 
 	// drop
 	if ( opt->group.name != NULL && 
 		 setresgid(opt->group.id, opt->group.id, opt->group.id) < 0)
+	{
 		g_error("Could not change group");
+	}
 
 	if ( opt->user.name != NULL && 
 		 setresuid(opt->user.id, opt->user.id, opt->user.id) < 0)
+	{
 		g_error("Could not change user");
+	}
 
 
 	// signals
