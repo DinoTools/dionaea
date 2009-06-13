@@ -112,7 +112,11 @@ static bool new(struct dionaea *dionaea)
 			g_debug("Initializing file %s %i %p -> %p -> %p", relpath, ret, iterator->prev, iterator, iterator->next);
 			ret = PyRun_SimpleFile(f, relpath);
 			fclose(f);
+		}else
+		{
+			g_error("Could not initialize %s (%s)", relpath, strerror(errno));
 		}
+
 	}
 	signal(SIGINT, SIG_DFL);
 

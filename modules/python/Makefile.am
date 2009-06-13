@@ -15,10 +15,10 @@ install: all
 
 clean:
 	python setup.py clean
-	rm -rf ./build connection.{c,h} 
+	rm -rf ./build binding.{c,h} 
 
 dist-clean: clean
 
 
-EXTRA_DIST = setup.py module.c module.h connection.pyx
+EXTRA_DIST = setup.py module.c module.h binding.pyx
 EXTRA_DIST += scripts/log.py

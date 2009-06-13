@@ -35,6 +35,7 @@
 #include <stdio.h>
 #include <stdint.h>
 #include <stdlib.h>
+#include <signal.h>
 
 #include "dionaea.h"
 #include "pchild.h"

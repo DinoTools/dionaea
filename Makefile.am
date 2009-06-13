@@ -4,7 +4,7 @@ AUTOMAKE_OPTIONS = foreign
 
 SUBDIRS = src include modules
 
-EXTRA_DIST = configure.ac
+EXTRA_DIST = configure.ac conf/dionaea.conf.dist
 
 install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)
