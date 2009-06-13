@@ -107,7 +107,7 @@ struct connection *connection_new(enum connection_transport type)
 
 	case connection_transport_tls:
 		con->transport.tls.meth = SSLv23_method();
-		con->transport.tls.ctx = SSL_CTX_new(con->transport.tls.meth);
+		con->transport.tls.ctx = SSL_CTX_new((SSL_METHOD *)con->transport.tls.meth);
 		SSL_CTX_set_session_cache_mode(con->transport.tls.ctx, SSL_SESS_CACHE_OFF);
 		con->transport.tls.io_in = g_string_new("");
 		con->transport.tls.io_out = g_string_new("");
