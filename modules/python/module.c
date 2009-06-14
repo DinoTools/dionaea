@@ -80,6 +80,8 @@ static bool new(struct dionaea *dionaea)
 {
 	g_debug("%s %s %p", __PRETTY_FUNCTION__, __FILE__, g_dionaea);
 	PyImport_AppendInittab("dionaea", &PyInit_python);
+
+	Py_SetProgramName(PYTHON_PATH);
 	Py_Initialize();
 
 	struct lcfgx_tree_node *files;
