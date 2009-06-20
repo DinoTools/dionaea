@@ -184,12 +184,12 @@ void logger_stdout_log(const gchar *log_domain,
 		 *  
 		 * 
 		 */
-		{"\033[31;1merror\033[0m]",		G_LOG_LEVEL_ERROR},
-		{"\033[31;1mcritical\033[0m]", 	G_LOG_LEVEL_CRITICAL},
-		{"\033[35;1mwarning\033[0m]", 	G_LOG_LEVEL_WARNING},
-		{"\033[33;1mmessage\033[0m]",		G_LOG_LEVEL_MESSAGE},
-		{"\033[32;1minfo\033[0m]",		G_LOG_LEVEL_INFO},
-		{"\033[36;1mdebug\033[0m]",		G_LOG_LEVEL_DEBUG},
+		{"\033[31;1m",	G_LOG_LEVEL_ERROR},
+		{"\033[31;1m", 	G_LOG_LEVEL_CRITICAL},
+		{"\033[35;1m", 	G_LOG_LEVEL_WARNING},
+		{"\033[33;1m",	G_LOG_LEVEL_MESSAGE},
+		{"\033[32;1m",	G_LOG_LEVEL_INFO},
+		{"\033[36;1m",	G_LOG_LEVEL_DEBUG},
 		{ NULL, 0 }
 	};
 
@@ -210,9 +210,22 @@ void logger_stdout_log(const gchar *log_domain,
 
 	struct tm t;
 	localtime_r(&stamp, &t);
-	printf("[%02d%02d%04d %02d:%02d:%02d] %s-%s: %s\n", 
+
+#ifdef DEBUG
+	char *domain = g_strdup(log_domain);
+	char *fileinfo = NULL;
+	if ( (fileinfo = strstr(domain, " ")) != NULL )
+		*fileinfo++ = '\0';
+
+	printf("[%02d%02d%04d %02d:%02d:%02d] %s%s\033[0m %s: %s\n", 
 		   t.tm_mday, t.tm_mon + 1, t.tm_year + 1900, t.tm_hour, t.tm_min, t.tm_sec, 
-		   log_domain, level, message);
+		   level, domain, fileinfo, message);
+	g_free(domain);
+#else
+	printf("[%02d%02d%04d %02d:%02d:%02d] %s%s\033[0m: %s\n", 
+		   t.tm_mday, t.tm_mon + 1, t.tm_year + 1900, t.tm_hour, t.tm_min, t.tm_sec, 
+		   level, log_domain, message);
+#endif
 }
 
 bool logger_file_open(void *data)
