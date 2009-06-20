@@ -4,7 +4,7 @@ AUTOMAKE_OPTIONS = foreign
 
 all: binding.c
 
-binding.c: binding.pyx module.c module.h
+binding.c: binding.pyx module.c module.h ../../config.h ../../include/protocol.h ../../include/dionaea.h
 	python setup.py build
 
 install: all
