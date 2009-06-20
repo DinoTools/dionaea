@@ -122,11 +122,14 @@ static bool new(struct dionaea *dionaea)
 	}
 	signal(SIGINT, SIG_DFL);
 
-
-	runtime.stdin = fdopen(STDIN_FILENO, "r");
-	ev_io_init(&runtime.python_cli_io_in, python_io_in_cb, STDIN_FILENO, EV_READ);
-	ev_io_start(g_dionaea->loop, &runtime.python_cli_io_in);
-	printf("python> ");
+	if ( isatty(STDOUT_FILENO) )
+	{
+		g_debug("Interactive Python shell");
+		runtime.stdin = fdopen(STDIN_FILENO, "r");
+		ev_io_init(&runtime.python_cli_io_in, python_io_in_cb, STDIN_FILENO, EV_READ);
+		ev_io_start(g_dionaea->loop, &runtime.python_cli_io_in);
+		printf("python> ");
+	}
 
 	return true;
 }
@@ -170,5 +173,5 @@ void log_wrap(char *name, int number, char *file, int line, char *msg)
 
 	g_log(log_domain, log_level, "%s", msg);
 	free(log_domain);
-}
 
+}
