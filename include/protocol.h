@@ -49,9 +49,11 @@ typedef bool (*protocol_handler_disconnect)(struct connection *con, void *contex
 typedef bool (*protocol_handler_timeout)(struct connection *con, void *context);
 typedef void *(*protocol_handler_ctx_new)(struct connection *con);
 typedef void (*protocol_handler_ctx_free)(void *data);
+typedef void (*protocol_handler_name)(void *ctx);
 
 struct protocol
 {
+	protocol_handler_name name;
 	protocol_handler_ctx_new  ctx_new;
 	protocol_handler_ctx_free ctx_free;
 	protocol_handler_established established;
