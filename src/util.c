@@ -97,15 +97,17 @@ bool parse_addr(const char *addr, const char *iface, uint16_t port, struct socka
 	}
 #endif
 
-	if ( strstr(addr, "/") != NULL )
+	static const char *un_prefix = "un://";
+	if ( strncmp(addr, un_prefix,  strlen(un_prefix)) == 0 )
 	{
-		if(strlen(addr) > sizeof(struct sockaddr_storage) - sizeof(unsigned short))
+		const char *p = addr + strlen(un_prefix);
+		if( strlen(p) > sizeof(struct sockaddr_storage) - sizeof(unsigned short))
 		{
 			g_warning("unix path would not fit into buffer\n");
 			return false;
 		}
 		su->sun_family = PF_UNIX;
-		strncpy(su->sun_path, addr, 107);
+		strncpy(su->sun_path, p, 107);
 		*sizeof_sa = sizeof(su->sun_family) + strlen(su->sun_path);
 		*socket_domain = PF_UNIX;
 		return true;
