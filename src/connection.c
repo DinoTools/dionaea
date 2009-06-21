@@ -64,6 +64,7 @@
 #include "util.h"
 #include "log.h"
 #include "pchild.h"
+#include "incident.h"
 
 #define CONOFF(x)							((void *)x - sizeof(struct connection))
 #define CONOFF_IO_IN(x)  					((struct connection *)(((void *)x) - offsetof (struct connection, events.io_in)))
@@ -150,6 +151,7 @@ bool connection_node_set_remote(struct connection *con)
 
 bool bind_local(struct connection *con)
 {
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	struct sockaddr_storage sa;
 	memset(&sa, 0,  sizeof(struct sockaddr_storage));
 
@@ -204,7 +206,7 @@ bool bind_local(struct connection *con)
 
 bool connection_bind(struct connection *con, const char *addr, uint16_t port, const char *iface_scope)
 {
-	g_debug(__PRETTY_FUNCTION__);
+	g_debug("%s con %p addr %s port %i iface %s", __PRETTY_FUNCTION__, con, addr, port, iface_scope);
 	struct sockaddr_storage sa;
 	memset(&sa, 0,  sizeof(struct sockaddr_storage));
 
@@ -273,7 +275,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 bool connection_listen(struct connection *con, int len)
 {
-	g_debug(__PRETTY_FUNCTION__);
+	g_debug("%s con %p len %i", __PRETTY_FUNCTION__, con, len);
 
 	switch ( con->trans )
 	{
@@ -326,65 +328,104 @@ bool connection_listen(struct connection *con, int len)
 
 void connection_close(struct connection *con)
 {
-	g_debug(__PRETTY_FUNCTION__);
-
-	if ( !ev_is_active(&con->events.close_timeout) && con->type != connection_type_listen && 
-		 (con->trans == connection_transport_tcp ||	con->trans == connection_transport_tls )
-	   )
-	{
-		ev_timer_init(&con->events.close_timeout, connection_close_timeout_cb, 0., con->events.close_timeout.repeat);
-		ev_timer_again(CL, &con->events.close_timeout);
-	}
-
+	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 
 	switch ( con->trans )
 	{
 	case connection_transport_tcp:
-		
-		if(con->type != connection_type_listen)
+		if(con->type == connection_type_listen)
 		{
-			if ( con->transport.tcp.io_out->len == 0 )
+			connection_tcp_disconnect(con);
+		}else
+		if ( con->type == connection_type_connect && 
+			 (con->state == connection_state_none || con->state == connection_state_connecting) )
+		{
+			connection_tcp_disconnect(con);
+		} else 
+		if( ( con->type == connection_type_connect || con->type == connection_type_accept) &&
+		   con->state == connection_state_connected )
+		{
+			if( !ev_is_active(&con->events.close_timeout) )
+			{
+				ev_timer_init(&con->events.close_timeout, connection_close_timeout_cb, 0., con->events.close_timeout.repeat);
+				ev_timer_again(CL, &con->events.close_timeout);
+			}
+
+			if( con->transport.tcp.io_out->len == 0 )
 			{
 				shutdown(con->socket, SHUT_RD);
 				connection_set_state(con, connection_state_shutdown);
-			}else
+			} else
+			if( con->transport.tcp.io_out->len != 0 )
 			{
 				connection_set_state(con, connection_state_close);
 			}
+
 		}else
 		{
-			connection_set_state(con, connection_state_close);
+			g_critical("Invalid close on connection %p type %s state %s", 
+					con, 
+					connection_type_to_string(con->type), 
+					connection_state_to_string(con->state));
 			connection_tcp_disconnect(con);
-			return;
 		}
 		break;
 
 	case connection_transport_tls:
-		
-		if ( con->transport.tls.ssl != NULL )
-		{
-			if ( con->transport.tls.io_out->len == 0 && con->transport.tls.io_out_again->len == 0 )
-			{
-				connection_set_state(con, connection_state_shutdown);
-				connection_tls_shutdown_cb(CL, &con->events.io_in, 0);
-			}
-				
-		}else
+		if ( con->type == connection_type_listen )
 		{
 			connection_set_state(con, connection_state_close);
+			connection_tls_disconnect(con);
+		}else
+		if ( con->type == connection_type_connect  &&
+			(con->state == connection_state_none || con->state == connection_state_connecting)  )
+		{
+			connection_tls_disconnect(con);
+		}else
+		if ( con->type == connection_type_connect && con->transport.tls.ssl == NULL )
+		{
+			connection_set_state(con, connection_state_close);
+			connection_tls_disconnect(con);
+		}else
+		if ( ( con->type == connection_type_connect || con->type == connection_type_accept)	)
+		{
+			if (con->state == connection_state_connected)
+			{
+				if ( !ev_is_active(&con->events.close_timeout) )
+				{
+					ev_timer_init(&con->events.close_timeout, connection_close_timeout_cb, 0., con->events.close_timeout.repeat);
+					ev_timer_again(CL, &con->events.close_timeout);
+				}
+	
+				if( con->transport.tls.io_out->len == 0 && con->transport.tls.io_out_again->len == 0 )
+				{
+					connection_set_state(con, connection_state_shutdown);
+					connection_tls_shutdown_cb(CL, &con->events.io_in, 0);
+				}else
+				if( con->transport.tls.io_out->len != 0 || con->transport.tls.io_out_again->len != 0)
+				{
+					connection_set_state(con, connection_state_close);
+				}
+			}else
+			{
+				connection_tls_disconnect(con);
+			}
+		}else
+		{
+			g_critical("Invalid close on connection %p type %s state %s", 
+					con, 
+					connection_type_to_string(con->type), 
+					connection_state_to_string(con->state));
 			connection_tls_disconnect(con);
 		}
 		break;
 
-	
 	case connection_transport_udp:
 		connection_set_state(con, connection_state_close);
 		connection_udp_disconnect(con);
-		return;
 		break;
 
 	case connection_transport_io:
-		return;
 		break;
 	}
 }
@@ -392,11 +433,8 @@ void connection_close(struct connection *con)
 
 void connection_close_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug("%s loop %p w %p revents %i",__PRETTY_FUNCTION__, EV_A_ w, revents);   
-
-//	struct connection *con = w->data;
 	struct connection *con = CONOFF_CLOSE_TIMEOUT(w);
-	g_debug("connect to be close_timeouted is %p", con);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);   
 
 	switch ( con->trans )
 	{
@@ -423,9 +461,8 @@ void connection_free(struct connection *con)
 
 void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug("%s loop %p",__PRETTY_FUNCTION__, EV_A);   
-
 	struct connection *con = CONOFF_FREE(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);   
 
 	if ( ! refcount_is_zero(&con->refcount) )
 		return;
@@ -502,7 +539,7 @@ void connection_set_blocking(struct connection *con)
 
 void connection_connect_next_addr(struct connection *con)
 {
-	g_debug(__PRETTY_FUNCTION__);
+	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 
 	const char *addr;
 	while ( (addr = node_info_get_next_addr(&con->remote)) != NULL )
@@ -735,8 +772,8 @@ void connection_reconnect(struct connection *con)
 
 void connection_reconnect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug("%s loop %p",__PRETTY_FUNCTION__, EV_A);   
 	struct connection *con = CONOFF_RECONNECT_TIMEOUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);   
 
 	struct sockaddr_storage sa;
 	memset(&sa, 0,  sizeof(struct sockaddr_storage));
@@ -746,6 +783,7 @@ void connection_reconnect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 
 
 	ev_timer_stop(EV_A_ w);
+	connection_set_state(con, connection_state_none);
 
 	if ( !parse_addr(con->remote.hostname, NULL, ntohs(con->remote.port), &sa, &socket_domain, &sizeof_sa) )
 	{ /* domain */
@@ -769,7 +807,7 @@ void connection_reconnect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 
 void connection_disconnect(struct connection *con)
 {
-
+	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 //	bistream_debug(&con->bistream);
 
 	if ( ev_is_active(&con->events.io_in) )
@@ -854,7 +892,7 @@ void connection_send_string(struct connection *con, const char *str)
 
 void connection_connect_timeout_set(struct connection *con, double timeout_interval_ms)
 {
-	g_debug(__PRETTY_FUNCTION__);
+	g_debug("%s %p %f", __PRETTY_FUNCTION__, con, timeout_interval_ms);
 
 	switch ( con->trans )
 	{
@@ -974,7 +1012,7 @@ double connection_connecting_timeout_get(struct connection *con)
 
 void connection_established(struct connection *con)
 {
-	g_debug(__PRETTY_FUNCTION__);
+	g_debug("%s %p", __PRETTY_FUNCTION__, con);
 	ev_io_stop(CL, &con->events.io_in);
 	ev_io_stop(CL, &con->events.io_out);
 
@@ -983,6 +1021,7 @@ void connection_established(struct connection *con)
 
 
 	connection_set_state(con, connection_state_connected);
+
 	switch ( con->trans )
 	{
 	case connection_transport_tcp:
@@ -1069,7 +1108,7 @@ void connection_throttle_io_out_set(struct connection *con, uint32_t max_bytes_p
 
 int connection_throttle(struct connection *con, struct connection_throttle *thr)
 {
-	g_debug(__PRETTY_FUNCTION__);
+	g_debug("%s con %p thr %p", __PRETTY_FUNCTION__, con, thr);
 
 	if ( thr->max_bytes_per_second == 0 )
 		return 64*1024;
@@ -1162,15 +1201,15 @@ void connection_throttle_update(struct connection *con, struct connection_thrott
 
 void connection_throttle_io_in_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {                                      
-	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_THROTTLE_IO_IN_TIMEOUT(w);
+	g_debug("%s %p", __PRETTY_FUNCTION__, con);
 	ev_io_start(EV_A_ &con->events.io_in);
 }                                      
 
 void connection_throttle_io_out_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_THROTTLE_IO_OUT_TIMEOUT(w);
+	g_debug("%s %p", __PRETTY_FUNCTION__, con);
 	ev_io_start(EV_A_ &con->events.io_out);
 }
 
@@ -1191,8 +1230,8 @@ void connection_throttle_reset(struct connection_throttle *thr)
 
 void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
 	struct connection *con = CONOFF_IO_IN(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	while ( 1 )
 	{
@@ -1239,6 +1278,15 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 		accepted->stats.io_in.throttle.max_bytes_per_second = con->stats.io_in.throttle.max_bytes_per_second;
 		accepted->stats.io_out.throttle.max_bytes_per_second = con->stats.io_out.throttle.max_bytes_per_second;
 		connection_established(accepted);
+
+		struct incident *i = incident_new("dionaea.connection.tcp.accept");
+		incident_value_ptr_set(i, "con", (uintptr_t)accepted);
+/*		incident_dump(i);
+		uintptr_t v;
+		if ( incident_value_ptr_get(i, "con", &v) == false)
+			g_error("this breaks");
+*/
+		incident_report(i);
 	}
 
 	if ( ev_is_active(&con->events.listen_timeout) )
@@ -1252,16 +1300,16 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 void connection_tcp_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_LISTEN_TIMEOUT(w);
+	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 	connection_tcp_disconnect(con);
 }
 
 
 void connection_tcp_connecting_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
 	struct connection *con = CONOFF_CONNECTING_TIMEOUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	ev_timer_stop(EV_A_ &con->events.connecting_timeout);
 
@@ -1270,8 +1318,8 @@ void connection_tcp_connecting_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 
 void connection_tcp_connecting_cb(EV_P_ struct ev_io *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
 	struct connection *con = CONOFF_IO_OUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	ev_timer_stop(EV_A_ &con->events.connecting_timeout);
 
@@ -1303,25 +1351,13 @@ void connection_tcp_connecting_cb(EV_P_ struct ev_io *w, int revents)
 	g_debug("connection %s -> %s", con->local.node_string, con->remote.node_string);
 
 	connection_established(con);
-/*
-	con->protocol.ctx = con->protocol.ctx_new(con);
-
-	con->protocol.established(con);
-	connection_tcp_io_out_cb(EV_A_ w, revents);
-
-	ev_io_stop(EV_A_ &con->events.io_out);
-	ev_io_init(&con->events.io_out, connection_tcp_io_out_cb, con->socket, EV_WRITE);
-//	ev_io_start(EV_A_ &con->events.io_out);
-
-	ev_io_start(EV_A_ &con->events.io_in);
-*/
 }
 
 
 void connection_tcp_connect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
 	struct connection *con = CONOFF_CONNECT_TIMEOUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	if ( con->protocol.timeout == NULL || con->protocol.timeout(con, con->protocol.ctx) == false )
 		connection_tcp_disconnect(con);
@@ -1332,8 +1368,8 @@ void connection_tcp_connect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 
 void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p socket %i events %i revents %i",__PRETTY_FUNCTION__, EV_A_ w, w->data, w->fd, w->events, revents);
 	struct connection *con = CONOFF_IO_IN(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	int size, buf_size;
 
@@ -1414,8 +1450,9 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 void connection_tcp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
 	struct connection *con = CONOFF_IO_OUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+
 	int send_throttle = connection_throttle(con, &con->stats.io_out.throttle);
 	int send_size = MIN(con->transport.tcp.io_out->len, send_throttle);
 
@@ -1480,11 +1517,13 @@ void connection_tcp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 void connection_tcp_disconnect(struct connection *con)
 {
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-
+	enum connection_state state = con->state;
 	connection_set_state(con, connection_state_close);
 	connection_disconnect(con);
 
-	if ( con->protocol.disconnect != NULL )
+	if ( con->protocol.disconnect != NULL && 
+		 (state != connection_state_none &&
+		  state != connection_state_connecting))
 	{
 		bool reconnect = con->protocol.disconnect(con, con->protocol.ctx);
 		g_debug("reconnect is %i", reconnect);
@@ -1759,27 +1798,25 @@ DH *ssl_callback_TmpDH(SSL *ssl, int export, int keylen)
 
 bool connection_tls_set_certificate(struct connection *con, const char *path, int type)
 {
+	g_debug("%s con %p path %s type %i",__PRETTY_FUNCTION__, con, path, type);
 	int ret = SSL_CTX_use_certificate_file(con->transport.tls.ctx, path, type);
 	if ( ret != 1 )
 	{
 		perror("SSL_CTX_use_certificate_file");
 		return false;
 	}
-
-//	connection_tls_error(con);
-
 	return true;
 }
 
 bool connection_tls_set_key(struct connection *con, const char *path, int type)
 {
+	g_debug("%s con %p path %s type %i",__PRETTY_FUNCTION__, con, path, type);
 	int ret = SSL_CTX_use_PrivateKey_file(con->transport.tls.ctx, path, type);
 	if ( ret != 1 )
 	{
 		perror("SSL_CTX_use_PrivateKey_file");
 		return false;
 	}
-//	connection_tls_error(con);
 	return true;
 }
 
@@ -1895,9 +1932,8 @@ err:
 
 void connection_tls_io_out_cb(EV_P_ struct ev_io *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
-
 	struct connection *con = NULL;
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	if ( w->events == EV_READ)
 		con = CONOFF_IO_IN(w);
@@ -2050,9 +2086,8 @@ void connection_tls_io_out_cb(EV_P_ struct ev_io *w, int revents)
 
 void connection_tls_shutdown_cb(EV_P_ struct ev_io *w, int revents)
 {
-	g_debug(__PRETTY_FUNCTION__);
-
 	struct connection *con = NULL;
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	if ( w->events == EV_READ )
 		con = CONOFF_IO_IN(w);
@@ -2193,14 +2228,15 @@ void connection_tls_shutdown_cb(EV_P_ struct ev_io *w, int revents)
 
 void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
-
 	struct connection *con = NULL;
 
 	if ( w->events == EV_READ)
 		con = CONOFF_IO_IN(w);
 	else
 		con = CONOFF_IO_OUT(w);
+
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+
 
 	int recv_throttle = connection_throttle(con, &con->stats.io_in.throttle);
 	g_debug("recv throttle %i\n", recv_throttle);
@@ -2212,7 +2248,7 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	int err=0;
 	if ( (err = SSL_read(con->transport.tls.ssl, buf, recv_throttle)) > 0 )
 	{
-		g_debug("SSL_read %i %.*s", err, err, buf);
+//		g_debug("SSL_read %i %.*s", err, err, buf);
 		g_string_append_len(con->transport.tls.io_in, (gchar *)buf, err);
 	}
 	connection_tls_error(con);
@@ -2317,9 +2353,8 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
 	struct connection *con = CONOFF_IO_IN(w);
-
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	while ( 1 )
 	{
@@ -2394,9 +2429,8 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 void connection_tls_accept_again_cb (EV_P_ struct ev_io *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
-
 	struct connection *con = NULL;
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	if ( w->events == EV_READ )
 		con = CONOFF_IO_IN(w);
@@ -2475,9 +2509,8 @@ void connection_tls_accept_again_cb (EV_P_ struct ev_io *w, int revents)
 
 void connection_tls_accept_again_timeout_cb (EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_HANDSHAKE_TIMEOUT(w);
-
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	connection_tls_disconnect(con);
 }
 
@@ -2485,11 +2518,14 @@ void connection_tls_disconnect(struct connection *con)
 {
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
+	enum connection_state state = con->state;
 	connection_set_state(con, connection_state_close);
 
 	connection_disconnect(con);
 
-	if ( con->protocol.disconnect != NULL )
+	if ( con->protocol.disconnect != NULL && 
+		  (state != connection_state_none &&
+		  state != connection_state_connecting))
 	{
 		bool reconnect = con->protocol.disconnect(con, con->protocol.ctx);
 		g_debug("reconnect is %i", reconnect);
@@ -2504,9 +2540,8 @@ void connection_tls_disconnect(struct connection *con)
 
 void connection_tls_connecting_cb(EV_P_ struct ev_io *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
-
 	struct connection *con = CONOFF_IO_OUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	ev_timer_stop(EV_A_ &con->events.connecting_timeout);
 
@@ -2544,20 +2579,20 @@ void connection_tls_connecting_cb(EV_P_ struct ev_io *w, int revents)
 
 void connection_tls_connecting_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
-	struct connection *con = w->data;
+	struct connection *con = CONOFF_CONNECTING_TIMEOUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	connection_tls_disconnect(con);
 }
 
 void connection_tls_connect_again_cb(EV_P_ struct ev_io *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
-
 	struct connection *con = NULL;
 	if ( w->events == EV_READ )
 		con = CONOFF_IO_IN(w);
 	else
 		con = CONOFF_IO_OUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+
 
 	ev_io_stop(EV_A_ &con->events.io_in);
 	ev_io_stop(EV_A_ &con->events.io_out);
@@ -2624,9 +2659,8 @@ void connection_tls_connect_again_cb(EV_P_ struct ev_io *w, int revents)
 
 void connection_tls_connect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
-	
 	struct connection *con = CONOFF_CONNECT_TIMEOUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	if ( con->protocol.timeout == NULL || con->protocol.timeout(con, con->protocol.ctx) == false )
 		connection_close(con);
@@ -2636,8 +2670,8 @@ void connection_tls_connect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 
 void connection_tls_connect_again_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
 	struct connection *con = CONOFF_HANDSHAKE_TIMEOUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	connection_tls_disconnect(con);
 }
 
@@ -2653,8 +2687,8 @@ void connection_tls_error(struct connection *con)
 
 void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_LISTEN_TIMEOUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	connection_tls_disconnect(con);
 }
 
@@ -2668,8 +2702,9 @@ void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 
 void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 {
-	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_IO_IN(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+
 	struct sockaddr_storage sa;
 	socklen_t sizeof_sa = sizeof(struct sockaddr_storage);
 	unsigned char buf[64*1024];
@@ -2687,8 +2722,8 @@ void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 {
-	g_debug(__PRETTY_FUNCTION__);
 	struct connection *con = CONOFF_IO_OUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	GList *elem;
 
@@ -2744,8 +2779,8 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 
 void connection_udp_connect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
-	g_debug("%s loop %p watcher %p con %p",__PRETTY_FUNCTION__, EV_A_ w, w->data);
 	struct connection *con = CONOFF_CONNECT_TIMEOUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	if ( con->protocol.timeout == NULL || con->protocol.timeout(con, con->protocol.ctx) == false )
 	{
@@ -2772,8 +2807,9 @@ void connection_udp_disconnect(struct connection *con)
 
 void connection_dns_resolve_timeout_cb(EV_P_ struct ev_timer *w, int revent)
 {
-	g_debug("%s loop %p ev_timer %p revent %i", __PRETTY_FUNCTION__ ,EV_A_ w, revent);
 	struct connection *con = CONOFF_DNS_TIMEOUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+
 	if ( con->remote.dns.a != NULL )
 		dns_cancel(g_dionaea->dns->dns, con->remote.dns.a);
 	if ( con->remote.dns.aaaa != NULL )
@@ -2786,8 +2822,7 @@ void connection_dns_resolve_timeout_cb(EV_P_ struct ev_timer *w, int revent)
 
 void connection_connect_resolve(struct connection *con)
 {
-	g_debug(__PRETTY_FUNCTION__);
-
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	g_debug("submitting dns %s", con->remote.hostname);
 
 	con->remote.dns.a = dns_submit_p(g_dionaea->dns->dns, 
@@ -2882,6 +2917,7 @@ static int cmp_ip_address_stringp(const void *p1, const void *p2)
 
 void connection_connect_resolve_action(struct connection *con)
 {
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	if ( con->remote.dns.a == NULL && con->remote.dns.aaaa == NULL )
 	{
 		ev_timer_stop(g_dionaea->loop, &con->events.dns_timeout);
@@ -2894,11 +2930,12 @@ void connection_connect_resolve_action(struct connection *con)
 		}
 
 		qsort(con->remote.dns.resolved_addresses, con->remote.dns.resolved_address_count, sizeof(char *), cmp_ip_address_stringp);
-		int i;
+/*		int i;
 		for(i=0;i<con->remote.dns.resolved_address_count;i++)
 		{
 			g_debug("node address %s", con->remote.dns.resolved_addresses[i]);
 		}
+*/
 //		return;
 		connection_connect_next_addr(con);
 	}
@@ -2906,7 +2943,7 @@ void connection_connect_resolve_action(struct connection *con)
 
 void connection_connect_resolve_a_cb(struct dns_ctx *ctx, void *result, void *data)
 {
-	g_debug("%s ctx %p result %p data %p",__PRETTY_FUNCTION__, ctx, result, data);
+	g_debug("%s ctx %p result %p con %p",__PRETTY_FUNCTION__, ctx, result, data);
 	struct connection *con = data;
 
 	struct dns_rr_a4 *a4 = result;
@@ -2930,7 +2967,7 @@ void connection_connect_resolve_a_cb(struct dns_ctx *ctx, void *result, void *da
 
 void connection_connect_resolve_aaaa_cb(struct dns_ctx *ctx, void *result, void *data)
 {
-	g_debug("%s ctx %p result %p data %p",__PRETTY_FUNCTION__, ctx, result, data);		struct connection *con = data;
+	g_debug("%s ctx %p result %p con %p",__PRETTY_FUNCTION__, ctx, result, data);		struct connection *con = data;
 
 	struct dns_rr_a6 *a6 = result;
 
@@ -3056,5 +3093,15 @@ void connection_set_state(struct connection *con, enum connection_state state)
 			  connection_state_to_string(state));
 }
 
+int connection_ref(struct connection *con)
+{
+	refcount_inc(&con->refcount);
+	return con->refcount.refs;
+}
 
+int connection_unref(struct connection *con)
+{
+	refcount_dec(&con->refcount);
+	return con->refcount.refs;
+}
 

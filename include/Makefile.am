@@ -15,5 +15,6 @@ noinst_HEADERS += modules.h
 noinst_HEADERS += connection.h
 noinst_HEADERS += pchild.h
 noinst_HEADERS += signals.h
+noinst_HEADERS += incident.h
 
 

@@ -27,3 +27,4 @@ dionaea_SOURCES += modules.c
 dionaea_SOURCES += pchild.c
 dionaea_SOURCES += log.c
 dionaea_SOURCES += signals.c
+dionaea_SOURCES += incident.c

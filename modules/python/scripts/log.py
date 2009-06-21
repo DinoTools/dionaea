@@ -50,3 +50,20 @@ logger.addHandler(DionaeaLogHandler())
 
 logtest = logging.getLogger("test")
 logtest.warn("Das liegt nun in der test domain")
+
+class AllIHandler(ihandler):
+	def __init__(self, pattern):
+		ihandler.__init__(self, pattern)
+	def handle(self, icd):
+#		icd.dump()
+		if icd.origin == 'dionaea.connection.tcp.accept':
+			con = icd.get('con')
+			print("foo " + con.local.host)
+#		else:
+#			print(icd.origin)
+#		icd.dump()
+#		print("%s %s" % (icd.origin, icd))
+		
+
+a = AllIHandler('*')
+

@@ -63,6 +63,7 @@
 #include "log.h"
 #include "pchild.h"
 #include "signals.h"
+#include "incident.h"
 
 void show_version(void);
 void show_help(bool defaults);
@@ -580,6 +581,10 @@ int main (int argc, char *argv[])
 		g_thread_init (NULL);
 
 
+	// incident handlers
+	d->ihandlers = g_malloc0(sizeof(struct ihandlers));
+
+
 	// modules
 	d->modules = g_malloc0(sizeof(struct modules));
 	struct lcfgx_tree_node *n;
@@ -633,7 +638,7 @@ int main (int argc, char *argv[])
 	ev_signal_init(&d->signals->sighup,  sighup_cb, SIGHUP);
 	ev_signal_start(d->loop, &d->signals->sighup);
 
-
+	
 	g_debug("looping");
 	// loop
 	ev_loop(d->loop,0);

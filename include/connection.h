@@ -204,13 +204,13 @@ struct connection
 
 enum connection_flags
 {
-	connection_busy_sending = 0
+	connection_busy_sending = 0,
 };
 
 #define connection_flag_set(c, fl)     (c)->flags |= 1 << (fl)
 #define connection_flag_toggle(c, fl)  (c)->flags ^= 1 << (fl)
 #define connection_flag_unset(c, fl)   (c)->flags &= ~(1 << (fl))
-#define connection_flag_isset(c, fl)   (c)->flags & ( 1 << (fl))
+#define connection_flag_isset(c, fl)   ((c)->flags & ( 1 << (fl)))
 
 
 
@@ -322,6 +322,7 @@ bool connection_transport_from_string(const char *type_str, enum connection_tran
 const char *connection_transport_to_string(enum	connection_transport trans);
 
 const char *connection_state_to_string(enum connection_state state);
+const char *connection_type_to_string(enum connection_type type);
 
 struct dns_ctx;
 void connection_connect_resolve(struct connection *con);
@@ -334,4 +335,7 @@ void *connection_protocol_ctx_get(struct connection *con);
 void connection_protocol_ctx_set(struct connection *con, void *data);
 int my_bind(int fd, struct sockaddr *s, socklen_t size);
 
+
+int connection_ref(struct connection *con);
+int connection_unref(struct connection *con);
 #endif

@@ -35,6 +35,7 @@ struct dns;
 struct modules;
 struct pchild;
 struct logging;
+struct ihandlers;
 
 struct dionaea
 {
@@ -55,6 +56,8 @@ struct dionaea
 	struct logging *logging;
 
 	struct signals *signals;
+	
+	struct ihandlers *ihandlers;
 };
 
 

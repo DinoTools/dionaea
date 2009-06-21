@@ -27,6 +27,30 @@
 
 import weakref
 
+cdef extern from "module.h":
+	cdef object bytesfrom "PyBytes_FromStringAndSize"(char *v, int len)
+	cdef object stringfrom "PyUnicode_FromStringAndSize"(char *v, int len)
+	int c_strlen "strlen" (char *)
+	ctypedef void *c_uintptr_t "uintptr_t"
+
+#cdef extern from "../../include/dionaea.h":
+#	ctypedef struct c_dionaea "struct dionaea":
+#		pass
+#
+#	cdef extern c_dionaea *g_dionaea
+#
+#cdef class dionaea:
+#	cdef c_dionaea *thisptr
+#	def __init__(self):
+#		self.thisptr = g_dionaea
+#	def report(self, i):
+#		i.report()
+		
+		
+
+
+
+
 cdef extern from "../../include/connection.h":
 
 	ctypedef struct c_connection_ "struct connection":
@@ -115,6 +139,8 @@ cdef extern from "../../include/connection.h":
 	double c_connection_connecting_timeout_get "connection_connecting_timeout_get"(c_connection *)
 	void c_connection_reconnect_timeout_set "connection_reconnect_timeout_set"(c_connection *, double)
 	double c_connection_reconnect_timeout_get "connection_reconnect_timeout_get"(c_connection *)
+	int c_connection_ref "connection_ref"(c_connection *)
+	int c_connection_unref "connection_unref"(c_connection *)
 	
 	void c_node_info_set_port "node_info_set_port" (c_node_info *, int )
 
@@ -212,7 +238,7 @@ cdef class connection:
 		self.thisptr = NULL
 		self.factory = False
 
-	def __init__(self, con_type):
+	def __init__(self, con_type=None):
 		"""constructor do not use on cli, use connection.create instead"""
 		cdef c_connection_transport enum_type 
 		if self.thisptr == NULL:
@@ -236,7 +262,7 @@ cdef class connection:
 #		else:
 #			print "connection is already assigned!"
 
-		if self.factory == False:
+		if self.factory == False and self.thisptr.protocol.ctx == <void *>self:
 			INCREF(self)
 
 #	def __dealloc__(self):
@@ -251,6 +277,12 @@ cdef class connection:
 		for outbound connections, returning 1 will try to restablish the connection
 		"""
 		return 0
+
+	def ref(self):
+		return c_connection_ref(self.thisptr)
+
+	def unref(self):
+		return c_connection_unref(self.thisptr)
 
 	def learn(self, p):
 		pass
@@ -436,9 +468,9 @@ def connection_new(type):
 
 cdef extern from "./module.h":
 	cdef connection CLONE_C_CONNECTION_CLASS "PY_CLONE"(object T)
+	cdef connection NEW_C_CONNECTION_CLASS "PY_NEW"(object T)
 	cdef void INIT_C_CONNECTION_CLASS "PY_INIT" (object P, object O)
 #	cdef int PRINT_REFCOUNT "REFCOUNT"(object T)
-	cdef object stringfrom "PyBytes_FromStringAndSize"(char *v, int len)
 	
 
 cdef connection _factory(c_connection *con):
@@ -470,7 +502,7 @@ cdef int io_in_cb(c_connection *con, void *context, void *data, int size) except
 #	print "io_in_cb"
 	cdef connection instance
 	instance = <connection>context
-	return instance.io_in(stringfrom(<char *>data, size))
+	return instance.io_in(bytesfrom(<char *>data, size))
 	
 cdef int io_out_cb(c_connection *con, void *context) except *:
 #	print "io_out_cb"
@@ -499,6 +531,7 @@ cdef bint timeout_cb(c_connection *con, void *ctx) except *:
 	instance = <connection>ctx
 	return instance.timeout()
 
+
 def dlhfn(name, number, path, line, msg):
 	if isinstance(name, unicode):
 		name = name.encode()
@@ -507,4 +540,137 @@ def dlhfn(name, number, path, line, msg):
 	if isinstance(msg, unicode):
 		msg = msg.encode()
 	c_log_wrap(name, number, path, line, msg)
+	
+cdef extern from "../../include/incident.h":
+
+	ctypedef struct c_incident "struct incident":
+		char *origin
+
+
+	ctypedef struct c_GString "GString":
+		char *str
+		int len
+
+	c_GString *c_g_string_new "g_string_new" (char *)
+
+	c_incident *c_incident_new "incident_new"(char *origin)
+	void c_incident_report "incident_report" (c_incident *i)
+
+	void c_incident_free "incident_free"(c_incident *)
+
+	bint c_incident_value_int_set "incident_value_int_set" (c_incident *,  char *, long int)
+	bint c_incident_value_int_get "incident_value_int_get" (c_incident *e, char *name, long int *val)
+	bint c_incident_value_ptr_set "incident_value_ptr_set" (c_incident *e, char *name, c_uintptr_t *val)
+	bint c_incident_value_ptr_get "incident_value_ptr_get" (c_incident *e, char *name, c_uintptr_t **val)
+	bint c_incident_value_string_set "incident_value_string_set" (c_incident *e, char *name, c_GString *str)
+	bint c_incident_value_string_get "incident_value_string_get" (c_incident *e, char *name, c_GString **str)
+	void c_incident_dump "incident_dump" (c_incident *)
+
+cdef class incident:
+	cdef c_incident *thisptr
+	cdef bint free_on_dealloc
+
+	def __init__(self, origin=None):
+		if origin != None and self.thisptr == NULL:
+			origin = origin.encode()
+			self.thisptr = c_incident_new(origin)
+			self.free_on_dealloc = 1
+		else:
+			self.free_on_dealloc = 0
+
+	def __dealloc__(self):
+		if self.free_on_dealloc == 1:
+			c_incident_free(self.thisptr)
+
+
+	def dump(self):
+		c_incident_dump(self.thisptr)
+
+	def set(self, key, value):
+		cdef connection con
+		if isinstance(key, unicode):
+			key = key.encode()
+		if key == b'con':
+			con = <connection>value
+			c_incident_value_ptr_set(self.thisptr, key, <c_uintptr_t *>con.thisptr)
+		elif isinstance(value, int) :
+			c_incident_value_int_set(self.thisptr, key, value)
+		else:
+			if isinstance(value, unicode):
+				value = value.encode()
+			c_incident_value_string_set(self.thisptr, key, c_g_string_new(value))
+
+	def get(self, key):
+		cdef c_uintptr_t *x
+		cdef connection c
+		cdef c_GString *s
+		cdef long int i
+		if isinstance(key, unicode):
+			key = key.encode()
+		if key == b'con':
+			if c_incident_value_ptr_get(self.thisptr, key, &x) == False:
+				raise AttributeError("%s does not exist" % key)
+	
+			if key == 'con':
+				c = NEW_C_CONNECTION_CLASS(connection)
+				c.thisptr = <c_connection *>x
+				INIT_C_CONNECTION_CLASS(c, c)
+				return c
+		elif c_incident_value_string_get(self.thisptr, key, &s) == 0:
+			return bytesfrom(s.str, s.len)
+		elif c_incident_value_int_get(self.thisptr, key, &i) == 0:
+			return i
+		else:
+			raise AttributeError("%s does not exist" % key)
+
+	def report(self):
+		c_incident_report(self.thisptr)
+
+
+	property origin:
+		def __get__(self):
+			return stringfrom(self.thisptr.origin, c_strlen(self.thisptr.origin));
+
+cdef extern from "module.h":
+	cdef incident NEW_C_INCIDENT_CLASS "PY_NEW"(object T)
+	cdef void INIT_C_INCIDENT_CLASS "PY_INIT" (object P, object O)
+
+######
+cdef extern from "../../include/incident.h":
+	ctypedef struct c_ihandler "struct ihandler":
+		pass
+
+	ctypedef void (*c_ihandler_cb) (c_incident *, void *ctx)
+	c_ihandler *c_ihandler_new "ihandler_new" (char *, c_ihandler_cb cb, void *ctx)
+	void c_ihandler_free "ihandler_free" (c_ihandler *)
+
+cdef void c_python_ihandler_cb (c_incident *i, void *ctx) except *:
+	cdef ihandler handler
+	cdef incident pi
+	handler = <ihandler>ctx
+	pi = NEW_C_INCIDENT_CLASS(incident)
+	pi.thisptr = i
+	INIT_C_INCIDENT_CLASS(pi,pi)
+	handler.handle(pi)
+	
+
+cdef class ihandler:
+	cdef c_ihandler *thisptr
+	def __init__(self, pattern):
+		pattern = pattern.encode()
+		self.thisptr = c_ihandler_new(pattern, <c_ihandler_cb> c_python_ihandler_cb, <void *>self)
+
+	def __dealloc__(self):
+		c_ihandler_free(self.thisptr)
+
+	def register(self):
+		pass
+
+	def unregister(self):
+		pass
+
+	def handle(self, i):
+		pass
+
+###
 	
