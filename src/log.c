@@ -69,9 +69,21 @@ struct log_filter *log_filter_new(const char *domains, const char *levels)
 		{
 			for ( unsigned int j=0; log_level_mapping[j].name != NULL; j++)
 			{
-				if ( strcmp(log_level_mapping[j].name, flags[i]) == 0 )
+				char def_sign = '+';
+				char *sign = &def_sign;
+				char *level = flags[i];
+				if ( *flags[i] == '+' || *flags[i] == '-' )
 				{
-					mask |= log_level_mapping[j].mask;
+					sign = flags[i];
+					level = flags[i]+1;
+				}
+
+				if ( strcmp(log_level_mapping[j].name, level) == 0 )
+				{
+					if ( *sign == '+' )
+						mask |= log_level_mapping[j].mask;
+					else
+						mask &= ~log_level_mapping[j].mask;
 					goto found_flag;
 				}
 			}
