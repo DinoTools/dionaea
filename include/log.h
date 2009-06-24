@@ -25,7 +25,7 @@
  *
  *******************************************************************************/
 
-
+#include <stdbool.h>
 #include <glib.h>
 #include <stdio.h>
 #include "config.h"
@@ -49,6 +49,7 @@
 
 struct logging
 {
+	GMutex *lock;
 	GList *loggers;
 };
 
