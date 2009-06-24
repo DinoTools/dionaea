@@ -68,14 +68,18 @@ struct module *module_new(const char *name, const char *module_path)
 
     m->module = module;
     m->module_init = initfn;
-	m->name = strdup(name);
+	m->name = g_strdup(name);
 
     return m;
 
 }
 
-void module_free(struct module *module)
+void module_free(struct module *m)
 {
+	g_debug("%s module %p name %s", __PRETTY_FUNCTION__, m, m->name);
+	g_module_close(m->module);
+	g_free(m->name);
+	g_free(m);
 
 }
 
@@ -134,7 +138,14 @@ void modules_load(struct lcfgx_tree_node *node)
 
 void modules_unload(void)
 {
-
+	GList *it;
+	while ((it = g_list_first(g_dionaea->modules->modules)) != NULL)
+	{
+		g_dionaea->modules->modules = g_list_remove_link(g_dionaea->modules->modules, it);
+		struct module *m = it->data;
+		module_free(m);
+		g_list_free_1(it);
+	}
 }
 
 
