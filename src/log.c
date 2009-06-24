@@ -166,12 +166,13 @@ void log_multiplexer(const gchar *log_domain,
 			const gchar *message,
             gpointer user_data)
 {
-
+	g_mutex_lock(g_dionaea->logging->lock);
 	for (	GList *it = g_dionaea->logging->loggers; it != NULL; it = it->next)
 	{
 		struct logger *logger = it->data;
 		logger->log(log_domain, log_level, message, logger->data);
 	}
+	g_mutex_unlock(g_dionaea->logging->lock);
 }
 
 void logger_stdout_log(const gchar *log_domain, 
@@ -224,6 +225,8 @@ void logger_stdout_log(const gchar *log_domain,
 	localtime_r(&stamp, &t);
 
 #ifdef DEBUG
+	if ( log_domain == NULL )
+		log_domain = "null none";
 	char *domain = g_strdup(log_domain);
 	char *fileinfo = NULL;
 	if ( (fileinfo = strstr(domain, " ")) != NULL )
