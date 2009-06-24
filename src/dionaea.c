@@ -64,6 +64,8 @@
 #include "pchild.h"
 #include "signals.h"
 #include "incident.h"
+#include "threads.h"
+#include "processor.h"
 
 void show_version(void);
 void show_help(bool defaults);
@@ -72,6 +74,13 @@ void show_help(bool defaults);
 
 
 struct dionaea *g_dionaea = NULL;
+
+extern struct processor proc_filter;
+extern struct processor proc_unicode;
+extern struct processor proc_emu;
+extern struct processor proc_cspm;
+extern struct processor proc_streamdumper;
+
 
 
 struct options
@@ -467,6 +476,7 @@ int main (int argc, char *argv[])
 	// logging 
 	d->logging = g_malloc0(sizeof(struct logging));
 
+
 	// no daemon logs to stdout by default
 	if ( opt->daemon == false )
 	{
@@ -580,9 +590,14 @@ int main (int argc, char *argv[])
 	if ( !g_thread_supported () )
 		g_thread_init (NULL);
 
+	// logging continued ...
+	d->logging->lock = g_mutex_new();
 
 	// incident handlers
 	d->ihandlers = g_malloc0(sizeof(struct ihandlers));
+
+	// processors
+	d->processors = g_malloc0(sizeof(struct processors));
 
 
 	// modules
@@ -606,10 +621,57 @@ int main (int argc, char *argv[])
 	// maybe a little late, but want to avoid having dups of the fd in the child
 	g_log_set_default_handler(log_multiplexer, NULL);
 
+	// processors continued, create tree
+
+	d->processors->names = g_hash_table_new(g_str_hash, g_str_equal);
+	g_hash_table_insert(d->processors->names, (void *)proc_streamdumper.name, &proc_streamdumper);
+//	g_hash_table_insert(d->processors->names, (void *)proc_emu.name, &proc_emu);
+	g_hash_table_insert(d->processors->names, (void *)proc_filter.name, &proc_filter);
+	g_hash_table_insert(d->processors->names, (void *)proc_unicode.name, &proc_unicode);
+//	struct lcfgx_tree_node *n;
+	g_debug("Creating processors tree");
+	d->processors->tree = g_node_new(NULL);
+	if( lcfgx_get_map(d->config.root, &n, "processors") == LCFGX_PATH_FOUND_TYPE_OK )
+	{
+		lcfgx_tree_dump(n,0);
+		for(struct lcfgx_tree_node *it = n->value.elements; it != NULL; it = it->next)
+		{
+			processors_tree_create(d->processors->tree, it);
+		}
+	}
+
+	processors_tree_dump(d->processors->tree, 0);
+
+
 	modules_new();
 
 
-	// glib threadpool
+	// threads ...
+	d->threads = g_malloc0(sizeof(struct threads));
+
+	// cmd queue
+	d->threads->cmds = g_async_queue_new();
+	ev_async_init(&d->threads->trigger, trigger_cb);
+	ev_async_start(d->loop, &d->threads->trigger);
+
+	// thread pool
+	int threads = sysconf(_SC_NPROCESSORS_ONLN);
+	threads = (threads <= 1?2:threads);
+	GError *thread_error = NULL;
+	g_message("Creating %i threads in pool", threads);
+	d->threads->pool = g_thread_pool_new(threadpool_wrapper, NULL, threads, TRUE, &thread_error);
+
+	if( thread_error != NULL )
+	{
+		g_error("Could not create thread pool (%s)",  thread_error->message);
+	}
+
+	// periodic thread pool surveillance
+	ev_periodic_init(&d->threads->surveillance, surveillance_cb, 0., 5., NULL);
+//	ev_periodic_start(d->loop, &d->threads->surveillance);
+
+
+
 
 	// chroot
 	if ( opt->root != NULL && chroot(opt->root) != 0 )
@@ -638,12 +700,36 @@ int main (int argc, char *argv[])
 	ev_signal_init(&d->signals->sighup,  sighup_cb, SIGHUP);
 	ev_signal_start(d->loop, &d->signals->sighup);
 
-	
+	// loop	
 	g_debug("looping");
-	// loop
 	ev_loop(d->loop,0);
 
+	// delete thread pool
+	g_debug("Closing thread pool (%i active threads, %i jobs in queue), be patient",
+			g_thread_pool_get_num_threads(g_dionaea->threads->pool),
+			g_thread_pool_unprocessed(g_dionaea->threads->pool));
+	g_thread_pool_free(d->threads->pool, FALSE, TRUE);
+
+	// modules api.free
+	g_debug("modules free");
+	modules_free();
+
+	// module unload
+	g_debug("modules unload");
+	modules_unload();
+
 	// kill privileged child
+	g_debug("Closing child");
+	close(d->pchild->fd);
+
+	// close logs
+	g_debug("Closing logs");
+	for (GList *it = d->logging->loggers; it != NULL; it = it->next)
+	{
+		struct logger *l = it->data;
+		if (l->close != NULL)
+			l->close(l->data);
+	}
 
 	return 0;
 }

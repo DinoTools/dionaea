@@ -6,5 +6,9 @@ if BUILD_PYTHON_MODULE
 python_dir = python 
 endif
 
-SUBDIRS = nc $(python_dir)
-DIST_SUBDIRS = nc python
+if BUILD_EMU_MODULE
+emu_dir = emu
+endif
+
+SUBDIRS = nc $(python_dir) $(emu_dir)
+DIST_SUBDIRS = nc python emu

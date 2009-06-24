@@ -65,6 +65,7 @@
 #include "log.h"
 #include "pchild.h"
 #include "incident.h"
+#include "processor.h"
 
 #define CONOFF(x)							((void *)x - sizeof(struct connection))
 #define CONOFF_IO_IN(x)  					((struct connection *)(((void *)x) - offsetof (struct connection, events.io_in)))
@@ -85,12 +86,13 @@
 int ssl_tmp_keys_init(struct connection *con);
 
 
-/*
- *
- * connection generic
- *
+/**
+ * create a new connection of a given type
+ * 
+ * @param type   udp,tcp,tls
+ * 
+ * @return ptr to the new connection
  */
-
 struct connection *connection_new(enum connection_transport type)
 {
 	struct connection *con = g_malloc0(sizeof(struct connection));
@@ -149,6 +151,13 @@ bool connection_node_set_remote(struct connection *con)
 	return node_info_set(&con->remote, &con->remote.addr);
 }
 
+/**
+ * used to bind the connection to an address/port
+ * 
+ * @param con the connection
+ * 
+ * @return true on success
+ */
 bool bind_local(struct connection *con)
 {
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
@@ -204,6 +213,20 @@ bool bind_local(struct connection *con)
 	return false;
 }
 
+/**
+ * bind the connection to a given address/port - not yet!
+ * If the connection is meant to be used 
+ * to connect to a domain with multiple A/AAAA records, 
+ * we have to bind for each connect try.
+ * Therefore we delay the bind, the real binding is in 
+ * @see connection_listen and @see connection_connect_next_addr
+ * @param con
+ * @param addr
+ * @param port
+ * @param iface_scope
+ * 
+ * @return 
+ */
 bool connection_bind(struct connection *con, const char *addr, uint16_t port, const char *iface_scope)
 {
 	g_debug("%s con %p addr %s port %i iface %s", __PRETTY_FUNCTION__, con, addr, port, iface_scope);
@@ -218,7 +241,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 		laddr = "0.0.0.0";
 
 	con->local.port = htons(port);
-	con->local.hostname = strdup(laddr);
+	con->local.hostname = g_strdup(laddr);
 	if ( iface_scope )
 		strcpy(con->local.iface_scope, iface_scope);
 
@@ -451,6 +474,24 @@ void connection_close_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	}
 }
 
+/**
+ * free the connection - not yet!
+ * problem is simple, assume:
+ * 
+ * class ABC(connection):
+ * ....
+ *     def io_in(self, data):
+ * 	....
+ * 	self.close()
+ * 	return len(data)
+ * 
+ * if closing a connection has the possibility 
+ * to free the connection directly, the python object 'looses' ground, 
+ * it got destroyed while in use. 
+ * @see connection_free_cb 
+ * 
+ * @param con
+ */
 void connection_free(struct connection *con)
 {
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
@@ -459,6 +500,13 @@ void connection_free(struct connection *con)
 	ev_timer_again(CL, &con->events.free);
 }
 
+/**
+ * we poll the connection to see if the refcount hit 0
+ * so we can free it
+ * 
+ * @param w
+ * @param revents
+ */
 void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 {
 	struct connection *con = CONOFF_FREE(w);
@@ -507,12 +555,10 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 		con->protocol.ctx_free(con->protocol.ctx);
 	}
 
-#ifdef HAVE_STREAMPROCESSORS_H
-	if ( con->spd != NULL )
+	if ( con->processor_data != NULL )
 	{
-		stream_processors_clear(con);
+		processors_clear(con);
 	}
-#endif
 	
 	refcount_exit(&con->refcount);
 
@@ -724,7 +770,7 @@ void connection_connect(struct connection* con, const char* addr, uint16_t port,
 
 	con->remote.port = htons(port);
 
-	con->remote.hostname = strdup(addr);
+	con->remote.hostname = g_strdup(addr);
 
 	connection_set_type(con, connection_type_connect);
 
@@ -1287,6 +1333,7 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 			g_error("this breaks");
 */
 		incident_report(i);
+		incident_free(i);
 	}
 
 	if ( ev_is_active(&con->events.listen_timeout) )
@@ -1401,13 +1448,9 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 			break;
 	}
 
-	if ( con->spd != NULL )
+	if ( con->processor_data != NULL && new_in->len > 0)
 	{
-		g_debug("HHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHHH");
-		GString *old_in = con->transport.tcp.io_in;
-		con->transport.tcp.io_in = new_in;
-//		stream_processors_io_in(con);
-		con->transport.tcp.io_in = old_in;
+		processors_io_in(con, new_in->str, new_in->len);
 	}
 
 	connection_throttle_update(con, &con->stats.io_in.throttle, new_in->len);
@@ -1471,12 +1514,9 @@ void connection_tcp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 		connection_throttle_update(con, &con->stats.io_out.throttle, size);
 		con->stats.io_out.traffic += size;
 
-		if ( con->spd != NULL )
+		if ( con->processor_data != NULL && size > 0)
 		{
-			int oldsize = con->transport.tcp.io_out->len;
-			con->transport.tcp.io_out->len = size;
-//			stream_processors_io_out(con);
-			con->transport.tcp.io_out->len = oldsize;
+			processors_io_out(con, con->transport.tcp.io_out->str, size);
 		}
 
 //		bistream_data_add(&con->bistream, bistream_out, con->transport.tcp.io_out->str, size);
@@ -2486,7 +2526,7 @@ void connection_tls_accept_again_cb (EV_P_ struct ev_io *w, int revents)
 
 		case SSL_ERROR_SYSCALL:
 			g_debug("SSL_ERROR_SYSCALL %s:%i", __FILE__,  __LINE__);
-//			connection_tls_disconnect(EV_A_ con);
+			connection_tls_disconnect(con);
 			break;
 
 		case SSL_ERROR_SSL:
@@ -2525,7 +2565,8 @@ void connection_tls_disconnect(struct connection *con)
 
 	if ( con->protocol.disconnect != NULL && 
 		  (state != connection_state_none &&
-		  state != connection_state_connecting))
+		  state != connection_state_connecting && 
+		   state != connection_state_handshake))
 	{
 		bool reconnect = con->protocol.disconnect(con, con->protocol.ctx);
 		g_debug("reconnect is %i", reconnect);
@@ -3103,5 +3144,10 @@ int connection_unref(struct connection *con)
 {
 	refcount_dec(&con->refcount);
 	return con->refcount.refs;
+}
+
+void connection_process(struct connection *con)
+{
+	processors_init(con);
 }
 

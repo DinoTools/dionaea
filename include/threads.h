@@ -25,50 +25,50 @@
  *
  *******************************************************************************/
 
-#ifndef HAVE_DIONAEA_H
-#define HAVE_DIONAEA_H
+#include <glib.h>
+#include <ev.h>
 
-struct lcfg;
-struct lcfgx_tree_node;
 
-struct dns;
-struct modules;
-struct pchild;
-struct logging;
-struct ihandlers;
-struct threads;
+struct connection;
 
-struct dionaea
+
+struct threads
 {
-	struct
-	{
-		struct lcfg *config;
-		struct lcfgx_tree_node *root;
-	} config;
-
-	struct dns *dns;
-
-	struct ev_loop *loop;
-
-	struct modules *modules;
-
-	struct pchild *pchild;
-
-	struct logging *logging;
-
-	struct signals *signals;
-	
-	struct ihandlers *ihandlers;
-
-	struct threads *threads;
-
-	struct processors *processors;
+	GThreadPool *pool;
+	struct ev_async trigger;
+	struct ev_periodic surveillance;
+	GAsyncQueue *cmds;
 };
 
+void trigger_cb(struct ev_loop *loop, struct ev_async *w, int revents);
+void surveillance_cb(struct ev_loop *loop, struct ev_periodic *w, int revents);
+void threadpool_wrapper(gpointer data, gpointer user_data);
 
 
-extern struct dionaea *g_dionaea;
+struct thread
+{
+	GFunc function;
+	struct connection *con;
+	void *data;
+};
 
+struct thread *thread_new(struct connection *con, void *data, GFunc function);
 
+typedef void (*async_cmd_cb)(void *data);
+struct async_cmd
+{
+	async_cmd_cb function;
+	void *data;
+};
 
-#endif
+/*
+struct async_cmd *async_cmd_new(async_cmd_cb function, void *data);
+void async_cmd_free(struct async_cmd *cmd);
+
+void async_add_io(void *data);
+void async_del_io(void *data);
+
+void async_add_child(void *data);
+void async_del_child(void *data);
+void async_add_action(void *data);
+*/

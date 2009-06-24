@@ -122,6 +122,7 @@ cdef extern from "../../include/connection.h":
 	void c_connection_connect "connection_connect" (c_connection *, char *, int port, char *)
 	void c_connection_send "connection_send" (c_connection *, char *, int)
 	void c_connection_close "connection_close" 	(c_connection *)
+	void c_connection_process "connection_process" 	(c_connection *)
 	
 	void *c_cython_protocol_ctx_new "cython_protocol_ctx_new" (c_connection *)
 	void c_cython_protocol_ctx_free "cython_protocol_ctx_free" (void *)
@@ -362,6 +363,12 @@ cdef class connection:
 		if self.thisptr == NULL:
 			raise ReferenceError('the object requested does not exist')
 		c_connection_close(self.thisptr)
+
+	def process(self):
+		"""process the data on this connection using the defined processors"""
+		if self.thisptr == NULL:
+			raise ReferenceError('the object requested does not exist')
+		c_connection_process(self.thisptr)
 
 
 	property remote:

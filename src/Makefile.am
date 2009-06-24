@@ -28,3 +28,6 @@ dionaea_SOURCES += pchild.c
 dionaea_SOURCES += log.c
 dionaea_SOURCES += signals.c
 dionaea_SOURCES += incident.c
+dionaea_SOURCES += threads.c
+dionaea_SOURCES += bistream.c
+dionaea_SOURCES += processor.c

@@ -97,7 +97,7 @@ static bool new(struct dionaea *dionaea)
 				strncpy(relpath, name, 1023);
 			else
 				sprintf(relpath, "%s/lib/dionaea/python/%s", PREFIX, name);
-			py_script_files_list = g_list_append(py_script_files_list, strdup(relpath));
+			py_script_files_list = g_list_append(py_script_files_list, g_strdup(relpath));
 			g_debug("py file %s", relpath);
 		}
 	}

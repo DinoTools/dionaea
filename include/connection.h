@@ -197,7 +197,7 @@ struct connection
 	}events;
 
 //	struct bistream *bistream;
-	struct stream_processor_data *spd;
+	struct processor_data *processor_data;
 	struct refcount refcount;
 	unsigned int flags;
 };

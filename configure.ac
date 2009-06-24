@@ -699,7 +699,8 @@ AC_CONFIG_FILES([Makefile
 				modules/Makefile
 				modules/nc/Makefile
 				modules/python/Makefile
-				modules/python/setup.py])
+				modules/python/setup.py
+				modules/emu/Makefile])
 
                  
 AC_OUTPUT

@@ -25,50 +25,50 @@
  *
  *******************************************************************************/
 
-#ifndef HAVE_DIONAEA_H
-#define HAVE_DIONAEA_H
+#ifndef HAVE_BISTEAM_H
+#define HAVE_BISTEAM_H
 
-struct lcfg;
-struct lcfgx_tree_node;
+#include <stdint.h>
+#include <glib.h>
 
-struct dns;
-struct modules;
-struct pchild;
-struct logging;
-struct ihandlers;
-struct threads;
 
-struct dionaea
+enum bistream_direction
 {
-	struct
-	{
-		struct lcfg *config;
-		struct lcfgx_tree_node *root;
-	} config;
-
-	struct dns *dns;
-
-	struct ev_loop *loop;
-
-	struct modules *modules;
-
-	struct pchild *pchild;
-
-	struct logging *logging;
-
-	struct signals *signals;
-	
-	struct ihandlers *ihandlers;
-
-	struct threads *threads;
-
-	struct processors *processors;
+	bistream_in,
+	bistream_out
 };
 
+struct stream_chunk
+{
+	GString *data;
+	uint32_t bistream_offset;
+	uint32_t stream_offset;
+	enum bistream_direction direction;
+};
 
+struct bistream
+{
+	GList *stream_sequence;
+	GMutex *mutex;	
 
-extern struct dionaea *g_dionaea;
+	struct stream
+	{
+		GList *stream_chunks;
+		GMutex *mutex;
+	}streams[2];
+};
 
+uint32_t sizeof_stream_chunks(GList *stream_chunks);
 
+struct bistream *bistream_new(void);
+void bistream_free(struct bistream *bs);
+
+void bistream_data_add(struct bistream *bs, enum bistream_direction, void *data, uint32_t size);
+void bistream_debug(struct bistream *bs);
+
+int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, uint32_t start, int32_t end, void **data);
+
+void print_stream_chunk(struct stream_chunk *sc);
+void print_stream_chunk2(struct stream_chunk *sc);
 
 #endif
