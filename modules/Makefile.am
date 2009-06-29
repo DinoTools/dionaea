@@ -10,5 +10,10 @@ if BUILD_EMU_MODULE
 emu_dir = emu
 endif
 
-SUBDIRS = nc $(python_dir) $(emu_dir)
-DIST_SUBDIRS = nc python emu
+if BUILD_CURL_MODULE
+curl_dir = curl
+endif
+
+
+SUBDIRS = nc $(python_dir) $(emu_dir) $(curl_dir)
+DIST_SUBDIRS = nc python emu curl
