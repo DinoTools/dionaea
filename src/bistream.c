@@ -79,7 +79,7 @@ struct stream_chunk *stream_chunk_new(void *data, uint32_t size, enum bistream_d
 
 void bistream_data_add(struct bistream *bs, enum bistream_direction dir, void *data, uint32_t size)
 {
-	printf("%s\n",__PRETTY_FUNCTION__);
+	g_debug("%s bs %p dir %i data %p size %i\n",__PRETTY_FUNCTION__, bs, dir, data, size);
 	GList *lastbistream = g_list_last(bs->stream_sequence);
 	GList *laststream = g_list_last(bs->streams[dir].stream_chunks);
 
@@ -260,11 +260,12 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 
 	if (end == -1)
 		end = lastsc->stream_offset + lastsc->data->len;
-
+/*
 	printf("end %i\n",  end);
 	printf("lastsc->... %i\n", lastsc->stream_offset);
 	printf("lastsc->... %i\n", (int)lastsc->data->len);
 	printf("start %i\n", start);
+*/
 	if (end > lastsc->stream_offset + lastsc->data->len || start >= end)
 	{
 		g_mutex_unlock(bs->streams[dir].mutex);
@@ -285,7 +286,7 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 		itsc = it->data;
 	}
 
-	printf("found stream begin %p stream_offset %i size %i\n", itsc,  itsc->stream_offset, (int)itsc->data->len);
+	g_debug("found stream begin %p stream_offset %i size %i", itsc,  itsc->stream_offset, (int)itsc->data->len);
 
 	int32_t offset = 0;
 	while(itsc->stream_offset < end)
@@ -301,7 +302,7 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 			end_offset = end - itsc->stream_offset;
 
 		int32_t size = end_offset - start_offset;
-		printf("copy data %p stream_offset %i size %i copy_start %i copy_end %i size %i\n", itsc,  itsc->stream_offset, (int)itsc->data->len, start_offset, end_offset, size);
+		g_debug("copy data %p stream_offset %i size %i copy_start %i copy_end %i size %i", itsc,  itsc->stream_offset, (int)itsc->data->len, start_offset, end_offset, size);
 
 		memcpy(*data + offset, itsc->data->str + start_offset, size);
 

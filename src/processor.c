@@ -55,8 +55,6 @@ void processors_tree_dump(GNode *tree, int indent)
 		if( it->data )
 		{
 			struct processor *p = it->data;
-			char fmt[256];
-			snprintf(fmt, 255, "%%-%is %%s %%i",indent);
 			g_debug("%*s %s", indent, " ", p->name);
 		}
 
@@ -89,7 +87,7 @@ void processor_data_creation(struct connection *con, struct processor_data *pd, 
 
 void processor_data_deletion(struct processor_data *pd)
 {
-	printf("%s con %p\n", __PRETTY_FUNCTION__, pd);
+	g_debug("%s pd %p", __PRETTY_FUNCTION__, pd);
 	GList *it;
 	while ( (it = g_list_first(pd->filters)) != NULL)
 	{
@@ -116,7 +114,7 @@ void processors_init(struct connection *con)
 
 void processors_clear(struct connection *con)
 {
-	printf("%s con %p\n", __PRETTY_FUNCTION__, con);
+	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 
 	GList *it;
 	while ( (it = g_list_first(con->processor_data->filters)) != NULL)
@@ -164,7 +162,7 @@ void recurse_io(GList *list, struct connection *con, enum bistream_direction dir
 
 void processors_io_in_thread(void *data, void *userdata)
 {
-	printf("%s data %p userdata %p\n", __PRETTY_FUNCTION__, data,  userdata);
+	g_debug("%s data %p userdata %p", __PRETTY_FUNCTION__, data,  userdata);
  	struct connection *con = data;
 	g_mutex_lock(con->processor_data->mutex);
 	recurse_io(con->processor_data->filters, con, bistream_in);
@@ -174,7 +172,7 @@ void processors_io_in_thread(void *data, void *userdata)
 
 void processors_io_out_thread(void *data, void *userdata)
 {
-	printf("%s data %p userdata %p\n", __PRETTY_FUNCTION__, data,  userdata);
+	g_debug("%s data %p userdata %p", __PRETTY_FUNCTION__, data,  userdata);
  	struct connection *con = data;
 	g_mutex_lock(con->processor_data->mutex);
 	recurse_io(con->processor_data->filters, con, bistream_out);
@@ -186,7 +184,7 @@ void processors_io_out_thread(void *data, void *userdata)
 
 void processors_io_in(struct connection *con, void *data, int size)
 {
-	printf("%s con %p\n", __PRETTY_FUNCTION__, con);
+	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 //	struct bistream *bistream = g_hash_table_lookup(g_evtest->streams.table, con);
 
 	GList *it;
@@ -209,7 +207,7 @@ void processors_io_in(struct connection *con, void *data, int size)
 
 void processors_io_out(struct connection *con, void *data, int size)
 {
-	printf("%s con %p\n", __PRETTY_FUNCTION__, con);
+	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 
 	GList *it;
 	for ( it = g_list_first(con->processor_data->filters);	it != NULL;	it = g_list_next(it) )
@@ -266,7 +264,7 @@ void proc_streamdumper_ctx_free(void *ctx)
 
 void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, enum bistream_direction dir)
 {
-	printf("%s con %p pd %p dir %i\n", __PRETTY_FUNCTION__, con, pd, dir);
+	g_debug("%s con %p pd %p dir %i", __PRETTY_FUNCTION__, con, pd, dir);
 	struct bistream *bs = pd->bistream;
 	GList *it;
 	g_mutex_lock(bs->mutex);
@@ -274,7 +272,7 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 	{
 //		if ( (dir == bistream_in && ctx->in) || 
 //			 (dir == bistream_out && ctx->out) )
-			print_stream_chunk2(it->data);
+//			print_stream_chunk2(it->data);
 	}
 	g_mutex_unlock(bs->mutex);
 }
@@ -323,7 +321,7 @@ void proc_unicode_ctx_free(void *ctx)
 
 void proc_unicode_on_io_in(struct connection *con, struct processor_data *pd)
 {
-	printf("%s con %p pd %p\n", __PRETTY_FUNCTION__, con, pd);
+	g_debug("%s con %p pd %p", __PRETTY_FUNCTION__, con, pd);
 	struct proc_unicode_ctx *ctx = pd->ctx;
 	void *streamdata = NULL;
 	int32_t size = bistream_get_stream(pd->bistream, bistream_in, ctx->io_in_offset, -1, &streamdata);
@@ -398,7 +396,7 @@ void proc_filter_ctx_free(void *ctx)
 void proc_filter_on_io_in(struct connection *con, struct processor_data *pd)
 {
 	struct proc_filter_ctx *ctx = pd->ctx;
-	printf("%s con %p pd %p io_in_offset %i\n", __PRETTY_FUNCTION__, con, pd, ctx->io_in_offset);
+	g_debug("%s con %p pd %p io_in_offset %i proto %s", __PRETTY_FUNCTION__, con, pd, ctx->io_in_offset, con->protocol.name);
 		
 	void *streamdata = NULL;
 	int32_t size = bistream_get_stream(pd->bistream, bistream_in, ctx->io_in_offset, -1, &streamdata);
@@ -414,7 +412,7 @@ void proc_filter_on_io_in(struct connection *con, struct processor_data *pd)
 
 void proc_filter_on_io_out(struct connection *con, struct processor_data *pd)
 {
-	printf("%s con %p pd %p\n", __PRETTY_FUNCTION__, con, pd);
+	g_debug("%s con %p pd %p", __PRETTY_FUNCTION__, con, pd);
 	struct proc_filter_ctx *ctx = pd->ctx;
 	void *streamdata = NULL;
 	int32_t size = bistream_get_stream(pd->bistream, bistream_out, ctx->io_out_offset, -1, &streamdata);
