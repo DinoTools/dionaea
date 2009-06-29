@@ -614,6 +614,32 @@ if test x$enable_lcfg = "xno" ; then
 	AC_MSG_ERROR([liblcfg is missing - install it please - download from http://liblcfg.carnivore.it])
 fi
 
+dnl **************************************************
+dnl * libcurl                                        *
+dnl **************************************************
+
+AC_SUBST([LIB_CURL_CFLAGS])
+AC_SUBST([LIB_CURL_LIBS])
+
+
+enable_curl="yes"
+
+AC_ARG_ENABLE(curl, [  --enable-curl      enable support for libcurl],
+			[enable_curl="$enableval"],[enable_curl="yes"])
+
+AC_ARG_WITH(curl-config,
+			[  --with-curl-config=BIN  curl-config binary path],
+				      [curl_config_dir="$withval"], [curl_config_dir=$PATH])
+if test x$enable_curl = "xyes" ; then
+	AC_PATH_PROG(CURL_CONFIG_BIN, curl-config, "no", $curl_config_dir)
+	if test "x$CURL_CONFIG_BIN" == "xno" ; then
+		enable_curl="no"
+	else
+		LIB_CURL_CFLAGS=$($CURL_CONFIG_BIN --cflags)
+		LIB_CURL_LIBS=$($CURL_CONFIG_BIN --libs)
+	fi
+fi
+
 
 dnl **************************************************
 dnl * libloudmouth                                        *
@@ -651,7 +677,7 @@ AM_CONDITIONAL([BUILD_NFQ_MODULE], [ test x$enable_netfilter_queue = "xyes" ])
 AM_CONDITIONAL([BUILD_PCAP_MODULE], [ test x$enable_pcap = "xyes" ])
 AM_CONDITIONAL([BUILD_LOUDMOUTH_MODULE], [ test x$enable_loudmouth = "xyes" ])
 AM_CONDITIONAL([BUILD_PYTHON_MODULE], [ test x$enable_python = "xyes" && test x$enable_cython = "xyes" ])
-
+AM_CONDITIONAL([BUILD_CURL_MODULE], [ test x$enable_curl = "xyes" ])
 CFLAGS="${CFLAGS} ${LIB_EV_CFLAGS} ${LIB_GLIB_CFLAGS} ${LIB_LCFG_CFLAGS} -Wstrict-prototypes"
 
 
@@ -700,7 +726,8 @@ AC_CONFIG_FILES([Makefile
 				modules/nc/Makefile
 				modules/python/Makefile
 				modules/python/setup.py
-				modules/emu/Makefile])
+				modules/emu/Makefile
+				modules/curl/Makefile])
 
                  
 AC_OUTPUT
@@ -761,6 +788,10 @@ echo ""
 echo "gc                                 : $enable_gc"
 echo " - cflags                          : $LIB_GC_CFLAGS"
 echo " - libs                            : $LIB_GC_LIBS"
+echo ""
+echo "curl                               : $enable_curl"
+echo " - cflags                          : $LIB_CURL_CFLAGS"
+echo " - libs                            : $LIB_CURL_LIBS"
 
 
 
