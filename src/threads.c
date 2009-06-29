@@ -40,8 +40,8 @@
 
 void threadpool_wrapper(gpointer data, gpointer user_data)
 {
-	struct thread *atd = data;
-	atd->function(atd->con, atd->data);
+	struct thread *t = data;
+	t->function(t->con, t->data);
 	g_free(data);
 }
 
@@ -99,10 +99,10 @@ void surveillance_cb(struct ev_loop *loop, struct ev_periodic *w, int revents)
 
 struct thread *thread_new(struct connection *con, void *data, GFunc function)
 {
-	struct thread *atd = g_malloc0(sizeof(struct thread));
-	atd->con = con;
-	atd->data = data;
-	atd->function = function;
-	return atd;
+	struct thread *t = g_malloc0(sizeof(struct thread));
+	t->con = con;
+	t->data = data;
+	t->function = function;
+	return t;
 }
 
