@@ -550,6 +550,11 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 	node_info_addr_clear(&con->local);
 	node_info_addr_clear(&con->remote);
 
+	if ( con->protocol.name != NULL )
+	{
+		g_free(con->protocol.name);
+	}
+
 	if ( con->protocol.ctx_free != NULL )
 	{
 		con->protocol.ctx_free(con->protocol.ctx);
@@ -602,10 +607,13 @@ void connection_connect_next_addr(struct connection *con)
 			continue;
 		}
 
-		if(con->local.hostname != NULL && con->local.domain != socket_domain)
+		if ( con->local.hostname != NULL )
 		{
-			g_debug("remote will be unreachable due to different protocol versions (%i <-> %i)", socket_domain, con->local.domain);
-			continue;
+			if ( con->local.domain != socket_domain )
+			{
+				g_debug("remote will be unreachable due to different protocol versions (%i <-> %i)", socket_domain, con->local.domain);
+				continue;
+			}
 		}
 
 		g_debug("connecting %s:%i", addr, ntohs(con->remote.port));
@@ -622,13 +630,13 @@ void connection_connect_next_addr(struct connection *con)
 			if ( con->socket <= 0 )
 				con->socket = socket(socket_domain, SOCK_STREAM, 0);
 
-/*			if (bind_local(con) != true)
+			if ( bind_local(con) != true )
 			{
 				close(con->socket);
 				con->socket = -1;
 				continue;
 			}
-*/
+
 			connection_set_nonblocking(con);
 			ret = connect(con->socket, (struct sockaddr *)&sa, sizeof_sa);
 
@@ -678,6 +686,14 @@ void connection_connect_next_addr(struct connection *con)
 			if ( con->socket <= 0 )
 				con->socket = socket(socket_domain, SOCK_STREAM, 0);
 			connection_set_nonblocking(con);
+
+			if ( bind_local(con) != true )
+			{
+				close(con->socket);
+				con->socket = -1;
+				continue;
+			}
+
 			ret = connect(con->socket, (struct sockaddr *)&sa, sizeof_sa);
 
 
@@ -720,6 +736,14 @@ void connection_connect_next_addr(struct connection *con)
 			g_debug("udp");
 			if ( con->socket <= 0 )
 				con->socket = socket(socket_domain, SOCK_DGRAM, 0);
+
+			if ( bind_local(con) != true )
+			{
+				close(con->socket);
+				con->socket = -1;
+				continue;
+			}
+
 			connection_set_nonblocking(con);
 			if ( con->remote.port != 0 )
 			{
@@ -1311,6 +1335,7 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 		// set protocol for accepted connection
 		memcpy(&accepted->protocol, &con->protocol, sizeof(struct protocol));
+		accepted->protocol.name = g_strdup(con->protocol.name);
 
 //	accepted->protocol.ctx = con->protocol.ctx;
 
@@ -2423,6 +2448,7 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 		// set protocol for accepted connection
 		memcpy(&accepted->protocol, &con->protocol, sizeof(struct protocol));
+		accepted->protocol.name = g_strdup(con->protocol.name);
 
 		accepted->stats.io_out.throttle.max_bytes_per_second = con->stats.io_out.throttle.max_bytes_per_second;
 

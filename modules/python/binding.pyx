@@ -32,6 +32,7 @@ cdef extern from "module.h":
 	cdef object stringfrom "PyUnicode_FromStringAndSize"(char *v, int len)
 	int c_strlen "strlen" (char *)
 	ctypedef void *c_uintptr_t "uintptr_t"
+	char * c_g_strdup "g_strdup" (char *)
 
 #cdef extern from "../../include/dionaea.h":
 #	ctypedef struct c_dionaea "struct dionaea":
@@ -67,6 +68,7 @@ cdef extern from "../../include/connection.h":
 	ctypedef void (*protocol_handler_io_out)(c_connection_ *con, void *context)
 	ctypedef int (*protocol_handler_disconnect)(c_connection_ *con, void *context)
 	ctypedef struct c_protocol "struct protocol":
+		char 								*name
 		protocol_handler_ctx_new  			ctx_new
 		protocol_handler_ctx_free 			ctx_free
 		protocol_handler_established 		established
@@ -251,6 +253,10 @@ cdef class connection:
 			if not c_connection_transport_from_string(con_type_utf8, &enum_type):
 				raise ValueError(str(con_type) + 'is not a valid protocol')
 			self.thisptr = c_connection_new(enum_type)
+#			print(u"XXXXXXXXXXXXX" + self.__class__.__name__)
+			protoname = self.__class__.__name__
+			protoname = protoname.encode()
+			self.thisptr.protocol.name = c_g_strdup(protoname)
 			self.thisptr.protocol.ctx_new = <protocol_handler_ctx_new>_factory
 			self.thisptr.protocol.ctx_free = <protocol_handler_ctx_free>_garbage
 			self.thisptr.protocol.established = <protocol_handler_established>established_cb

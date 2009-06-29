@@ -53,7 +53,7 @@ typedef void (*protocol_handler_name)(void *ctx);
 
 struct protocol
 {
-	protocol_handler_name name;
+	char *name;
 	protocol_handler_ctx_new  ctx_new;
 	protocol_handler_ctx_free ctx_free;
 	protocol_handler_established established;
