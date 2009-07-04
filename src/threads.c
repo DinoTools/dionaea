@@ -34,6 +34,7 @@
 #include "dionaea.h"
 #include "threads.h"
 #include "log.h"
+#include "incident.h"
 
 #define D_LOG_DOMAIN "thread"
 
@@ -106,3 +107,24 @@ struct thread *thread_new(struct connection *con, void *data, GFunc function)
 	return t;
 }
 
+
+struct async_cmd *async_cmd_new(async_cmd_cb function, void *data)
+{
+	struct async_cmd *cmd = g_malloc0(sizeof(struct async_cmd));
+	cmd->data = data;
+	cmd->function = function;
+	return cmd;
+}
+
+void async_cmd_free(struct async_cmd *cmd)
+{
+	g_free(cmd);
+}
+
+
+
+void async_incident_report(void *data)
+{
+	struct incident *i = data;
+	incident_report(i);
+}
