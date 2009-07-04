@@ -30,6 +30,10 @@
 #include <stdio.h>
 #include <ctype.h>
 
+#include "log.h"
+
+#define D_LOG_DOMAIN "bistream"
+
 #include "bistream.h"
 
 struct bistream *bistream_new()
