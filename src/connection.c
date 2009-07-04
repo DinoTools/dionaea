@@ -3074,8 +3074,8 @@ const char *connection_transport_to_string(enum	connection_transport trans)
 	static const char *connection_transport_str[] = 
 	{
 		"udp",
-		"tls",
 		"tcp",
+		"tls",
 		"io"
 	};
 	return connection_transport_str[trans];
