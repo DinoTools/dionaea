@@ -49,9 +49,9 @@ static struct
 	struct lcfgx_tree_node *config;
 	struct ev_timer timer_event;
 	CURLM *multi;
-	int prev_running;
-	int still_running;
 	struct ihandler *ihandler;
+	int queued;
+	int active;
 } curl_runtime;
 
 
@@ -91,28 +91,29 @@ static int multi_timer_cb(CURLM *multi, long timeout_ms)
 /* Check for completed transfers, and remove their easy handles */
 static void check_run_count(void)
 {
-	g_debug("%s prev %i still %i", __PRETTY_FUNCTION__, curl_runtime.prev_running, curl_runtime.still_running);
-	if( curl_runtime.prev_running > curl_runtime.still_running )
+	g_debug("%s queued %i active %i", __PRETTY_FUNCTION__, curl_runtime.queued, curl_runtime.active);
+	if( curl_runtime.queued > curl_runtime.active )
 	{
 		char *eff_url=NULL;
 		CURLMsg *msg;
 		int msgs_left;
 		struct session *conn=NULL;
 		CURL*easy;
-		CURLcode res;
 
-		g_debug("REMAINING: %d", curl_runtime.still_running);
+		g_debug("REMAINING: %d", curl_runtime.queued);
 		easy=NULL;
 		while( (msg = curl_multi_info_read(curl_runtime.multi, &msgs_left)) )
 		{
 			if( msg->msg == CURLMSG_DONE )
 			{
+				curl_runtime.queued--;
+
 				easy=msg->easy_handle;
 				curl_easy_getinfo(easy, CURLINFO_PRIVATE, &conn);
 				curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &eff_url);
-				if ( msg->data.result == CURLE_OK )
+				if( msg->data.result == CURLE_OK )
 				{
-					g_debug("DONE: %s => (%d) %s", eff_url, res, conn->error);
+					g_debug("DONE: %s => (%d) %s", eff_url, msg->data.result, conn->error);
 				}else
 				{
 					g_debug("FAIL: %s => (%d) %s", eff_url, msg->data.result, conn->error);
@@ -124,7 +125,6 @@ static void check_run_count(void)
 			}
 		}
 	}
-	curl_runtime.prev_running = curl_runtime.still_running;
 }
 
 static void event_cb(struct ev_loop *loop,  struct ev_io *w, int revents)
@@ -135,12 +135,12 @@ static void event_cb(struct ev_loop *loop,  struct ev_io *w, int revents)
 	int action = (revents&EV_READ?CURL_POLL_IN:0)|(revents&EV_WRITE?CURL_POLL_OUT:0);
 	do
 	{
-		rc = curl_multi_socket_action(curl_runtime.multi, w->fd, action, &curl_runtime.still_running);
+		rc = curl_multi_socket_action(curl_runtime.multi, w->fd, action, &curl_runtime.active);
 	} while( rc == CURLM_CALL_MULTI_PERFORM );
 
 	check_run_count();
 
-	if( curl_runtime.still_running <= 0 )
+	if( curl_runtime.queued <= 0 )
 	{
 		g_debug("last transfer done, kill timeout");
 		ev_timer_stop(g_dionaea->loop, &curl_runtime.timer_event);
@@ -155,7 +155,7 @@ static void timer_cb(struct ev_loop *loop,  struct ev_timer *w, int revents)
 	CURLMcode rc;
 	do
 	{
-		rc = curl_multi_socket_action(curl_runtime.multi, CURL_SOCKET_TIMEOUT, 0, &curl_runtime.still_running);
+		rc = curl_multi_socket_action(curl_runtime.multi, CURL_SOCKET_TIMEOUT, 0, &curl_runtime.active);
 	} while( rc == CURLM_CALL_MULTI_PERFORM );
 	check_run_count();
 }
@@ -193,8 +193,8 @@ static int curl_socketfunction_cb(CURL *easy, curl_socket_t s, int action, void 
 	g_debug("%s e %p s %i what %i cbp %p sockp %p", __PRETTY_FUNCTION__, easy, s, action, cbp, sockp);
 
 	struct session_socket *info = (struct session_socket*) sockp;
-	struct session *conn;
-	curl_easy_getinfo(easy, CURLOPT_PRIVATE, &conn);
+	struct session *session;
+	curl_easy_getinfo(easy, CURLOPT_PRIVATE, &session);
 
 	const char *action_str[]={ "none", "IN", "OUT", "INOUT", "REMOVE"};
 
@@ -208,12 +208,12 @@ static int curl_socketfunction_cb(CURL *easy, curl_socket_t s, int action, void 
 		{
 			g_debug("Adding data: %s", action_str[action]);
 			info = g_malloc0(sizeof(struct session_socket));
-			session_set_socket(conn, info, s, action);
+			session_set_socket(session, info, s, action);
 			curl_multi_assign(curl_runtime.multi, s, info);
 		} else
 		{
 			g_debug("Changing action from %s to %s", action_str[info->action], action_str[action]);
-			session_set_socket(conn, info, s, action);
+			session_set_socket(session, info, s, action);
 		}
 	}
 	return 0;
@@ -236,11 +236,11 @@ static size_t curl_writefunction_cb(void *ptr, size_t size, size_t nmemb, void *
 static int curl_progressfunction_cb (void *p, double dltotal, double dlnow, double ult,
 									 double uln)
 {
-	struct session *conn = (struct session *)p;
+	struct session *session = (struct session *)p;
 	(void)ult;
 	(void)uln;
 
-	g_debug("Progress: %s (%g/%g)", conn->url, dlnow, dltotal);
+	g_debug("Progress: %s (%g/%g)", session->url, dlnow, dltotal);
 	return 0;
 }
 
@@ -248,39 +248,34 @@ static int curl_progressfunction_cb (void *p, double dltotal, double dlnow, doub
 /* Create a new easy handle, and add it to the global curl_multi */
 static void session_new(char *url)
 {
-	struct session *conn;
+	struct session *session;
 	CURLMcode rc;
 
-	conn = g_malloc0(sizeof(struct session));
-	conn->error[0]='\0';
+	session = g_malloc0(sizeof(struct session));
+	session->error[0]='\0';
 
-	conn->easy = curl_easy_init();
-	if( !conn->easy )
+	session->easy = curl_easy_init();
+	if( !session->easy )
 	{
 		g_error("curl_easy_init() failed, exiting!");
 	}
-	conn->url = g_strdup(url);
+	session->url = g_strdup(url);
 
-	curl_easy_setopt(conn->easy, CURLOPT_URL, conn->url);
-	curl_easy_setopt(conn->easy, CURLOPT_WRITEFUNCTION, curl_writefunction_cb);
-	curl_easy_setopt(conn->easy, CURLOPT_WRITEDATA, &conn);
-//	curl_easy_setopt(conn->easy, CURLOPT_VERBOSE, 1L);
-	curl_easy_setopt(conn->easy, CURLOPT_ERRORBUFFER, conn->error);
-	curl_easy_setopt(conn->easy, CURLOPT_PRIVATE, conn);
-	curl_easy_setopt(conn->easy, CURLOPT_NOPROGRESS, 0L);
-	curl_easy_setopt(conn->easy, CURLOPT_PROGRESSFUNCTION, curl_progressfunction_cb);
-	curl_easy_setopt(conn->easy, CURLOPT_PROGRESSDATA, conn);
-	curl_easy_setopt(conn->easy, CURLOPT_LOW_SPEED_TIME, 3L);
-	curl_easy_setopt(conn->easy, CURLOPT_LOW_SPEED_LIMIT, 10L);
+	curl_easy_setopt(session->easy, CURLOPT_URL, session->url);
+	curl_easy_setopt(session->easy, CURLOPT_WRITEFUNCTION, curl_writefunction_cb);
+	curl_easy_setopt(session->easy, CURLOPT_WRITEDATA, &session);
+	curl_easy_setopt(session->easy, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(session->easy, CURLOPT_ERRORBUFFER, session->error);
+	curl_easy_setopt(session->easy, CURLOPT_PRIVATE, session);
+	curl_easy_setopt(session->easy, CURLOPT_NOPROGRESS, 0L);
+	curl_easy_setopt(session->easy, CURLOPT_PROGRESSFUNCTION, curl_progressfunction_cb);
+	curl_easy_setopt(session->easy, CURLOPT_PROGRESSDATA, session);
+	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_TIME, 3L);
+	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_LIMIT, 10L);
 
-	g_debug("Adding easy %p to multi %p (%s)", conn->easy, curl_runtime.multi, url);
-	rc = curl_multi_add_handle(curl_runtime.multi, conn->easy);
-//	curl_runtime.prev_running++;
-	do
-	{
-		rc = curl_multi_socket_all(curl_runtime.multi, &curl_runtime.still_running);
-	} while( CURLM_CALL_MULTI_PERFORM == rc );
-
+	g_debug("Adding easy %p to multi %p (%s)", session->easy, curl_runtime.multi, url);
+	rc = curl_multi_add_handle(curl_runtime.multi, session->easy);
+	curl_runtime.queued++;
 	check_run_count();
 }
 
@@ -319,7 +314,7 @@ static bool curl_new(struct dionaea *d)
 	CURLMcode rc;
 	do
 	{
-		rc = curl_multi_socket_all(curl_runtime.multi, &curl_runtime.still_running);
+		rc = curl_multi_socket_all(curl_runtime.multi, &curl_runtime.active);
 	} while( CURLM_CALL_MULTI_PERFORM == rc );
 
 	curl_runtime.ihandler = ihandler_new("dionaea.download.offer", curl_ihandler_cb, NULL);
