@@ -598,6 +598,8 @@ int main (int argc, char *argv[])
 
 	// processors
 	d->processors = g_malloc0(sizeof(struct processors));
+	d->processors->names = g_hash_table_new(g_str_hash, g_str_equal);
+
 
 
 	// modules
@@ -622,8 +624,6 @@ int main (int argc, char *argv[])
 	g_log_set_default_handler(log_multiplexer, NULL);
 
 	// processors continued, create tree
-
-	d->processors->names = g_hash_table_new(g_str_hash, g_str_equal);
 	g_hash_table_insert(d->processors->names, (void *)proc_streamdumper.name, &proc_streamdumper);
 //	g_hash_table_insert(d->processors->names, (void *)proc_emu.name, &proc_emu);
 	g_hash_table_insert(d->processors->names, (void *)proc_filter.name, &proc_filter);

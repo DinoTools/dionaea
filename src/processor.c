@@ -7,6 +7,9 @@
 #include "processor.h"
 #include "threads.h"
 
+#include "log.h"
+
+#define D_LOG_DOMAIN "processor"
 
 bool processors_tree_create(GNode *tree, struct lcfgx_tree_node *node)
 {
@@ -15,8 +18,7 @@ bool processors_tree_create(GNode *tree, struct lcfgx_tree_node *node)
 
 	if( p == NULL )
 	{
-		g_critical("Could not find processor %s", node->key);
-		return false;
+		g_error("Could not find processor '%s'", node->key);
 	}
 
 	struct processor *pt = g_malloc0(sizeof(struct processor));
@@ -55,7 +57,7 @@ void processors_tree_dump(GNode *tree, int indent)
 		if( it->data )
 		{
 			struct processor *p = it->data;
-			g_debug("%*s %s", indent, " ", p->name);
+			g_debug("%*s %s", indent*4, " ", p->name);
 		}
 
 		if( it->children )
@@ -67,7 +69,6 @@ void processor_data_creation(struct connection *con, struct processor_data *pd, 
 {
 	g_debug("%s con %p pd %p node %p", __PRETTY_FUNCTION__, con, pd, node);
 	struct processor *p = node->data;
-
 
 	if( p->process && !p->process(con, p->config) )
 		return;
@@ -152,11 +153,23 @@ void recurse_io(GList *list, struct connection *con, enum bistream_direction dir
 	for ( it = g_list_first(list); it != NULL; it = g_list_next(it) )
 	{
 		struct processor_data *proc_data = it->data;
-		if( dir == bistream_in )
-			proc_data->processor->on_io_in(con, proc_data);
+		if( dir == bistream_in)
+		{
+			if ( proc_data->processor->on_io_in != NULL )
+			{
+				proc_data->processor->on_io_in(con, proc_data);
+				recurse_io(proc_data->filters, con, dir);
+			}
+		}
 		else
-			proc_data->processor->on_io_out(con, proc_data);
-		recurse_io(proc_data->filters, con, dir);
+		{
+			if( proc_data->processor->on_io_out != NULL )
+			{
+				proc_data->processor->on_io_out(con, proc_data);
+				recurse_io(proc_data->filters, con, dir);
+			}
+		}
+		
 	}
 }
 
@@ -185,7 +198,6 @@ void processors_io_out_thread(void *data, void *userdata)
 void processors_io_in(struct connection *con, void *data, int size)
 {
 	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
-//	struct bistream *bistream = g_hash_table_lookup(g_evtest->streams.table, con);
 
 	GList *it;
 	for ( it = g_list_first(con->processor_data->filters);	it != NULL;	it = g_list_next(it) )
@@ -400,6 +412,10 @@ void proc_filter_on_io_in(struct connection *con, struct processor_data *pd)
 		
 	void *streamdata = NULL;
 	int32_t size = bistream_get_stream(pd->bistream, bistream_in, ctx->io_in_offset, -1, &streamdata);
+
+	if( size == -1 )
+		return;
+
 	ctx->io_in_offset += size;
 	for( GList *it = g_list_first(pd->filters); it != NULL; it = g_list_next(it))
 	{
@@ -416,6 +432,10 @@ void proc_filter_on_io_out(struct connection *con, struct processor_data *pd)
 	struct proc_filter_ctx *ctx = pd->ctx;
 	void *streamdata = NULL;
 	int32_t size = bistream_get_stream(pd->bistream, bistream_out, ctx->io_out_offset, -1, &streamdata);
+
+	if( size == -1 )
+		return;
+
 	ctx->io_out_offset += size;
 	for( GList *it = g_list_first(pd->filters); it != NULL; it = g_list_next(it))
 	{

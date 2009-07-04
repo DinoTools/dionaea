@@ -1,6 +1,8 @@
 #ifndef HAVE_STREAMPROCESSOR_H
 #define HAVE_STREAMPROCESSOR_H
 
+#include <stdbool.h>
+
 #include "bistream.h"
 
 struct connection;

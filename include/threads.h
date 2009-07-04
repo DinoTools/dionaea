@@ -61,14 +61,14 @@ struct async_cmd
 	void *data;
 };
 
-/*
+
 struct async_cmd *async_cmd_new(async_cmd_cb function, void *data);
 void async_cmd_free(struct async_cmd *cmd);
-
+/*
 void async_add_io(void *data);
 void async_del_io(void *data);
 
 void async_add_child(void *data);
 void async_del_child(void *data);
-void async_add_action(void *data);
 */
+void async_incident_report(void *data);

@@ -21,6 +21,19 @@ typedef bool (*module_prepare_function)(void);
 typedef bool (*module_new_function)(struct dionaea *d);
 typedef bool (*module_free_function)(void);
 
+/**
+ * this is the api to interact with modules
+ * startup order is
+ *  * config
+ *  * prepare
+ *  * new
+ * after prepare privs are dropped
+ * 
+ * hup is meant to support SIGHUP in modules
+ * 
+ * shutdown order
+ *  * free
+ */
 struct module_api
 {
 	module_config_function config;
