@@ -25,12 +25,5 @@
  *
  *******************************************************************************/
 
-struct connection;
-struct processor_data;
 
-void *proc_emu_ctx_new(void *cfg);
-void proc_emu_ctx_free(void *ctx);
-void proc_emu_on_io_in(struct connection *con, struct processor_data *pd);
-void proc_emu_on_io_out(struct connection *con, struct processor_data *pd);
 
-extern struct processor proc_emu;

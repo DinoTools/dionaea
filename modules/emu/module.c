@@ -37,8 +37,9 @@
 #include "connection.h"
 #include "dionaea.h"
 
-#include "emu.h"
+#include "module.h"
 #include "log.h"
+#include "processor.h"
 
 #define D_LOG_DOMAIN "emu"
 
@@ -58,13 +59,14 @@ static bool emu_config(struct lcfgx_tree_node *node)
 static bool emu_prepare(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
+	g_hash_table_insert(g_dionaea->processors->names, (void *)proc_emu.name, &proc_emu);
 	return true;
 }
 
 static bool emu_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
-	struct lcfgx_tree_node *v;
+//	struct lcfgx_tree_node *v;
     return true;
 }
 
