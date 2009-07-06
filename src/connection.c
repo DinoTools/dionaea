@@ -251,14 +251,14 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 	con->local.domain = socket_domain;
 
-	int val=1;
+//	int val=1;
 
 	switch ( con->trans )
 	{
 	case connection_transport_udp:
 		con->type = connection_type_bind;
 		con->socket = socket(socket_domain, SOCK_DGRAM, 0);
-		setsockopt(con->socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)); 
+//		setsockopt(con->socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)); 
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)); 
 		if ( bind(con->socket, (struct sockaddr *)&sa, sizeof_sa) != 0 )
 		{
