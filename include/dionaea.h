@@ -44,6 +44,7 @@ struct dionaea
 	{
 		struct lcfg *config;
 		struct lcfgx_tree_node *root;
+		char *name;
 	} config;
 
 	struct dns *dns;

@@ -47,6 +47,20 @@ void sighup_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 {
 	g_warning("%s loop %p w %p revents %i",__PRETTY_FUNCTION__, loop, w, revents);
 
+	g_info("Reloading config");
+	if ( (g_dionaea->config.config = lcfg_new(g_dionaea->config.name)) == NULL)
+	{	
+		g_critical("config not found");
+	}
+
+	if( lcfg_parse(g_dionaea->config.config) != lcfg_status_ok )
+	{	
+		g_critical("lcfg error: %s\n", lcfg_error_get(g_dionaea->config.config));
+	}
+
+	g_dionaea->config.root = lcfgx_tree_new(g_dionaea->config.config);
+
+
 	// modules ...
 	modules_hup();
 

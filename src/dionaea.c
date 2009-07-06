@@ -378,8 +378,8 @@ void show_help(bool defaults)
 #endif
 		{"h",	"help",					"display help",							0						},
 		{"H",	"large-help",			"display help with default values",		0						},
-		{"l",	"log-levels=WHAT",		"which levels to log, valid values all, debug, info, message, warning, critical, error, combine using ,",	0},
-		{"L",	"log-domains=WHAT",		"which domains use * and ? wildcards",	0},
+		{"l",	"log-levels=WHAT",		"which levels to log, valid values all, debug, info, message, warning, critical, error, combine using ',', exclude with - prefix",	0},
+		{"L",	"log-domains=WHAT",		"which domains use * and ? wildcards, combine using ',', exclude using -",	0},
 		{"u",	"user=USER",			"switch to USER after startup",	"keep current user"},
 		{"p",	"pid-file=FILE",		"write pid to file",	0},
         {"r",	"chroot=DIR",			"chroot to DIR after startup",				"don't chroot"		},
@@ -399,6 +399,11 @@ void show_help(bool defaults)
 			printf("%-35s Default value/behaviour: %s\n", "", myopts[i].standard);
 		}
 	}
+	puts("\n\nexamples:\n"
+		 "\t# dionaea -l all,-debug -L '*'\n"
+		 "\t# dionaea -l all,-debug -L 'con*,py*'\n"
+		 "\t# dionaea -u nobody -g nogroup -r /opt/dionaea/ -w /opt/dionaea -p /opt/dionaea/var/dionaea.pid\n");
+
 }
 static void log_ev_fatal_error (const char *msg)
 {
@@ -471,7 +476,7 @@ int main (int argc, char *argv[])
 	}
 
 	d->config.root = lcfgx_tree_new(d->config.config);
-
+	d->config.name = g_strdup(opt->config);
 
 	// logging 
 	d->logging = g_malloc0(sizeof(struct logging));
