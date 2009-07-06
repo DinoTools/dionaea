@@ -62,6 +62,7 @@ struct ihandler *ihandler_new(char *pattern, ihandler_cb cb, void *ctx)
 
 void ihandler_free(struct ihandler *i)
 {
+	g_dionaea->ihandlers->handlers = g_list_remove(g_dionaea->ihandlers->handlers, i);
 	g_free(i);
 }
 
