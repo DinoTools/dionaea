@@ -33,6 +33,7 @@ cdef extern from "module.h":
 	int c_strlen "strlen" (char *)
 	ctypedef void *c_uintptr_t "uintptr_t"
 	char * c_g_strdup "g_strdup" (char *)
+	cdef object c_pygetifaddrs "pygetifaddrs"(object self, object args)
 
 #cdef extern from "../../include/dionaea.h":
 #	ctypedef struct c_dionaea "struct dionaea":
@@ -44,10 +45,9 @@ cdef extern from "module.h":
 #	cdef c_dionaea *thisptr
 #	def __init__(self):
 #		self.thisptr = g_dionaea
-#	def report(self, i):
-#		i.report()
 		
-		
+def getifaddrs():
+	return c_pygetifaddrs(<object> NULL, <object> NULL)
 
 
 

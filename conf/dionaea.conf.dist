@@ -8,8 +8,9 @@ logging = {
 modules = {
 
 	python = {
-		// files not prefixed with / will be loaded relative to PREFIX/lib/dionaea/python/ 
-		files = ["log.py"]
+		// imports are relative to PREFIX/lib/dionaea/python/ 
+		files = ["log",
+				 "tftp"]
 	}
 
 	/* nc is a test module */

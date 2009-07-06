@@ -28,15 +28,32 @@
 from dionaea import *
 import logging
 
+global handler
+global logger
+
 class DionaeaLogHandler(logging.Handler):
 	def __init__(self):
 		logging.Handler.__init__(self, logging.DEBUG)
 	def emit(self,record):
 		dlhfn(record.name, record.levelno, record.pathname, record.lineno, record.msg)
 
-logger = logging.getLogger('')
-logger.setLevel(logging.DEBUG)
-logger.addHandler(DionaeaLogHandler())
+
+def start():
+	global logger
+	global handler
+	logger = logging.getLogger('')
+	logger.setLevel(logging.DEBUG)
+	handler = DionaeaLogHandler()
+#	print("add handler" + str(handler))
+	logger.addHandler(handler)
+#	logtest = logging.getLogger("test")
+#	logtest.warn("Das liegt nun in der test domain")
+
+def stop():
+	global logger
+	global handler
+#	print("remove handler " + str(handler))
+	logger.removeHandler(handler)
 
 # "application" code
 #logger.debug("debug message")
@@ -48,22 +65,23 @@ logger.addHandler(DionaeaLogHandler())
 #logx = logging.getLogger("logx")
 #logx.warn("x")
 
-logtest = logging.getLogger("test")
-logtest.warn("Das liegt nun in der test domain")
 
-class AllIHandler(ihandler):
-	def __init__(self, pattern):
-		ihandler.__init__(self, pattern)
-	def handle(self, icd):
-#		icd.dump()
-		if icd.origin == 'dionaea.connection.tcp.accept':
-			con = icd.get('con')
-			print("foo " + con.local.host)
-#		else:
-#			print(icd.origin)
-#		icd.dump()
-#		print("%s %s" % (icd.origin, icd))
-		
+#class AllIHandler(ihandler):
+#	def __init__(self, pattern):
+#		ihandler.__init__(self, pattern)
+#	def handle(self, icd):
+##		icd.dump()
+#		if icd.origin == 'dionaea.connection.tcp.accept':
+#			con = icd.get('con')
+#			print("foo " + con.local.host)
+##		else:
+##			print(icd.origin)
+##		icd.dump()
+##		print("%s %s" % (icd.origin, icd))
+#		
+#
+#a = AllIHandler('*')
 
-a = AllIHandler('*')
+#print("IXIDSI")
+
 

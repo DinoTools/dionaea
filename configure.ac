@@ -529,7 +529,7 @@ AZ_PYTHON_LSPEC
 
 if $PYTHON ; then
 	enable_python="yes"
-	AC_DEFINE([PYTHON_PATH],"$PYTHON",[path to the python interpreter])
+	AC_DEFINE_UNQUOTED([PYTHON_PATH],"$PYTHON",[path to the python interpreter])
 fi
 
 

@@ -37,4 +37,5 @@
 
 
 void log_wrap(char *name, int number, char *file, int line, char *msg);
+PyObject *pygetifaddrs(PyObject *self, PyObject *args);
 
