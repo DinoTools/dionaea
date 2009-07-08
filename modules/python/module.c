@@ -73,7 +73,6 @@ struct import
 {
 	char *name;
 	PyObject *module;
-
 };
 
 static bool config(struct lcfgx_tree_node *node)
@@ -111,7 +110,7 @@ static bool hupy(struct lcfgx_tree_node *node)
 					PyObject *r = PyEval_CallObject(func, arglist);
 					PyErr_Print();
 					Py_DECREF(arglist);
-					Py_DECREF(r);
+					Py_XDECREF(r);
 					Py_DECREF(func);
 				}else
 					PyErr_Clear();
@@ -121,6 +120,7 @@ static bool hupy(struct lcfgx_tree_node *node)
 				{
 					PyErr_Print();
 					g_critical("Reloading module %s failed", i->name);
+					module = i->module;
 				}else
 				{
 					Py_DECREF(module); 
@@ -132,7 +132,7 @@ static bool hupy(struct lcfgx_tree_node *node)
 					PyObject *arglist = Py_BuildValue("()");
 					PyObject *r = PyEval_CallObject(func, arglist);
 					Py_DECREF(arglist);
-					Py_DECREF(r);
+					Py_XDECREF(r);
 					Py_DECREF(func);
 				}else
 					PyErr_Clear();
@@ -158,7 +158,7 @@ static bool hupy(struct lcfgx_tree_node *node)
 					PyObject *arglist = Py_BuildValue("()");
 					PyObject *r = PyEval_CallObject(func, arglist);
 					Py_DECREF(arglist);
-					Py_DECREF(r);
+					Py_XDECREF(r);
 					Py_DECREF(func);
 				}else
 					PyErr_Clear();
@@ -193,11 +193,30 @@ static bool new(struct dionaea *dionaea)
 	PyRun_SimpleString("import sys");
 
 	char relpath[1024];
-	sprintf(relpath, "sys.path.insert(0, '%s/lib/dionaea/python/')", PREFIX);
-    PyRun_SimpleString(relpath); 
+	int i=0;
+	struct lcfgx_tree_node *paths;
+	if(lcfgx_get_list(runtime.config, &paths, "sys_path") == LCFGX_PATH_FOUND_TYPE_OK)
+	{
+		struct lcfgx_tree_node *path;
+		for (path = paths->value.elements; path != NULL; path = path->next)
+		{
+			char *name = path->value.string.data;
+			if( strcmp(name, "default") == 0 )
+				sprintf(relpath, "sys.path.insert(%i, '%s/lib/dionaea/python/')", i, PREFIX);
+			else 
+			if( *name == '/' )
+				sprintf(relpath, "sys.path.insert(%i, '%s')", i, name);
+			else
+				sprintf(relpath, "sys.path.insert(%i, '%s/%s')", i, PREFIX, name);
+			g_debug("running %s %s", relpath, name);
+			PyRun_SimpleString(relpath); 
+			i++;
+		}
+	}
+
 	runtime.imports = g_hash_table_new(g_str_hash, g_str_equal);
 	struct lcfgx_tree_node *files;
-	if(lcfgx_get_list(runtime.config, &files, "files") == LCFGX_PATH_FOUND_TYPE_OK)
+	if(lcfgx_get_list(runtime.config, &files, "imports") == LCFGX_PATH_FOUND_TYPE_OK)
 	{
 		struct lcfgx_tree_node *file;
 		for (file = files->value.elements; file != NULL; file = file->next)
@@ -220,7 +239,7 @@ static bool new(struct dionaea *dionaea)
 				PyObject *arglist = Py_BuildValue("()");
 				PyObject *r = PyEval_CallObject(func, arglist);
 				Py_DECREF(arglist);
-				Py_DECREF(r);
+				Py_XDECREF(r);
 				Py_DECREF(func);
 			}else
 				PyErr_Clear();
@@ -329,7 +348,13 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 	char *old_ifa_name = "";
 	for( iface=ifaces[0]; i < count; iface = ifaces[i], i++ )
 	{
-		if( iface->ifa_addr == NULL || (iface->ifa_addr->sa_family != AF_INET && iface->ifa_addr->sa_family != AF_INET6 && iface->ifa_addr->sa_family != AF_PACKET ) )
+		if( iface->ifa_addr == NULL )
+			continue;
+
+		if( iface->ifa_addr->sa_family != AF_INET && iface->ifa_addr->sa_family != AF_INET6 && iface->ifa_addr->sa_family != AF_PACKET )
+			continue;
+
+		if( !(iface->ifa_flags & IFF_UP) )
 			continue;
 
 		if( strcmp(old_ifa_name, iface->ifa_name) != 0 )
@@ -401,7 +426,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
  		{
 			struct sockaddr_in6 *sa6 = iface->ifa_addr;
 
-			if ( (sa6->sin6_addr.s6_addr32[0] & htonl(0xFFC00000)) == htonl(0xFE800000) )
+			if ( ipv6_addr_linklocal(&sa6->sin6_addr) )
 			{	// local scope address
 				pyscopeid = PyLong_FromLong(if_nametoindex(iface->ifa_name));
 				PyDict_SetItemString(pyafdetails, "scope", pyscopeid);

@@ -8,9 +8,15 @@ logging = {
 modules = {
 
 	python = {
-		// imports are relative to PREFIX/lib/dionaea/python/ 
-		files = ["log",
-				 "tftp"]
+		// default expands to PREFIX/lib/dionaea/python/
+		// ordering is granted
+		// useful for development
+		// simply add your devel directory to the list, avoids a make install for new python code
+		sys_path = ["default"]
+
+		// python imports
+		imports	= [	"log",
+					"services"]
 	}
 
 	/* nc is a test module */

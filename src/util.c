@@ -41,7 +41,30 @@
 #define D_LOG_DOMAIN "util"
 
 
-bool parse_addr(const char *addr, const char *iface, uint16_t port, struct sockaddr_storage *sa, int *socket_domain, socklen_t *sizeof_sa)
+int ipv6_addr_any(struct in6_addr const * const a)
+{
+	return((a->s6_addr32[0] | a->s6_addr32[1] | 
+			a->s6_addr32[2] | a->s6_addr32[3] ) == 0); 
+}
+
+int ipv6_addr_loopback(struct in6_addr const * const a)
+{
+	return((a->s6_addr32[0] | a->s6_addr32[1] |
+			a->s6_addr32[2] | (a->s6_addr32[3] ^ htonl(1))) == 0);
+}
+
+int ipv6_addr_linklocal(struct in6_addr const * const a)
+{
+	return ((a->s6_addr32[0] & htonl(0xFFC00000)) == htonl(0xFE800000));
+}
+
+int ipv6_addr_v4mapped(struct in6_addr const * const a)
+{
+	return ((a->s6_addr32[0] | a->s6_addr32[1]) == 0 &&
+		 a->s6_addr32[2] == htonl(0x0000ffff));
+}
+
+bool parse_addr(char const * const addr, char const * const iface, uint16_t const port, struct sockaddr_storage * const sa, int * const socket_domain, socklen_t * const sizeof_sa)
 {
 	struct sockaddr_in6 *si6;
 	struct sockaddr_in *si;
@@ -60,14 +83,14 @@ bool parse_addr(const char *addr, const char *iface, uint16_t port, struct socka
 		si6->sin6_port = htons(port);
 		*sizeof_sa = sizeof(struct sockaddr_in6);
 		*socket_domain = PF_INET6;
-		if ( iface != NULL && strlen(iface) != 0 )
+		if( ipv6_addr_linklocal(&si6->sin6_addr) )
 		{
-			si6->sin6_scope_id = if_nametoindex(iface);
-			if ( si6->sin6_scope_id == 0 )
+			if ( iface == NULL || strlen(iface) == 0 || if_nametoindex(iface) == 0)
 			{
-				g_warning("invalid iface '%s' %x\n", iface, *iface);
+				g_warning("Link Local address %s without valid scope id?", addr);
 				return false;
 			}
+			si6->sin6_scope_id = if_nametoindex(iface);
 		}
 		return true;
 	}

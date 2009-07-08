@@ -320,12 +320,14 @@ cdef class connection:
 		if isinstance(addr, unicode):
 			addr_utf8 = addr.encode(u'UTF-8')
 		else:
-			raise ValueError(u"requires text input, got %s" % type(addr))
+			raise ValueError(u"addr requires text input, got %s" % type(addr))
 		
 		if isinstance(iface, unicode):
 			iface_utf8 = iface.encode(u'UTF-8')
+		elif not iface:
+			iface_utf8 = b''
 		else:
-			raise ValueError(u"requires text input, got %s" % type(iface))
+			raise ValueError(u"iface requires text input, got %s" % type(iface))
 		return c_connection_bind(self.thisptr, addr_utf8, port, iface_utf8)
 	
 	def listen(self, size=20):
@@ -342,12 +344,12 @@ cdef class connection:
 		if isinstance(addr, unicode):
 			addr_utf8 = addr.encode(u'UTF-8')
 		else:
-			raise ValueError(u"requires text input, got %s" % type(addr))
+			raise ValueError(u"addr requires text input, got %s" % type(addr))
 
 		if isinstance(iface, unicode):
 			iface_utf8 = iface.encode(u'UTF-8')
 		else:
-			raise ValueError(u"requires text input, got %s" % type(iface))
+			raise ValueError(u"iface requires text input, got %s" % type(iface))
 
 		c_connection_connect(self.thisptr,addr_utf8,port,iface_utf8)
 
@@ -629,9 +631,9 @@ cdef class incident:
 				c.thisptr = <c_connection *>x
 				INIT_C_CONNECTION_CLASS(c, c)
 				return c
-		elif c_incident_value_string_get(self.thisptr, key, &s) == 0:
-			return bytesfrom(s.str, s.len)
-		elif c_incident_value_int_get(self.thisptr, key, &i) == 0:
+		elif c_incident_value_string_get(self.thisptr, key, &s) == True:
+			return stringfrom(s.str, s.len)
+		elif c_incident_value_int_get(self.thisptr, key, &i) == True:
 			return i
 		else:
 			raise AttributeError("%s does not exist" % key)

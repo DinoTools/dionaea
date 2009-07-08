@@ -967,15 +967,3 @@ class TftpClient(TftpSession):
         self.timeouts+=1
         return 1
 
-global t
-
-def start():
-    global t
-    t=TftpServer()
-    t.chroot('/tmp')
-    t.bind('::',69)
-
-def stop():
-    global t
-    t.close()
-
