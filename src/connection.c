@@ -204,6 +204,13 @@ bool bind_local(struct connection *con)
 		break;
 
 	case connection_transport_udp:
+		if ( pchild_sent_bind(con->socket, (struct sockaddr *)&sa, sizeof_sa) != 0 )
+		{
+			g_warning("Could not bind %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
+			close(con->socket);
+			con->socket = -1;
+			return false;
+		}
 		break;
 
 	case connection_transport_io:
@@ -260,16 +267,15 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 		con->socket = socket(socket_domain, SOCK_DGRAM, 0);
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)); 
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)); 
-		if ( bind(con->socket, (struct sockaddr *)&sa, sizeof_sa) != 0 )
+		if ( bind_local(con) != true )
 		{
 			g_warning("Could not bind %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
 			if ( port != 0 && errno == EADDRINUSE )
 			{
 				g_warning("Could not bind %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
-				close(con->socket);
-				con->socket = -1;
 				return false;
 			}
+			return false;
 		}
 
 		// fill src node
@@ -305,7 +311,10 @@ bool connection_listen(struct connection *con, int len)
 	case connection_transport_tcp:
 		con->type = connection_type_listen;
 		con->socket = socket(con->local.domain, SOCK_STREAM, 0);
-		bind_local(con);
+
+		if ( bind_local(con) != true )
+			return false;
+
 		if ( listen(con->socket, len) != 0 )
 		{
 			close(con->socket);
@@ -322,8 +331,11 @@ bool connection_listen(struct connection *con, int len)
 	case connection_transport_tls:
 		con->type = connection_type_listen;
 		con->socket = socket(con->local.domain, SOCK_STREAM, 0);
-		bind_local(con);
-		if ( listen(con->socket, 15) != 0 )
+
+		if ( bind_local(con) != true )
+			return false;
+
+		if ( listen(con->socket, len) != 0 )
 		{
 			close(con->socket);
 			g_warning("Could not listen %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
@@ -631,11 +643,7 @@ void connection_connect_next_addr(struct connection *con)
 				con->socket = socket(socket_domain, SOCK_STREAM, 0);
 
 			if ( bind_local(con) != true )
-			{
-				close(con->socket);
-				con->socket = -1;
 				continue;
-			}
 
 			connection_set_nonblocking(con);
 			ret = connect(con->socket, (struct sockaddr *)&sa, sizeof_sa);
@@ -688,11 +696,7 @@ void connection_connect_next_addr(struct connection *con)
 			connection_set_nonblocking(con);
 
 			if ( bind_local(con) != true )
-			{
-				close(con->socket);
-				con->socket = -1;
 				continue;
-			}
 
 			ret = connect(con->socket, (struct sockaddr *)&sa, sizeof_sa);
 
@@ -738,11 +742,7 @@ void connection_connect_next_addr(struct connection *con)
 				con->socket = socket(socket_domain, SOCK_DGRAM, 0);
 
 			if ( bind_local(con) != true )
-			{
-				close(con->socket);
-				con->socket = -1;
 				continue;
-			}
 
 			connection_set_nonblocking(con);
 			if ( con->remote.port != 0 )
@@ -2915,13 +2915,6 @@ void connection_connect_resolve(struct connection *con)
 	ev_timer_start(g_dionaea->loop, &con->events.dns_timeout);
 	return;
 }
-
-static inline int ipv6_addr_v4mapped(const struct in6_addr *a)
-{
-	return ((a->s6_addr32[0] | a->s6_addr32[1]) == 0 &&
-		 a->s6_addr32[2] == htonl(0x0000ffff));
-}
-
 
 static int cmp_ip_address_stringp(const void *p1, const void *p2)
 {

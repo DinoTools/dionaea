@@ -82,9 +82,16 @@ bool node_info_set(struct node_info *node, struct sockaddr_storage *sa)
 
 	if ( sa->ss_family == PF_INET6 )
 	{
-		snprintf(node->node_string,NODE_STRLEN,"[%s%s%s]:%i",node->ip_string, 
+		if( ipv6_addr_linklocal(&((struct sockaddr_in6 *)sa)->sin6_addr) )
+		{
+			snprintf(node->node_string,NODE_STRLEN,"[%s%s%s]:%i",node->ip_string, 
 				 node->iface_scope[0]?"%":"",node->iface_scope[0]?node->iface_scope:"", 
 				 ntohs(node->port));
+		}else
+		{
+			snprintf(node->node_string,NODE_STRLEN,"[%s]:%i",node->ip_string, 
+				 ntohs(node->port));
+		}
 	} else
 	if ( sa->ss_family == PF_INET )
 	{
