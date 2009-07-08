@@ -14,6 +14,10 @@ if BUILD_CURL_MODULE
 curl_dir = curl
 endif
 
+if BUILD_NL_MODULE
+nl_dir = nl
+endif
 
-SUBDIRS = nc $(python_dir) $(emu_dir) $(curl_dir)
-DIST_SUBDIRS = nc python emu curl
+
+SUBDIRS = nc $(python_dir) $(emu_dir) $(curl_dir) $(nl_dir)
+DIST_SUBDIRS = nc python emu curl nl

@@ -614,6 +614,60 @@ if test x$enable_lcfg = "xno" ; then
 	AC_MSG_ERROR([liblcfg is missing - install it please - download from http://liblcfg.carnivore.it])
 fi
 
+
+dnl **************************************************
+dnl * libnl                                        *
+dnl **************************************************
+
+AC_SUBST([LIB_NL_CFLAGS])
+AC_SUBST([LIB_NL_LIBS])
+
+enable_nl="yes"
+
+AC_ARG_ENABLE(nl, [  --enable-nl      enable support for libnl],
+			[enable_nl="$enableval"],[enable_nl="yes"])
+
+AC_ARG_WITH(nl-include,
+			[  --with-nl-include=DIR  libnl include dir],
+				      [nl_inc="$withval"],[nl_inc=no])
+AC_ARG_WITH(nl-lib,
+			[  --with-nl-lib=DIR  libnl library dir],
+			[nl_lib="$withval"],[nl_lib=no])
+
+
+if test x$enable_nl = "xyes" ; then
+	OLD_CPPFLAGS=${CPPFLAGS};
+	if test x$nl_inc != "xno"; then
+		CPPFLAGS="${CPPFLAGS} -I${nl_inc}"
+	fi
+	
+	AC_CHECK_HEADER(netlink/netlink.h,[enable_nl=yes],[enable_nl=no])
+	
+	if test x$enable_nl = "xyes" ; then
+		OLD_LDFLAGS=${LDFLAGS}
+		if test x$nl_lib != "xno"; then
+			LDFLAGS="${LDFLAGS}  -L${nl_lib}"
+		fi
+		LDFLAGS="${LDFLAGS} -lnl -lnl-genl -lnl-nf"
+		AC_CHECK_LIB([nl-route],[rtnl_link_get_ifindex],enable_nl="yes", enable_nl="no")
+		if test x$enable_nl = "xyes" ; then
+			if test x$nl_lib != "xno"; then
+				LIB_NL_LIBS="-L$nl_lib -lnl -nl-genl -lnl-route -lnl-nf"
+			else
+				LIB_NL_LIBS="-lnl -nl-genl -lnl-route -lnl-nf"
+			fi
+			if test x$nl_inc != "xno"; then
+				LIB_NL_CFLAGS="-I$nl_inc"
+			else
+				LIB_NL_CFLAGS=""
+			fi
+			AC_DEFINE([HAVE_LIBNL], [1], [Define to 1 to compile with nl support])
+		fi
+	fi
+	CPPFLAGS=${OLD_CPPFLAGS}
+	LDFLAGS=${OLD_LDFLAGS}
+fi
+
 dnl **************************************************
 dnl * libcurl                                        *
 dnl **************************************************
@@ -678,6 +732,13 @@ AM_CONDITIONAL([BUILD_PCAP_MODULE], [ test x$enable_pcap = "xyes" ])
 AM_CONDITIONAL([BUILD_LOUDMOUTH_MODULE], [ test x$enable_loudmouth = "xyes" ])
 AM_CONDITIONAL([BUILD_PYTHON_MODULE], [ test x$enable_python = "xyes" && test x$enable_cython = "xyes" ])
 AM_CONDITIONAL([BUILD_CURL_MODULE], [ test x$enable_curl = "xyes" ])
+AM_CONDITIONAL([BUILD_NL_MODULE], [ test x$enable_nl = "xyes" ])
+
+
+dnl **************************************************
+dnl * default cflags                                 *
+dnl **************************************************
+
 CFLAGS="${CFLAGS} ${LIB_EV_CFLAGS} ${LIB_GLIB_CFLAGS} ${LIB_LCFG_CFLAGS} -Wstrict-prototypes"
 
 
@@ -727,7 +788,8 @@ AC_CONFIG_FILES([Makefile
 				modules/python/Makefile
 				modules/python/setup.py
 				modules/emu/Makefile
-				modules/curl/Makefile])
+				modules/curl/Makefile
+				modules/nl/Makefile])
 
                  
 AC_OUTPUT
@@ -792,6 +854,10 @@ echo ""
 echo "curl                               : $enable_curl"
 echo " - cflags                          : $LIB_CURL_CFLAGS"
 echo " - libs                            : $LIB_CURL_LIBS"
+echo ""
+echo "nl                                 : $enable_nl"
+echo " - cflags                          : $LIB_NL_CFLAGS"
+echo " - libs                            : $LIB_NL_LIBS"
 
 
 
