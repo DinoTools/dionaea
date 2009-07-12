@@ -66,10 +66,10 @@ class mirrorc(connection):
 		return 0
 
 class mirrord(connection):
-	def __init__(self, proto=None, host=None, port=None):
+	def __init__(self, proto=None, host=None, port=None, iface=None):
 		connection.__init__(self,proto)
 		if host:
-			self.bind(host,port)
+			self.bind(host, port, iface)
 			self.listen()
 		self.peer=None
 

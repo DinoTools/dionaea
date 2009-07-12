@@ -94,7 +94,7 @@ class tftpservice(service):
 
 class mirrorservice(service):
 	def start(self, addr, iface=None):
-		daemon = mirror.mirrord('tcp', addr, 445)
+		daemon = mirror.mirrord('tcp', addr, 445, iface)
 	def stop(self, daemon):
 		daemon.close()
 
