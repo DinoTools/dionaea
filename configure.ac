@@ -493,20 +493,28 @@ dnl * glib                                           *
 dnl **************************************************
 
 
+AC_ARG_WITH(glib,
+    [  --with-glib=PKGPREFIX     specify path to glib pkg config],
+    [glib_pkg_prefix="$withval"],
+    [glib_pkg_prefix=""])
+
 AC_SUBST([LIB_GLIB_CFLAGS])
 AC_SUBST([LIB_GLIB_LIBS])
 
+if test x$glib_pkg_prefix != x""; then
+	OLD_PKG_CONFIG_PATH=$PKG_CONFIG_PATH
+	export PKG_CONFIG_PATH="$glib_pkg_prefix/lib/pkgconfig"
+fi
 PKG_CHECK_MODULES(glib, glib-2.0)
 PKG_CHECK_MODULES(gthread, gthread-2.0)
 PKG_CHECK_MODULES(gmodule, gmodule-2.0)
 
-LIB_GLIB_CFLAGS=${glib_CFLAGS} 
-LIB_GLIB_CFLAGS+=${gthread_CFLAGS}
-LIB_GLIB_CFLAGS+=${gmodule_CFLAGS}
+if test $OLD_PKG_CONFIG_PATH != x""; then
+	export PKG_CONFIG_PATH="$OLD_PKG_CONFIG_PATH"
+fi
 
-LIB_GLIB_LIBS=${glib_LIBS} 
-LIB_GLIB_LIBS+=${gthread_LIBS}
-LIB_GLIB_LIBS+=${gmodule_LIBS}
+LIB_GLIB_CFLAGS="${glib_CFLAGS} ${gthread_CFLAGS} ${gmodule_CFLAGS}"
+LIB_GLIB_LIBS="${glib_LIBS} ${gthread_LIBS} ${gmodule_LIBS}"
 
 enable_glib="yes"
 
