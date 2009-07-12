@@ -140,14 +140,22 @@ struct connection *connection_new(enum connection_transport type)
 bool connection_node_set_local(struct connection *con)
 {
 	socklen_t sizeof_sa = sizeof(struct sockaddr_storage);
-	getsockname(con->socket, (struct sockaddr *)&con->local.addr, &sizeof_sa);
+	if ( getsockname(con->socket, (struct sockaddr *)&con->local.addr, &sizeof_sa) != 0 )
+	{
+		g_warning("getsockname failed (%s)", strerror(errno));
+		return false;
+	}
 	return node_info_set(&con->local, &con->local.addr);
 }
 
 bool connection_node_set_remote(struct connection *con)
 {
 	socklen_t sizeof_sa = sizeof(struct sockaddr_storage);
-	getpeername(con->socket, (struct sockaddr *)&con->remote.addr, &sizeof_sa);
+	if ( getpeername(con->socket, (struct sockaddr *)&con->remote.addr, &sizeof_sa) != 0 )
+	{
+		g_warning("getpeername failed (%s)", strerror(errno));
+		return false;
+	}
 	return node_info_set(&con->remote, &con->remote.addr);
 }
 
@@ -211,6 +219,7 @@ bool bind_local(struct connection *con)
 			con->socket = -1;
 			return false;
 		}
+		return true;
 		break;
 
 	case connection_transport_io:
@@ -377,7 +386,7 @@ void connection_close(struct connection *con)
 		{
 			connection_tcp_disconnect(con);
 		} else 
-		if( ( con->type == connection_type_connect || con->type == connection_type_accept) &&
+		if( (con->type == connection_type_connect || con->type == connection_type_accept) &&
 		   con->state == connection_state_connected )
 		{
 			if( !ev_is_active(&con->events.close_timeout) )
@@ -396,6 +405,15 @@ void connection_close(struct connection *con)
 				connection_set_state(con, connection_state_close);
 			}
 
+		}else
+		if( con->type == connection_type_connect && con->state == connection_state_resolve )
+		{
+			connection_dns_resolve_cancel(con);
+			connection_tcp_disconnect(con);
+		}else
+		if( con->type == connection_type_accept && con->state == connection_state_none )
+		{
+			connection_tcp_disconnect(con);
 		}else
 		{
 			g_critical("Invalid close on connection %p type %s state %s", 
@@ -424,6 +442,11 @@ void connection_close(struct connection *con)
 		}else
 		if ( ( con->type == connection_type_connect || con->type == connection_type_accept)	)
 		{
+			if( con->state == connection_state_resolve )
+			{
+				connection_dns_resolve_cancel(con);
+				connection_tls_disconnect(con);
+			} else
 			if (con->state == connection_state_connected)
 			{
 				if ( !ev_is_active(&con->events.close_timeout) )
@@ -1319,17 +1342,16 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 		connection_set_type(accepted, connection_type_accept);
 		accepted->socket = accepted_socket;
 
-
-		connection_node_set_local(accepted);
-		connection_node_set_remote(accepted);
+		if ( connection_node_set_local(accepted) == false || connection_node_set_remote(accepted) == false )
+		{
+			g_warning("accepting connection failed, closing connection");
+			close(accepted->socket);
+			accepted->socket = -1;
+			connection_free_cb(loop, &accepted->events.free, 0);
+			continue;
+		}
 
 		g_debug("accept() %i local:'%s' remote:'%s'", accepted->socket, accepted->local.node_string,  accepted->remote.node_string);
-
-#ifdef HAVE_ACTION_H
-        struct action_connection *action = action_connection_new(ACTION_CONNECTION_ACCEPTED,accepted);
-        action_emit(g_dionaea, TOACTION(action));
-        action_connection_free(action);
-#endif
 
 		connection_set_nonblocking(accepted);
 
@@ -2872,15 +2894,23 @@ void connection_udp_disconnect(struct connection *con)
  *
  */
 
-void connection_dns_resolve_timeout_cb(EV_P_ struct ev_timer *w, int revent)
-{
-	struct connection *con = CONOFF_DNS_TIMEOUT(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
+void connection_dns_resolve_cancel(struct connection *con)
+{
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	if ( con->remote.dns.a != NULL )
 		dns_cancel(g_dionaea->dns->dns, con->remote.dns.a);
 	if ( con->remote.dns.aaaa != NULL )
 		dns_cancel(g_dionaea->dns->dns, con->remote.dns.aaaa);
+
+	connection_set_state(con, connection_state_none);
+}
+
+void connection_dns_resolve_timeout_cb(EV_P_ struct ev_timer *w, int revent)
+{
+	struct connection *con = CONOFF_DNS_TIMEOUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+	connection_dns_resolve_cancel(con);
 
 	con->protocol.error(con, ETIME);
 	connection_close(con);

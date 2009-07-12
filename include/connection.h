@@ -327,6 +327,7 @@ const char *connection_type_to_string(enum connection_type type);
 struct dns_ctx;
 void connection_connect_resolve(struct connection *con);
 void connection_connect_resolve_action(struct connection *con);
+void connection_dns_resolve_cancel(struct connection *con);
 void connection_connect_resolve_a_cb(struct dns_ctx *ctx, void *result, void *data);
 void connection_connect_resolve_aaaa_cb(struct dns_ctx *ctx, void *result, void *data);
 

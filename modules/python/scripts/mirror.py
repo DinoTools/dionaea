@@ -38,21 +38,25 @@ logger.setLevel(logging.DEBUG)
 
 class mirrorc(connection):
 	def __init__(self, peer=None):
-		logger.debug("mirror connection %s %s %i" %(peer.transport, peer.remote.host, peer.local.host))
+		logger.debug("mirror connection %s %s" %( peer.remote.host, peer.local.host))
 		connection.__init__(self,peer.transport)
 		self.bind(peer.local.host,0)
-		self.connect(peer.remote.host,peer.local.port)
+#		self.connect(peer.remote.host,peer.local.port)
+		self.connect('',peer.local.port)
 		self.peer = peer
 
 	def established(self):
 		self.peer.peer = self
 
 	def io_in(self, data):
-		self.peer.send(data)
+		if self.peer:
+			self.peer.send(data)
+		return len(data)
 
 	def error(self, err):
-		self.peer.peer = None
-		self.peer.close()
+		if self.peer:
+			self.peer.peer = None
+			self.peer.close()
 
 	def disconnect(self):
 		if self.peer:
@@ -73,12 +77,14 @@ class mirrord(connection):
 		self.peer=mirrorc(self)
 		
 	def io_in(self, data):
-		self.peer.send(data)
+		if self.peer:
+			self.peer.send(data)
 		return len(data)
 
 	def error(self, err):
 		logger.debug("mirrord connection error?, should not happen")
-		self.peer.peer = None
+		if self.peer:
+			self.peer.peer = None
 
 	def disconnect(self):
 		if self.peer:

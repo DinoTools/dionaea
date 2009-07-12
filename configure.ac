@@ -509,7 +509,7 @@ PKG_CHECK_MODULES(glib, glib-2.0)
 PKG_CHECK_MODULES(gthread, gthread-2.0)
 PKG_CHECK_MODULES(gmodule, gmodule-2.0)
 
-if test $OLD_PKG_CONFIG_PATH != x""; then
+if test x$OLD_PKG_CONFIG_PATH != x""; then
 	export PKG_CONFIG_PATH="$OLD_PKG_CONFIG_PATH"
 fi
 

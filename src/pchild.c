@@ -206,6 +206,7 @@ int pchild_sent_bind(int sx, struct sockaddr *s, socklen_t size)
 	} else
 	{
 		g_debug("child could bind the socket!");
+		errno = 0;
 		return ret;
 	}
 }

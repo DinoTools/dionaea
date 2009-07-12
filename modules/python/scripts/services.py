@@ -7,6 +7,7 @@ from dionaea import *
 # service imports
 import http
 import tftp
+import mirror
 
 # reload service imports
 imp.reload(http)
@@ -16,6 +17,7 @@ imp.reload(tftp)
 # keeps track of running services (daemons)
 # able to restart them
 global g_slave
+global addrs
 
 class slave():
 	def __init__(self):
@@ -88,6 +90,13 @@ class tftpservice(service):
 	def stop(self, daemon):
 		daemon.close()
 
+class mirrorservice(service):
+	def start(self, addr, iface=None):
+		daemon = mirror.mirrord('tcp', addr, 445)
+	def stop(self, daemon):
+		daemon.close()
+
+
 mode = 'getifaddrs'
 addrs = { '::' : '*' }
 
@@ -95,6 +104,7 @@ addrs = { '::' : '*' }
 def start():
 	print("START")
 	global g_slave
+	global addrs
 	if mode == 'manual':
 		g_slave = slave()
 	elif mode == 'getifaddrs':
@@ -115,7 +125,7 @@ def start():
 
 	g_slave.services.append(httpservice)
 	g_slave.services.append(tftpservice)
-
+	g_slave.services.append(mirrorservice)
 	g_slave.start(addrs)
 
 def stop():

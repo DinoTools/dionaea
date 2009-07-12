@@ -548,6 +548,7 @@ int main (int argc, char *argv[])
 		fwrite(pidstr, len, 1, p);
 		fclose(p);
 	}
+	g_message("glib version %i.%i.%i", glib_major_version, glib_minor_version, glib_micro_version);
 
 	// libev
 	d->loop = ev_default_loop(0);
