@@ -374,6 +374,13 @@ void connection_close(struct connection *con)
 {
 	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 
+	if( connection_flag_isset(con, connection_busy_close) )
+	{
+		g_warning("con %p called close recursive!", con);
+		return;
+	}
+
+	connection_flag_set(con, connection_busy_close);
 	switch ( con->trans )
 	{
 	case connection_transport_tcp:
@@ -486,6 +493,7 @@ void connection_close(struct connection *con)
 	case connection_transport_io:
 		break;
 	}
+	connection_flag_unset(con, connection_busy_close);
 }
 
 

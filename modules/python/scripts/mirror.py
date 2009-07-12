@@ -41,8 +41,8 @@ class mirrorc(connection):
 		logger.debug("mirror connection %s %s" %( peer.remote.host, peer.local.host))
 		connection.__init__(self,peer.transport)
 		self.bind(peer.local.host,0)
-#		self.connect(peer.remote.host,peer.local.port)
-		self.connect('',peer.local.port)
+		self.connect(peer.remote.host,peer.local.port)
+#		self.connect('',peer.local.port)
 		self.peer = peer
 
 	def established(self):

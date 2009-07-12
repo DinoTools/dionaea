@@ -205,6 +205,7 @@ struct connection
 enum connection_flags
 {
 	connection_busy_sending = 0,
+	connection_busy_close = 1
 };
 
 #define connection_flag_set(c, fl)     (c)->flags |= 1 << (fl)
