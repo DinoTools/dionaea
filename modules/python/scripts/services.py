@@ -8,10 +8,12 @@ from dionaea import *
 import http
 import tftp
 import mirror
+from smb import smb
 
 # reload service imports
 imp.reload(http)
 imp.reload(tftp)
+imp.reload(smb)
 
 # global slave
 # keeps track of running services (daemons)
@@ -96,6 +98,14 @@ class mirrorservice(service):
 	def stop(self, daemon):
 		daemon.close()
 
+class smbservice(service):
+	def start(self, addr,  iface=None):
+		daemon = smb.smbd()
+		daemon.bind(addr, 5001, iface=iface)
+		daemon.listen()
+		return daemon
+	def stop(self, daemon):
+		daemon.close()
 
 mode = 'getifaddrs'
 addrs = { '::' : '*' }
@@ -103,7 +113,7 @@ addrs = { '::' : '*' }
 
 def start():
 	print("START")
-	global g_slave
+	global g_slave, mode, addrs
 	global addrs
 	if mode == 'manual':
 		g_slave = slave()
@@ -126,6 +136,8 @@ def start():
 	g_slave.services.append(httpservice)
 	g_slave.services.append(tftpservice)
 	g_slave.services.append(mirrorservice)
+	g_slave.services.append(smbservice)
+
 	g_slave.start(addrs)
 
 def stop():
