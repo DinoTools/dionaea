@@ -372,7 +372,7 @@ cdef class connection:
 			raise ReferenceError('the object requested does not exist')
 		c_connection_close(self.thisptr)
 
-	def process(self):
+	def processors(self):
 		"""process the data on this connection using the defined processors"""
 		if self.thisptr == NULL:
 			raise ReferenceError('the object requested does not exist')

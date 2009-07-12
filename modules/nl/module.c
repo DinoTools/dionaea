@@ -370,9 +370,20 @@ static bool nl_new(struct dionaea *d)
 	nl_socket_add_membership(sock, RTNLGRP_IPV4_IFADDR);
 	nl_socket_add_membership(sock, RTNLGRP_IPV6_IFADDR);
 
-	rtnl_neigh_alloc_cache(sock, &nl_runtime.neigh_cache);
-	rtnl_link_alloc_cache(sock, &nl_runtime.link_cache);
-	rtnl_addr_alloc_cache(sock, &nl_runtime.addr_cache);
+	if( (err=rtnl_neigh_alloc_cache(sock, &nl_runtime.neigh_cache)) != 0 )
+	{
+		g_error("Could not allocate neigh cache! (%s)", nl_geterror(err));
+	}
+
+	if( (err=rtnl_link_alloc_cache(sock, &nl_runtime.link_cache)) != 0 )
+	{
+		g_error("Could not allocate link cache! (%s)", nl_geterror(err));
+	}
+
+	if( (err=rtnl_addr_alloc_cache(sock, &nl_runtime.addr_cache)) != 0 )
+	{
+		g_error("Could not allocate addr cache! (%s)", nl_geterror(err));
+	}
 
 	nl_cache_mngt_provide(nl_runtime.neigh_cache);
 	nl_cache_mngt_provide(nl_runtime.link_cache);
