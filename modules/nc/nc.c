@@ -231,10 +231,10 @@ void proto_nc_established_source(struct connection *con)
 }
 
 
-void proto_nc_error(struct connection *con, int error)
+void proto_nc_error(struct connection *con, enum connection_error error)
 {
 	g_debug(__PRETTY_FUNCTION__);
-	g_message("error %i %s", error, strerror(error));
+	g_message("error %i %s", error, connection_strerror(error));
 }
 
 uint32_t proto_nc_io_in(struct connection *con, void *context, unsigned char *data, uint32_t size)

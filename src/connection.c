@@ -803,7 +803,7 @@ void connection_connect_next_addr(struct connection *con)
 
 	if ( addr == NULL )
 	{
-		con->protocol.error(con, EHOSTUNREACH);
+		con->protocol.error(con, ECONUNREACH);
 		connection_close(con);
 	}
 }
@@ -1414,8 +1414,10 @@ void connection_tcp_connecting_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	ev_timer_stop(EV_A_ &con->events.connecting_timeout);
-
-	connection_tcp_disconnect(con);
+	ev_io_stop(EV_A_ &con->events.io_out);
+	close(con->socket);
+	con->socket = -1;
+	connection_connect_next_addr(con);
 }
 
 void connection_tcp_connecting_cb(EV_P_ struct ev_io *w, int revents)
@@ -2678,7 +2680,10 @@ void connection_tls_connecting_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
 	struct connection *con = CONOFF_CONNECTING_TIMEOUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-	connection_tls_disconnect(con);
+	ev_io_stop(EV_A_ &con->events.io_out);
+	close(con->socket);
+	con->socket = -1;
+	connection_connect_next_addr(con);
 }
 
 void connection_tls_connect_again_cb(EV_P_ struct ev_io *w, int revents)
@@ -2769,7 +2774,12 @@ void connection_tls_connect_again_timeout_cb(EV_P_ struct ev_timer *w, int reven
 {
 	struct connection *con = CONOFF_HANDSHAKE_TIMEOUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-	connection_tls_disconnect(con);
+
+	ev_timer_stop(EV_A_ &con->events.handshake_timeout);
+	ev_io_stop(EV_A_ &con->events.io_out);
+	close(con->socket);
+	con->socket = -1;
+	connection_connect_next_addr(con);
 }
 
 
@@ -2920,7 +2930,7 @@ void connection_dns_resolve_timeout_cb(EV_P_ struct ev_timer *w, int revent)
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	connection_dns_resolve_cancel(con);
 
-	con->protocol.error(con, ETIME);
+	con->protocol.error(con, ECONDNSTIMEOUT);
 	connection_close(con);
 
 }
@@ -3022,7 +3032,7 @@ void connection_connect_resolve_action(struct connection *con)
 
 		if ( con->remote.dns.resolved_address_count == 0 )
 		{
-			con->protocol.error(con, EADDRNOTAVAIL);
+			con->protocol.error(con, ECONNOSUCHDOMAIN);
 			connection_close(con);
 			return;
 		}
@@ -3208,3 +3218,16 @@ void connection_process(struct connection *con)
 	processors_init(con);
 }
 
+const char *connection_strerror(enum connection_error error)
+{
+	static char *myerrormsgs[] = 
+	{
+		"timeout resolving the domain" , /* ECONDNSTIMEOUT   */ 
+		"could not connect host(s)" ,/* ECONUNREACH       */  
+		"could not resolve domain" , /* ECONNOSUCHDOMAIN */ 
+	};
+	if( error > ECONMAX )
+		return NULL;
+
+	return myerrormsgs[error];
+}

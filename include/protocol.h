@@ -32,15 +32,19 @@
 
 struct connection;
 
-typedef void (*protocol_handler_established)(struct connection *con);
-typedef void (*protocol_handler_error)(struct connection *con, int error);
 
-/* 
-protocol error codes 
- ETIME - timeout resolving the domain
- EHOSTUNREACH - could not connect to (resolved) host
- EADDRNOTAVAIL - domain resolved to nothing
-*/
+/* protocol error codes */
+
+enum connection_error
+{
+	ECONDNSTIMEOUT	   = 0,
+	ECONUNREACH		   = 1,
+	ECONNOSUCHDOMAIN   = 2,
+	ECONMAX			   = 3
+};
+
+typedef void (*protocol_handler_established)(struct connection *con);
+typedef void (*protocol_handler_error)(struct connection *con, enum connection_error error);
 
 typedef unsigned int (*protocol_handler_io_in)(struct connection *con, void *context, unsigned char *data, uint32_t size);
 typedef void (*protocol_handler_io_out)(struct connection *con, void *context);

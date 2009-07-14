@@ -215,7 +215,8 @@ enum connection_flags
 
 
 
-
+const char *connection_strerror(enum connection_error error);
+void connection_process(struct connection *con);
 
 struct connection *connection_new(enum connection_transport type);
 void connection_free(struct connection *con);

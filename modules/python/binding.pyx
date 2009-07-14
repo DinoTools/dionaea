@@ -31,7 +31,7 @@ cdef extern from "module.h":
 	cdef object bytesfrom "PyBytes_FromStringAndSize"(char *v, int len)
 	cdef object stringfrom "PyUnicode_FromStringAndSize"(char *v, int len)
 	int c_strlen "strlen" (char *)
-	ctypedef void *c_uintptr_t "uintptr_t"
+	ctypedef int c_uintptr_t "uintptr_t"
 	char * c_g_strdup "g_strdup" (char *)
 	cdef object c_pygetifaddrs "pygetifaddrs"(object self, object args)
 
@@ -59,14 +59,20 @@ cdef extern from "../../include/connection.h":
 
 	int c_ntohs "ntohs" (int)
 
+#	ctypedef char* const_char_ptr "const char*"
+	ctypedef bint c_bool "bool"
+	ctypedef int c_connection_error "enum connection_error"
+	ctypedef char c_unsigned_char "unsigned char "
+	ctypedef  int c_uint32_t "uint32_t"
+
 	ctypedef void *(*protocol_handler_ctx_new)(c_connection_ *con)
 	ctypedef void (*protocol_handler_ctx_free)(void *data)
 	ctypedef void (*protocol_handler_established)(c_connection_ *con)
-	ctypedef void (*protocol_handler_error)(c_connection_ *con, int error)
-	ctypedef int (*protocol_handler_timeout)(c_connection_ *con, void *context)
-	ctypedef unsigned int (*protocol_handler_io_in)(c_connection_ *con, void *context, char *data, int size)
+	ctypedef void (*protocol_handler_error)(c_connection_ *con, c_connection_error error)
+	ctypedef c_bool (*protocol_handler_timeout)(c_connection_ *con, void *context)
+	ctypedef unsigned int (*protocol_handler_io_in)(c_connection_ *con, void *context, c_unsigned_char *data, c_uint32_t size)
 	ctypedef void (*protocol_handler_io_out)(c_connection_ *con, void *context)
-	ctypedef int (*protocol_handler_disconnect)(c_connection_ *con, void *context)
+	ctypedef c_bool (*protocol_handler_disconnect)(c_connection_ *con, void *context)
 	ctypedef struct c_protocol "struct protocol":
 		char 								*name
 		protocol_handler_ctx_new  			ctx_new
@@ -83,6 +89,10 @@ cdef extern from "../../include/connection.h":
 		char *ip_string
 		char *port_string
 		int port
+
+
+
+
 
 	char *c_node_info_get_ip_string "node_info_get_ip_string" (c_node_info *node)
 	char *c_node_info_get_port_string "node_info_get_port_string" (c_node_info *node)
@@ -242,7 +252,6 @@ cdef class connection:
 		self.factory = False
 
 	def __init__(self, con_type=None):
-		"""constructor do not use on cli, use connection.create instead"""
 		cdef c_connection_transport enum_type 
 		if self.thisptr == NULL:
 			if isinstance(con_type, unicode):
@@ -525,7 +534,7 @@ cdef int io_out_cb(c_connection *con, void *context) except *:
 	instance = <connection>context
 	instance.io_out()
 	
-cdef int disconnect_cb(c_connection *con, void *context) except *:
+cdef c_bool disconnect_cb(c_connection *con, void *context) except *:
 #	print "disconnect_cb"
 	cdef connection instance
 	instance = <connection>context
@@ -534,13 +543,13 @@ cdef int disconnect_cb(c_connection *con, void *context) except *:
 		instance.thisptr = NULL
 	return r
 
-cdef void connect_error_cb(c_connection *con, int err) except *:
+cdef void connect_error_cb(c_connection *con, c_connection_error err) except *:
 #	print "connect_error_cb"
 	cdef connection instance
 	instance = <connection>c_connection_protocol_ctx_get(con)
 	instance.error(err)
 
-cdef bint timeout_cb(c_connection *con, void *ctx) except *:
+cdef c_bool timeout_cb(c_connection *con, void *ctx) except *:
 #	print "timeout_cb"
 	cdef connection instance
 	instance = <connection>ctx
@@ -573,12 +582,12 @@ cdef extern from "../../include/incident.h":
 
 	void c_incident_free "incident_free"(c_incident *)
 
-	bint c_incident_value_int_set "incident_value_int_set" (c_incident *,  char *, long int)
-	bint c_incident_value_int_get "incident_value_int_get" (c_incident *e, char *name, long int *val)
-	bint c_incident_value_ptr_set "incident_value_ptr_set" (c_incident *e, char *name, c_uintptr_t *val)
-	bint c_incident_value_ptr_get "incident_value_ptr_get" (c_incident *e, char *name, c_uintptr_t **val)
-	bint c_incident_value_string_set "incident_value_string_set" (c_incident *e, char *name, c_GString *str)
-	bint c_incident_value_string_get "incident_value_string_get" (c_incident *e, char *name, c_GString **str)
+	c_bool c_incident_value_int_set "incident_value_int_set" (c_incident *,  char *, long int)
+	c_bool c_incident_value_int_get "incident_value_int_get" (c_incident *e, char *name, long int *val)
+	c_bool c_incident_value_ptr_set "incident_value_ptr_set" (c_incident *e, char *name, c_uintptr_t val)
+	c_bool c_incident_value_ptr_get "incident_value_ptr_get" (c_incident *e, char *name, c_uintptr_t *val)
+	c_bool c_incident_value_string_set "incident_value_string_set" (c_incident *e, char *name, c_GString *str)
+	c_bool c_incident_value_string_get "incident_value_string_get" (c_incident *e, char *name, c_GString **str)
 	void c_incident_dump "incident_dump" (c_incident *)
 
 cdef class incident:
@@ -607,7 +616,7 @@ cdef class incident:
 			key = key.encode()
 		if key == b'con':
 			con = <connection>value
-			c_incident_value_ptr_set(self.thisptr, key, <c_uintptr_t *>con.thisptr)
+			c_incident_value_ptr_set(self.thisptr, key, <c_uintptr_t>con.thisptr)
 		elif isinstance(value, int) :
 			c_incident_value_int_set(self.thisptr, key, value)
 		else:
@@ -616,7 +625,7 @@ cdef class incident:
 			c_incident_value_string_set(self.thisptr, key, c_g_string_new(value))
 
 	def get(self, key):
-		cdef c_uintptr_t *x
+		cdef c_uintptr_t x
 		cdef connection c
 		cdef c_GString *s
 		cdef long int i
