@@ -42,7 +42,14 @@
 void threadpool_wrapper(gpointer data, gpointer user_data)
 {
 	struct thread *t = data;
+#ifdef DEBUG
+	GTimer *timer = g_timer_new();
+#endif
 	t->function(t->con, t->data);
+#ifdef DEBUG
+	g_timer_stop(timer);
+	g_debug("Thread fn %p con %p data %p took %f ms", t->function, t->con, t->data, g_timer_elapsed(timer, NULL));
+#endif
 	g_free(data);
 }
 
@@ -68,12 +75,11 @@ void thread_test(gpointer a, gpointer b)
 
 void surveillance_cb(struct ev_loop *loop, struct ev_periodic *w, int revents)
 {
-	g_debug("%s %i %i", 
+/*	g_debug("%s %i %i", 
 			__PRETTY_FUNCTION__,
 			g_thread_pool_unprocessed(g_dionaea->threads->pool),
 			g_thread_pool_get_max_threads(g_dionaea->threads->pool));
-
-	bool crowded = false;
+*/
 	while( g_thread_pool_unprocessed(g_dionaea->threads->pool) > 
 		   g_thread_pool_get_max_threads(g_dionaea->threads->pool) )
 	{
@@ -81,20 +87,7 @@ void surveillance_cb(struct ev_loop *loop, struct ev_periodic *w, int revents)
 				   g_thread_pool_unprocessed(g_dionaea->threads->pool),
 				   g_thread_pool_get_max_threads(g_dionaea->threads->pool));
 		sleep(1);
-		crowded = true;
 	}
-
-	if( crowded == false )
-	{
-		int m = rand()%15;
-		g_debug("creating %i jobs", m);
-		for( int i=0;i<m;i++ )
-		{
-			struct thread *t = thread_new(NULL, NULL, thread_test);
-			g_thread_pool_push(g_dionaea->threads->pool, t, NULL);
-		}
-	}
-
 }
 
 
@@ -127,4 +120,5 @@ void async_incident_report(void *data)
 {
 	struct incident *i = data;
 	incident_report(i);
+	incident_free(i);
 }

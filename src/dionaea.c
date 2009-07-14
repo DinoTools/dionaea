@@ -674,7 +674,7 @@ int main (int argc, char *argv[])
 
 	// periodic thread pool surveillance
 	ev_periodic_init(&d->threads->surveillance, surveillance_cb, 0., 5., NULL);
-//	ev_periodic_start(d->loop, &d->threads->surveillance);
+	ev_periodic_start(d->loop, &d->threads->surveillance);
 
 
 
