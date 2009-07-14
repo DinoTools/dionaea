@@ -185,7 +185,8 @@ struct connection
 		struct ev_io io_out;
 		struct ev_timer listen_timeout;	// tcp listen
 		struct ev_timer connecting_timeout; // tcp-connect, ssl-connect
-		struct ev_timer connect_timeout; // tcp&ssl (connect&accept)
+		struct ev_timer sustain_timeout; // tcp&ssl (connect&accept)
+		struct ev_timer idle_timeout; // tcp&ssl (connect&accept)
 		struct ev_timer dns_timeout;	
 		struct ev_timer handshake_timeout; // ssl connect & accept
 
@@ -260,8 +261,12 @@ void connection_reconnect_timeout_cb(struct ev_loop *loop, struct ev_timer *w, i
 void connection_listen_timeout_set(struct connection *con, double timeout_interval_nms);
 double connection_listen_timeout_get(struct connection *con);
 
-void connection_connect_timeout_set(struct connection *con, double timeout_interval_ms);
-double connection_connect_timeout_get(struct connection *con);
+void connection_sustain_timeout_set(struct connection *con, double timeout_interval_ms);
+double connection_sustain_timeout_get(struct connection *con);
+
+
+void connection_idle_timeout_set(struct connection *con, double timeout_interval_ms);
+double connection_idle_timeout_get(struct connection *con);
 
 void connection_handshake_timeout_set(struct connection *con, double timeout_interval_ms);
 double connection_handshake_timeout_get(struct connection *con);
@@ -285,7 +290,8 @@ void connection_tcp_listen_timeout_cb(struct ev_loop *loop, struct ev_timer *w, 
 
 void connection_tcp_connecting_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tcp_connecting_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
-void connection_tcp_connect_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
+void connection_tcp_sustain_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
+void connection_tcp_idle_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
 void connection_tcp_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tcp_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents);
@@ -294,14 +300,15 @@ void connection_tcp_disconnect(struct connection *con);
 
 void connection_udp_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_udp_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents);
-void connection_udp_connect_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
+void connection_udp_sustain_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
+void connection_udp_idle_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 void connection_udp_disconnect(struct connection *con);
 
 void connection_tls_accept_cb (struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_accept_again_cb (struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_accept_again_timeout_cb (struct ev_loop *loop, struct ev_timer *w, int revents);
-
-void connection_tls_connect_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
+void connection_tls_sustain_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
+void connection_tls_idle_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
 void connection_tls_connecting_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_connecting_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);

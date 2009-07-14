@@ -123,7 +123,7 @@ static bool nc_new(struct dionaea *d)
 					connection_reconnect_timeout_set(con,  atoi(node->value.string.data));
 	
 			if(lcfgx_get_string(it, &node, "timeout.connect") == LCFGX_PATH_FOUND_TYPE_OK)
-				connection_connect_timeout_set(con,  atoi(node->value.string.data));
+				connection_idle_timeout_set(con,  atoi(node->value.string.data));
 	
 			if(lcfgx_get_string(it, &node, "proto") == LCFGX_PATH_FOUND_TYPE_OK )
 			{
@@ -184,7 +184,7 @@ struct protocol proto_nc_source =
 	.ctx_free = proto_nc_ctx_free,
 	.established = proto_nc_established_source,
 	.error = proto_nc_error,
-	.timeout = proto_nc_timeout,
+	.idle = proto_nc_timeout,
 	.disconnect = proto_nc_disconnect,
 	.io_in = proto_nc_io_in,
 	.ctx = NULL,
@@ -196,7 +196,7 @@ struct protocol proto_nc_sink =
 	.ctx_free = proto_nc_ctx_free,
 	.established = proto_nc_established,
 	.error = proto_nc_error,
-	.timeout = proto_nc_timeout,
+	.idle = proto_nc_timeout,
 	.disconnect = proto_nc_disconnect,
 	.io_in = proto_nc_io_in,
 	.ctx = NULL,
@@ -209,7 +209,7 @@ struct protocol proto_nc_redir =
 	.ctx_free = proto_nc_ctx_free,
 	.established = proto_nc_established,
 	.error = proto_nc_error,
-	.timeout = proto_nc_timeout,
+	.idle = proto_nc_timeout,
 	.disconnect = proto_nc_disconnect,
 	.io_in = proto_nc_io_in_redir,
 	.ctx = NULL,

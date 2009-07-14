@@ -72,9 +72,10 @@ class mirrord(connection):
 			self.bind(host, port, iface)
 			self.listen()
 		self.peer=None
-
+		
 	def established(self):
 		self.peer=mirrorc(self)
+		self.timeouts.sustain = 60
 		
 	def io_in(self, data):
 		if self.peer:

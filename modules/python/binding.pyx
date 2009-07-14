@@ -78,8 +78,9 @@ cdef extern from "../../include/connection.h":
 		protocol_handler_ctx_new  			ctx_new
 		protocol_handler_ctx_free 			ctx_free
 		protocol_handler_established 		established
-		protocol_handler_error 		error
-		protocol_handler_timeout 			timeout
+		protocol_handler_error 				error
+		protocol_handler_timeout 			idle
+		protocol_handler_timeout 			sustain
 		protocol_handler_disconnect 		disconnect
 		protocol_handler_io_in 				io_in
 		protocol_handler_io_out 			io_out
@@ -144,14 +145,17 @@ cdef extern from "../../include/connection.h":
 
 	void c_connection_listen_timeout_set "connection_listen_timeout_set"(c_connection *, double)
 	double c_connection_listen_timeout_get "connection_listen_timeout_get"(c_connection *)
-	void c_connection_connect_timeout_set "connection_connect_timeout_set"(c_connection *, double)
-	double c_connection_connect_timeout_get "connection_connect_timeout_get"(c_connection *)
+	void c_connection_sustain_timeout_set "connection_sustain_timeout_set"(c_connection *, double)
+	double c_connection_sustain_timeout_get "connection_sustain_timeout_get"(c_connection *)
+	void c_connection_idle_timeout_set "connection_idle_timeout_set"(c_connection *, double)
+	double c_connection_idle_timeout_get "connection_idle_timeout_get"(c_connection *)
 	void c_connection_handshake_timeout_set "connection_handshake_timeout_set"(c_connection *, double)
 	double c_connection_handshake_timeout_get "connection_handshake_timeout_get"(c_connection *)
 	void c_connection_connecting_timeout_set "connection_connecting_timeout_set"(c_connection *, double)
 	double c_connection_connecting_timeout_get "connection_connecting_timeout_get"(c_connection *)
 	void c_connection_reconnect_timeout_set "connection_reconnect_timeout_set"(c_connection *, double)
 	double c_connection_reconnect_timeout_get "connection_reconnect_timeout_get"(c_connection *)
+
 	int c_connection_ref "connection_ref"(c_connection *)
 	int c_connection_unref "connection_unref"(c_connection *)
 	
@@ -239,6 +243,93 @@ cdef node_info node_info_from(c_node_info *node):
 	instance.thisptr = node
 	return instance
 
+
+cdef class connection_timeouts:
+	cdef c_connection *thisptr
+
+	def __cinit__(self):
+		self.thisptr = NULL
+
+	def __init__(self):
+		pass
+
+	property idle:
+		"""repeating timeout for established connections, io action on the connection will restart the timeout"""
+		def __get__(self):
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			return c_connection_idle_timeout_get(self.thisptr)
+		def __set__(self, to): 
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			c_connection_idle_timeout_set(self.thisptr, to)
+			
+	property connecting:
+		"""timeout for connections in progress"""
+		def __get__(self):
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			return c_connection_connecting_timeout_get(self.thisptr)
+		def __set__(self, to): 
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			c_connection_connecting_timeout_set(self.thisptr, to)
+			
+	property listen:
+		"""timeout for listeners"""
+		def __get__(self):
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			return c_connection_listen_timeout_get(self.thisptr)
+		def __set__(self, to): 
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			c_connection_listen_timeout_set(self.thisptr, to)
+
+	property reconnect:
+		"""timeout before reconnecting the connection"""
+		def __get__(self):
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			return c_connection_reconnect_timeout_get(self.thisptr)
+		def __set__(self, to): 
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			c_connection_reconnect_timeout_set(self.thisptr, to)
+
+	property handshake:
+		"""timeout for the ssl handshake"""
+		def __get__(self):
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			return c_connection_handshake_timeout_get(self.thisptr)
+		def __set__(self, to): 
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			c_connection_handshake_timeout_set(self.thisptr, to)
+
+	property sustain:
+		"""timeout for the session"""
+		def __get__(self):
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			return c_connection_sustain_timeout_get(self.thisptr)
+		def __set__(self, to): 
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			c_connection_sustain_timeout_set(self.thisptr, to)
+
+
+cdef extern from "./module.h":
+	cdef connection_timeouts NEW_C_CONNECTION_TIMEOUTS_CLASS "PY_NEW"(object T)
+
+cdef connection_timeouts connection_timeouts_from(c_connection *con):
+	cdef connection_timeouts instance
+	instance = NEW_C_CONNECTION_TIMEOUTS_CLASS(connection_timeouts)
+	instance.thisptr = con
+	return instance
+
+
 cdef class connection:
 	"""the connection"""
 
@@ -270,7 +361,8 @@ cdef class connection:
 			self.thisptr.protocol.ctx_free = <protocol_handler_ctx_free>_garbage
 			self.thisptr.protocol.established = <protocol_handler_established>established_cb
 			self.thisptr.protocol.error = <protocol_handler_error>connect_error_cb
-			self.thisptr.protocol.timeout = <protocol_handler_timeout>timeout_cb
+			self.thisptr.protocol.idle = <protocol_handler_timeout>idle_cb
+			self.thisptr.protocol.sustain = <protocol_handler_timeout>sustain_cb
 			self.thisptr.protocol.io_in = <protocol_handler_io_in> io_in_cb
 			self.thisptr.protocol.io_out = <protocol_handler_io_out> io_out_cb
 			self.thisptr.protocol.disconnect = <protocol_handler_disconnect> disconnect_cb
@@ -303,9 +395,14 @@ cdef class connection:
 	def learn(self, p):
 		pass
 
-	def timeout(self):
-		"""callback for established connection timeouts, return 1 to reestablish the connection"""
+	def sustain(self):
+		"""callback for established connection session timeouts, return 1 to keep the connection"""
+		return False
+
+	def idle(self):
+		"""callback for established connection idle timeouts, return 1 to keep the connection"""
 		return True
+
 
 	def error(self, err):
 		"""callback for connection errors"""
@@ -400,62 +497,13 @@ cdef class connection:
 				raise ReferenceError('the object requested does not exist')
 			return node_info_from(&self.thisptr.local)
 
-
-	property connect_timeout:
-		"""repeating timeout for established connections, io action on the connection will restart the timeout"""
-		def __get__(self):
+	property timeouts:
+		"""timeouts for the connection"""
+		def __get__(self): 
 			if self.thisptr == NULL:
 				raise ReferenceError('the object requested does not exist')
-			return c_connection_connect_timeout_get(self.thisptr)
-		def __set__(self, to): 
-			if self.thisptr == NULL:
-				raise ReferenceError('the object requested does not exist')
-			c_connection_connect_timeout_set(self.thisptr, to)
-			
-	property connecting_timeout:
-		"""timeout for connections in progress"""
-		def __get__(self):
-			if self.thisptr == NULL:
-				raise ReferenceError('the object requested does not exist')
-			return c_connection_connecting_timeout_get(self.thisptr)
-		def __set__(self, to): 
-			if self.thisptr == NULL:
-				raise ReferenceError('the object requested does not exist')
-			c_connection_connecting_timeout_set(self.thisptr, to)
-			
-	property listen_timeout:
-		"""timeout for listeners"""
-		def __get__(self):
-			if self.thisptr == NULL:
-				raise ReferenceError('the object requested does not exist')
-			return c_connection_listen_timeout_get(self.thisptr)
-		def __set__(self, to): 
-			if self.thisptr == NULL:
-				raise ReferenceError('the object requested does not exist')
-			c_connection_listen_timeout_set(self.thisptr, to)
-
-	property reconnect_timeout:
-		"""timeout before reconnecting the connection"""
-		def __get__(self):
-			if self.thisptr == NULL:
-				raise ReferenceError('the object requested does not exist')
-			return c_connection_reconnect_timeout_get(self.thisptr)
-		def __set__(self, to): 
-			if self.thisptr == NULL:
-				raise ReferenceError('the object requested does not exist')
-			c_connection_reconnect_timeout_set(self.thisptr, to)
-
-	property handshake_timeout:
-		"""timeout for the ssl handshake"""
-		def __get__(self):
-			if self.thisptr == NULL:
-				raise ReferenceError('the object requested does not exist')
-			return c_connection_handshake_timeout_get(self.thisptr)
-		def __set__(self, to): 
-			if self.thisptr == NULL:
-				raise ReferenceError('the object requested does not exist')
-			c_connection_handshake_timeout_set(self.thisptr, to)
-
+			return connection_timeouts_from(self.thisptr)
+		
 	property transport:
 		def __get__(self):
 			if self.thisptr == NULL:
@@ -549,11 +597,17 @@ cdef void connect_error_cb(c_connection *con, c_connection_error err) except *:
 	instance = <connection>c_connection_protocol_ctx_get(con)
 	instance.error(err)
 
-cdef c_bool timeout_cb(c_connection *con, void *ctx) except *:
+cdef c_bool sustain_cb(c_connection *con, void *ctx) except *:
 #	print "timeout_cb"
 	cdef connection instance
 	instance = <connection>ctx
-	return instance.timeout()
+	return instance.sustain()
+
+cdef c_bool idle_cb(c_connection *con, void *ctx) except *:
+#	print "idle_cb"
+	cdef connection instance
+	instance = <connection>ctx
+	return instance.idle()
 
 
 def dlhfn(name, number, path, line, msg):
