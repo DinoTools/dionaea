@@ -1231,33 +1231,60 @@ void connection_established(struct connection *con)
 }
 
 
-double connection_throttle_info_speed_get(struct connection_throttle_info *throttle_info)
+double connection_stats_speed_get(struct connection_stats *throttle_info)
 {
 	double delta = ev_now(g_dionaea->loop) - throttle_info->throttle.interval_start;
 	return throttle_info->throttle.interval_bytes / delta;
 }
 
-double connection_throttle_info_limit_get(struct connection_throttle_info *throttle_info)
+double connection_stats_speed_limit_get(struct connection_stats *throttle_info)
 {
 	return throttle_info->throttle.max_bytes_per_second;
 }
 
-void connection_throttle_info_limit_set(struct connection_throttle_info *throttle_info, double limit)
+void connection_stats_speed_limit_set(struct connection_stats *throttle_info, double limit)
 {
 	throttle_info->throttle.max_bytes_per_second = limit;
 }
 
+double connection_stats_accounting_get(struct connection_stats *throttle_info)
+{
+	return throttle_info->accounting.bytes;
+}
+
+double connection_stats_accounting_limit_get(struct connection_stats *throttle_info)
+{
+	return throttle_info->accounting.limit;
+}
+
+void connection_stats_accounting_limit_set(struct connection_stats *throttle_info, double limit)
+{
+	throttle_info->accounting.limit = limit;
+}
+
+bool connection_stats_accounting_limit_exceeded(struct connection_stats *stats)
+{
+	g_debug("%s stats %p", __PRETTY_FUNCTION__, stats);
+//	g_debug("bytes %f limit %f", stats->accounting.bytes,  stats->accounting.limit);
+	if( stats->accounting.limit <= 1.0 )
+		return false;
+	if( stats->accounting.bytes > stats->accounting.limit )
+		return true;
+	return false;
+}
+
+
 void connection_throttle_io_in_set(struct connection *con, uint32_t max_bytes_per_second)
 {
 	g_debug(__PRETTY_FUNCTION__);
-	connection_throttle_info_limit_set(&con->stats.io_in, max_bytes_per_second);
+	connection_stats_speed_limit_set(&con->stats.io_in, max_bytes_per_second);
 }
 
 
 void connection_throttle_io_out_set(struct connection *con, uint32_t max_bytes_per_second)
 {
 	g_debug(__PRETTY_FUNCTION__);
-	connection_throttle_info_limit_set(&con->stats.io_out, max_bytes_per_second);
+	connection_stats_speed_limit_set(&con->stats.io_out, max_bytes_per_second);
 }
 
 int connection_throttle(struct connection *con, struct connection_throttle *thr)
@@ -1345,11 +1372,11 @@ void connection_throttle_update(struct connection *con, struct connection_thrott
 
 	if ( &con->stats.io_in.throttle == thr )
 	{
-		con->stats.io_in.traffic += bytes;
+		con->stats.io_in.accounting.bytes += bytes;
 	} else
 	if ( &con->stats.io_out.throttle == thr )
 	{
-		con->stats.io_out.traffic += bytes;
+		con->stats.io_out.accounting.bytes += bytes;
 	}
 }
 
@@ -1607,10 +1634,14 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 		g_warning("recv failed (%s)", strerror(errno));
 		connection_tcp_disconnect(con);
 	}
-	con->stats.io_in.traffic += new_in->len;
 	g_string_free(new_in, TRUE);
-}
 
+	if( connection_stats_accounting_limit_exceeded(&con->stats.io_in) )
+	{
+		g_debug("con %p io_in limit exceeded", con);
+		connection_tcp_disconnect(con);
+	}
+}
 
 void connection_tcp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 {
@@ -1633,7 +1664,6 @@ void connection_tcp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 	if ( size > 0 )
 	{
 		connection_throttle_update(con, &con->stats.io_out.throttle, size);
-		con->stats.io_out.traffic += size;
 
 		if ( con->processor_data != NULL && size > 0)
 		{
@@ -1673,6 +1703,13 @@ void connection_tcp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 			if ( revents != 0 )
 			connection_tcp_disconnect(con);
 	}
+
+	if( connection_stats_accounting_limit_exceeded(&con->stats.io_out) )
+	{
+		g_debug("con %p io_out limit exceeded", con);
+		connection_tcp_disconnect(con);
+	}
+
 }
 
 void connection_tcp_disconnect(struct connection *con)

@@ -76,6 +76,8 @@ class mirrord(connection):
 	def established(self):
 		self.peer=mirrorc(self)
 		self.timeouts.sustain = 60
+		self._in.accounting.limit  = 100*1024
+		self._out.accounting.limit = 9 #100*1024
 		
 	def io_in(self, data):
 		if self.peer:

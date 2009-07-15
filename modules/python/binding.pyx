@@ -104,17 +104,21 @@ cdef extern from "../../include/connection.h":
 	ctypedef enum c_connection_state "enum connection_state":
 		pass
 
-	ctypedef struct c_connection_throttle_info "struct connection_throttle_info":
+	ctypedef struct c_connection_stats "struct connection_stats":
 		pass
 
-	double c_connection_throttle_info_speed_get "connection_throttle_info_speed_get"(c_connection_throttle_info *)
-	double c_connection_throttle_info_limit_get "connection_throttle_info_limit_get"(c_connection_throttle_info *throttle)
-	void c_connection_throttle_info_limit_set "connection_throttle_info_limit_set"(c_connection_throttle_info *, double)
+	double c_connection_stats_speed_get "connection_stats_speed_get"(c_connection_stats *)
+	double c_connection_stats_speed_limit_get "connection_stats_speed_limit_get"(c_connection_stats *throttle)
+	void c_connection_stats_speed_limit_set "connection_stats_speed_limit_set"(c_connection_stats *, double)
+	double c_connection_stats_accounting_get "connection_stats_accounting_get"(c_connection_stats *)
+	double c_connection_stats_accounting_limit_get "connection_stats_accounting_limit_get"(c_connection_stats *throttle)
+	void c_connection_stats_accounting_limit_set "connection_stats_accounting_limit_set"(c_connection_stats *, double)
 
 
-	ctypedef struct c_connection_stats "struct connection_stats":
-		c_connection_throttle_info io_in
-		c_connection_throttle_info io_out
+
+	ctypedef struct c_connection_stats_info "struct connection_stats_info":
+		c_connection_stats io_in
+		c_connection_stats io_out
 
 	ctypedef struct c_connection "struct connection":
 		c_connection_transport trans
@@ -122,7 +126,7 @@ cdef extern from "../../include/connection.h":
 		c_connection_state state
 		c_node_info remote
 		c_node_info local
-		c_connection_stats stats
+		c_connection_stats_info stats
 
 
 	bint c_connection_transport_from_string "connection_transport_from_string" (char *, c_connection_transport *)
@@ -174,63 +178,101 @@ cdef class node_info:
 		pass
 	
 	property host:
+		"""the nodes address as string"""
 		def __get__(self): 
 			return bytes.decode(self.thisptr.ip_string)
 
 	property port:
+		"""the nodes port as integer in host byte order"""
 		def __get__(self): 
 			return c_ntohs(self.thisptr.port)
 		def __set__(self, port):
 			c_node_info_set_port(self.thisptr, port)
 
-cdef class connection_throttle_info:
+cdef class connection_speed:
 	"""throttle information"""
-	cdef c_connection_throttle_info *thisptr
+	cdef c_connection_stats *thisptr
+
 	def __cinit__(self):
 		self.thisptr = NULL
+
 	def __init__(self):
 		pass
-	property throttle:
+
+	property limit:
+		"""the speed limit"""
 		def __get__(self):
-			return c_connection_throttle_info_limit_get(self.thisptr)
+			return c_connection_stats_speed_limit_get(self.thisptr)
 		def __set__(self, limit):
-			c_connection_throttle_info_limit_set(self.thisptr, limit)
-	property speed:
+			c_connection_stats_speed_limit_set(self.thisptr, limit)
+
+	property bps:
+		"""the current speed in bytes per second"""
 		def __get__(self):
-			return c_connection_throttle_info_speed_get(self.thisptr)
+			return c_connection_stats_speed_get(self.thisptr)
+               
+cdef connection_speed connection_speed_from(c_connection_stats *info):
+	cdef connection_speed instance
+	instance = NEW_C_NODE_INFO_CLASS(connection_speed)
+	instance.thisptr = info
+	return instance
+
+
+cdef class connection_accounting:
+	"""accounting information"""
+	cdef c_connection_stats *thisptr
+
+	def __cinit__(self):
+		self.thisptr = NULL
+
+	def __init__(self):
+		pass
+
+	property limit:
+		"""the maximum amount of bytes we want to transfer here"""
+		def __get__(self):
+			return c_connection_stats_accounting_limit_get(self.thisptr)
+		def __set__(self, limit):
+			c_connection_stats_accounting_limit_set(self.thisptr, limit)
+
+	property bytes:
+		"""the amount of bytes we already transferred"""
+		def __get__(self):
+			return c_connection_stats_accounting_get(self.thisptr)
+               
+cdef connection_accounting connection_accounting_from(c_connection_stats *info):
+	cdef connection_accounting instance
+	instance = NEW_C_NODE_INFO_CLASS(connection_accounting)
+	instance.thisptr = info
+	return instance
+
+
+cdef class connection_stats:
+	"""connection information"""
+	cdef c_connection_stats *thisptr
+
+	def __cinit__(self):
+		self.thisptr = NULL
+
+	def __init__(self):
+		pass
+
+	property speed:
+		"""access the connection_throttle informations for this connection"""
+		def __get__(self):
+			return connection_speed_from(self.thisptr)
+
+	property accounting:
+		"""access the connection_accounting informations for this connection"""
+		def __get__(self):
+			return connection_accounting_from(self.thisptr)
 			
-cdef connection_throttle_info connection_throttle_info_from(c_connection_throttle_info *info):
-	cdef connection_throttle_info instance
-	instance = NEW_C_NODE_INFO_CLASS(connection_throttle_info)
+cdef connection_stats connection_stats_from(c_connection_stats *info):
+	cdef connection_stats instance
+	instance = NEW_C_NODE_INFO_CLASS(connection_stats)
 	instance.thisptr = info
 	return instance
 		
-#cdef class connection_stats:
-#	"""stats about in/out traffic"""
-#	cdef c_connection_stats *thisptr
-#	def __cinit__(self):
-#		self.thisptr = NULL
-#	def __init__(self):
-#		pass
-#	property _in:
-#		def __get__(self):
-#			return connection_throttle_info_from(&self.thisptr.io_in)
-#		
-#	property _out:
-#		def __get__(self):
-#			return connection_throttle_info_from(&self.thisptr.io_out)
-#
-#
-#cdef connection_stats connection_stats_from(c_connection_stats *stats):
-#	cdef connection_stats instance
-#	instance = NEW_C_NODE_INFO_CLASS(connection_stats)
-#	instance.thisptr = stats
-#	return instance
-	
-
-	
-
-
 cdef extern from "./module.h":
 	cdef node_info NEW_C_NODE_INFO_CLASS "PY_NEW"(object T)
 	cdef void INCREF "Py_INCREF"(object)
@@ -486,47 +528,53 @@ cdef class connection:
 
 
 	property remote:
+		"""access the node_info for the remote part of this connection"""
 		def __get__(self): 
 			if self.thisptr == NULL:
 				raise ReferenceError('the object requested does not exist')
 			return node_info_from(&self.thisptr.remote)
 
 	property local:
+		"""access the node_info for the local part of this connection"""
 		def __get__(self): 
 			if self.thisptr == NULL:
 				raise ReferenceError('the object requested does not exist')
 			return node_info_from(&self.thisptr.local)
 
 	property timeouts:
-		"""timeouts for the connection"""
+		"""access the connection_timeouts for the connection"""
 		def __get__(self): 
 			if self.thisptr == NULL:
 				raise ReferenceError('the object requested does not exist')
 			return connection_timeouts_from(self.thisptr)
 		
 	property transport:
+		"""connection transport as string, (tcp|udp|tls)"""
 		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError('the object requested does not exist')
 			return c_connection_transport_to_string(self.thisptr.trans).decode()
 
 	property status:
+		"""the connection status, resolving, connecting ...."""
 		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError('the object requested does not exist')
 			return c_connection_state_to_string(self.thisptr.state).decode()
 
 	property _in:
+		"""access the connection_stats for the ingress part of the connection"""
 		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError('the object requested does not exist')
-			return connection_throttle_info_from(&self.thisptr.stats.io_in)	
+			return connection_stats_from(&self.thisptr.stats.io_in)	
 
 	property _out:
+		"""access the connection_stats for the egress part of the connection"""
 		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError('the object requested does not exist')
-			return connection_throttle_info_from(&self.thisptr.stats.io_out)
+			return connection_stats_from(&self.thisptr.stats.io_out)
 
 
 	create = staticmethod(connection_new)

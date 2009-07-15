@@ -106,17 +106,23 @@ struct connection_throttle
 	double sleep_adjust;
 };
 
-struct connection_throttle_info
+struct connection_accounting
 {
-	uint64_t    traffic;
+	double    bytes;
+	double    limit;
+};
+
+struct connection_stats
+{
+	struct connection_accounting accounting;
 	struct connection_throttle throttle;
 };
 
 
-struct connection_stats
+struct connection_stats_info
 {
 	struct timeval start;
-	struct connection_throttle_info io_in, io_out;
+	struct connection_stats io_in, io_out;
 };
 
 
@@ -172,7 +178,7 @@ struct connection
 		} tls;
 	}transport;
 
-	struct connection_stats stats;
+	struct connection_stats_info stats;
 
 	struct protocol protocol;
 
@@ -236,10 +242,14 @@ void connection_close_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int r
 
 void connection_established(struct connection *con);
 
-double connection_throttle_info_speed_get(struct connection_throttle_info *throttle_info);
-double connection_throttle_info_limit_get(struct connection_throttle_info *throttle_info);
-void connection_throttle_info_limit_set(struct connection_throttle_info *throttle_info, double limit);
+double connection_stats_speed_get(struct connection_stats *throttle_info);
+double connection_stats_speed_limit_get(struct connection_stats *throttle_info);
+void connection_stats_speed_limit_set(struct connection_stats *throttle_info, double limit);
 
+double connection_stats_accounting_get(struct connection_stats *throttle_info);
+double connection_stats_accounting_limit_get(struct connection_stats *throttle_info);
+void connection_stats_accounting_limit_set(struct connection_stats *throttle_info, double limit);
+bool connection_stats_accounting_limit_exceeded(struct connection_stats *stats);
 void connection_throttle_io_in_set(struct connection *con, uint32_t max_bytes_per_second);
 void connection_throttle_io_out_set(struct connection *con, uint32_t max_bytes_per_second);
 
