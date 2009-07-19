@@ -27,17 +27,37 @@
 
 import logging
 
-ms08067log = logging.getLogger('MS08-067')
+rpclog = logging.getLogger('RPCVULN')
 
-def checkfn(p):
-	# we need DCERPC_Header packet
-	if hasattr(p, 'OpNum') and p.OpNum == 0x1f:
-		return True
+class RPCVULN:
+	uuid = ''
+	opnum = 0
 
-def ourcallback(p):
-	ms08067log.info('got the DCERPC request for NetprPathCanonicalize. MS08-067 exploit?')
-	ms08067log.debug('DCERPC request: {0}'.format(p.summary()))
+	@classmethod
+	def processrequest(cls, p):
+		pass
 
-def register():
-	return 'c84f324b7016d30112785a47bf6ee188', checkfn, ourcallback
+class MS08_067(RPCVULN):
+	#SRVSVC
+	uuid = 'c84f324b7016d30112785a47bf6ee188'
+	# NetprPathCanonicalize
+	opnum = 0x1f
+
+	@classmethod
+	def processrequest(cls, p):
+		rpclog.info('got the DCERPC request for NetprPathCanonicalize. MS08-067 exploit?')
+		rpclog.debug('DCERPC request: {0}'.format(p.summary()))
+
+class MS04_011(RPCVULN):
+	#SRVSVC
+	uuid = '6a2819390cb1d0119ba800c04fd92ef5'
+	# NetprPathCanonicalize
+	opnum = 0x09
+
+	@classmethod
+	def processrequest(cls, p):
+		rpclog.info('got the DCERPC request for DsRolerUpgradeDownlevelServer. MS04-011 exploit?')
+		rpclog.debug('DCERPC request: {0}'.format(p.summary()))
+
+
 

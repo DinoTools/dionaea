@@ -171,16 +171,41 @@ class SMB_Sessionsetup_ESEC_AndX_Request(Packet):
 class SMB_Sessionsetup_AndX_Request(Packet):
 	name="SMB Sessionsetup AndX Request"
 	fields_desc = [
-		ByteField("WordCount",13),
+		ByteField("WordCount",10),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
 		ByteField("Reserved1",0),
-		LEShortField("AndXOffset",96),
+		LEShortField("AndXOffset",0),
 		LEShortField("MaxBufferS",2920),
 		LEShortField("MaxMPXCount",50),
 		LEShortField("VCNumber",0),
 		LEIntField("SessionKey",0),
 		FieldLenField("PasswordLength", None, fmt='<H', length_of="Password"),
 		LEIntField("Reserved2",0),
+		LEShortField("ByteCount",35),
+		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
+		StrNullField("Account", ""),
+		StrNullField("PrimaryDomain","WORKGROUP"),
+		StrNullField("NativeOS","Windows"),
+		StrNullField("NativeLanManager","Windows"),
+	]
+
+# ugly support for strange wordcount 13
+# TODO: make it possible to catch both wordcounts with one class
+class SMB_Sessionsetup_AndX_Request2(Packet):
+	name="SMB Sessionsetup AndX Request2"
+	fields_desc = [
+		ByteField("WordCount",13),
+		ByteEnumField("AndXCommand",0xff,SMB_Commands),
+		ByteField("Reserved1",0),
+		LEShortField("AndXOffset",0),
+		LEShortField("MaxBufferS",2920),
+		LEShortField("MaxMPXCount",50),
+		LEShortField("VCNumber",0),
+		LEIntField("SessionKey",0),
+		FieldLenField("PasswordLength", None, fmt='<H', length_of="Password"),
+		LEShortField("UnicodePasswordLength",0),
+		LEIntField("Reserved2",0),
+		XLEIntField("Capabilities",0),
 		LEShortField("ByteCount",35),
 		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
 		StrNullField("Account", ""),
@@ -201,8 +226,23 @@ class SMB_Sessionsetup_AndX_Response(Packet):
 		FieldLenField("BlobLength", None, fmt='<H', length_of="Blob"),
 		LEShortField("ByteCount",45),
 		StrLenField("Blob", b"\xa1\x07\x30\x05\xa0\x03\x0a\x01", length_from=lambda x:x.BlobLength),
-		StrNullField("NativeOS","Windows"),
-		StrNullField("NativeLanManager","Windows"),
+		StrNullField("NativeOS","Windows 5.1"),
+		StrNullField("NativeLanManager","Windows 2000 LAN Manager"),
+		StrNullField("PrimaryDomain","WORKGROUP"),
+	]
+
+class SMB_Sessionsetup_AndX_Response2(Packet):
+	name="SMB Sessionsetup AndX Response"
+	smb_cmd = 0x73
+	fields_desc = [
+		ByteField("WordCount",3),
+		ByteEnumField("AndXCommand",0xff,SMB_Commands),
+		ByteField("Reserved1",0),
+		LEShortField("AndXOffset",0),
+		XLEShortField("Action",1),
+		LEShortField("ByteCount",47),
+		StrNullField("NativeOS","Windows 5.1"),
+		StrNullField("NativeLanManager","Windows 2000 LAN Manager"),
 		StrNullField("PrimaryDomain","WORKGROUP"),
 	]
 
@@ -270,7 +310,7 @@ class SMB_NTcreate_AndX_Response(Packet):
 		LEShortField("AndXOffset",0),
 		ByteField("OplockLevel",0),
 		XLEShortField("FID",0x4000),
-		XLEIntField("CreateAction",0),
+		XLEIntField("CreateAction",1),
 		NTTimeField("Created",0),
 		NTTimeField("LastAccess",0),
 		NTTimeField("LastModified",0),
@@ -282,7 +322,9 @@ class SMB_NTcreate_AndX_Response(Packet):
 		XLEShortField("IPCstate",0x5ff),
 		ByteField("IsDirectory",0),
 		LEShortField("ByteCount",0),
+		StrLenField("FixStrangeness", bytes.fromhex('000000000000000000000000000000000000000000009b0112009b0112000000'), length_from=lambda x:len(bytes.fromhex('000000000000000000000000000000000000000000009b0112009b0112000000'))),
 	]
+
 
 class SMB_Write_AndX_Request(Packet):
 	name = "SMB Write AndX Request"
@@ -341,12 +383,12 @@ class SMB_Read_AndX_Response(Packet):
 		ByteField("WordCount",12),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
 		ByteField("Reserved1",0),
-		LEShortField("AndXOffset",47),
+		LEShortField("AndXOffset",0),
 		LEShortField("Remaining",0),
 		LEShortField("DataCompactMode",0),
 		LEShortField("Reserved2",0),
 		LEShortField("DataLenLow",0),
-		LEShortField("DataOffset",0),
+		LEShortField("DataOffset",60),
 		LEIntField("DataLenHigh",0), #multiply with 64k
 		StrLenField("Reserved3", b"\0"*6, length_from=lambda x:6),
 	]
@@ -373,7 +415,7 @@ class SMB_Trans_Request(Packet):
 		XLEShortField("TransactFunction",0x26),
 		XLEShortField("FID",0),
 		LEShortField("ByteCount",0),
-		#ByteField("FixGap", 0),
+		ByteField("FixGap", 0),
 		StrNullField("TransactionName","\\PIPE\\")
 	]
 

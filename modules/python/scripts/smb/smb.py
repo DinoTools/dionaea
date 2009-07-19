@@ -50,12 +50,14 @@ registered_calls = {}
 # return some error if both callbacks want it.
 # (should not happen anyway)
 
-def register_dcerpc_call(uuid, checkfn, cb):
+def register_dcerpc_call(vuln):
+	uuid = vuln.uuid
+
 	global registered_calls
 	if uuid in registered_calls:
-		registered_calls[uuid].append( (checkfn, cb) )
+		registered_calls[uuid].append( vuln )
 	else:
-		registered_calls[uuid] = [ (checkfn, cb), ]
+		registered_calls[uuid] = [ vuln, ]
 
 
 class smbd(connection):
@@ -152,7 +154,14 @@ class smbd(connection):
 
 		#elif self.state == STATE_SESSIONSETUP and p.getlayer(SMB_Header).Command == 0x73:
 		elif p.getlayer(SMB_Header).Command == 0x73:
-			r = SMB_Sessionsetup_AndX_Response()
+			r = None
+			if p.haslayer(Raw):
+				#try decoding with wordcount 13
+				p.getlayer(SMB_Header).decode_payload_as(SMB_Sessionsetup_AndX_Request2)
+				p.show()
+				r = SMB_Sessionsetup_AndX_Response2()
+			else:
+				r = SMB_Sessionsetup_AndX_Response()
 		elif p.getlayer(SMB_Header).Command == 0x75:
 			r = SMB_Treeconnect_AndX_Response()
 		elif p.getlayer(SMB_Header).Command == 0xa2:
@@ -262,9 +271,9 @@ class smbd(connection):
 			callbacklist = []
 			if 'uuid' in self.state:
 				reglist = registered_calls[self.state['uuid']]
-				for checkfn, cb in reglist:
-					if checkfn(dcep):
-						callbacklist.append(cb)
+				for vuln in reglist:
+					if dcep.OpNum == vuln.opnum:
+						callbacklist.append(vuln.processrequest)
 
 			resp = None
 			if len(callbacklist) == 1:
@@ -284,8 +293,11 @@ class smbd(connection):
 		return outbuf
 
 
-# for now do static imports of vuln modules that use smb
-# -> perhaps import some directory completely in the future
-from . import ms08067
-register_dcerpc_call(*ms08067.register())
+from . import rpcvulns
+import inspect
+vulns = inspect.getmembers(rpcvulns, inspect.isclass)
+
+for name, vulncls in vulns:
+	if not name == 'RPCVULN' and issubclass(vulncls, rpcvulns.RPCVULN):
+		register_dcerpc_call(vulncls)
 

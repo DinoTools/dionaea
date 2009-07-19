@@ -780,7 +780,7 @@ A side effect is that, to obtain "{" and "}" characters, you must use
 
     def decode_payload_as(self,cls):
         """Reassembles the payload and decode it using another packet class"""
-        s = self.payload.load
+        s = self.payload.build()
         self.payload = cls(s)
 
     def command(self):
