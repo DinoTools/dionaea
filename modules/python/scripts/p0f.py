@@ -31,6 +31,12 @@ from struct import pack, unpack, calcsize
 from socket import inet_aton, htons
 from time import sleep
 
+import logging
+
+logger = logging.getLogger('p0f')
+logger.setLevel(logging.DEBUG)
+
+
 class p0fconnection(connection):
 	def __init__(self, p0fpath, con):
 		connection.__init__(self, 'tcp')
