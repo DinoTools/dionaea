@@ -66,11 +66,22 @@ def stop():
 #logx.warn("x")
 
 
-#class idumper(ihandler):
+#class AllIHandler(ihandler):
 #	def __init__(self, pattern):
 #		ihandler.__init__(self, pattern)
 #	def handle(self, icd):
-#		icd.dump()
+##		icd.dump()
+#		if icd.origin == 'dionaea.connection.tcp.accept':
+#			con = icd.get('con')
+#			print("foo " + con.local.host)
+##		else:
+##			print(icd.origin)
+##		icd.dump()
+##		print("%s %s" % (icd.origin, icd))
+#		
 #
-#
-#...
+#a = AllIHandler('*')
+
+#print("IXIDSI")
+
+

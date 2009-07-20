@@ -335,6 +335,7 @@ bool connection_listen(struct connection *con, int len)
 		ev_io_init(&con->events.io_in, connection_tcp_accept_cb, con->socket, EV_READ);
 		ev_set_priority(&con->events.io_in, EV_MAXPRI);
 		ev_io_start(CL, &con->events.io_in);
+		return true;
 		break;
 
 	case connection_transport_tls:
@@ -359,18 +360,15 @@ bool connection_listen(struct connection *con, int len)
 		ev_set_priority(&con->events.io_in, EV_MAXPRI);
 		ev_io_init(&con->events.io_in, connection_tls_accept_cb, con->socket, EV_READ);
 		ev_io_start(CL, &con->events.io_in);
+		return true;
 		break;
 
 	case connection_transport_io:
 	case connection_transport_udp:
-		return false;
 		break;
 	}
 
-
-	if ( con->events.listen_timeout.repeat > 0. )
-		ev_timer_again(CL, &con->events.listen_timeout);
-	return true;
+	return false;
 }
 
 void connection_close(struct connection *con)
@@ -1001,8 +999,12 @@ void connection_idle_timeout_set(struct connection *con, double timeout_interval
 {
 	g_debug("%s %p %f", __PRETTY_FUNCTION__, con, timeout_interval_ms);
 
+	bool was_active = false;
 	if( ev_is_active(&con->events.idle_timeout) )
+	{
 		ev_timer_stop(CL, &con->events.idle_timeout);
+		was_active = true;
+	}
 
 	switch ( con->trans )
 	{
@@ -1022,8 +1024,10 @@ void connection_idle_timeout_set(struct connection *con, double timeout_interval
 		break;
 	}
 
-	if( con->state == connection_state_connected && timeout_interval_ms >= 0. )
+	if( was_active || timeout_interval_ms >= 0. )
+	{
 		ev_timer_again(CL, &con->events.idle_timeout);
+	}
 }
 
 double connection_idle_timeout_get(struct connection *con)
@@ -1035,8 +1039,12 @@ void connection_sustain_timeout_set(struct connection *con, double timeout_inter
 {
 	g_debug("%s %p %f", __PRETTY_FUNCTION__, con, timeout_interval_ms);
 
+	bool was_active = false;
 	if( ev_is_active(&con->events.sustain_timeout) )
+	{
 		ev_timer_stop(CL, &con->events.sustain_timeout);
+		was_active = true;
+	}
 
 	switch ( con->trans )
 	{
@@ -1056,8 +1064,10 @@ void connection_sustain_timeout_set(struct connection *con, double timeout_inter
 		break;
 	}
 
-	if( con->state == connection_state_connected && timeout_interval_ms >= 0. )
+	if( was_active || timeout_interval_ms >= 0. )
+	{
 		ev_timer_again(CL, &con->events.sustain_timeout);
+	}
 }
 
 double connection_sustain_timeout_get(struct connection *con)
@@ -1069,28 +1079,21 @@ double connection_sustain_timeout_get(struct connection *con)
 void connection_listen_timeout_set(struct connection *con, double timeout_interval_ms)
 {
 	g_debug(__PRETTY_FUNCTION__);
-
-	if( ev_is_active(&con->events.listen_timeout) )
-		ev_timer_stop(CL, &con->events.listen_timeout);
-
 	switch ( con->trans )
 	{
 	case connection_transport_tcp:
 		ev_timer_init(&con->events.listen_timeout, connection_tcp_listen_timeout_cb, 0., timeout_interval_ms);
-//		ev_timer_again(CL, &con->events.listen_timeout);
+		ev_timer_again(CL, &con->events.listen_timeout);
 		break;
 
 	case connection_transport_tls:
 		ev_timer_init(&con->events.listen_timeout, connection_tls_listen_timeout_cb, 0., timeout_interval_ms);
-//		ev_timer_again(CL, &con->events.listen_timeout);
+		ev_timer_again(CL, &con->events.listen_timeout);
 		break;
 
 	default:
 		break;
 	}
-
-	if( con->type == connection_type_listen && timeout_interval_ms >= 0. )
-		ev_timer_again(CL, &con->events.sustain_timeout);
 }
 
 double connection_listen_timeout_get(struct connection *con)
@@ -1102,9 +1105,6 @@ double connection_listen_timeout_get(struct connection *con)
 void connection_handshake_timeout_set(struct connection *con, double timeout_interval_ms)
 {
 	g_debug(__PRETTY_FUNCTION__);
-	if( ev_is_active(&con->events.handshake_timeout) )
-		ev_timer_stop(CL, &con->events.handshake_timeout);
-
 	switch ( con->trans )
 	{
 	case connection_transport_tls:
@@ -1114,9 +1114,6 @@ void connection_handshake_timeout_set(struct connection *con, double timeout_int
 	default:
 		break;
 	}
-
-	if( con->state == connection_state_handshake && timeout_interval_ms > 0. )
-		ev_timer_again(CL, &con->events.handshake_timeout);
 }
 
 
@@ -1127,13 +1124,12 @@ double connection_handshake_timeout_get(struct connection *con)
 }
 
 
+
+
+
 void connection_connecting_timeout_set(struct connection *con, double timeout_interval_ms)
 {
 	g_debug(__PRETTY_FUNCTION__);
-
-	if( ev_is_active(&con->events.connecting_timeout) )
-		ev_timer_stop(CL, &con->events.connecting_timeout);
-
 	switch ( con->trans )
 	{
 	case connection_transport_tcp:
@@ -1146,10 +1142,7 @@ void connection_connecting_timeout_set(struct connection *con, double timeout_in
 		break;
 	}
 
-	if( con->state == connection_state_connecting && timeout_interval_ms > 0. )
-		ev_timer_again(CL, &con->events.connecting_timeout);
 }
-
 double connection_connecting_timeout_get(struct connection *con)
 {
 	return con->events.connecting_timeout.repeat;

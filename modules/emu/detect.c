@@ -88,10 +88,8 @@ void proc_emu_on_io_in(struct connection *con, struct processor_data *pd)
 			g_async_queue_push(aq, async_cmd_new(async_incident_report, ix));
 			g_async_queue_unref(aq);
 			ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
-			g_critical("shellcode found offset %i", ret);
-			profile(con, streamdata, size, ret);
 
-			pd->state = processor_done;
+			g_critical("shellcode found");
 		}
 	}
 }

@@ -16,8 +16,8 @@ class httpd(connection):
 		self.state = 'HEADER'
 
 	def established(self):
-		self.processors()
-
+#		self.process()
+		pass
 
 
 	def io_in(self, data):
