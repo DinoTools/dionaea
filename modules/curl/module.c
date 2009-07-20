@@ -59,6 +59,7 @@ struct session
 {
 	CURL *easy;
 	char *url;
+	char *laddr;
 	char error[CURL_ERROR_SIZE];
 };
 
@@ -113,10 +114,10 @@ static void check_run_count(void)
 				curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &eff_url);
 				if( msg->data.result == CURLE_OK )
 				{
-					g_debug("DONE: %s => (%d) %s", eff_url, msg->data.result, conn->error);
+					g_info("DONE: %s => (%d) %s", eff_url, msg->data.result, conn->error);
 				}else
 				{
-					g_debug("FAIL: %s => (%d) %s", eff_url, msg->data.result, conn->error);
+					g_warning("FAIL: %s => (%d) %s", eff_url, msg->data.result, conn->error);
 				}
 				curl_multi_remove_handle(curl_runtime.multi, easy);
 				curl_easy_cleanup(easy);
@@ -246,7 +247,7 @@ static int curl_progressfunction_cb (void *p, double dltotal, double dlnow, doub
 
 
 /* Create a new easy handle, and add it to the global curl_multi */
-static void session_new(char *url)
+static void session_new(const char *url, const char *laddr)
 {
 	struct session *session;
 	CURLMcode rc;
@@ -260,7 +261,8 @@ static void session_new(char *url)
 		g_error("curl_easy_init() failed, exiting!");
 	}
 	session->url = g_strdup(url);
-
+	if( laddr )
+		session->laddr = g_strdup(laddr);	
 	curl_easy_setopt(session->easy, CURLOPT_URL, session->url);
 	curl_easy_setopt(session->easy, CURLOPT_WRITEFUNCTION, curl_writefunction_cb);
 	curl_easy_setopt(session->easy, CURLOPT_WRITEDATA, &session);
@@ -272,7 +274,10 @@ static void session_new(char *url)
 	curl_easy_setopt(session->easy, CURLOPT_PROGRESSDATA, session);
 	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_TIME, 3L);
 	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_LIMIT, 10L);
+	curl_easy_setopt(session->easy, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");  
 
+	if( laddr )
+		curl_easy_setopt(session->easy, CURLOPT_INTERFACE, session->laddr);
 	g_debug("Adding easy %p to multi %p (%s)", session->easy, curl_runtime.multi, url);
 	rc = curl_multi_add_handle(curl_runtime.multi, session->easy);
 	curl_runtime.queued++;
@@ -284,7 +289,13 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 	g_debug("%s i %p ctx %p", __PRETTY_FUNCTION__, i, ctx);
 	GString *url;
 	if ( incident_value_string_get(i, "url", &url) )
-		session_new(url->str);
+	{
+		char *addr = NULL;
+		struct connection *con;
+		if ( incident_value_ptr_get(i, "con", (uintptr_t *)&con) )
+			addr = con->local.ip_string;
+		session_new(url->str, addr);
+	}
 	else
 		g_critical("download without url?");
 }

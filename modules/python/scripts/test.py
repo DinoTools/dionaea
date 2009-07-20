@@ -27,8 +27,12 @@ class profiler(ihandler):
 				if api['call'] == 'WSASocket' or api['call'] == 'socket':
 					state = "SOCKET"
 				if api['call'] == 'URLDownloadToFile':
-					url = api['call'][1]
+					url = api['args'][1]
 					logger.debug("download file %s" % (url))
+					i = incident("dionaea.download.offer")
+					i.set("url", url)
+					i.set("con", con)
+					i.report()
 
 			elif state == "SOCKET": 
 				if api['call'] == 'bind':
