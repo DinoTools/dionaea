@@ -296,13 +296,37 @@ class SMB_NTcreate_AndX_Request(Packet):
 		LEIntField("Impersonation",1),
 		XByteField("SecurityFlags",0),
 		LEShortField("ByteCount",0),
-		#ByteField("FixNullTerminated", 0),
 		StrNullField("Filename","\\lsarpc")
+	]
+
+class SMB_NTcreate_AndX_Request_Unicode(Packet):
+	name = "SMB NTcreate AndX Request (Unicode)"
+	fields_desc = [
+		ByteField("WordCount",4),
+		ByteEnumField("AndXCommand",0xff,SMB_Commands),
+		ByteField("Reserved1",0),
+		LEShortField("AndXOffset",0),
+		ByteField("Reserved2",0),
+		LEShortField("FilenameLen",0x2),
+		XLEIntField("CreateFlags",0),
+		XLEIntField("RootFID",0),
+		XLEIntField("AccessMask",0),
+		LELongField("AllocationSize",0),
+		XLEIntField("FileAttributes",0),
+		XLEIntField("ShareAccess",3),
+		LEIntField("Disposition",1),
+		XLEIntField("CreateOptions",0),
+		LEIntField("Impersonation",1),
+		XByteField("SecurityFlags",0),
+		LEShortField("ByteCount",0),
+		ByteField("FixGap", 0),
+		UnicodeNullField("Filename","\\lsarpc")
 	]
 
 class SMB_NTcreate_AndX_Response(Packet):
 	name="SMB NTcreate AndX Response"
 	smb_cmd = 0xa2
+	strange_packet_tail = bytes.fromhex('000000000000000000000000000000000000000000009b0112009b0112000000')
 	fields_desc = [
 		ByteField("WordCount",42),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
@@ -322,7 +346,7 @@ class SMB_NTcreate_AndX_Response(Packet):
 		XLEShortField("IPCstate",0x5ff),
 		ByteField("IsDirectory",0),
 		LEShortField("ByteCount",0),
-		StrLenField("FixStrangeness", bytes.fromhex('000000000000000000000000000000000000000000009b0112009b0112000000'), length_from=lambda x:len(bytes.fromhex('000000000000000000000000000000000000000000009b0112009b0112000000'))),
+		StrLenField("FixStrangeness", strange_packet_tail, length_from=lambda x:len(strange_packet_tail)),
 	]
 
 
@@ -419,6 +443,33 @@ class SMB_Trans_Request(Packet):
 		StrNullField("TransactionName","\\PIPE\\")
 	]
 
+class SMB_Trans_Request_Unicode(Packet):
+	name = "SMB Trans Request (Unicode)"
+	fields_desc = [
+		ByteField("WordCount",16),
+		LEShortField("TotalParamCount",0),
+		LEShortField("TotalDataCount",0),
+		LEShortField("MaxParamCount",0),
+		LEShortField("MaxDataCount",0),
+		ByteField("MaxSetupCount",0),
+		ByteField("Reserved1",0),
+		XLEShortField("Flags",0),
+		LEIntField("Timeout",0),
+		ShortField("Reserved2",0),
+		LEShortField("ParamCount",0),
+		LEShortField("ParamOffset",0),
+		LEShortField("DataCount",0),
+		LEShortField("DataOffset",0),
+		ByteField("SetupCount",0),
+		ByteField("Reserved3",0),
+		XLEShortField("TransactFunction",0x26),
+		XLEShortField("FID",0),
+		LEShortField("ByteCount",0),
+		ByteField("FixGap", 0),
+		UnicodeNullField("TransactionName","\\PIPE\\"),
+		ShortField("Padding", 0),
+	]
+
 class SMB_Trans_Response(Packet):
 	name = "SMB Trans Response"
 	smb_cmd = 0x25
@@ -512,9 +563,11 @@ bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Request, Command=lambda x: x==0
 bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Response, Command=lambda x: x==0x73, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Request, Command=lambda x: x==0x75, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Response, Command=lambda x: x==0x75, Flags=lambda x: x&0x80)
-bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Request, Command=lambda x: x==0xa2, Flags=lambda x: not x&0x80)
+bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Request, Command=lambda x: x==0xa2, Flags=lambda x: not x&0x80, Flags2=lambda x: not x&0x8000)
+bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Request_Unicode, Command=lambda x: x==0xa2, Flags=lambda x: not x&0x80, Flags2=lambda x: x&0x8000)
 bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Response, Command=lambda x: x==0xa2, Flags=lambda x: x&0x80)
-bind_bottom_up(SMB_Header, SMB_Trans_Request, Command=lambda x: x==0x25, Flags=lambda x: not x&0x80)
+bind_bottom_up(SMB_Header, SMB_Trans_Request, Command=lambda x: x==0x25, Flags=lambda x: not x&0x80, Flags2=lambda x: not x&0x8000)
+bind_bottom_up(SMB_Header, SMB_Trans_Request_Unicode, Command=lambda x: x==0x25, Flags=lambda x: not x&0x80, Flags2=lambda x: x&0x8000)
 
 bind_bottom_up(SMB_Header, SMB_Write_AndX_Request, Command=lambda x: x==0x2f, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Write_AndX_Response, Command=lambda x: x==0x2f, Flags=lambda x: x&0x80)
@@ -525,6 +578,7 @@ bind_bottom_up(SMB_Write_AndX_Request, SMB_Data)
 bind_bottom_up(SMB_Read_AndX_Response, SMB_Data)
 
 bind_bottom_up(SMB_Trans_Request, DCERPC_Header)
+bind_bottom_up(SMB_Trans_Request_Unicode, DCERPC_Header)
 bind_bottom_up(DCERPC_Header, DCERPC_Request, PacketType=lambda x: x==0)
 bind_bottom_up(DCERPC_Header, DCERPC_Bind, PacketType=lambda x: x==11)
 bind_bottom_up(DCERPC_Header, DCERPC_Bind_Ack, PacketType=lambda x: x==12)

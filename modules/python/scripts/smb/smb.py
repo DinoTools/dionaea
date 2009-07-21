@@ -72,8 +72,9 @@ class smbd(connection):
 		self.outbuf = None
 
 	def established(self):
-		#print('established', self.buf)
-		pass
+		self.timeouts.sustain = 60
+		self._in.accounting.limit  = 100*1024
+		self._out.accounting.limit = 100*1024
 
 	def io_in(self,data):
 
@@ -85,14 +86,9 @@ class smbd(connection):
 		smblog.debug('packet: {0}'.format(p.summary()))
 		#p.show()
 
-		if len(data) > 1024**2:
-			# somebody trying to exhaust our mem? -> bail out
-			self.close()
-			return len(data)
-
 		if len(data) < (p.LENGTH+4):
 			#we probably do not have the whole packet yet -> return 0
-			print('=== SMB did not get enough data\n')
+			smblog.critical('=== SMB did not get enough data')
 			return 0
 
 		if p.TYPE == 0x81:
@@ -104,12 +100,9 @@ class smbd(connection):
 
 		if p.haslayer(SMB_Header) and p[SMB_Header].Start != b'\xffSMB':
 			# not really SMB Header -> bail out
-			print('=== not really SMB\n')
+			smblog.critical('=== not really SMB\n')
 			self.close()
 			return len(data)
-
-		#p.decode_payload_as(smb.SMBNegociate_Protocol_Request_Header)
-		#print('=== TEST: ', p.summary(), '\n')
 
 		r = self.process(p)
 		if r:
@@ -172,7 +165,6 @@ class smbd(connection):
 			self.buf += p.getlayer(SMB_Data).Bytes
 		elif p.getlayer(SMB_Header).Command == 0x2e:
 			r = SMB_Read_AndX_Response()
-			#print("buf", len(self.buf), self.buf)
 			if self.state['lastcmd'] == 'SMB_COM_WRITE':
 				# lastcmd was WRITE
 				# - self.buf should contain a DCERPC packet now

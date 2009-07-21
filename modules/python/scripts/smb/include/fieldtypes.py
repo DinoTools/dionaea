@@ -575,7 +575,6 @@ class UnicodeNullField(StrField):
             #XXX \x00 not found
             return "",s
 	#ugly! correct unicode detecting needs to be done here...
-        print(s, s[:l+1])
         #return s[l+3:],self.m2i(pkt, s[:l+1])
         return s[l+3:],s[:l+1].decode('utf-16')
     def randval(self):
