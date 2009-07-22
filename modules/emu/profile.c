@@ -278,4 +278,7 @@ void profile(struct connection *con, void *data, unsigned int size, unsigned int
 	g_async_queue_push(aq, async_cmd_new(async_incident_report, i));
 	g_async_queue_unref(aq);
 	ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
+
+	emu_env_free(env);
+	emu_free(e);
 }
