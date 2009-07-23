@@ -98,7 +98,7 @@ static void check_run_count(void)
 		char *eff_url=NULL;
 		CURLMsg *msg;
 		int msgs_left;
-		struct session *conn=NULL;
+		struct session *session=NULL;
 		CURL*easy;
 
 		g_debug("REMAINING: %d", curl_runtime.queued);
@@ -110,19 +110,21 @@ static void check_run_count(void)
 				curl_runtime.queued--;
 
 				easy=msg->easy_handle;
-				curl_easy_getinfo(easy, CURLINFO_PRIVATE, &conn);
+				curl_easy_getinfo(easy, CURLINFO_PRIVATE, &session);
 				curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &eff_url);
 				if( msg->data.result == CURLE_OK )
 				{
-					g_info("DONE: %s => (%d) %s", eff_url, msg->data.result, conn->error);
+					g_info("DONE: %s => (%d) %s", eff_url, msg->data.result, session->error);
 				}else
 				{
-					g_warning("FAIL: %s => (%d) %s", eff_url, msg->data.result, conn->error);
+					g_warning("FAIL: %s => (%d) %s", eff_url, msg->data.result, session->error);
 				}
 				curl_multi_remove_handle(curl_runtime.multi, easy);
 				curl_easy_cleanup(easy);
-				g_free(conn->url);
-				g_free(conn);
+				g_free(session->url);
+				if( session->laddr )
+					g_free(session->laddr);
+				g_free(session);
 			}
 		}
 	}
@@ -226,9 +228,9 @@ static int curl_socketfunction_cb(CURL *easy, curl_socket_t s, int action, void 
 static size_t curl_writefunction_cb(void *ptr, size_t size, size_t nmemb, void *data)
 {
 	size_t realsize = size * nmemb;
-	struct session *conn = (struct session *) data;
+	struct session *session = (struct session *) data;
 	(void)ptr;
-	(void)conn;
+	(void)session;
 	return realsize;
 }
 
