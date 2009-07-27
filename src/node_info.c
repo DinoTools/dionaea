@@ -134,7 +134,8 @@ void node_info_addr_clear(struct node_info *node)
 	node->dns.resolved_addresses = NULL;
 	node->dns.resolved_address_count = 0;
 	node->dns.current_address=0;
-
+	if ( node->hostname != NULL )
+		g_free(node->hostname);
 }
 
 char *node_info_get_ip_string(struct node_info *node)

@@ -50,6 +50,7 @@ void threadpool_wrapper(gpointer data, gpointer user_data)
 #ifdef DEBUG
 	g_timer_stop(timer);
 	g_debug("Thread fn %p con %p data %p took %f ms", t->function, t->con, t->data, g_timer_elapsed(timer, NULL));
+	g_timer_destroy(timer);
 #endif
 	g_free(data);
 }

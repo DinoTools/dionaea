@@ -79,6 +79,7 @@ struct incident *incident_new(const char *path)
 void incident_free(struct incident *e)
 {
 	g_hash_table_destroy(e->data);
+	g_free(e->origin);
 	g_free(e);
 }
 
