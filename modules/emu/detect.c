@@ -93,5 +93,6 @@ void proc_emu_on_io_in(struct connection *con, struct processor_data *pd)
 
 			pd->state = processor_done;
 		}
+		g_free(streamdata);
 	}
 }
