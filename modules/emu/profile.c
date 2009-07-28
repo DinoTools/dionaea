@@ -64,6 +64,59 @@ char *indents(int i)
 	return indents;
 }
 
+static int json_escape_str(GString *target, char *str)
+{
+	static char *json_hex_chars = "0123456789abcdef";
+	int pos = 0, start_offset = 0;
+	unsigned char c;
+	do
+	{
+		c = str[pos];
+		switch ( c )
+		{
+		case '\0':
+			break;
+		case '\b':
+		case '\n':
+		case '\r':
+		case '\t':
+		case '"':
+		case '\\':
+		case '/':
+			if ( pos - start_offset > 0 )
+				g_string_append_len(target, str + start_offset, pos - start_offset);
+			if ( c == '\b' ) 
+				g_string_append_len(target, "\\b", 2);
+			else if ( c == '\n' ) 
+				g_string_append_len(target, "\\n", 2);
+			else if ( c == '\r' ) 
+				g_string_append_len(target, "\\r", 2);
+			else if ( c == '\t' ) 
+				g_string_append_len(target, "\\t", 2);
+			else if ( c == '"' ) 
+				g_string_append_len(target, "\\\"", 2);
+			else if ( c == '\\' ) 
+				g_string_append_len(target, "\\\\", 2);
+			else if ( c == '/' ) 
+				g_string_append_len(target, "\\/", 2);
+			start_offset = ++pos;
+			break;
+		default:
+			if ( c < ' ' )
+			{
+				if ( pos - start_offset > 0 )
+					g_string_append_len(target, str + start_offset, pos - start_offset);
+				g_string_append_printf(target, "\\u00%c%c",json_hex_chars[c >> 4], json_hex_chars[c & 0xf]);
+				start_offset = ++pos;
+			} else 
+				pos++;
+		}
+	} while ( c );
+	if ( pos - start_offset > 0 )
+		g_string_append_len(target, str + start_offset, pos - start_offset);
+	return 0;
+}
+
 void json_profile_argument_debug(struct emu_profile_argument *argument, int indent, bool has_name, GString *str)
 {
 	switch(argument->render)
@@ -135,13 +188,20 @@ void json_profile_argument_debug(struct emu_profile_argument *argument, int inde
 
 
 	case render_string:
-		if( has_name )
-			g_string_append_printf(str, "%*s\"%s\" : \"%s\"", indent*4, " ", argument->argname, argument->value.tchar);
-//			printf("%*s\"%s\" : \"%s\"", indent*4, " ", argument->argname, argument->value.tchar);
-		else
-			g_string_append_printf(str, "%*s\"%s\"", indent*4, " ", argument->value.tchar);
-//			printf("%*s\"%s\"", indent*4, " ", argument->value.tchar);
-
+		{
+			char *data = argument->value.tchar;
+			GString *escaped = g_string_sized_new(strlen(data)*2);
+			json_escape_str(escaped, data);
+			
+			if( has_name )
+				g_string_append_printf(str, "%*s\"%s\" : \"%s\"", indent*4, " ", argument->argname, escaped->str);
+	//			printf("%*s\"%s\" : \"%s\"", indent*4, " ", argument->argname, argument->value.tchar);
+			else
+				g_string_append_printf(str, "%*s\"%s\"", indent*4, " ", escaped->str);
+	//			printf("%*s\"%s\"", indent*4, " ", argument->value.tchar);
+			g_string_free(escaped, TRUE);
+	
+		}
 		break;
 
 	case render_bytea:
