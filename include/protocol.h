@@ -64,6 +64,7 @@ struct protocol
 	protocol_handler_error error;
 	protocol_handler_timeout sustain;
 	protocol_handler_timeout idle;
+	protocol_handler_timeout timeout;
 	protocol_handler_disconnect disconnect;
 	protocol_handler_io_in io_in;
 	protocol_handler_io_out io_out;

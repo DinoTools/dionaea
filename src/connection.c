@@ -258,6 +258,8 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 		laddr = "0.0.0.0";
 
 	con->local.port = htons(port);
+	if ( con->local.hostname != NULL )
+		g_free(con->local.hostname);
 	con->local.hostname = g_strdup(laddr);
 	if ( iface_scope )
 		strcpy(con->local.iface_scope, iface_scope);
@@ -775,8 +777,8 @@ void connection_connect_next_addr(struct connection *con)
 			if ( con->socket <= 0 )
 				con->socket = socket(socket_domain, SOCK_DGRAM, 0);
 
-			if ( bind_local(con) != true )
-				continue;
+//			if ( bind_local(con) != true )
+//				continue;
 
 			connection_set_nonblocking(con);
 			if ( con->remote.port != 0 )
@@ -786,8 +788,9 @@ void connection_connect_next_addr(struct connection *con)
 					g_warning("Could not connect %s:%i (%s)", con->remote.hostname, ntohs(con->remote.port), strerror(errno));
 			}
 			connection_node_set_local(con);
-			connection_node_set_remote(con);
+//			connection_node_set_remote(con);
 			memcpy(&con->remote.addr, &sa, sizeof_sa);
+			node_info_set(&con->remote, &con->remote.addr);
 			g_debug("connected %s -> %s", con->local.node_string,  con->remote.node_string);
 
 			if ( con->state == connection_state_connected )
@@ -1491,7 +1494,19 @@ void connection_tcp_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
 	struct connection *con = CONOFF_LISTEN_TIMEOUT(w);
 	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
-	connection_tcp_disconnect(con);
+
+
+	if ( con->protocol.timeout  != NULL && 
+		 con->protocol.timeout(con, con->protocol.ctx) == true)
+	{
+		ev_timer_again(loop, &con->events.listen_timeout);
+		return;
+	}
+
+	connection_set_state(con, connection_state_close);
+	connection_disconnect(con);
+		
+	connection_free(con);
 }
 
 
@@ -2916,7 +2931,17 @@ void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
 	struct connection *con = CONOFF_LISTEN_TIMEOUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-	connection_tls_disconnect(con);
+
+	if ( con->protocol.timeout  != NULL && 
+		 con->protocol.timeout(con, con->protocol.ctx) == true)
+	{
+		ev_timer_again(loop, &con->events.listen_timeout);
+		return;
+	}
+
+	connection_set_state(con, connection_state_close);
+	connection_disconnect(con);
+	connection_free(con);
 }
 
 /*
