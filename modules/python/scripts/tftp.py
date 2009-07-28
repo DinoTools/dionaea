@@ -613,8 +613,8 @@ class TftpServerHandler(TftpSession):
         self.blocknumber = 0
         self.buffer = None
         self.fileobj = None
-        self.timeouts = 0
-
+        self.timeouts.idle = 3
+        self.timeouts.sustain = 120
 
     def io_in(self, data):
         """This method informs a handler instance that it has data waiting on
@@ -815,7 +815,8 @@ class TftpClient(TftpSession):
     download can be initiated via the download() method."""
     def __init__(self):
         TftpSession.__init__(self)
-        self.timeouts=0
+        self.timeouts.idle=5
+        self.timeouts.sustain = 120
         self.options = {}
         self.packet = TftpPacketFactory()
         self.expected_block = 0
@@ -824,6 +825,7 @@ class TftpClient(TftpSession):
         self.filename = None
         self.port = 0
         self.connected = False
+        self.idlecount = 0
 
     def __del__(self):
         print('__del__' + str(self))
@@ -961,9 +963,9 @@ class TftpClient(TftpSession):
     def error(self, err):
         pass
 
-    def timeout(self):
-        if self.timeouts > 10:
-            return 0
-        self.timeouts+=1
-        return 1
+    def idle(self):
+        if self.idlecount > 10:
+            return False
+        self.idlecount+=1
+        return True
 

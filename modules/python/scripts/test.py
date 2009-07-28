@@ -34,7 +34,10 @@ class profiler(ihandler):
 					i.set("url", url)
 					i.set("con", con)
 					i.report()
-
+				if api['call'] == 'WinExec':
+					r = cmdexe(None)
+					r.con = con
+					r.io_in(api['args'][0])
 			elif state == "SOCKET": 
 				if api['call'] == 'bind':
 					state = "BIND"
@@ -168,7 +171,6 @@ class cmdexe:
 		fpath = ""
 		dfile = ""
 		autoconnect = True
-
 		cmdfile = None
 		for i in range(len(args)):
 			if args[i] == '-v':
@@ -238,7 +240,11 @@ class cmdexe:
 						state = 'NEXT_IS_FILE'
 					elif len(args) == 2:
 						dfile = args[1]
-#				elif args[0] == 'binary' or args[0] == 'bin':
+						i = incident("dionaea.download.offer")
+						if self.con:
+							i.set("con", self.con)
+						i.set("url", "ftp://%s:%s@%s:%i/%s" % (user,passwd,host,port,dfile))
+						i.report()
 				elif args[0] == 'cd':
 					if len(args) == 1:
 						state = 'NEXT_IS_PATH'
@@ -274,7 +280,12 @@ class cmdexe:
 				if len(args) == 1:
 					dfile = args[0]
 					state = 'NEXT_IS_SOMETHING'
-			
+					i = incident("dionaea.download.offer")
+					if self.con:
+						i.set("con", self.con)
+					i.set("url", "ftp://%s:%s@%s:%i/%s" % (user,passwd,host,port,dfile))
+					i.report()
+
 
 			elif state == 'NEXT_IS_PATH':
 				if len(args) == 1:
@@ -348,9 +359,12 @@ class cmdexe:
 		return cmd,args,redir
 
 	def line(self, data, eof=False):
+		if type(data) == str:
+			data = data.encode()
+
 		escape = False
 		for i in range(len(data)):
-			if data[i] == ord('^'):
+			if int(data[i]) == ord('^'):
 				if escape == False:
 					escape == True
 				else:
@@ -416,4 +430,207 @@ def stop():
 	global a
 	del a
 
+import re
+import random
+_linesep_regexp = re.compile(b"\r?\n")
 
+class ftpctrl(connection):
+	def __init__(self, ftp):
+		connection.__init__(self, 'tcp')
+		self.ftp = ftp
+		self.state = 'USER'
+
+	def established(self):
+		logger.debug("FTP CTRL connection established")
+
+	def io_in(self, data):
+		dlen = len(data)
+		lines = _linesep_regexp.split(data)#.decode('UTF-8'))
+		
+		remain = lines.pop()
+		dlen = dlen - len(remain)
+		
+		for line in lines:
+			print(line)
+			c = int(line[:3])
+			s = line[3:4]
+			if self.state == 'USER':
+				if c == 220 and s != '-':
+					self.cmd('USER ' + self.ftp.user)
+					self.state = 'PASS'
+			elif self.state == 'PASS':
+				if c == 331 and s != '-':
+					self.cmd('PASS ' + self.ftp.passwd)
+					self.state = 'WELCOME'
+			elif self.state == 'WELCOME':
+				if c == 230 and s != '-':
+					if self.ftp.mode == 'binary':
+						self.cmd('TYPE I')
+						self.state = 'TYPE'
+					else:
+						port = self.ftp.makeport()
+						self.cmd('PORT ' + port)
+						self.state = 'PORT'
+			elif self.state == 'TYPE':
+				if (c >= 200 and c < 300) and s != '-':
+					port = self.ftp.makeport()
+					self.cmd('PORT ' + port)
+					self.state = 'PORT'
+			elif self.state == 'PORT':
+					if c == 200 and s != '-':
+						self.cmd('RETR ' + self.ftp.file)
+						self.state = 'RETR'
+					else:
+						logger.warn("PORT command failed")
+			elif self.state == 'RETR':
+					if (c > 200 and c < 300)  and s != '-':
+						self.cmd('QUIT')
+						self.state = 'QUIT'
+						self.ftp.ctrldone()
+
+		return dlen
+
+	def cmd(self, cmd):
+		logger.debug("FTP CMD: '" + cmd +"'")
+		self.send(cmd + '\r\n')
+
+	def error(self, err):
+		pass
+
+	def disconnect(self):
+		if self.state != 'QUIT':
+			self.ftp.fail()
+		return False
+
+	def idle(self):
+		return False
+
+	def sustain(self):
+		return False
+
+class ftpdata(connection):
+	def __init__(self, ftp=None):
+		connection.__init__(self, 'tcp')
+		self.ftp = ftp
+		self.timeouts.listen = 10
+		
+
+	def established(self):
+		logger.debug("FTP DATA established")
+		self.timeouts.idle = 10
+
+	def learn(self, parent):
+		self.ftp = parent.ftp
+		self.ftp.dataconn = self
+		self.ftp.datalistener.close()
+		self.ftp.datalistener = None
+
+	def io_in(self, data):
+		return len(data)
+
+	def idle(self):
+		self.ftp.fail()
+		return False
+
+	def disconnect(self):
+		logger.debug("received %i bytes" %(self._in.accounting.bytes))
+		self.ftp.dataconn = None
+		self.ftp.datadone()
+		return False
+
+	def timeout(self):
+		self.ftp.fail()
+		return False
+
+class ftp:
+	def __init__(self):
+		self.ctrl = ftpctrl(self)
+
+	def download(self, local, user, passwd, host, port, file, mode):
+		self.user = user
+		self.passwd = passwd
+		self.host = host
+		self.port = port
+		self.file = file
+		self.mode = mode
+		self.local = local
+		self.ctrl.bind(local, 0)
+		self.ctrl.connect(host, port)
+		self.dataconn = None
+		self.datalistener = None
+
+	def makeport(self):
+		self.datalistener = ftpdata(ftp=self)
+		ports = list(filter(lambda port: ((port >> 4) & 0xf) != 0, range(62001, 63000))) # NAT, use a port range which is forwarded to your honeypot
+		random.shuffle(ports)
+		host = None
+		port = None
+		for port in ports:
+			self.datalistener.bind(self.local, port)
+			if self.datalistener.listen() == True:
+				host = self.datalistener.local.host # NAT, replace this with something like host = socket.gethostbyname('honeypot.dyndns.org')
+				port = self.datalistener.local.port
+				break
+		hbytes = host.split('.')
+		pbytes = [repr(port//256), repr(port%256)]
+		bytes = hbytes + pbytes
+		port = ','.join(bytes)
+		logger.debug("PORT CMD %s" % (port))
+		return port
+
+	def ctrldone(self):
+		logger.info("SUCCESS DOWNLOADING FILE")
+		self.done()
+
+	def datadone(self):
+		logger.info("FILE received")
+		self.done()
+
+	def done(self):
+		if self.ctrl and self.ctrl.state == 'QUIT' and self.dataconn == None:
+			logger.info("proceed processing file!")
+			self.ctrl = None
+
+
+	def fail(self):
+		self.finish()
+
+	def finish(self):
+		if self.ctrl != None:
+			self.ctrl.close()
+			self.ctrl = None
+		if self.datalistener and self.datalistener != None:
+			self.datalistener.close()
+			self.datalistener = None
+		if self.dataconn and self.dataconn != None:
+			self.dataconn.close()
+			self.dataconn = None
+
+# ftp://ftp.kernel.org/pub/linux/kernel/v2.6/linux-2.6.29.6.tar.gz
+#f = ftp()
+#f.download('0.0.0.0', 'anonymous','guest','ftp.kernel.org',21, '/pub/linux/kernel/v2.6/linux-2.6.29.6.tar.gz', 'binary')
+#f.download('....', 'anonymous','guest','ftp.kernel.org',21, 'welcome.msg', 'binary')
+
+
+import urllib.parse
+from tftp import TftpClient
+
+
+class ftpdownloader(ihandler):
+	def __init__(self):
+		ihandler.__init__(self, 'dionaea.download.offer')
+	def handle(self, icd):
+		logger.warn("do download")
+		url = icd.get("url")
+		p = urllib.parse.urlsplit(url)
+		print(p)
+		con = icd.get('con')
+		if p.scheme == 'ftp':
+			f = ftp()
+			f.download(con.local.host, p.username, p.password, p.hostname, p.port, p.path, 'binary')
+		if p.scheme == 'tftp':
+			t = TftpClient()
+			t.bind(con.local.host, 0)
+			t.download('192.168.53.21', 69, 'zero')
+
+x = ftpdownloader()

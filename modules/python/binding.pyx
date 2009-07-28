@@ -81,6 +81,7 @@ cdef extern from "../../include/connection.h":
 		protocol_handler_error 				error
 		protocol_handler_timeout 			idle
 		protocol_handler_timeout 			sustain
+		protocol_handler_timeout 			timeout
 		protocol_handler_disconnect 		disconnect
 		protocol_handler_io_in 				io_in
 		protocol_handler_io_out 			io_out
@@ -405,6 +406,7 @@ cdef class connection:
 			self.thisptr.protocol.error = <protocol_handler_error>connect_error_cb
 			self.thisptr.protocol.idle = <protocol_handler_timeout>idle_cb
 			self.thisptr.protocol.sustain = <protocol_handler_timeout>sustain_cb
+			self.thisptr.protocol.timeout = <protocol_handler_timeout>timeout_cb
 			self.thisptr.protocol.io_in = <protocol_handler_io_in> io_in_cb
 			self.thisptr.protocol.io_out = <protocol_handler_io_out> io_out_cb
 			self.thisptr.protocol.disconnect = <protocol_handler_disconnect> disconnect_cb
@@ -438,13 +440,16 @@ cdef class connection:
 		pass
 
 	def sustain(self):
-		"""callback for established connection session timeouts, return 1 to keep the connection"""
+		"""callback for established connection session timeouts, return True to keep the connection"""
 		return False
 
 	def idle(self):
-		"""callback for established connection idle timeouts, return 1 to keep the connection"""
+		"""callback for established connection idle timeouts, return True to keep the connection"""
 		return True
 
+	def timeout(self):
+		"""callback for listening timeouts, return True to keep the listener alive for a new period"""
+		return False
 
 	def error(self, err):
 		"""callback for connection errors"""
@@ -646,10 +651,17 @@ cdef void connect_error_cb(c_connection *con, c_connection_error err) except *:
 	instance.error(err)
 
 cdef c_bool sustain_cb(c_connection *con, void *ctx) except *:
-#	print "timeout_cb"
+#	print "sustain_cb"
 	cdef connection instance
 	instance = <connection>ctx
 	return instance.sustain()
+
+cdef c_bool timeout_cb(c_connection *con, void *ctx) except *:
+#	print "timeout_cb"
+	cdef connection instance
+	instance = <connection>ctx
+	return instance.timeout()
+
 
 cdef c_bool idle_cb(c_connection *con, void *ctx) except *:
 #	print "idle_cb"
