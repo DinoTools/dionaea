@@ -368,7 +368,9 @@ static bool curl_new(struct dionaea *d)
 		static const struct curl_feature feats[] = {
 			{"c-ares", CURL_VERSION_ASYNCHDNS},
 			{"debug", CURL_VERSION_DEBUG},
-			{"debugemory", CURL_VERSION_CURLDEBUG},
+#ifdef CURL_VERSION_CURLDEBUG
+			{"debugmemory", CURL_VERSION_CURLDEBUG},
+#endif
 			{"gss", CURL_VERSION_GSSNEGOTIATE},
 			{"idn", CURL_VERSION_IDN},
 			{"ipv6", CURL_VERSION_IPV6},
