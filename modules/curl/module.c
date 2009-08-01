@@ -247,6 +247,33 @@ static int curl_progressfunction_cb (void *p, double dltotal, double dlnow, doub
 	return 0;
 }
 
+/* CURLOPT_DEBUGFUNCTION */
+static int curl_debugfunction_cb(CURL *easy, curl_infotype type, char *data, size_t size, void *userp)
+{
+	char *text = g_strdup(data);
+	int len = strlen(text);
+	if ( text[len-1] == '\n' )
+		text[len-1] = '\0';
+
+	struct session *session;
+	curl_easy_getinfo(easy, CURLINFO_PRIVATE, &session);
+	switch ( type )
+	{
+	case CURLINFO_TEXT:
+		g_debug("%s: %s", session->url, text);
+		break;
+
+	case CURLINFO_HEADER_OUT:
+	case CURLINFO_DATA_OUT:
+	case CURLINFO_SSL_DATA_OUT:
+	case CURLINFO_HEADER_IN:
+	case CURLINFO_DATA_IN:
+	case CURLINFO_SSL_DATA_IN:
+	default:
+		return 0;
+	}
+	return 0;
+}
 
 /* Create a new easy handle, and add it to the global curl_multi */
 static void session_new(const char *url, const char *laddr)
@@ -264,10 +291,11 @@ static void session_new(const char *url, const char *laddr)
 	}
 	session->url = g_strdup(url);
 	if( laddr )
-		session->laddr = g_strdup(laddr);	
+		session->laddr = g_strdup(laddr);
 	curl_easy_setopt(session->easy, CURLOPT_URL, session->url);
 	curl_easy_setopt(session->easy, CURLOPT_WRITEFUNCTION, curl_writefunction_cb);
 	curl_easy_setopt(session->easy, CURLOPT_WRITEDATA, &session);
+	curl_easy_setopt(session->easy, CURLOPT_DEBUGFUNCTION, curl_debugfunction_cb);
 	curl_easy_setopt(session->easy, CURLOPT_VERBOSE, 1L);
 	curl_easy_setopt(session->easy, CURLOPT_ERRORBUFFER, session->error);
 	curl_easy_setopt(session->easy, CURLOPT_PRIVATE, session);
@@ -292,6 +320,9 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 	GString *url;
 	if ( incident_value_string_get(i, "url", &url) )
 	{
+		if ( strncasecmp(url->str,  "http", 4) != 0)
+			return;
+
 		char *addr = NULL;
 		struct connection *con;
 		if ( incident_value_ptr_get(i, "con", (uintptr_t *)&con) )
@@ -318,6 +349,51 @@ static bool curl_prepare(void)
 static bool curl_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
+	if( curl_global_init(CURL_GLOBAL_ALL) != 0 )
+		return false;
+
+	curl_version_info_data *curlinfo;
+	curlinfo = curl_version_info(CURLVERSION_NOW);
+
+	GString *features = g_string_new("");
+	GString *protocols = g_string_new("");
+	if ( curlinfo->features )
+	{
+		
+		struct curl_feature
+		{
+			const char *name;
+			int bitmask;
+		};
+		static const struct curl_feature feats[] = {
+			{"c-ares", CURL_VERSION_ASYNCHDNS},
+			{"debug", CURL_VERSION_DEBUG},
+			{"debugemory", CURL_VERSION_CURLDEBUG},
+			{"gss", CURL_VERSION_GSSNEGOTIATE},
+			{"idn", CURL_VERSION_IDN},
+			{"ipv6", CURL_VERSION_IPV6},
+			{"largefile", CURL_VERSION_LARGEFILE},
+			{"ntlm", CURL_VERSION_NTLM},
+			{"spnego", CURL_VERSION_SPNEGO},
+			{"ssl",  CURL_VERSION_SSL},
+			{"sspi",  CURL_VERSION_SSPI},
+			{"krb4", CURL_VERSION_KERBEROS4},
+			{"libz", CURL_VERSION_LIBZ},
+			{"charconv", CURL_VERSION_CONV}
+		};
+		printf("Features: ");
+		for (unsigned int i=0; i<sizeof(feats)/sizeof(feats[0]); i++ )
+			if ( curlinfo->features & feats[i].bitmask )
+				g_string_append_printf(features, ",%s", feats[i].name);
+
+	}
+	if ( curlinfo->protocols )
+		for (const char * const *proto=curlinfo->protocols; *proto; ++proto )
+			g_string_append_printf(protocols, ",%s", *proto);
+
+	g_info("curl version %s features:%s protocols:%s ", curlinfo->version, features->str+1, protocols->str+1);
+
+
 	curl_runtime.multi = curl_multi_init();
 	ev_timer_init(&curl_runtime.timer_event, timer_cb, 0., 0.);
 	curl_multi_setopt(curl_runtime.multi, CURLMOPT_SOCKETFUNCTION, curl_socketfunction_cb);
@@ -337,6 +413,7 @@ static bool curl_new(struct dionaea *d)
 static bool curl_freex(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
+	curl_global_cleanup();
 	return true;
 }
 
