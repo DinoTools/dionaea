@@ -455,15 +455,15 @@ class ftpctrl(connection):
 			c = int(line[:3])
 			s = line[3:4]
 			if self.state == 'USER':
-				if c == 220 and s != '-':
+				if c == 220 and s != b'-':
 					self.cmd('USER ' + self.ftp.user)
 					self.state = 'PASS'
 			elif self.state == 'PASS':
-				if c == 331 and s != '-':
+				if c == 331 and s != b'-':
 					self.cmd('PASS ' + self.ftp.passwd)
 					self.state = 'WELCOME'
 			elif self.state == 'WELCOME':
-				if c == 230 and s != '-':
+				if c == 230 and s != b'-':
 					if self.ftp.mode == 'binary':
 						self.cmd('TYPE I')
 						self.state = 'TYPE'
@@ -472,18 +472,18 @@ class ftpctrl(connection):
 						self.cmd('PORT ' + port)
 						self.state = 'PORT'
 			elif self.state == 'TYPE':
-				if (c >= 200 and c < 300) and s != '-':
+				if (c >= 200 and c < 300) and s != b'-':
 					port = self.ftp.makeport()
 					self.cmd('PORT ' + port)
 					self.state = 'PORT'
 			elif self.state == 'PORT':
-					if c == 200 and s != '-':
+					if c == 200 and s != b'-':
 						self.cmd('RETR ' + self.ftp.file)
 						self.state = 'RETR'
 					else:
 						logger.warn("PORT command failed")
 			elif self.state == 'RETR':
-					if (c > 200 and c < 300)  and s != '-':
+					if (c > 200 and c < 300)  and s != b'-':
 						self.cmd('QUIT')
 						self.state = 'QUIT'
 						self.ftp.ctrldone()
