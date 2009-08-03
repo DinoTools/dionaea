@@ -81,10 +81,14 @@ class smbd(connection):
 		try:
 			p = NBTSession(data)
 		except:
-			traceback.print_exc()
+			t = traceback.format_exc()
+			smblog.critical(t)
 
 		smblog.debug('packet: {0}'.format(p.summary()))
-		#p.show()
+
+		if p.haslayer(Raw):
+			smblog.warning('p.haslayer(Raw): {0}'.format(p.getlayer(Raw).build()))
+			p.show()
 
 		if len(data) < (p.LENGTH+4):
 			#we probably do not have the whole packet yet -> return 0
@@ -100,7 +104,7 @@ class smbd(connection):
 
 		if p.haslayer(SMB_Header) and p[SMB_Header].Start != b'\xffSMB':
 			# not really SMB Header -> bail out
-			smblog.critical('=== not really SMB\n')
+			smblog.critical('=== not really SMB')
 			self.close()
 			return len(data)
 

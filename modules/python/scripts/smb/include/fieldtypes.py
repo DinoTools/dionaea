@@ -482,6 +482,19 @@ class StrLenField(StrField):
         l = self.length_from(pkt)
         return s[l:], self.m2i(pkt,s[:l])
 
+class FixGapField(StrField):
+	def getfield(self, pkt, s):
+		l = len(self.default)
+		if s[:l] == self.default:
+			return s[l:], self.m2i(pkt, s[:l])
+		else:
+			return s, self.m2i(pkt, b'')
+	def addfield(self, pkt, s, val):
+		if val == self.default:
+			return s+self.i2m(pkt, val)
+		else:
+			return s
+
 class FieldListField(Field):
     islist=1
     def __init__(self, name, default, field, length_from=None, count_from=None):
@@ -576,7 +589,10 @@ class UnicodeNullField(StrField):
             return "",s
 	#ugly! correct unicode detecting needs to be done here...
         #return s[l+3:],self.m2i(pkt, s[:l+1])
-        return s[l+3:],s[:l+1].decode('utf-16')
+        if len(s[:l+1]) > 2:
+            return s[l+3:],s[:l+1].decode('utf-16')
+        else:
+            return s[l+3:],b''
     def randval(self):
         return RandTermString(RandNum(0,1200),"\x00")
 
