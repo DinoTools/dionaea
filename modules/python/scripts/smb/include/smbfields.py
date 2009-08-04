@@ -53,7 +53,6 @@ class SMBNullField(StrField):
 		StrField.__init__(self, name, default, fmt, remain)
 		self.is_unicode = False
 	def addfield(self, pkt, s, val):
-		print(hex(pkt.firstlayer().getlayer(SMB_Header).Flags2))
 		if pkt.firstlayer().getlayer(SMB_Header).Flags2 & 0x8000:
 			return UnicodeNullField.addfield(self, pkt, s, val)
 		else:

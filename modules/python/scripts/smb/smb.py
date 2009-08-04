@@ -71,12 +71,13 @@ class smbd(connection):
 		self.buf = b''
 		self.outbuf = None
 
-	def established(self):
+	def handle_established(self):
 		self.timeouts.sustain = 60
 		self._in.accounting.limit  = 100*1024
 		self._out.accounting.limit = 100*1024
+		self.processors()
 
-	def io_in(self,data):
+	def handle_io_in(self,data):
 
 		try:
 			p = NBTSession(data)
@@ -155,7 +156,6 @@ class smbd(connection):
 			if p.haslayer(Raw):
 				#try decoding with wordcount 13
 				p.getlayer(SMB_Header).decode_payload_as(SMB_Sessionsetup_AndX_Request2)
-				p.show()
 				r = SMB_Sessionsetup_AndX_Response2()
 			else:
 				r = SMB_Sessionsetup_AndX_Response()
