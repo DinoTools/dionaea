@@ -236,8 +236,7 @@ static size_t curl_writefunction_cb(void *ptr, size_t size, size_t nmemb, void *
 
 
 /* CURLOPT_PROGRESSFUNCTION */
-static int curl_progressfunction_cb (void *p, double dltotal, double dlnow, double ult,
-									 double uln)
+static int curl_progressfunction_cb (void *p, double dltotal, double dlnow, double ult, double uln)
 {
 	struct session *session = (struct session *)p;
 	(void)ult;
@@ -383,7 +382,6 @@ static bool curl_new(struct dionaea *d)
 			{"libz", CURL_VERSION_LIBZ},
 			{"charconv", CURL_VERSION_CONV}
 		};
-		printf("Features: ");
 		for (unsigned int i=0; i<sizeof(feats)/sizeof(feats[0]); i++ )
 			if ( curlinfo->features & feats[i].bitmask )
 				g_string_append_printf(features, ",%s", feats[i].name);
