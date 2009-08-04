@@ -68,7 +68,7 @@ void proc_emu_ctx_free(void *ctx)
 
 void proc_emu_on_io_in(struct connection *con, struct processor_data *pd)
 {
-	printf("%s con %p pd %p\n", __PRETTY_FUNCTION__, con, pd);
+	g_debug("%s con %p pd %p", __PRETTY_FUNCTION__, con, pd);
 	struct emu_ctx *ctx = pd->ctx;
 
 	int offset = MAX(ctx->offset-300, 0);

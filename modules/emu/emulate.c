@@ -27,6 +27,8 @@
 
 #include <stdint.h>
 
+#include <glib.h>
+
 #include <emu/emu.h>
 #include <emu/emu_memory.h>
 #include <emu/emu_cpu.h>
@@ -63,7 +65,7 @@ int run(struct emu *e, struct emu_env *env)
 		{
 			if ( hook->hook.win->fnhook == NULL )
 			{
-				printf("unhooked call to %s\n", hook->hook.win->fnname);
+				g_critical("unhooked call to %s", hook->hook.win->fnname);
 				break;
 			}
 		}
@@ -89,7 +91,7 @@ int run(struct emu *e, struct emu_env *env)
 
 			if ( ret == -1 )
 			{
-				printf("cpu error %s\n", emu_strerror(e));
+				g_debug("cpu error %s", emu_strerror(e));
 				break;
 			}
 		}
