@@ -1496,8 +1496,8 @@ void connection_tcp_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 
 
-	if ( con->protocol.timeout  != NULL && 
-		 con->protocol.timeout(con, con->protocol.ctx) == true)
+	if ( con->protocol.listen_timeout  != NULL && 
+		 con->protocol.listen_timeout(con, con->protocol.ctx) == true)
 	{
 		ev_timer_again(loop, &con->events.listen_timeout);
 		return;
@@ -1564,7 +1564,7 @@ void connection_tcp_sustain_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	struct connection *con = CONOFF_SUSTAIN_TIMEOUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
-	if ( con->protocol.sustain == NULL || con->protocol.sustain(con, con->protocol.ctx) == false )
+	if ( con->protocol.sustain_timeout == NULL || con->protocol.sustain_timeout(con, con->protocol.ctx) == false )
 		connection_tcp_disconnect(con);
 	else
 		ev_timer_again(EV_A_ &con->events.sustain_timeout);
@@ -1576,7 +1576,7 @@ void connection_tcp_idle_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	struct connection *con = CONOFF_IDLE_TIMEOUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
-	if ( con->protocol.idle == NULL || con->protocol.idle(con, con->protocol.ctx) == false )
+	if ( con->protocol.idle_timeout == NULL || con->protocol.idle_timeout(con, con->protocol.ctx) == false )
 		connection_tcp_disconnect(con);
 	else
 		ev_timer_again(EV_A_ &con->events.idle_timeout);
@@ -2887,7 +2887,7 @@ void connection_tls_sustain_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	struct connection *con = CONOFF_SUSTAIN_TIMEOUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
-	if ( con->protocol.sustain == NULL || con->protocol.sustain(con, con->protocol.ctx) == false )
+	if ( con->protocol.sustain_timeout == NULL || con->protocol.sustain_timeout(con, con->protocol.ctx) == false )
 		connection_close(con);
 	else
 		ev_timer_again(CL, &con->events.sustain_timeout);
@@ -2899,7 +2899,7 @@ void connection_tls_idle_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	struct connection *con = CONOFF_IDLE_TIMEOUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
-	if ( con->protocol.idle == NULL || con->protocol.idle(con, con->protocol.ctx) == false )
+	if ( con->protocol.idle_timeout == NULL || con->protocol.idle_timeout(con, con->protocol.ctx) == false )
 		connection_close(con);
 	else
 		ev_timer_again(CL, &con->events.idle_timeout);
@@ -2932,8 +2932,8 @@ void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	struct connection *con = CONOFF_LISTEN_TIMEOUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
-	if ( con->protocol.timeout  != NULL && 
-		 con->protocol.timeout(con, con->protocol.ctx) == true)
+	if ( con->protocol.listen_timeout  != NULL && 
+		 con->protocol.listen_timeout(con, con->protocol.ctx) == true)
 	{
 		ev_timer_again(loop, &con->events.listen_timeout);
 		return;
@@ -3034,7 +3034,7 @@ void connection_udp_sustain_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	struct connection *con = CONOFF_SUSTAIN_TIMEOUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
-	if ( con->protocol.sustain == NULL || con->protocol.sustain(con, con->protocol.ctx) == false )
+	if ( con->protocol.sustain_timeout == NULL || con->protocol.sustain_timeout(con, con->protocol.ctx) == false )
 	{
 		ev_timer_stop(EV_A_ w);
 		connection_udp_disconnect(con);
@@ -3047,7 +3047,7 @@ void connection_udp_idle_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	struct connection *con = CONOFF_IDLE_TIMEOUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
-	if ( con->protocol.idle == NULL || con->protocol.idle(con, con->protocol.ctx) == false )
+	if ( con->protocol.idle_timeout == NULL || con->protocol.idle_timeout(con, con->protocol.ctx) == false )
 	{
 		ev_timer_stop(EV_A_ w);
 		connection_udp_disconnect(con);

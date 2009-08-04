@@ -44,7 +44,7 @@ class p0fconnection(connection):
 		self.con.ref()
 		self.connect(p0fpath, 0)
 
-	def established(self):
+	def handle_established(self):
 		data = pack("III4s4sHH", 
 			0x0defaced, 					# p0f magic
 			1, 								# type 
@@ -55,7 +55,7 @@ class p0fconnection(connection):
 			self.con.local.port)			# local port
 		self.send(data)
 
-	def io_in(self, data):
+	def handle_io_in(self, data):
 		fmt = "IIB20s40sB30s30sBBBhHi"
 		if len(data) != calcsize(fmt):
 			return 0
@@ -75,11 +75,11 @@ class p0fconnection(connection):
 		self.close()
 		return len(data)
 
-	def disconnect(self):
+	def handle_disconnect(self):
 		self.con.unref()
 		return 0
 
-	def error(self, err):
+	def handle_error(self, err):
 		self.con.unref()
 
 class p0fHandler(ihandler):

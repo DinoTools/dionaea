@@ -616,7 +616,7 @@ class TftpServerHandler(TftpSession):
         self.timeouts.idle = 3
         self.timeouts.sustain = 120
 
-    def io_in(self, data):
+    def handle_io_in(self, data):
         """This method informs a handler instance that it has data waiting on
         its socket that it must read and process."""
         recvpkt = self.packet.parse(data)
@@ -788,7 +788,7 @@ class TftpServer(TftpSession):
         self.packet = TftpPacketFactory()
         self.root = ''
 	
-    def io_in(self,data):
+    def handle_io_in(self,data):
         logger.debug("Data ready on our main socket")
         buffer = data
         logger.debug("Read %d bytes" % len(buffer))
@@ -846,7 +846,7 @@ class TftpClient(TftpSession):
         self.connect(host,0)
 
 
-    def established(self):
+    def handle_established(self):
         logger.info("connection to %s established" % self.remote.host)
         logger.info("port %i established" % self.port)
         self.remote.port = self.port
@@ -857,7 +857,7 @@ class TftpClient(TftpSession):
         self.send(pkt.encode().buffer)
         self.state.state = 'rrq'
 
-    def io_in(self, data):
+    def handle_io_in(self, data):
         print('packet from %s:%i' % (self.remote.host, self.remote.port))
         
         if self.connected == False:
@@ -960,10 +960,10 @@ class TftpClient(TftpSession):
             tftpassert(False, "Received unknown packet type from server: " + str(recvpkt))
         return len(data)
 
-    def error(self, err):
+    def handle_error(self, err):
         pass
 
-    def idle(self):
+    def handle_idle_timeout(self):
         if self.idlecount > 10:
             return False
         self.idlecount+=1

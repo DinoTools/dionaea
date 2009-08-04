@@ -79,9 +79,9 @@ cdef extern from "../../include/connection.h":
 		protocol_handler_ctx_free 			ctx_free
 		protocol_handler_established 		established
 		protocol_handler_error 				error
-		protocol_handler_timeout 			idle
-		protocol_handler_timeout 			sustain
-		protocol_handler_timeout 			timeout
+		protocol_handler_timeout 			idle_timeout
+		protocol_handler_timeout 			sustain_timeout
+		protocol_handler_timeout 			listen_timeout
 		protocol_handler_disconnect 		disconnect
 		protocol_handler_io_in 				io_in
 		protocol_handler_io_out 			io_out
@@ -402,14 +402,14 @@ cdef class connection:
 			self.thisptr.protocol.name = c_g_strdup(protoname)
 			self.thisptr.protocol.ctx_new = <protocol_handler_ctx_new>_factory
 			self.thisptr.protocol.ctx_free = <protocol_handler_ctx_free>_garbage
-			self.thisptr.protocol.established = <protocol_handler_established>established_cb
-			self.thisptr.protocol.error = <protocol_handler_error>connect_error_cb
-			self.thisptr.protocol.idle = <protocol_handler_timeout>idle_cb
-			self.thisptr.protocol.sustain = <protocol_handler_timeout>sustain_cb
-			self.thisptr.protocol.timeout = <protocol_handler_timeout>timeout_cb
-			self.thisptr.protocol.io_in = <protocol_handler_io_in> io_in_cb
-			self.thisptr.protocol.io_out = <protocol_handler_io_out> io_out_cb
-			self.thisptr.protocol.disconnect = <protocol_handler_disconnect> disconnect_cb
+			self.thisptr.protocol.established = <protocol_handler_established>handle_established_cb
+			self.thisptr.protocol.error = <protocol_handler_error>handle_error_cb
+			self.thisptr.protocol.idle_timeout = <protocol_handler_timeout>handle_timeout_idle_cb
+			self.thisptr.protocol.sustain_timeout = <protocol_handler_timeout>handle_timeout_sustain_cb
+			self.thisptr.protocol.listen_timeout = <protocol_handler_timeout>handle_timeout_listen_cb
+			self.thisptr.protocol.io_in = <protocol_handler_io_in> handle_io_in_cb
+			self.thisptr.protocol.io_out = <protocol_handler_io_out> handle_io_out_cb
+			self.thisptr.protocol.disconnect = <protocol_handler_disconnect> handle_disconnect_cb
 			self.thisptr.protocol.ctx = <void *>self;
 #		else:
 #			print "connection is already assigned!"
@@ -420,11 +420,11 @@ cdef class connection:
 #	def __dealloc__(self):
 #		print "goodbye connection"
 	
-	def established(self):
+	def handle_established(self):
 		"""callback once the connection is established"""
 		pass
 	
-	def disconnect(self):
+	def handle_disconnect(self):
 		"""callback once the connection is disconnected
 		for outbound connections, returning 1 will try to restablish the connection
 		"""
@@ -439,29 +439,29 @@ cdef class connection:
 	def learn(self, p):
 		pass
 
-	def sustain(self):
+	def handle_timeout_sustain(self):
 		"""callback for established connection session timeouts, return True to keep the connection"""
 		return False
 
-	def idle(self):
+	def handle_timeout_idle(self):
 		"""callback for established connection idle timeouts, return True to keep the connection"""
 		return True
 
-	def timeout(self):
+	def handle_timeout_listen(self):
 		"""callback for listening timeouts, return True to keep the listener alive for a new period"""
 		return False
 
-	def error(self, err):
+	def handle_error(self, err):
 		"""callback for connection errors"""
 		pass
 	
 
-	def io_in(self,data):
+	def handle_io_in(self,data):
 		"""callback for incoming data"""
 #		print(data)
 		return len(data)
 
-	def io_out(self):
+	def handle_io_out(self):
 		"""callback for flushed out buffer"""
 		pass
 		
@@ -617,57 +617,57 @@ cdef void _garbage(void *context):
 	DECREF(instance)
 
 
-cdef void established_cb(c_connection *con) except *:
+cdef void handle_established_cb(c_connection *con) except *:
 #	print "established_cb"
 	cdef connection instance
 	instance = <connection>c_connection_protocol_ctx_get(con)
-	instance.established()
+	instance.handle_established()
 
-cdef int io_in_cb(c_connection *con, void *context, void *data, int size) except *:
+cdef int handle_io_in_cb(c_connection *con, void *context, void *data, int size) except *:
 #	print "io_in_cb"
 	cdef connection instance
 	instance = <connection>context
-	return instance.io_in(bytesfrom(<char *>data, size))
+	return instance.handle_io_in(bytesfrom(<char *>data, size))
 	
-cdef int io_out_cb(c_connection *con, void *context) except *:
+cdef int handle_io_out_cb(c_connection *con, void *context) except *:
 #	print "io_out_cb"
 	cdef connection instance
 	instance = <connection>context
-	instance.io_out()
+	instance.handle_io_out()
 	
-cdef c_bool disconnect_cb(c_connection *con, void *context) except *:
+cdef c_bool handle_disconnect_cb(c_connection *con, void *context) except *:
 #	print "disconnect_cb"
 	cdef connection instance
 	instance = <connection>context
-	r = instance.disconnect()
+	r = instance.handle_disconnect()
 	if r == 0:
 		instance.thisptr = NULL
 	return r
 
-cdef void connect_error_cb(c_connection *con, c_connection_error err) except *:
+cdef void handle_error_cb(c_connection *con, c_connection_error err) except *:
 #	print "connect_error_cb"
 	cdef connection instance
 	instance = <connection>c_connection_protocol_ctx_get(con)
-	instance.error(err)
+	instance.handle_error(err)
 
-cdef c_bool sustain_cb(c_connection *con, void *ctx) except *:
+cdef c_bool handle_timeout_sustain_cb(c_connection *con, void *ctx) except *:
 #	print "sustain_cb"
 	cdef connection instance
 	instance = <connection>ctx
-	return instance.sustain()
+	return instance.handle_timeout_sustain()
 
-cdef c_bool timeout_cb(c_connection *con, void *ctx) except *:
+cdef c_bool handle_timeout_listen_cb(c_connection *con, void *ctx) except *:
 #	print "timeout_cb"
 	cdef connection instance
 	instance = <connection>ctx
-	return instance.timeout()
+	return instance.handle_timeout_listen()
 
 
-cdef c_bool idle_cb(c_connection *con, void *ctx) except *:
+cdef c_bool handle_timeout_idle_cb(c_connection *con, void *ctx) except *:
 #	print "idle_cb"
 	cdef connection instance
 	instance = <connection>ctx
-	return instance.idle()
+	return instance.handle_timeout_idle()
 
 
 def dlhfn(name, number, path, line, msg):

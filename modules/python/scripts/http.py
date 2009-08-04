@@ -15,12 +15,12 @@ class httpd(connection):
 		connection.__init__(self,'tcp')
 		self.state = 'HEADER'
 
-	def established(self):
+	def handle_established(self):
 		self.processors()
 
 
 
-	def io_in(self, data):
+	def handle_io_in(self, data):
 		if self.state == 'HEADER':
 			try:
 				data = data.decode()

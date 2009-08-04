@@ -101,7 +101,7 @@ class cmdexe:
 		self.files = {}
 		self.cwd = 'C:\WINDOWS\System32'
 
-	def io_in(self, data):
+	def handle_io_in(self, data):
 		logger.debug(data)
 #		self.send(data)
 		c = True
@@ -404,21 +404,25 @@ class remoteshell(cmdexe,connection):
 		self.timeouts.sustain = 15
 		self._in.accounting.limit = 1024
 	
-	def established(self):
+	def handle_established(self):
 		self.send("Microsoft Windows 2000 [Version 5.00.2195]\n(C) Copyright 1985-2000 Microsoft Corp.\n\nC:\\WINDOWS\\System32>")
 
-	def disconnect(self):
+	def handle_disconnect(self):
 		return False
 
-	def error(self, err):
+	def handle_error(self, err):
 		pass
 
-	def idle (self):
+	def handle_idle_timeout (self):
 		self.send("\n")
 		return True
 
-	def sustain(self):
+	def handle_listen_timeout (self):
 		return False
+
+	def handle_sustain_timeout(self):
+		return False
+
 
 
 def start():
@@ -440,10 +444,10 @@ class ftpctrl(connection):
 		self.ftp = ftp
 		self.state = 'USER'
 
-	def established(self):
+	def handle_established(self):
 		logger.debug("FTP CTRL connection established")
 
-	def io_in(self, data):
+	def handle_io_in(self, data):
 		dlen = len(data)
 		lines = _linesep_regexp.split(data)#.decode('UTF-8'))
 		
@@ -494,18 +498,18 @@ class ftpctrl(connection):
 		logger.debug("FTP CMD: '" + cmd +"'")
 		self.send(cmd + '\r\n')
 
-	def error(self, err):
+	def handle_error(self, err):
 		pass
 
-	def disconnect(self):
+	def handle_disconnect(self):
 		if self.state != 'QUIT':
 			self.ftp.fail()
 		return False
 
-	def idle(self):
+	def handle_idle_timeout(self):
 		return False
 
-	def sustain(self):
+	def handle_sustain_timeout(self):
 		return False
 
 class ftpdata(connection):
@@ -515,7 +519,7 @@ class ftpdata(connection):
 		self.timeouts.listen = 10
 		
 
-	def established(self):
+	def handle_established(self):
 		logger.debug("FTP DATA established")
 		self.timeouts.idle = 10
 
@@ -525,20 +529,20 @@ class ftpdata(connection):
 		self.ftp.datalistener.close()
 		self.ftp.datalistener = None
 
-	def io_in(self, data):
+	def handle_io_in(self, data):
 		return len(data)
 
-	def idle(self):
+	def handle_idle(self):
 		self.ftp.fail()
 		return False
 
-	def disconnect(self):
+	def handle_disconnect(self):
 		logger.debug("received %i bytes" %(self._in.accounting.bytes))
 		self.ftp.dataconn = None
 		self.ftp.datadone()
 		return False
 
-	def timeout(self):
+	def handle_listen_timeout(self):
 		self.ftp.fail()
 		return False
 

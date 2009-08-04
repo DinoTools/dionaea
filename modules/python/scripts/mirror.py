@@ -45,20 +45,20 @@ class mirrorc(connection):
 #		self.connect('',peer.local.port)
 		self.peer = peer
 
-	def established(self):
+	def handle_established(self):
 		self.peer.peer = self
 
-	def io_in(self, data):
+	def handle_io_in(self, data):
 		if self.peer:
 			self.peer.send(data)
 		return len(data)
 
-	def error(self, err):
+	def handle_error(self, err):
 		if self.peer:
 			self.peer.peer = None
 			self.peer.close()
 
-	def disconnect(self):
+	def handle_disconnect(self):
 		if self.peer:
 			self.peer.close()
 		if self.peer:
@@ -73,23 +73,23 @@ class mirrord(connection):
 			self.listen()
 		self.peer=None
 		
-	def established(self):
+	def handle_established(self):
 		self.peer=mirrorc(self)
 		self.timeouts.sustain = 60
 		self._in.accounting.limit  = 100*1024
 		self._out.accounting.limit = 100*1024
 		
-	def io_in(self, data):
+	def handle_io_in(self, data):
 		if self.peer:
 			self.peer.send(data)
 		return len(data)
 
-	def error(self, err):
+	def handle_error(self, err):
 		logger.debug("mirrord connection error?, should not happen")
 		if self.peer:
 			self.peer.peer = None
 
-	def disconnect(self):
+	def handle_disconnect(self):
 		if self.peer:
 			self.peer.close()
 		if self.peer:
