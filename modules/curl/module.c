@@ -272,6 +272,7 @@ static int curl_debugfunction_cb(CURL *easy, curl_infotype type, char *data, siz
 		return 0;
 	}
 	return 0;
+	g_free(text);
 }
 
 /* Create a new easy handle, and add it to the global curl_multi */
