@@ -269,10 +269,10 @@ static int curl_debugfunction_cb(CURL *easy, curl_infotype type, char *data, siz
 	case CURLINFO_DATA_IN:
 	case CURLINFO_SSL_DATA_IN:
 	default:
-		return 0;
+		break;
 	}
-	return 0;
 	g_free(text);
+	return 0;
 }
 
 /* Create a new easy handle, and add it to the global curl_multi */
