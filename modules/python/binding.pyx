@@ -34,20 +34,23 @@ cdef extern from "module.h":
 	ctypedef int c_uintptr_t "uintptr_t"
 	char * c_g_strdup "g_strdup" (char *)
 	cdef object c_pygetifaddrs "pygetifaddrs"(object self, object args)
+	cdef object c_pylcfg "pylcfg"(object self, object args)
+
 
 #cdef extern from "../../include/dionaea.h":
-#	ctypedef struct c_dionaea "struct dionaea":
-#		pass
+	ctypedef struct c_dionaea "struct dionaea":
+		pass
 #
 #	cdef extern c_dionaea *g_dionaea
 #
-#cdef class dionaea:
-#	cdef c_dionaea *thisptr
-#	def __init__(self):
-#		self.thisptr = g_dionaea
-		
-def getifaddrs():
-	return c_pygetifaddrs(<object> NULL, <object> NULL)
+cdef class dionaea:
+	cdef c_dionaea *thisptr
+	def config(self):
+		return c_pylcfg(<object> NULL, <object> NULL)
+	def getifaddrs(self):
+		return c_pygetifaddrs(<object> NULL, <object> NULL)
+
+g_dionaea = dionaea() 
 
 
 
@@ -116,6 +119,8 @@ cdef extern from "../../include/connection.h":
 	void c_connection_stats_accounting_limit_set "connection_stats_accounting_limit_set"(c_connection_stats *, double)
 
 
+	ctypedef struct c_processor_data "struct processor_data":
+		pass
 
 	ctypedef struct c_connection_stats_info "struct connection_stats_info":
 		c_connection_stats io_in
@@ -128,7 +133,7 @@ cdef extern from "../../include/connection.h":
 		c_node_info remote
 		c_node_info local
 		c_connection_stats_info stats
-
+		c_processor_data *processor_data
 
 	bint c_connection_transport_from_string "connection_transport_from_string" (char *, c_connection_transport *)
 	char *c_connection_transport_to_string "connection_transport_to_string"(c_connection_transport)
@@ -379,6 +384,7 @@ cdef class connection:
 	cdef c_connection *thisptr
 	cdef bint factory
 	cdef object __weakref__
+	bistream = []
 
 	def __cinit__(self):
 #		print "hello cinit"
@@ -516,8 +522,14 @@ cdef class connection:
 			data_bytes = data
 		else:
 			raise ValueError(u"requires text/bytes input, got %s" % type(data))
-
 		c_connection_send(self.thisptr, data_bytes, len(data_bytes))
+
+		if self.thisptr.processor_data != NULL:
+			if len(self.bistream) > 0 and self.bistream[-1][0] == u'out':
+				self.bistream[-1] = (u'out', self.bistream[-1][1] + data_bytes)
+			else:
+				self.bistream.append((u'out',data_bytes))
+
 
 	def close(self):
 		"""close this connection"""
@@ -627,7 +639,16 @@ cdef int handle_io_in_cb(c_connection *con, void *context, void *data, int size)
 #	print "io_in_cb"
 	cdef connection instance
 	instance = <connection>context
-	return instance.handle_io_in(bytesfrom(<char *>data, size))
+
+	bdata = bytesfrom(<char *>data, size)
+
+	if instance.thisptr.processor_data != NULL:
+		if len(instance.bistream) > 0 and instance.bistream[-1][0] == u'in':
+			instance.bistream[-1] = (u'in', instance.bistream[-1][1] + bdata)
+		else:
+			instance.bistream.append((u'in',bdata))
+
+	return instance.handle_io_in(bdata)
 	
 cdef int handle_io_out_cb(c_connection *con, void *context) except *:
 #	print "io_out_cb"

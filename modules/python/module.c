@@ -424,7 +424,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 
 		if( iface->ifa_addr->sa_family == AF_INET6)
  		{
-			struct sockaddr_in6 *sa6 = iface->ifa_addr;
+			struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)iface->ifa_addr;
 
 			if ( ipv6_addr_linklocal(&sa6->sin6_addr) )
 			{	// local scope address
@@ -465,4 +465,41 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 
 }
 
+
+PyObject *pylcfgx_tree(struct lcfgx_tree_node *node)
+{
+	PyObject *obj = NULL;
+	if ( node->type == lcfgx_map )
+	{ 	obj = PyDict_New();
+		struct lcfgx_tree_node *it;
+		for( it = node->value.elements; it != NULL; it = it->next )
+		{
+			PyObject *val = pylcfgx_tree(it);
+			PyDict_SetItemString(obj, it->key, val);
+			Py_DECREF(val);
+		}
+	}else
+	if( node->type == lcfgx_list )
+	{
+		obj = PyList_New(0);
+		struct lcfgx_tree_node *it;
+		for( it = node->value.elements; it != NULL; it = it->next )
+		{
+			PyObject *val = pylcfgx_tree(it);
+			PyList_Append(obj, val);
+			Py_DECREF(val);
+		}
+	}else 
+	if( node->type == lcfgx_string )
+	{
+		obj = PyUnicode_FromStringAndSize(node->value.string.data, node->value.string.len);
+	}
+	return obj; 
+}
+
+PyObject *pylcfg(PyObject *self, PyObject *args)
+{
+	PyObject *obj =	pylcfgx_tree(g_dionaea->config.root);
+	return obj;
+}
 
