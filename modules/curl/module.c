@@ -32,6 +32,8 @@
 #include <lcfg/lcfg.h>
 #include <lcfgx/lcfgx_tree.h>
 #include <curl/curl.h>
+#include <stdlib.h>
+#include <unistd.h>
 
 #include "config.h"
 #include "modules.h"
@@ -52,6 +54,7 @@ static struct
 	struct ihandler *ihandler;
 	int queued;
 	int active;
+	char *download_dir;
 } curl_runtime;
 
 
@@ -61,6 +64,20 @@ struct session
 	char *url;
 	char *laddr;
 	char error[CURL_ERROR_SIZE];
+
+	union
+	{
+		struct
+		{
+			int file;
+			char *path;
+		}download;
+
+		struct
+		{
+
+		}upload;
+	}action;
 };
 
 struct session_socket
@@ -115,15 +132,24 @@ static void check_run_count(void)
 				if( msg->data.result == CURLE_OK )
 				{
 					g_info("DONE: %s => (%d) %s", eff_url, msg->data.result, session->error);
+					close(session->action.download.file);
+					struct incident *i = incident_new("dionaea.download.complete");
+					incident_value_string_set(i, "path", g_string_new(session->action.download.path));
+					incident_report(i);
+					incident_free(i);
 				}else
 				{
 					g_warning("FAIL: %s => (%d) %s", eff_url, msg->data.result, session->error);
+					close(session->action.download.file);
 				}
 				curl_multi_remove_handle(curl_runtime.multi, easy);
 				curl_easy_cleanup(easy);
 				g_free(session->url);
 				if( session->laddr )
 					g_free(session->laddr);
+				unlink(session->action.download.path);
+				if( session->action.download.path )
+					g_free(session->action.download.path);
 				g_free(session);
 			}
 		}
@@ -227,11 +253,12 @@ static int curl_socketfunction_cb(CURL *easy, curl_socket_t s, int action, void 
 /* CURLOPT_WRITEFUNCTION */
 static size_t curl_writefunction_cb(void *ptr, size_t size, size_t nmemb, void *data)
 {
-	size_t realsize = size * nmemb;
+	
 	struct session *session = (struct session *) data;
-	(void)ptr;
-	(void)session;
-	return realsize;
+	g_debug("session %p file %i", session, session->action.download.file);
+//	fwrite(ptr, size, nmemb, session->action.download.file);
+	write(session->action.download.file, ptr, size*nmemb);
+	return size * nmemb;
 }
 
 
@@ -249,17 +276,20 @@ static int curl_progressfunction_cb (void *p, double dltotal, double dlnow, doub
 /* CURLOPT_DEBUGFUNCTION */
 static int curl_debugfunction_cb(CURL *easy, curl_infotype type, char *data, size_t size, void *userp)
 {
-	char *text = g_strdup(data);
-	int len = strlen(text);
-	if ( text[len-1] == '\n' )
-		text[len-1] = '\0';
 
 	struct session *session;
 	curl_easy_getinfo(easy, CURLINFO_PRIVATE, &session);
 	switch ( type )
 	{
 	case CURLINFO_TEXT:
-		g_debug("%s: %s", session->url, text);
+		{
+			char *text = g_strdup(data);
+			int len = strlen(text);
+			if ( text[len-1] == '\n' )
+				text[len-1] = '\0';
+			g_debug("%s: %s", session->url, text);
+			g_free(text);
+		}
 		break;
 
 	case CURLINFO_HEADER_OUT:
@@ -271,30 +301,31 @@ static int curl_debugfunction_cb(CURL *easy, curl_infotype type, char *data, siz
 	default:
 		break;
 	}
-	g_free(text);
+	
 	return 0;
 }
 
 /* Create a new easy handle, and add it to the global curl_multi */
-static void session_new(const char *url, const char *laddr)
+static struct session *session_new(void)
 {
 	struct session *session;
-	CURLMcode rc;
-
 	session = g_malloc0(sizeof(struct session));
 	session->error[0]='\0';
-
 	session->easy = curl_easy_init();
-	if( !session->easy )
-	{
-		g_error("curl_easy_init() failed, exiting!");
-	}
+	return session;
+}
+
+static void session_download_new(const char *url, const char *laddr)
+{
+	struct session *session = session_new();
+	CURLMcode rc;
+
 	session->url = g_strdup(url);
 	if( laddr )
 		session->laddr = g_strdup(laddr);
 	curl_easy_setopt(session->easy, CURLOPT_URL, session->url);
 	curl_easy_setopt(session->easy, CURLOPT_WRITEFUNCTION, curl_writefunction_cb);
-	curl_easy_setopt(session->easy, CURLOPT_WRITEDATA, &session);
+	curl_easy_setopt(session->easy, CURLOPT_WRITEDATA, session);
 	curl_easy_setopt(session->easy, CURLOPT_DEBUGFUNCTION, curl_debugfunction_cb);
 	curl_easy_setopt(session->easy, CURLOPT_VERBOSE, 1L);
 	curl_easy_setopt(session->easy, CURLOPT_ERRORBUFFER, session->error);
@@ -312,6 +343,11 @@ static void session_new(const char *url, const char *laddr)
 	rc = curl_multi_add_handle(curl_runtime.multi, session->easy);
 	curl_runtime.queued++;
 	check_run_count();
+
+	session->action.download.path = g_strdup(curl_runtime.download_dir);
+	session->action.download.file = mkstemp(session->action.download.path);
+
+	g_debug("session %p file %i path %s", session, session->action.download.file, session->action.download.path);
 }
 
 static void curl_ihandler_cb(struct incident *i, void *ctx)
@@ -327,7 +363,7 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 		struct connection *con;
 		if ( incident_value_ptr_get(i, "con", (uintptr_t *)&con) )
 			addr = con->local.ip_string;
-		session_new(url->str, addr);
+		session_download_new(url->str, addr);
 	}
 	else
 		g_critical("download without url?");
@@ -349,6 +385,17 @@ static bool curl_prepare(void)
 static bool curl_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
+
+	struct lcfgx_tree_node *node;
+	if( lcfgx_get_string(g_dionaea->config.root, &node, "downloads.dir") != LCFGX_PATH_FOUND_TYPE_OK )
+	{
+		g_warning("missing downloads.dir in dionaea.conf");
+		return false;
+	}
+
+	curl_runtime.download_dir = g_strdup_printf("%s/http-XXXXXX", (char *)node->value.string.data);
+
+
 	if( curl_global_init(CURL_GLOBAL_ALL) != 0 )
 		return false;
 
