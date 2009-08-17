@@ -44,33 +44,11 @@ def start():
 	logger = logging.getLogger('')
 	logger.setLevel(logging.DEBUG)
 	handler = DionaeaLogHandler()
-#	print("add handler" + str(handler))
 	logger.addHandler(handler)
-#	logtest = logging.getLogger("test")
-#	logtest.warn("Das liegt nun in der test domain")
 
 def stop():
 	global logger
 	global handler
-#	print("remove handler " + str(handler))
 	logger.removeHandler(handler)
 
-# "application" code
-#logger.debug("debug message")
-#logger.info("info message")
-#logger.warn("warn message")
-#logger.critical("critical message")
-#logger.error("error message")
-#
-#logx = logging.getLogger("logx")
-#logx.warn("x")
 
-
-#class idumper(ihandler):
-#	def __init__(self, pattern):
-#		ihandler.__init__(self, pattern)
-#	def handle(self, icd):
-#		icd.dump()
-#
-#
-#...

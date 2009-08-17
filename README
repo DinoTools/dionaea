@@ -1,0 +1,47 @@
+
+Some usefull commands for the cli to test things:
+
+#ftp
+from ftp import ftp
+f = ftp()
+f.download('192.168.53.20', 'anonymous','guest','ftp.kernel.org',21, 'welcome.msg', 'binary')
+f.download('192.168.53.20', 'anonymous','guest','ftp.kernel.org',21, '/pub/linux/kernel/v2.6/linux-2.6.29.6.tar.gz', 'binary')
+
+
+#tftp
+from tftp import TftpClient
+t = TftpClient()
+t.download('192.168.53.20', '192.168.53.21', 69, '1K')
+
+
+#http
+from dionaea import incident
+i = incident("dionaea.download.offer")
+i.set("url", "http://www.honeynet.org")
+i.report()
+
+
+
+#ihandler dumper
+from dionaea import ihandler
+class idumper(ihandler):
+	def __init__(self, pattern):
+		ihandler.__init__(self, pattern)
+	def handle(self, icd):
+		icd.dump()
+
+a = idumper('*')
+
+
+#logging
+import logging
+logger = logging.getLogger("foobar")
+logger.debug("debug message")
+logger.info("info message")
+logger.warn("warn message")
+logger.critical("critical message")
+logger.error("error message")
+
+#config
+from dionaea import g_dionaea
+g_dionaea.config()

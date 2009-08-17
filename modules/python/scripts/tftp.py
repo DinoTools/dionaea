@@ -37,7 +37,9 @@
 # gave us a non exclusive permission to use his code in 
 # our gpl project
 
-from dionaea import connection
+from dionaea import connection, ihandler, g_dionaea, incident
+
+import tempfile
 import struct
 import logging
 import os
@@ -830,7 +832,7 @@ class TftpClient(TftpSession):
     def __del__(self):
         print('__del__' + str(self))
 
-    def download(self, host, port, filename):
+    def download(self, lhost, host, port, filename):
         logger.info("Connecting to %s to download" % host)
         logger.info("    filename -> %s" % filename)
 
@@ -843,8 +845,8 @@ class TftpClient(TftpSession):
 
         self.filename = filename
         self.port = port
+        self.bind(lhost, 0)
         self.connect(host,0)
-
 
     def handle_established(self):
         logger.info("connection to %s established" % self.remote.host)
@@ -856,6 +858,7 @@ class TftpClient(TftpSession):
         pkt.options = self.options
         self.send(pkt.encode().buffer)
         self.state.state = 'rrq'
+        self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix='tftp-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
 
     def handle_io_in(self, data):
         print('packet from %s:%i' % (self.remote.host, self.remote.port))
@@ -894,12 +897,18 @@ class TftpClient(TftpSession):
 
                 logger.debug("writing %d bytes to output file"
                             % len(recvpkt.data))
-#                self.fileobj.write(recvpkt.data)
+                self.fileobj.write(recvpkt.data)
                 self.bytes += len(recvpkt.data)
                 # Check for end-of-file, any less than full data packet.
                 if len(recvpkt.data) < int(self.options['blksize']):
                     logger.info("end of file detected")
-#                    self.close()
+                    self.fileobj.close()
+                    icd = incident("dionaea.download.complete")
+                    icd.set('path', self.fileobj.name)
+                    icd.report()
+                    self.close()
+                    self.fileobj.unlink(self.fileobj.name)
+                    
 
             elif recvpkt.blocknumber == self.curblock:
                 logger.warn("dropping duplicate block %d" % self.curblock)
@@ -965,7 +974,22 @@ class TftpClient(TftpSession):
 
     def handle_idle_timeout(self):
         if self.idlecount > 10:
+            self.fileobj.close()
+            self.fileobj.unlink(self.fileobj.name)
             return False
         self.idlecount+=1
         return True
+
+
+class tftpdownloadhandler(ihandler):
+    def __init__(self):
+        logger.debug("%s ready!" % (self.__class__.__name__))
+        ihandler.__init__(self, 'dionaea.download.offer')
+    def handle(self, icd):
+        logger.warn("do download")
+        url = icd.get("url")
+        if url.startswith('tftp://'):
+            con = icd.get('con')
+            t=TftpClient()
+            t.download(con.local.host, 'remotehost', 69, 'file')
 

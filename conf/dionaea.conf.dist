@@ -5,7 +5,32 @@ logging = {
 	domains = "*"
 }
 
+processors = 
+{ 
+	emu = 
+	{
+		detect = "yes"
+		profile = "yes"
+	}
+}
+
+downloads =
+{
+	dir = "var/binaries"
+	tmp-suffix = ".tmp"
+}
+
 modules = {
+
+	curl = 
+	{
+		protocol = "http"
+	}
+
+	emu = {
+		detect = "1"
+		profile = "1"
+	}
 
 	python = {
 		// default expands to PREFIX/lib/dionaea/python/
@@ -16,7 +41,8 @@ modules = {
 
 		// python imports
 		imports	= [	"log",
-					"services"]
+					"services",
+					"ihandlers"]
 	}
 
 	/* nc is a test module */

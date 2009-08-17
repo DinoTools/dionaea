@@ -119,7 +119,7 @@ def start():
 		g_slave = slave()
 	elif mode == 'getifaddrs':
 		g_slave = slave()
-		ifaces = getifaddrs()
+		ifaces = g_dionaea.getifaddrs()
 		addrs = {}
 		for iface in ifaces.keys():
 			afs = ifaces[iface]

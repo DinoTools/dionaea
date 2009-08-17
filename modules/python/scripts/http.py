@@ -61,6 +61,9 @@ Content-Length: """ +str(len(body)).encode('UTF-8') + b"""\r
 		self.send(body)
 		self.close()
 
+	def handle_disconnect(self):
+		for s in self.bistream:
+			print('%s %s' % s)
 #global h
 #
 #def start():
