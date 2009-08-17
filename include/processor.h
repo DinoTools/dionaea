@@ -4,6 +4,7 @@
 #include <stdbool.h>
 
 #include "bistream.h"
+#include "refcount.h"
 
 struct connection;
 struct lcfgx_tree_node;
@@ -28,8 +29,9 @@ typedef void *(*processor_cfg_new)(struct lcfgx_tree_node *node);
 typedef bool (*processor_process)(struct connection *con, void *config);
 typedef void *(*processor_ctx_new)(void *cfg);
 typedef void (*processor_ctx_free)(void *ctx);
-typedef void (*processor_on_close)(struct connection *con, struct processor_data *pd);
-typedef void (*processor_on_io)(struct connection *con, struct processor_data *pd);
+typedef void (*processor_close)(struct connection *con, struct processor_data *pd);
+typedef void (*processor_io)(struct connection *con, struct processor_data *pd, void *data, int size);
+typedef void (*processor_thread_io)(struct connection *con, struct processor_data *pd);
 
 struct processor
 {
@@ -38,8 +40,10 @@ struct processor
 	processor_process process;	
 	processor_ctx_new new;	
 	processor_ctx_free free;
-	processor_on_io on_io_in;
-	processor_on_io on_io_out;
+	processor_io io_in;
+	processor_io io_out;
+	processor_thread_io thread_io_in;
+	processor_thread_io thread_io_out;
 	void *config;
 };
 
@@ -48,6 +52,7 @@ struct processor_data
 {
 	enum processor_state state;
 	GMutex *mutex;
+	struct refcount queued;
 	struct processor *processor;
 	void *ctx;
 	struct bistream *bistream;

@@ -25,6 +25,9 @@
  *
  *******************************************************************************/
 
+#ifndef HAVE_REFCOUNT_H
+#define HAVE_REFCOUNT_H
+
 #include <stdbool.h>
 #include <glib.h>
 
@@ -40,3 +43,4 @@ void refcount_inc(struct refcount *rc);
 void refcount_dec(struct refcount *rc);
 bool refcount_is_zero(struct refcount *rc);
 
+#endif

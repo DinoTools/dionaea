@@ -46,7 +46,7 @@ struct processor proc_emu =
 	.name = "emu",
 	.new = proc_emu_ctx_new,  
 	.free = proc_emu_ctx_free,
-	.on_io_in = proc_emu_on_io_in,
+	.thread_io_in = proc_emu_on_io_in,
 };
 
 

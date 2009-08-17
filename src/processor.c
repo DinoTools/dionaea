@@ -133,6 +133,7 @@ struct processor_data *processor_data_new(void)
 {
 	struct processor_data *pd = g_malloc0(sizeof(struct processor_data));
 	pd->mutex = g_mutex_new();
+	refcount_init(&pd->queued);
 	pd->state = processor_continue;
 	pd->processor = NULL;
 	pd->filters = NULL;
@@ -144,6 +145,7 @@ void processor_data_free(struct processor_data *pd)
 {
 	bistream_free(pd->bistream);
 	g_mutex_free(pd->mutex);
+	refcount_exit(&pd->queued);
 	g_free(pd);
 }
 
@@ -155,17 +157,17 @@ void recurse_io(GList *list, struct connection *con, enum bistream_direction dir
 		struct processor_data *proc_data = it->data;
 		if( dir == bistream_in)
 		{
-			if ( proc_data->processor->on_io_in != NULL )
+			if ( proc_data->processor->thread_io_in != NULL )
 			{
-				proc_data->processor->on_io_in(con, proc_data);
+				proc_data->processor->thread_io_in(con, proc_data);
 				recurse_io(proc_data->filters, con, dir);
 			}
 		}
 		else
 		{
-			if( proc_data->processor->on_io_out != NULL )
+			if( proc_data->processor->thread_io_out != NULL )
 			{
-				proc_data->processor->on_io_out(con, proc_data);
+				proc_data->processor->thread_io_out(con, proc_data);
 				recurse_io(proc_data->filters, con, dir);
 			}
 		}
@@ -178,6 +180,7 @@ void processors_io_in_thread(void *data, void *userdata)
 	g_debug("%s data %p userdata %p", __PRETTY_FUNCTION__, data,  userdata);
  	struct connection *con = data;
 	g_mutex_lock(con->processor_data->mutex);
+	refcount_dec(&con->processor_data->queued);
 	recurse_io(con->processor_data->filters, con, bistream_in);
 	g_mutex_unlock(con->processor_data->mutex);
 	connection_unref(con);
@@ -188,6 +191,7 @@ void processors_io_out_thread(void *data, void *userdata)
 	g_debug("%s data %p userdata %p", __PRETTY_FUNCTION__, data,  userdata);
  	struct connection *con = data;
 	g_mutex_lock(con->processor_data->mutex);
+	refcount_dec(&con->processor_data->queued);
 	recurse_io(con->processor_data->filters, con, bistream_out);
 	g_mutex_unlock(con->processor_data->mutex);
 	connection_unref(con);
@@ -202,19 +206,30 @@ void processors_io_in(struct connection *con, void *data, int size)
 	GList *it;
 	for ( it = g_list_first(con->processor_data->filters);	it != NULL;	it = g_list_next(it) )
 	{
-		struct processor_data *proc_data = it->data;
-		if ( proc_data->processor->on_io_in == NULL )
-			continue;
+		struct processor_data *pd = it->data;
 
-		struct bistream *bistream = proc_data->bistream;
-		bistream_data_add(bistream, bistream_in, data, size);
-	}
+		if ( pd->processor->io_in != NULL )
+		{
+			pd->processor->io_in(con, pd, data, size);
+		}else
+		if ( pd->processor->thread_io_in != NULL )
+		{
+			struct bistream *bistream = pd->bistream;
+			bistream_data_add(bistream, bistream_in, data, size);
+
+			g_mutex_lock(pd->queued.mutex);
+			if ( pd->queued.refs == 0 )
+			{
+				pd->queued.refs++;
+				GError *thread_error;
+				struct thread *t = thread_new(con, NULL, processors_io_in_thread);
 	
-	GError *thread_error;
-	struct thread *t = thread_new(con, NULL, processors_io_in_thread);
-
-	connection_ref(con);
-	g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
+				connection_ref(con);
+				g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
+			}
+			g_mutex_unlock(pd->queued.mutex);
+		}
+	}
 }
 
 void processors_io_out(struct connection *con, void *data, int size)
@@ -224,19 +239,30 @@ void processors_io_out(struct connection *con, void *data, int size)
 	GList *it;
 	for ( it = g_list_first(con->processor_data->filters);	it != NULL;	it = g_list_next(it) )
 	{
-		struct processor_data *proc_data = it->data;
-		if ( proc_data->processor->on_io_out == NULL )
-			continue;
+		struct processor_data *pd = it->data;
 
-		struct bistream *bistream = proc_data->bistream;
-		bistream_data_add(bistream, bistream_out, data, size);
+		if ( pd->processor->io_out != NULL )
+		{
+			pd->processor->io_out(con, pd, data, size);
+		}else
+		if ( pd->processor->thread_io_out != NULL )
+		{
+			struct bistream *bistream = pd->bistream;
+			bistream_data_add(bistream, bistream_out, data, size);
+
+			g_mutex_lock(pd->queued.mutex);
+			if ( pd->queued.refs == 0 )
+			{
+				pd->queued.refs++;
+				GError *thread_error;
+				struct thread *t = thread_new(con, NULL, processors_io_out_thread);
+
+				connection_ref(con);
+				g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
+			}
+			g_mutex_unlock(pd->queued.mutex);
+		}
 	}
-
-	GError *thread_error;
-	struct thread *t = thread_new(con, NULL, processors_io_out_thread);
-
-	connection_ref(con);
-	g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
 }
 
 
@@ -250,8 +276,8 @@ struct processor proc_streamdumper =
 	.name = "streamdumper",
 	.new = proc_streamdumper_ctx_new,  
 	.free = proc_streamdumper_ctx_free,
-	.on_io_in = proc_streamdumper_on_io_in,
-	.on_io_out = proc_streamdumper_on_io_out,
+	.thread_io_in = proc_streamdumper_on_io_in,
+	.thread_io_out = proc_streamdumper_on_io_out,
 };
 
 
@@ -310,8 +336,8 @@ struct processor proc_unicode =
 	.name = "unicode",
 	.new = proc_unicode_ctx_new,  
 	.free = proc_unicode_ctx_free,
-	.on_io_in = proc_unicode_on_io_in,
-	.on_io_out = proc_unicode_on_io_out,
+	.thread_io_in = proc_unicode_on_io_in,
+	.thread_io_out = proc_unicode_on_io_out,
 };
 
 struct proc_unicode_ctx 
@@ -367,8 +393,8 @@ struct processor proc_filter =
 	.process = proc_filter_accept,
 	.new = proc_filter_ctx_new,  
 	.free = proc_filter_ctx_free,
-	.on_io_in = proc_filter_on_io_in,
-	.on_io_out = proc_filter_on_io_out,
+	.thread_io_in = proc_filter_on_io_in,
+	.thread_io_out = proc_filter_on_io_out,
 };
 
 struct proc_filter_config
