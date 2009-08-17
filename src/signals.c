@@ -30,6 +30,7 @@
 #include <ev.h>
 #include <glib.h>
 
+#include "config.h"
 #include "dionaea.h"
 #include "signals.h"
 #include "modules.h"
@@ -74,4 +75,27 @@ void sighup_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 	}
 }
 
+#include <string.h>
 
+void sigsegv_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
+//int segv_handler(int sig)
+{
+	g_warning("%s loop %p w %p revents %i",__PRETTY_FUNCTION__, loop, w, revents);
+//	g_warning("%s sig %i",__PRETTY_FUNCTION__, sig);
+	char cmd[100];
+	char progname[100];	
+	char *p;
+	int n;
+
+	n = readlink("/proc/self/exe", progname, sizeof(progname));
+	progname[n] = 0;
+
+	p = strrchr(progname, '/');
+	*p = 0;
+	
+	snprintf(cmd, sizeof(cmd), "%s/bin/dionaea-backtrace %d > /tmp/segv_%s.%d.out 2>&1", 
+		 PREFIX, (int)getpid(), p+1, (int)getpid());
+	system(cmd);
+	signal(SIGSEGV, SIG_DFL);
+//	return 0;
+}

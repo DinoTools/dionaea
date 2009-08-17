@@ -705,6 +705,11 @@ int main (int argc, char *argv[])
 	ev_signal_start(d->loop, &d->signals->sigint);
 	ev_signal_init(&d->signals->sighup,  sighup_cb, SIGHUP);
 	ev_signal_start(d->loop, &d->signals->sighup);
+//	ev_signal_init(&d->signals->sigsegv,  sigsegv_cb, SIGSEGV);
+//	ev_signal_start(d->loop, &d->signals->sigsegv);
+//	signal(SIGSEGV, (sighandler_t) segv_handler);
+//	signal(SIGBUS, (sighandler_t) segv_handler);
+
 
 	// loop	
 	g_debug("looping");
