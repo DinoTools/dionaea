@@ -59,7 +59,6 @@ def register_dcerpc_call(vuln):
 	else:
 		registered_calls[uuid] = [ vuln, ]
 
-
 class smbd(connection):
 	def __init__ (self):
 		connection.__init__(self,"tcp")
@@ -84,6 +83,7 @@ class smbd(connection):
 		except:
 			t = traceback.format_exc()
 			smblog.critical(t)
+			return len(data)
 
 		smblog.debug('packet: {0}'.format(p.summary()))
 
@@ -158,7 +158,7 @@ class smbd(connection):
 				p.getlayer(SMB_Header).decode_payload_as(SMB_Sessionsetup_AndX_Request2)
 				r = SMB_Sessionsetup_AndX_Response2()
 			else:
-				r = SMB_Sessionsetup_AndX_Response()
+				r = SMB_Sessionsetup_AndX_Response2()
 		elif p.getlayer(SMB_Header).Command == 0x75:
 			r = SMB_Treeconnect_AndX_Response()
 		elif p.getlayer(SMB_Header).Command == 0xa2:
@@ -288,6 +288,46 @@ class smbd(connection):
 
 		return outbuf
 
+
+class epmapper(smbd):
+	def __init__ (self):
+		connection.__init__(self,"tcp")
+		smbd.__init__(self)
+
+	def handle_io_in(self,data):
+		try:
+			p = DCERPC_Header(data)
+		except:
+			t = traceback.format_exc()
+			smblog.critical(t)
+			return len(data)
+
+		smblog.debug('packet: {0}'.format(p.summary()))
+
+		r = self.process_dcerpc_packet(p)
+
+		if not r:
+			if self.state['stop']:
+				smblog.debug('drop dead!')
+			else:
+				smblog.critical('dcerpc processing failed. bailing out.')
+			return len(data)
+
+		smblog.debug('response: {0}'.format(r.summary()))
+		self.send(r.build())
+
+		if p.haslayer(Raw):
+			smblog.warning('p.haslayer(Raw): {0}'.format(p.getlayer(Raw).build()))
+			p.show()
+
+		return len(data)
+
+
+class xhandler(ihandler):
+	def __init__(self):
+		ihandler.__init__(self, '*')
+	def handle(self, icd):
+		icd.dump()
 
 from . import rpcvulns
 import inspect

@@ -101,7 +101,16 @@ class mirrorservice(service):
 class smbservice(service):
 	def start(self, addr,  iface=None):
 		daemon = smb.smbd()
-		daemon.bind(addr, 5001, iface=iface)
+		daemon.bind(addr, 445, iface=iface)
+		daemon.listen()
+		return daemon
+	def stop(self, daemon):
+		daemon.close()
+
+class epmapservice(service):
+	def start(self, addr,  iface=None):
+		daemon = smb.epmapper()
+		daemon.bind(addr, 135, iface=iface)
 		daemon.listen()
 		return daemon
 	def stop(self, daemon):
@@ -136,7 +145,8 @@ def start():
 	g_slave.services.append(httpservice)
 	g_slave.services.append(tftpservice)
 	g_slave.services.append(mirrorservice)
-	g_slave.services.append(smbservice)
+	#g_slave.services.append(smbservice)
+	#g_slave.services.append(epmapservice)
 
 	g_slave.start(addrs)
 
