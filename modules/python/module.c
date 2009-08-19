@@ -33,6 +33,9 @@
 #include <dirent.h>
 #include <Python.h>
 
+// set terminal to char mode
+#include <termios.h>
+
 
 #include <stdio.h>
 #include <arpa/inet.h>
@@ -67,6 +70,8 @@ static struct python_runtime
 	struct ev_io python_cli_io_in;
 	FILE *stdin;
 	GHashTable *imports;
+	struct termios read_termios;
+	struct termios poll_termios;
 } runtime;
 
 struct import
@@ -84,8 +89,12 @@ static bool config(struct lcfgx_tree_node *node)
 
 void python_io_in_cb(EV_P_ struct ev_io *w, int revents)
 {
-	PyRun_InteractiveOne(runtime.stdin, "<stdin>");
-	printf("python>");
+	PyCompilerFlags cf;
+	cf.cf_flags = 0;
+	
+	tcsetattr(0, TCSANOW, &runtime.read_termios);
+	PyRun_InteractiveOneFlags(runtime.stdin, "<stdin>", &cf);
+	tcsetattr(0, TCSANOW, &runtime.poll_termios);
 }
 
 static bool hupy(struct lcfgx_tree_node *node)
@@ -174,6 +183,8 @@ static bool freepy(void)
 	g_debug("%s %s", __PRETTY_FUNCTION__, __FILE__);
 	ev_io_stop(g_dionaea->loop, &runtime.python_cli_io_in);
 	Py_Finalize();
+	if( isatty(STDOUT_FILENO) )
+		tcsetattr(0, TCSADRAIN, &runtime.read_termios);
 	return true;
 }
 
@@ -248,13 +259,38 @@ static bool new(struct dionaea *dionaea)
 
 	signal(SIGINT, SIG_DFL);
 
-	if ( isatty(STDOUT_FILENO) )
+	if( isatty(STDOUT_FILENO) )
 	{
 		g_debug("Interactive Python shell");
 		runtime.stdin = fdopen(STDIN_FILENO, "r");
 		ev_io_init(&runtime.python_cli_io_in, python_io_in_cb, STDIN_FILENO, EV_READ);
 		ev_io_start(g_dionaea->loop, &runtime.python_cli_io_in);
-		printf("python> ");
+
+		PyObject *v;
+		v = PySys_GetObject("ps1");
+		if( v == NULL ) 
+		{
+			PySys_SetObject("ps1", v = PyUnicode_FromString(">>> "));
+			Py_XDECREF(v);
+		}
+		v = PySys_GetObject("ps2");
+		if( v == NULL ) 
+		{
+			PySys_SetObject("ps2", v = PyUnicode_FromString("... "));
+			Py_XDECREF(v);
+		}
+
+		v = PyImport_ImportModule("readline");
+		if( v == NULL )
+			PyErr_Clear();
+		else
+			Py_DECREF(v);
+
+		tcgetattr(0, &runtime.read_termios);
+		memcpy(&runtime.poll_termios, &runtime.read_termios, sizeof(struct termios));
+		runtime.read_termios.c_lflag |= (ICANON|ECHOCTL|ECHO);
+		runtime.poll_termios.c_lflag &= ~(ICANON|ECHOCTL|ECHO);
+		tcsetattr(0, TCSANOW, &runtime.poll_termios);
 	}
 
 	return true;
