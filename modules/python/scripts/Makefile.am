@@ -25,10 +25,10 @@ PYSCRIPTS += ihandlers.py
 PYSCRIPTS += util.py
 PYSCRIPTS += store.py
 
-all:
+all: $(PYSCRIPTS)
 	
 
-install:
+install-data-am: all
 	for i in $(PYSCRIPTS); do \
 		location="@libdir@/dionaea/python/$$i"; \
 		scriptdir=`dirname "$$location"`; \
