@@ -2,6 +2,8 @@
 
 AUTOMAKE_OPTIONS = foreign
 
+SUBDIRS = scripts
+
 all: binding.c
 
 binding.c: binding.pyx module.c module.h ../../config.h ../../include/protocol.h ../../include/dionaea.h
@@ -9,8 +11,8 @@ binding.c: binding.pyx module.c module.h ../../config.h ../../include/protocol.h
 
 install: all
 	cp build/*/python.so @libdir@/dionaea/python.so
-	mkdir -p @libdir@/dionaea/python
-	cp scripts/* @libdir@/dionaea/python -R
+#	mkdir -p @libdir@/dionaea/python
+#	cp scripts/* @libdir@/dionaea/python -R
 	
 
 clean:

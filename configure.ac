@@ -795,6 +795,7 @@ AC_CONFIG_FILES([Makefile
 				modules/nc/Makefile
 				modules/python/Makefile
 				modules/python/setup.py
+				modules/python/scripts/Makefile
 				modules/emu/Makefile
 				modules/curl/Makefile
 				modules/nl/Makefile])
