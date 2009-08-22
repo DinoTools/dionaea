@@ -18,5 +18,6 @@ noinst_HEADERS += signals.h
 noinst_HEADERS += incident.h
 noinst_HEADERS += threads.h
 noinst_HEADERS += bistream.h
+noinst_HEADERS += processor.h
 
 
