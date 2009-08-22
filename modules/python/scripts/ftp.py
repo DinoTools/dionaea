@@ -806,8 +806,8 @@ class ftpdownloadhandler(ihandler):
 		url = icd.get("url")
 		p = urllib.parse.urlsplit(url)
 		print(p)
-		con = icd.get('con')
 		if p.scheme == 'ftp':
+			con = icd.get('con')
 			f = ftp()
 			f.download(con.local.host, p.username, p.password, p.hostname, p.port, p.path, 'binary')
 
