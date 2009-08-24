@@ -149,29 +149,34 @@ void processor_data_free(struct processor_data *pd)
 	g_free(pd);
 }
 
+void recurse_io(GList *list, struct connection *con, enum bistream_direction dir);
+void recurse_io_process(struct processor_data *pd, struct connection *con, enum bistream_direction dir)
+{
+	if( dir == bistream_in)
+	{
+		if ( pd->processor->thread_io_in != NULL )
+		{
+			pd->processor->thread_io_in(con, pd);
+			recurse_io(pd->filters, con, dir);
+		}
+	}
+	else
+	{
+		if( pd->processor->thread_io_out != NULL )
+		{
+			pd->processor->thread_io_out(con, pd);
+			recurse_io(pd->filters, con, dir);
+		}
+	}
+}
+
 void recurse_io(GList *list, struct connection *con, enum bistream_direction dir)
 {
 	GList *it;
 	for ( it = g_list_first(list); it != NULL; it = g_list_next(it) )
 	{
-		struct processor_data *proc_data = it->data;
-		if( dir == bistream_in)
-		{
-			if ( proc_data->processor->thread_io_in != NULL )
-			{
-				proc_data->processor->thread_io_in(con, proc_data);
-				recurse_io(proc_data->filters, con, dir);
-			}
-		}
-		else
-		{
-			if( proc_data->processor->thread_io_out != NULL )
-			{
-				proc_data->processor->thread_io_out(con, proc_data);
-				recurse_io(proc_data->filters, con, dir);
-			}
-		}
-		
+		struct processor_data *pd = it->data;
+		recurse_io_process(pd, con, dir);
 	}
 }
 
@@ -179,10 +184,11 @@ void processors_io_in_thread(void *data, void *userdata)
 {
 	g_debug("%s data %p userdata %p", __PRETTY_FUNCTION__, data,  userdata);
  	struct connection *con = data;
-	g_mutex_lock(con->processor_data->mutex);
-	refcount_dec(&con->processor_data->queued);
-	recurse_io(con->processor_data->filters, con, bistream_in);
-	g_mutex_unlock(con->processor_data->mutex);
+	struct processor_data *pd = userdata;
+	g_mutex_lock(pd->mutex);
+	refcount_dec(&pd->queued);
+	recurse_io_process(pd, con, bistream_in);
+	g_mutex_unlock(pd->mutex);
 	connection_unref(con);
 }
 
@@ -190,10 +196,11 @@ void processors_io_out_thread(void *data, void *userdata)
 {
 	g_debug("%s data %p userdata %p", __PRETTY_FUNCTION__, data,  userdata);
  	struct connection *con = data;
-	g_mutex_lock(con->processor_data->mutex);
-	refcount_dec(&con->processor_data->queued);
-	recurse_io(con->processor_data->filters, con, bistream_out);
-	g_mutex_unlock(con->processor_data->mutex);
+	struct processor_data *pd = userdata;
+	g_mutex_lock(pd->mutex);
+	refcount_dec(&pd->queued);
+	recurse_io_process(pd, con, bistream_out);
+	g_mutex_unlock(pd->mutex);
 	connection_unref(con);
 }
 
@@ -222,7 +229,7 @@ void processors_io_in(struct connection *con, void *data, int size)
 			{
 				pd->queued.refs++;
 				GError *thread_error;
-				struct thread *t = thread_new(con, NULL, processors_io_in_thread);
+				struct thread *t = thread_new(con, pd, processors_io_in_thread);
 	
 				connection_ref(con);
 				g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
@@ -249,13 +256,12 @@ void processors_io_out(struct connection *con, void *data, int size)
 		{
 			struct bistream *bistream = pd->bistream;
 			bistream_data_add(bistream, bistream_out, data, size);
-
 			g_mutex_lock(pd->queued.mutex);
 			if ( pd->queued.refs == 0 )
 			{
 				pd->queued.refs++;
 				GError *thread_error;
-				struct thread *t = thread_new(con, NULL, processors_io_out_thread);
+				struct thread *t = thread_new(con, pd, processors_io_out_thread);
 
 				connection_ref(con);
 				g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
