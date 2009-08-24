@@ -51,7 +51,6 @@ DCERPC_PacketTypes = {
 class SMBNullField(StrField):
 	def __init__(self, name, default, fmt="H", remain=0):
 		StrField.__init__(self, name, default, fmt, remain)
-		self.is_unicode = False
 	def addfield(self, pkt, s, val):
 		if pkt.firstlayer().getlayer(SMB_Header).Flags2 & 0x8000:
 			return UnicodeNullField.addfield(self, pkt, s, val)
@@ -176,7 +175,7 @@ class SMB_Sessionsetup_ESEC_AndX_Request(Packet):
 		XLEIntField("Capabilities",0x05),
 		LEShortField("ByteCount",35),
 		StrLenField("SecurityBlob", "Pass", length_from=lambda x:x.SecurityBlobLength),
-		#ByteField("FixNullTerminated", 0),
+		FixGapField("FixGap", b'\0'),
 		SMBNullField("NativeOS","Windows"),
 		SMBNullField("NativeLanManager","Windows"),
 		SMBNullField("PrimaryDomain","WORKGROUP")
@@ -271,7 +270,7 @@ class SMB_Treeconnect_AndX_Request(Packet):
 		FieldLenField("PasswordLength", None, fmt='<H', length_of="Password"),
 		LEShortField("ByteCount",18),
 		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
-		ByteField("FixNullTerminated", 0),
+		FixGapField("FixGap", b'\0'),
 		SMBNullField("Path","\\\\WIN2K\\IPC$"),
 		SMBNullField("Service","IPC")
 	]
