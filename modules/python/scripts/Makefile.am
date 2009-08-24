@@ -33,9 +33,9 @@ install-data-am: all
 		location="@libdir@/dionaea/python/$$i"; \
 		scriptdir=`dirname "$$location"`; \
 		if [ ! -d $$scriptdir ]; then \
-			echo $(mkinstalldirs) $$scriptdir; \
+			$(mkinstalldirs) $$scriptdir; \
 		fi; \
-		echo $(INSTALL_DATA) $$i $$location; \
+		$(INSTALL_DATA) $$i $$location; \
 	done
 
 EXTRA_DIST = $(PYSCRIPTS)
