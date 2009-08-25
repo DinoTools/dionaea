@@ -743,8 +743,9 @@ class ftp:
 		self.port = port
 		self.file = file
 		self.mode = mode
-		self.local = local
-		self.ctrl.bind(local, 0)
+		if local:
+			self.local = local
+			self.ctrl.bind(local, 0)
 		self.ctrl.connect(host, port)
 		self.dataconn = None
 		self.datalistener = None
@@ -756,7 +757,7 @@ class ftp:
 		host = None
 		port = None
 		for port in ports:
-			self.datalistener.bind(self.local, port)
+			self.datalistener.bind(self.ctrl.local.host, port)
 			if self.datalistener.listen() == True:
 				host = self.datalistener.local.host # NAT, replace this with something like host = socket.gethostbyname('honeypot.dyndns.org')
 				port = self.datalistener.local.port
@@ -807,8 +808,12 @@ class ftpdownloadhandler(ihandler):
 		p = urllib.parse.urlsplit(url)
 		print(p)
 		if p.scheme == 'ftp':
-			con = icd.get('con')
+			try:
+				con = icd.get('con')
+				lhost = con.local.host
+			except AttributeError:
+				lhost = None
 			f = ftp()
-			f.download(con.local.host, p.username, p.password, p.hostname, p.port, p.path, 'binary')
+			f.download(lhost, p.username, p.password, p.hostname, p.port, p.path, 'binary')
 
 
