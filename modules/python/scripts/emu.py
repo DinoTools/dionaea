@@ -1,5 +1,6 @@
 from dionaea import ihandler, incident
 from dionaea import connection
+from cmd import cmdexe
 import logging
 import json
 
@@ -38,6 +39,11 @@ class emuprofilehandler(ihandler):
 					r = cmdexe(None)
 					r.con = con
 					r.io_in(api['args'][0])
+				if api['call'] == 'CreateProcess':
+					r = cmdexe(None)
+					r.con = con
+					r.io_in(api['args'][1])
+
 			elif state == "SOCKET": 
 				if api['call'] == 'bind':
 					state = "BIND"
