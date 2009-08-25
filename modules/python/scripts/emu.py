@@ -38,11 +38,11 @@ class emuprofilehandler(ihandler):
 				if api['call'] == 'WinExec':
 					r = cmdexe(None)
 					r.con = con
-					r.io_in(api['args'][0])
+					r.handle_io_in(api['args'][0])
 				if api['call'] == 'CreateProcess':
 					r = cmdexe(None)
 					r.con = con
-					r.io_in(api['args'][1])
+					r.handle_io_in(api['args'][1])
 
 			elif state == "SOCKET": 
 				if api['call'] == 'bind':
