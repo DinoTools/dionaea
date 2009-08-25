@@ -674,17 +674,17 @@ class ftpctrl(connection):
 		self.send(cmd + '\r\n')
 
 	def handle_error(self, err):
-		pass
+		return False
 
 	def handle_disconnect(self):
 		if self.state != 'QUIT':
 			self.ftp.fail()
 		return False
 
-	def handle_idle_timeout(self):
+	def handle_timeout_idle(self):
 		return False
 
-	def handle_sustain_timeout(self):
+	def handle_timeout_sustain(self):
 		return False
 
 class ftpdata(connection):
@@ -709,7 +709,7 @@ class ftpdata(connection):
 		self.fileobj.write(data)
 		return len(data)
 
-	def handle_idle(self):
+	def handle_timeout_idle(self):
 		self.fileobj.unlink(self.fileobj.name)
 		self.ftp.fail()
 		return False
@@ -727,7 +727,7 @@ class ftpdata(connection):
 		self.ftp.datadone()
 		return False
 
-	def handle_listen_timeout(self):
+	def handle_timeout_listen(self):
 		self.ftp.fail()
 		self.fileobj.unlink(self.fileobj.name)
 		return False

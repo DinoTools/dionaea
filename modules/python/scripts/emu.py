@@ -16,7 +16,10 @@ class emuprofilehandler(ihandler):
 	def handle(self, icd):
 		logger.warn("profiling")
 		p = icd.get("profile")
-		con = icd.get("con")
+		try:
+			con = icd.get("con")
+		except AttributeError:
+			con = None
 		p = json.loads(p)
 #		print(p)
 		logger.info("profiledump %s" % (p))
@@ -38,11 +41,11 @@ class emuprofilehandler(ihandler):
 				if api['call'] == 'WinExec':
 					r = cmdexe(None)
 					r.con = con
-					r.handle_io_in(api['args'][0])
+					r.handle_io_in(api['args'][0].encode() + b'\0')
 				if api['call'] == 'CreateProcess':
 					r = cmdexe(None)
 					r.con = con
-					r.handle_io_in(api['args'][1])
+					r.handle_io_in(api['args'][1].encode() + b'\0')
 
 			elif state == "SOCKET": 
 				if api['call'] == 'bind':

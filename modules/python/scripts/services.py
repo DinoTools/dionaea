@@ -94,7 +94,7 @@ class tftpservice(service):
 
 class mirrorservice(service):
 	def start(self, addr, iface=None):
-		daemon = mirror.mirrord('tcp', addr, 445, iface)
+		daemon = mirror.mirrord('tcp', addr, 42, iface)
 	def stop(self, daemon):
 		daemon.close()
 
@@ -145,8 +145,8 @@ def start():
 	g_slave.services.append(httpservice)
 	g_slave.services.append(tftpservice)
 	g_slave.services.append(mirrorservice)
-	#g_slave.services.append(smbservice)
-	#g_slave.services.append(epmapservice)
+	g_slave.services.append(smbservice)
+	g_slave.services.append(epmapservice)
 
 	g_slave.start(addrs)
 

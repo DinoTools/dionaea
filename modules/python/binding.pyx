@@ -768,7 +768,7 @@ cdef class incident:
 			key = key.encode()
 		if key == b'con':
 			if c_incident_value_ptr_get(self.thisptr, key, &x) == False:
-				raise AttributeError("%s does not exist" % key)
+				raise AttributeError(u"%s does not exist" % key.decode())
 	
 			if key == 'con':
 				c = NEW_C_CONNECTION_CLASS(connection)
@@ -780,7 +780,7 @@ cdef class incident:
 		elif c_incident_value_int_get(self.thisptr, key, &i) == True:
 			return i
 		else:
-			raise AttributeError("%s does not exist" % key)
+			raise AttributeError(u"%s does not exist" % key.decode())
 
 	def report(self):
 		c_incident_report(self.thisptr)

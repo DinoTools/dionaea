@@ -217,7 +217,11 @@ class cmdexe:
 		if args[0] == '-i' and args[2].lower() == 'get':
 			host = args[1]
 			file = args[3]
-			logger.debug("TFTP %s %s" % (host, file))
+#			logger.debug("TFTP %s %s" % (host, file))
+			i = incident("dionaea.download.offer")
+			url = 'tftp://' + host + '/' + file
+			i.set('url', url)
+			i.report()
 			return "downloading",None
 		return None,None
 
@@ -328,14 +332,14 @@ class remoteshell(cmdexe,connection):
 	def handle_error(self, err):
 		pass
 
-	def handle_idle_timeout (self):
+	def handle_timeout_idle (self):
 		self.send("\n")
 		return True
 
-	def handle_listen_timeout (self):
+	def handle_timeout_listen (self):
 		return False
 
-	def handle_sustain_timeout(self):
+	def handle_timeout_sustain(self):
 		return False
 
 

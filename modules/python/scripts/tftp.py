@@ -845,7 +845,8 @@ class TftpClient(TftpSession):
 
         self.filename = filename
         self.port = port
-        self.bind(lhost, 0)
+        if lhost != None:
+            self.bind(lhost, 0)
         self.connect(host,0)
 
     def handle_established(self):
@@ -856,7 +857,8 @@ class TftpClient(TftpSession):
         pkt.filename = self.filename
         pkt.mode = "octet" # FIXME - shouldn't hardcode this
         pkt.options = self.options
-        self.send(pkt.encode().buffer)
+        self.last_packet = pkt.encode().buffer
+        self.send(self.last_packet)
         self.state.state = 'rrq'
         self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix='tftp-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
 
@@ -893,7 +895,8 @@ class TftpClient(TftpSession):
                 logger.debug("ip = %s, port = %i" % (self.remote.host, self.remote.port))
                 ackpkt = TftpPacketACK()
                 ackpkt.blocknumber = self.curblock
-                self.send(ackpkt.encode().buffer)
+                self.last_packet = ackpkt.encode().buffer
+                self.send(self.last_packet)
 
                 logger.debug("writing %d bytes to output file"
                             % len(recvpkt.data))
@@ -940,7 +943,8 @@ class TftpClient(TftpSession):
                     logger.debug("sending ACK to OACK")
                     ackpkt = TftpPacketACK()
                     ackpkt.blocknumber = 0
-                    self.send(ackpkt.encode().buffer)
+                    self.last_packet = ackpkt.encode().buffer
+                    self.send(self.last_packet)
                     self.state.state = 'ack'
                 else:
                     logger.error("failed to negotiate options")
@@ -972,14 +976,17 @@ class TftpClient(TftpSession):
     def handle_error(self, err):
         pass
 
-    def handle_idle_timeout(self):
+    def handle_timeout_idle(self):
+        logger.warn("tftp timeout!")
         if self.idlecount > 10:
             self.fileobj.close()
             self.fileobj.unlink(self.fileobj.name)
             return False
         self.idlecount+=1
+        self.send(self.last_packet)
         return True
 
+from urllib import parse
 
 class tftpdownloadhandler(ihandler):
     def __init__(self):
@@ -989,7 +996,15 @@ class tftpdownloadhandler(ihandler):
         logger.warn("do download")
         url = icd.get("url")
         if url.startswith('tftp://'):
-            con = icd.get('con')
+            # python fails parsing tftp://, ftp:// works, so ...
+            url = url[1:]
+            x = parse.urlsplit(url)
+            try:
+                con = icd.get('con')
+                lhost = con.local.host
+            except AttributeError:
+                lhost = None
             t=TftpClient()
-            t.download(con.local.host, 'remotehost', 69, 'file')
+            t.download(lhost, x.netloc, 69, x.path[1:])
+            print(x)
 
