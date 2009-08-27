@@ -323,12 +323,6 @@ class epmapper(smbd):
 		return len(data)
 
 
-class xhandler(ihandler):
-	def __init__(self):
-		ihandler.__init__(self, '*')
-	def handle(self, icd):
-		icd.dump()
-
 from . import rpcvulns
 import inspect
 vulns = inspect.getmembers(rpcvulns, inspect.isclass)
