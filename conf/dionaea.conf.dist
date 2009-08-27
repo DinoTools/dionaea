@@ -16,7 +16,7 @@ processors =
 
 downloads =
 {
-	dir = "var/binaries"
+	dir = "var/dionaea/binaries"
 	tmp-suffix = ".tmp"
 }
 
