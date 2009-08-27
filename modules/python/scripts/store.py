@@ -15,10 +15,10 @@ class storehandler(ihandler):
 		logger.debug("storing file")
 		p = icd.get('path')
 		md5 = md5file(p)
+		n = g_dionaea.config()['downloads']['dir'] + '/' + md5
 		try:
-			f = os.stat(md5)
+			f = os.stat(n)
 		except OSError:
-			n = g_dionaea.config()['downloads']['dir'] + '/' + md5
 			logger.debug("saving new file %s to %s" % (md5, n))
 			os.link(p, n)
 

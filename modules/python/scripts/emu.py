@@ -36,7 +36,8 @@ class emuprofilehandler(ihandler):
 					logger.debug("download file %s" % (url))
 					i = incident("dionaea.download.offer")
 					i.set("url", url)
-					i.set("con", con)
+					if con is not None:
+						i.set("con", con)
 					i.report()
 				if api['call'] == 'WinExec':
 					r = cmdexe(None)
@@ -70,7 +71,8 @@ class emuprofilehandler(ihandler):
 					logger.debug("bindshell host %s port %s"  % (host, port) )
 					i = incident("dionaea.service.shell.listen")
 					i.set("port", int(port))
-					i.set("con", con)
+					if con is not None:
+						i.set("con", con)
 					i.report()
 
 			elif state == "CONNECT": 
@@ -79,6 +81,7 @@ class emuprofilehandler(ihandler):
 					i = incident("dionaea.service.shell.connect")
 					i.set("port", int(port))
 					i.set("host", host)
-					i.set("con", con)
+					if con is not None:
+						i.set("con", con)
 					i.report()
 
