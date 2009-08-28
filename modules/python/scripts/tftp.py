@@ -132,8 +132,8 @@ class TftpSession(connection):
         self.errors = 0
         connection.__init__(self, 'udp')
         
-        def __del__(self):
-            print('__del__' + str(self))
+#    def __del__(self):
+#        print('__del__' + str(self))
         
                 
     def senderror(self, errorcode):
@@ -594,8 +594,20 @@ class TftpPacketFactory(object):
         the passed opcode."""
         tftpassert( opcode in self.classes, 
                    "Unsupported opcode: %d" % opcode)
+        if opcode == 1:
+            packet = TftpPacketRRQ()
+        elif opcode == 2:
+            packet = TftpPacketWRQ()
+        elif opcode == 3:
+            packet = TftpPacketDAT()
+        elif opcode == 4:
+            packet = TftpPacketACK()
+        elif opcode == 5:
+            packet = TftpPacketERR()
+        elif opcode == 6:
+            packet = TftpPacketOACK()
 
-        packet = self.classes[opcode]()
+#        packet = self.classes[opcode]()
 
         logger.debug("packet is %s" % packet)
         return packet
@@ -617,6 +629,12 @@ class TftpServerHandler(TftpSession):
         self.fileobj = None
         self.timeouts.idle = 3
         self.timeouts.sustain = 120
+
+    def handle_timeout_idle(self):
+        return False
+
+    def handle_timeout_sustain(self):
+        return False
 
     def handle_io_in(self, data):
         """This method informs a handler instance that it has data waiting on
@@ -829,8 +847,8 @@ class TftpClient(TftpSession):
         self.connected = False
         self.idlecount = 0
 
-    def __del__(self):
-        print('__del__' + str(self))
+#    def __del__(self):
+#        print('__del__' + str(self))
 
     def download(self, lhost, host, port, filename):
         logger.info("Connecting to %s to download" % host)

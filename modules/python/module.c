@@ -99,9 +99,10 @@ void python_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 static bool hupy(struct lcfgx_tree_node *node)
 {
+	g_debug("%s node %p",  __PRETTY_FUNCTION__, node);
 	runtime.config = node;
 	struct lcfgx_tree_node *files;
-	if(lcfgx_get_list(runtime.config, &files, "files") == LCFGX_PATH_FOUND_TYPE_OK)
+	if(lcfgx_get_list(runtime.config, &files, "imports") == LCFGX_PATH_FOUND_TYPE_OK)
 	{
 		struct lcfgx_tree_node *file;
 		for (file = files->value.elements; file != NULL; file = file->next)

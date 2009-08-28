@@ -38,7 +38,7 @@ def start():
 
 def stop():
 	global g_handlers
-	for i in range(len(g_handlers)):
-		del g_handlers[i]
+	for i in g_handlers:
+		del i
 	del g_handlers
 
