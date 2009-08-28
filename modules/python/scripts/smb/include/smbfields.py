@@ -35,6 +35,7 @@ SMB_Commands = {
 	0x25:"SMB_COM_TRANS",
 	0x2E:"SMB_COM_READ",
 	0x2F:"SMB_COM_WRITE",
+	0x71:"SMB_COM_TREE_DISCONNECT",
 	0x72:"SMB_COM_NEGOTIATE",
 	0x73:"SMB_COM_SESSION_SETUP_ANDX",
 	0x75:"SMB_COM_TREE_CONNECT_ANDX",
@@ -273,6 +274,14 @@ class SMB_Treeconnect_AndX_Request(Packet):
 		FixGapField("FixGap", b'\0'),
 		SMBNullField("Path","\\\\WIN2K\\IPC$"),
 		SMBNullField("Service","IPC")
+	]
+
+class SMB_Treedisconnect(Packet):
+	name = "SMB Tree Disconnect"
+	smb_cmd = 0x71
+	fields_desc = [
+		ByteField("WordCount",0),
+		LEShortField("ByteCount",0),
 	]
 
 class SMB_Treeconnect_AndX_Response(Packet):
@@ -526,6 +535,7 @@ bind_bottom_up(SMB_Header, SMB_Negociate_Protocol_Request_Counts, Command=lambda
 bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Request, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: not x&2)
 bind_bottom_up(SMB_Header, SMB_Sessionsetup_ESEC_AndX_Request, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: x&2)
 bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Response, Command=lambda x: x==0x73, Flags=lambda x: x&0x80)
+bind_bottom_up(SMB_Header, SMB_Treedisconnect, Command=lambda x: x==0x71)
 bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Request, Command=lambda x: x==0x75, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Response, Command=lambda x: x==0x75, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Request, Command=lambda x: x==0xa2, Flags=lambda x: not x&0x80)
@@ -556,6 +566,7 @@ bind_bottom_up(SMB_Parameters, SMB_Data)
 bind_top_down(SMB_Header, SMB_Negociate_Protocol_Response, Command=0x72)
 bind_top_down(SMB_Header, SMB_Sessionsetup_AndX_Response, Command=0x73)
 bind_top_down(SMB_Header, SMB_Treeconnect_AndX_Response, Command=0x75)
+bind_top_down(SMB_Header, SMB_Treedisconnect, Command=0x71)
 bind_top_down(SMB_Header, SMB_NTcreate_AndX_Response, Command=0xa2)
 bind_top_down(SMB_Header, SMB_Write_AndX_Response, Command=0x2f)
 bind_top_down(SMB_Header, SMB_Read_AndX_Response, Command=0x2e)

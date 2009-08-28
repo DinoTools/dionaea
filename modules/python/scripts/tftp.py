@@ -803,7 +803,7 @@ class TftpServer(TftpSession):
         if isinstance(recvpkt, TftpPacketRRQ):
             logger.debug("RRQ packet from %s:%i" % (self.remote.host, self.remote.port))
             t = TftpServerHandler(TftpState('rrq'), self.root, self.local.host, self.remote.host, self.remote.port, self.packet)
-            t.io_in(data)
+            t.handle_io_in(data)
         elif isinstance(recvpkt, TftpPacketWRQ):
             logger.error("Write requests not implemented at this time.")
             self.senderror(TftpErrors.IllegalTftpOp)

@@ -161,6 +161,8 @@ class smbd(connection):
 				r = SMB_Sessionsetup_AndX_Response2()
 		elif p.getlayer(SMB_Header).Command == 0x75:
 			r = SMB_Treeconnect_AndX_Response()
+		elif p.getlayer(SMB_Header).Command == 0x71:
+			r = SMB_Treedisconnect()
 		elif p.getlayer(SMB_Header).Command == 0xa2:
 			r = SMB_NTcreate_AndX_Response()
 		elif p.getlayer(SMB_Header).Command == 0x2f:
@@ -227,8 +229,11 @@ class smbd(connection):
 			smbh.MID = p.getlayer(SMB_Header).MID
 			smbh.PID = p.getlayer(SMB_Header).PID
 			rp = NBTSession()/smbh/r
-			
-		self.state['lastcmd'] = SMB_Commands[p.getlayer(SMB_Header).Command]
+
+		if p.getlayer(SMB_Header).Command in SMB_Commands:
+			self.state['lastcmd'] = SMB_Commands[p.getlayer(SMB_Header).Command]
+		else:
+			self.state['lastcmd'] = "UNKNOWN"
 		return rp
 
 	def process_dcerpc_packet(self, buf):
@@ -251,7 +256,7 @@ class smbd(connection):
 				ctxitem = DCERPC_Ack_CtxItem()
 				for uuid in registered_calls:
 					if tmp.UUID == bytes.fromhex(uuid):
-						smblog.info('Found a registered UUID. Accepting Bind.')
+						smblog.info('Found a registered UUID ({}). Accepting Bind.'.format(tmp.UUID))
 						self.state['uuid'] = uuid
 						# Copy Transfer Syntax to CtxItem
 						ctxitem.AckResult = 0
