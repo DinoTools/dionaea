@@ -48,6 +48,17 @@ class MS08_067(RPCVULN): # also ms06_040
 		rpclog.info('got the DCERPC request for NetPathCanonicalize. MS08-067 exploit?')
 		rpclog.debug('DCERPC request: {0}'.format(p.summary()))
 
+class MS08_067_2(RPCVULN):
+	# SRVSVC
+	uuid = 'c84f324b7016d30112785a47bf6ee188'
+	# NetPathCompare
+	opnum = 1
+
+	@classmethod
+	def processrequest(cls, p):
+		rpclog.info('got the DCERPC request for NetPathCompare. MS08-067 exploit?')
+		rpclog.debug('DCERPC request: {0}'.format(p.summary()))
+
 class MS04_011(RPCVULN):
 	# DSSETUP
 	uuid = '6a2819390cb1d0119ba800c04fd92ef5'
