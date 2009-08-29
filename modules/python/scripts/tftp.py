@@ -509,7 +509,7 @@ ERROR | 05    |  ErrorCode |   ErrMsg   |   0  |
         logger.debug("Decoding ERR packet with format: %s" % format)
         self.opcode, self.errorcode, self.errmsg = struct.unpack(format, 
                                                                  self.buffer)
-        logger.error("ERR packet - errorcode: %d, message: %s"
+        logger.warn("ERR packet - errorcode: %d, message: %s"
                      % (self.errorcode, self.errmsg))
         return self
     
@@ -662,7 +662,7 @@ class TftpServerHandler(TftpSession):
                     logger.debug("The path appears to be safe: %s" %
                             self.filename)
                 else:
-                    logger.error("Insecure path: %s" % self.filename)
+                    logger.warn("Insecure path: %s" % self.filename)
                     self.errors += 1
                     self.senderror(TftpErrors.AccessViolation)
                     raise TftpException("Insecure path: %s" % self.filename)
@@ -707,14 +707,14 @@ class TftpServerHandler(TftpSession):
                         self.start_download()
 
                 else:
-                    logger.error("Requested file %s does not exist." %
+                    logger.warn("Requested file %s does not exist." %
                             self.filename)
                     self.senderror(TftpErrors.FileNotFound)
                     raise TftpException("Requested file not found: %s" % self.filename)
 
             else:
                 # We're receiving an RRQ when we're not expecting one.
-                logger.error("Received an RRQ in handler %s "
+                logger.warn("Received an RRQ in handler %s "
                              "but we're in state %s" % (self.remote.host, self.state))
                 self.errors += 1
 
@@ -744,19 +744,19 @@ class TftpServerHandler(TftpSession):
                                     "%d, apparently from the future"
                                     % recvpkt.blocknumber)
                 else:
-                    logger.error("Received ACK with block number %d "
+                    logger.warn("Received ACK with block number %d "
                                  "while in state %s"
                                  % (recvpkt.blocknumber,
                                     self.state.state))
 
         elif isinstance(recvpkt, TftpPacketERR):
-            logger.error("Received error packet from client: %s" % recvpkt)
+            logger.warn("Received error packet from client: %s" % recvpkt)
             self.state.state = 'err'
             raise TftpException("Received error from client")
 
         # Handle other packet types.
         else:
-            logger.error("Received packet %s while handling a download"
+            logger.warn("Received packet %s while handling a download"
                     % recvpkt)
             self.senderror(TftpErrors.IllegalTftpOp)
             raise TftpException("Invalid packet received during download")
@@ -823,7 +823,7 @@ class TftpServer(TftpSession):
             t = TftpServerHandler(TftpState('rrq'), self.root, self.local.host, self.remote.host, self.remote.port, self.packet)
             t.handle_io_in(data)
         elif isinstance(recvpkt, TftpPacketWRQ):
-            logger.error("Write requests not implemented at this time.")
+            logger.warn("Write requests not implemented at this time.")
             self.senderror(TftpErrors.IllegalTftpOp)
         return len(data)
 
@@ -941,13 +941,13 @@ class TftpClient(TftpSession):
             else:
                 msg = "Whoa! Received block %d but expected %d" % (recvpkt.blocknumber,
                                                                 self.curblock+1)
-                logger.error(msg)
+                logger.warn(msg)
 
         # Check other packet types.
         elif isinstance(recvpkt, TftpPacketOACK):
             if not self.state.state == 'rrq':
                 self.errors += 1
-                logger.error("Received OACK in state %s" % self.state.state)
+                logger.warn("Received OACK in state %s" % self.state.state)
 #                continue
             self.state.state = 'oack'
             logger.info("Received OACK from server.")
@@ -965,7 +965,7 @@ class TftpClient(TftpSession):
                     self.send(self.last_packet)
                     self.state.state = 'ack'
                 else:
-                    logger.error("failed to negotiate options")
+                    logger.warn("failed to negotiate options")
                     self.senderror(TftpErrors.FailedNegotiation)
                     self.state.state = 'err'
                     raise TftpException("Failed to negotiate options")
