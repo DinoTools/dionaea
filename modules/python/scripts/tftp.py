@@ -256,8 +256,10 @@ class TftpPacketInitial(TftpPacket, TftpPacketWithOptions):
         tftpassert(self.mode, "mode required in initial packet")
 
         ptype = None
-        if self.opcode == 1: ptype = "RRQ"
-        else:                ptype = "WRQ"
+        if self.opcode == 1: 
+            ptype = "RRQ"
+        else:                
+            ptype = "WRQ"
         logger.debug("Encoding %s packet, filename = %s, mode = %s"
                      % (ptype, self.filename, self.mode))
         for key in self.options:
@@ -333,7 +335,7 @@ class TftpPacketInitial(TftpPacket, TftpPacketWithOptions):
             logger.debug("setting mode to %s" % mystruct[1])
             self.mode = mystruct[1].decode()
         except:
-            tftpassert(0, "malformed packet")
+            tftpassert(0, "malformed packet, filename is not decodeable")
 
         self.options = self.decode_options(subbuf[tlength+1:])
         return self
@@ -648,7 +650,10 @@ class TftpServerHandler(TftpSession):
 
             if recvpkt.mode != 'octet':
                 self.senderror(TftpErrors.IllegalTftpOp)
-                raise TftpException("Unsupported mode: %s" % recvpkt.mode)
+                #raise TftpException("Unsupported mode: %s" % recvpkt.mode)
+                logger.warn("Unsupported mode: %s" % recvpkt.mode)
+                self.close()
+
 
             if self.state.state == 'rrq':
                 logger.debug("Received RRQ. Composing response.")
@@ -815,7 +820,8 @@ class TftpServer(TftpSession):
         recvpkt = None
         try:
             recvpkt = self.packet.parse(buffer)
-        except:
+        except TftpException as e:
+            print(e)
             return len(data)
 
         if isinstance(recvpkt, TftpPacketRRQ):
