@@ -51,12 +51,18 @@ static struct
 	struct lcfgx_tree_node *config;
 	struct ev_timer timer_event;
 	CURLM *multi;
-	struct ihandler *ihandler;
+	struct ihandler *download_ihandler;
+	struct ihandler *upload_ihandler;
 	int queued;
 	int active;
 	char *download_dir;
 } curl_runtime;
 
+enum session_type 
+{
+	session_type_download,
+	session_type_upload
+};
 
 struct session
 {
@@ -65,6 +71,7 @@ struct session
 	char *laddr;
 	char error[CURL_ERROR_SIZE];
 
+	enum session_type type;
 	union
 	{
 		struct
@@ -75,7 +82,9 @@ struct session
 
 		struct
 		{
-
+			struct curl_httppost	*formpost;
+			struct curl_httppost	*last;
+			struct curl_slist		*headers;
 		}upload;
 	}action;
 };
@@ -88,6 +97,36 @@ struct session_socket
 	struct ev_io io;
 };
 
+static struct session *session_new(void)
+{
+	struct session *session;
+	session = g_malloc0(sizeof(struct session));
+	session->error[0]='\0';
+	session->easy = curl_easy_init();
+	return session;
+}
+
+static void session_free(struct session *session)
+{
+	g_free(session->url);
+	if( session->laddr )
+		g_free(session->laddr);
+	switch( session->type )
+	{
+	case session_type_download:
+		unlink(session->action.download.path);
+		if( session->action.download.path )
+			g_free(session->action.download.path);
+		break;
+
+	case session_type_upload:
+		curl_formfree(session->action.upload.formpost);
+		curl_slist_free_all(session->action.upload.headers);
+		break;
+	}
+	g_free(session);
+
+}
 
 static void timer_cb(struct ev_loop *loop,  struct ev_timer *w, int revents);
 
@@ -129,28 +168,39 @@ static void check_run_count(void)
 				easy=msg->easy_handle;
 				curl_easy_getinfo(easy, CURLINFO_PRIVATE, &session);
 				curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &eff_url);
-				if( msg->data.result == CURLE_OK )
+
+				switch( session->type )
 				{
-					g_info("DONE: %s => (%d) %s", eff_url, msg->data.result, session->error);
-					close(session->action.download.file);
-					struct incident *i = incident_new("dionaea.download.complete");
-					incident_value_string_set(i, "path", g_string_new(session->action.download.path));
-					incident_report(i);
-					incident_free(i);
-				}else
-				{
-					g_warning("FAIL: %s => (%d) %s", eff_url, msg->data.result, session->error);
-					close(session->action.download.file);
+				case session_type_download:
+					if( msg->data.result == CURLE_OK )
+					{
+						g_info("DOWNLOAD DONE: %s => (%d) %s", eff_url, msg->data.result, session->error);
+						close(session->action.download.file);
+						struct incident *i = incident_new("dionaea.download.complete");
+						incident_value_string_set(i, "path", g_string_new(session->action.download.path));
+						incident_report(i);
+						incident_free(i);
+					}else
+					{
+						g_warning("DOWNLOAD FAIL: %s => (%d) %s", eff_url, msg->data.result, session->error);
+						close(session->action.download.file);
+					}
+					break;
+
+				case session_type_upload:
+					if( msg->data.result == CURLE_OK )
+					{
+						g_info("UPLOAD DONE: %s => (%d) %s", eff_url, msg->data.result, session->error);
+					}else
+					{
+						g_warning("UPLOAD FAIL: %s => (%d) %s", eff_url, msg->data.result, session->error);
+					}
+					break;
 				}
+
 				curl_multi_remove_handle(curl_runtime.multi, easy);
 				curl_easy_cleanup(easy);
-				g_free(session->url);
-				if( session->laddr )
-					g_free(session->laddr);
-				unlink(session->action.download.path);
-				if( session->action.download.path )
-					g_free(session->action.download.path);
-				g_free(session);
+				session_free(session);
 			}
 		}
 	}
@@ -256,11 +306,11 @@ static size_t curl_writefunction_cb(void *ptr, size_t size, size_t nmemb, void *
 	
 	struct session *session = (struct session *) data;
 	g_debug("session %p file %i", session, session->action.download.file);
-//	fwrite(ptr, size, nmemb, session->action.download.file);
-	write(session->action.download.file, ptr, size*nmemb);
+	if( session->type == session_type_download )
+		write(session->action.download.file, ptr, size*nmemb);
+
 	return size * nmemb;
 }
-
 
 /* CURLOPT_PROGRESSFUNCTION */
 static int curl_progressfunction_cb (void *p, double dltotal, double dlnow, double ult, double uln)
@@ -305,21 +355,73 @@ static int curl_debugfunction_cb(CURL *easy, curl_infotype type, char *data, siz
 	return 0;
 }
 
-/* Create a new easy handle, and add it to the global curl_multi */
-static struct session *session_new(void)
+void session_upload_new(const char *url, const char *email, const char *file)
 {
-	struct session *session;
-	session = g_malloc0(sizeof(struct session));
-	session->error[0]='\0';
-	session->easy = curl_easy_init();
-	return session;
+	g_debug("%s url %s email %s file %s", __PRETTY_FUNCTION__, url, email, file);
+	struct session *session = session_new();
+	CURLMcode rc;
+
+	session->type = session_type_upload;
+	session->url = g_strdup(url);
+    
+//	char *name = "foobar";
+
+	curl_formadd(&session->action.upload.formpost,
+				 &session->action.upload.last,
+				 CURLFORM_COPYNAME, "MAX_FILE_SIZE",
+				 CURLFORM_COPYCONTENTS, "1500000",
+				 CURLFORM_END);
+	curl_formadd(&session->action.upload.formpost,
+				 &session->action.upload.last,
+				 CURLFORM_COPYNAME, "email",
+				 CURLFORM_CONTENTTYPE, "form-data",
+				 CURLFORM_COPYCONTENTS, email,
+				 CURLFORM_END);
+
+	curl_formadd(&session->action.upload.formpost,
+				 &session->action.upload.last,
+				 CURLFORM_COPYNAME, "upfile",
+				 CURLFORM_FILE, file,
+				 CURLFORM_END);
+
+	curl_formadd(&session->action.upload.formpost,
+				 &session->action.upload.last,
+				 CURLFORM_COPYNAME, "submit",
+				 CURLFORM_COPYCONTENTS, "Submit for analysis",
+				 CURLFORM_END);
+
+	char buf[] = "Expect:";
+	session->action.upload.headers = curl_slist_append(session->action.upload.headers, buf);
+
+
+	curl_easy_setopt(session->easy, CURLOPT_URL, session->url);
+	curl_easy_setopt(session->easy,	CURLOPT_HTTPPOST, session->action.upload.formpost);
+	curl_easy_setopt(session->easy,	CURLOPT_HTTPHEADER, session->action.upload.headers);
+	curl_easy_setopt(session->easy, CURLOPT_WRITEFUNCTION, curl_writefunction_cb);
+	curl_easy_setopt(session->easy, CURLOPT_WRITEDATA, session);
+	curl_easy_setopt(session->easy, CURLOPT_DEBUGFUNCTION, curl_debugfunction_cb);
+//	curl_easy_setopt(session->easy, CURLOPT_VERBOSE, 1L);
+	curl_easy_setopt(session->easy, CURLOPT_ERRORBUFFER, session->error);
+	curl_easy_setopt(session->easy, CURLOPT_PRIVATE, session);
+	curl_easy_setopt(session->easy, CURLOPT_NOPROGRESS, 0L);
+	curl_easy_setopt(session->easy, CURLOPT_PROGRESSFUNCTION, curl_progressfunction_cb);
+	curl_easy_setopt(session->easy, CURLOPT_PROGRESSDATA, session);
+	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_TIME, 3L);
+	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_LIMIT, 10L);
+	curl_easy_setopt(session->easy, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
+	
+	g_debug("Adding easy %p to multi %p (%s)", session->easy, curl_runtime.multi, url);
+	rc = curl_multi_add_handle(curl_runtime.multi, session->easy);
+	curl_runtime.queued++;
+	check_run_count();
 }
 
 static void session_download_new(const char *url, const char *laddr)
 {
+	g_debug("%s url %s laddr %s", __PRETTY_FUNCTION__, url, laddr);
 	struct session *session = session_new();
 	CURLMcode rc;
-
+	session->type = session_type_download;
 	session->url = g_strdup(url);
 	if( laddr )
 		session->laddr = g_strdup(laddr);
@@ -354,19 +456,35 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 {
 	g_debug("%s i %p ctx %p", __PRETTY_FUNCTION__, i, ctx);
 	GString *url;
-	if ( incident_value_string_get(i, "url", &url) )
+	if( strcmp(i->origin, "dionaea.download.offer") == 0  )
 	{
-		if ( strncasecmp(url->str,  "http", 4) != 0)
-			return;
+		if ( incident_value_string_get(i, "url", &url) )
+		{
+			if ( strncasecmp(url->str,  "http", 4) != 0)
+				return;
+	
+			char *addr = NULL;
+			struct connection *con;
+			if ( incident_value_ptr_get(i, "con", (uintptr_t *)&con) )
+				addr = con->local.ip_string;
+			session_download_new(url->str, addr);
+		}
+		else
+			g_critical("download without url?");
+	}else
+	if( strcmp(i->origin, "dionaea.upload.request") == 0  )
+	{
+		GString *url;
+		GString *email;
+		GString *file;
 
-		char *addr = NULL;
-		struct connection *con;
-		if ( incident_value_ptr_get(i, "con", (uintptr_t *)&con) )
-			addr = con->local.ip_string;
-		session_download_new(url->str, addr);
+		if( incident_value_string_get(i, "file", &file) == true && 
+			incident_value_string_get(i, "email", &email) == true &&
+			incident_value_string_get(i, "url", &url) == true)
+		{
+			session_upload_new(url->str, email->str, file->str);
+		}
 	}
-	else
-		g_critical("download without url?");
 }
 
 static bool curl_config(struct lcfgx_tree_node *node)
@@ -454,7 +572,8 @@ static bool curl_new(struct dionaea *d)
 		rc = curl_multi_socket_all(curl_runtime.multi, &curl_runtime.active);
 	} while( CURLM_CALL_MULTI_PERFORM == rc );
 
-	curl_runtime.ihandler = ihandler_new("dionaea.download.offer", curl_ihandler_cb, NULL);
+	curl_runtime.download_ihandler = ihandler_new("dionaea.download.offer", curl_ihandler_cb, NULL);
+	curl_runtime.upload_ihandler = ihandler_new("dionaea.upload.request", curl_ihandler_cb, NULL);
 	return true;
 }
 
