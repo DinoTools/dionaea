@@ -60,6 +60,9 @@
 #include "config.h"
 #include "log.h"
 
+#include "connection.h"
+#include "incident.h"
+
 #define D_LOG_DOMAIN "python"
 PyObject *PyInit_python(void);
 
@@ -72,6 +75,7 @@ static struct python_runtime
 	GHashTable *imports;
 	struct termios read_termios;
 	struct termios poll_termios;
+	struct ihandler *mkshell_ihandler;
 } runtime;
 
 struct import
@@ -95,6 +99,48 @@ void python_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	tcsetattr(0, TCSANOW, &runtime.read_termios);
 	PyRun_InteractiveOneFlags(runtime.stdin, "<stdin>", &cf);
 	tcsetattr(0, TCSANOW, &runtime.poll_termios);
+}
+
+static void python_mkshell_ihandler_cb(struct incident *i, void *ctx)
+{
+	g_debug("%s i %p ctx %p", __PRETTY_FUNCTION__, i, ctx);
+	struct connection *con;
+	if ( incident_value_ptr_get(i, "con", (uintptr_t *)&con) )
+	{
+		g_debug("mkshell for %p", con);
+		const char *name = "cmd";
+		PyObject *module = PyImport_ImportModule(name);
+		if( module == NULL )
+		{
+			PyErr_Print();
+			g_error("Import failed %s", name);
+		}
+		Py_DECREF(module);
+		PyObject *func = PyObject_GetAttrString(module, "remoteshell");
+		PyObject *arglist = Py_BuildValue("()");
+		PyObject *r = PyEval_CallObject(func, arglist);
+		Py_DECREF(arglist);
+		g_debug("r %p", r);
+		struct head 
+		{
+			PyObject_HEAD
+		};
+		struct connection **pp = (struct connection **)((char *)r + sizeof(struct head));
+		g_debug("p %p %p", pp, *pp);
+		struct connection *p = *pp;
+		con->protocol.ctx = p->protocol.ctx;
+		con->protocol.ctx = p->protocol.ctx_new(con);
+		con->protocol.io_in = p->protocol.io_in;
+		con->protocol.idle_timeout = p->protocol.idle_timeout;
+		con->protocol.sustain_timeout = p->protocol.sustain_timeout;
+		con->protocol.established = p->protocol.established;
+		ev_io_start(g_dionaea->loop, &con->events.io_in);
+//		ev_io_start(g_dionaea->loop, &con->events.io_out);
+		con->protocol.established(con);
+	}
+	else
+		g_critical("mkshell fail");
+	
 }
 
 static bool hupy(struct lcfgx_tree_node *node)
@@ -294,6 +340,7 @@ static bool new(struct dionaea *dionaea)
 		tcsetattr(0, TCSANOW, &runtime.poll_termios);
 	}
 
+	runtime.mkshell_ihandler = ihandler_new("dionaea.*.mkshell", python_mkshell_ihandler_cb, NULL);
 	return true;
 }
 

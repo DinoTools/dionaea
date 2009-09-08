@@ -11,6 +11,6 @@ AM_LDFLAGS = $(LIB_EMU_LIBS)
 
 pkglib_LTLIBRARIES = emu.la
 
-emu_la_SOURCES = module.c module.h detect.c emulate.c profile.c
+emu_la_SOURCES = module.c module.h detect.c emulate.c profile.c hooks.c
 
 emu_la_LDFLAGS = -module -no-undefined -avoid-version ${AM_LDFLAGS} 

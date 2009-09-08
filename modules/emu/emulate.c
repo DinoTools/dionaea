@@ -46,15 +46,163 @@
 #include <emu/emu_string.h>
 #include <emu/emu_shellcode.h>
 
+#include "connection.h"
+#include "module.h"
+
+#include "log.h"
+
+#define D_LOG_DOMAIN "emulate"
+
+int32_t emu_ll_w32_export_hook(struct emu_env *env,	const char *exportname,	int32_t	(*llhook)(struct emu_env *env, struct emu_env_hook *hook), void *userdata)
+{
+	int numdlls=0;
+	while ( env->env.win->loaded_dlls[numdlls] != NULL )
+	{
+		struct emu_hashtable_item *ehi = emu_hashtable_search(env->env.win->loaded_dlls[numdlls]->exports_by_fnname, (void *)exportname);
+		if (ehi != NULL)
+		{
+#if 0
+			printf("hooked %s\n",  exportname);
+#endif
+			struct emu_env_hook *hook = (struct emu_env_hook *)ehi->value;
+			hook->hook.win->fnhook = llhook;
+			hook->hook.win->userdata = userdata;
+			return 0;
+		}
+		numdlls++;
+	}
+#if 0
+	printf("hooking %s failed\n", exportname);
+#endif
+	return -1;
+}
+
+
+
+
+void emulate(struct connection *con, void *data, unsigned int size, unsigned int offset)
+{
+	struct emu_emulate_ctx *ctx = g_malloc0(sizeof(struct emu_emulate_ctx));
+
+	ctx->sockets = g_hash_table_new(g_int_hash, g_int_equal);
+	ctx->processes = g_hash_table_new(g_int_hash, g_int_equal);
+
+	ctx->emu = emu_new();
+	ctx->env = emu_env_new(ctx->emu);
+	struct emu_env * env = ctx->env;
+	struct emu *e = ctx->emu;
+	struct emu_cpu *cpu = emu_cpu_get(ctx->emu);
+	ctx->env->userdata = ctx;
+
+	emu_env_w32_load_dll(env->env.win,"ws2_32.dll");
+	emu_ll_w32_export_hook(env, "accept", ll_win_hook_accept, NULL);
+	emu_env_w32_export_hook(env, "bind", user_hook_bind, NULL);
+	emu_env_w32_export_hook(env, "closesocket", user_hook_close, NULL);
+	emu_env_w32_export_hook(env, "connect", user_hook_connect, NULL);
+
+	emu_env_w32_export_hook(env, "listen", user_hook_listen, NULL);
+	emu_ll_w32_export_hook(env, "recv", ll_win_hook_recv, NULL);
+	emu_env_w32_export_hook(env, "send", user_hook_send, NULL);
+	emu_env_w32_export_hook(env, "socket", user_hook_socket, NULL);
+	emu_env_w32_export_hook(env, "WSASocketA", user_hook_WSASocket, NULL);
+	emu_env_w32_export_hook(env, "CreateProcessA", user_hook_CreateProcess, NULL);
+	emu_env_w32_export_hook(env, "WaitForSingleObject", user_hook_WaitForSingleObject, NULL);
+
+	emu_env_w32_export_hook(env, "CreateFileA", user_hook_CreateFile, NULL);
+	emu_env_w32_export_hook(env, "WriteFile", user_hook_WriteFile, NULL);
+	emu_env_w32_export_hook(env, "CloseHandle", user_hook_CloseHandle, NULL);
+
+//	emu_env_linux_syscall_hook(env, "exit", user_hook_exit, NULL);
+//	emu_env_linux_syscall_hook(env, "socket", user_hook_socket, NULL);
+//	emu_env_linux_syscall_hook(env, "bind", user_hook_bind, NULL);
+//	emu_env_linux_syscall_hook(env, "listen", user_hook_listen, NULL);
+//	emu_env_linux_syscall_hook(env, "accept", user_hook_accept, NULL);
+
+#define CODE_OFFSET 0x417000
+
+	int j;
+	for ( j=0; j<8; j++ )  
+		emu_cpu_reg32_set(cpu,j , 0);
+
+// set flags
+	emu_cpu_eflags_set(cpu, 0);
+
+// write code to offset
+	emu_memory_write_block(emu_memory_get(ctx->emu), CODE_OFFSET, data,  size);
+
+// set eip to code
+	emu_cpu_eip_set(emu_cpu_get(e), CODE_OFFSET + offset);
+	emu_cpu_reg32_set(emu_cpu_get(e), esp, 0x0012fe98);
+	emulate_thread(NULL, ctx);
+}
+
+void emulate_thread(gpointer data, gpointer user_data)
+{
+	struct emu_emulate_ctx *ctx = user_data;
+	struct emu *e = ctx->emu;
+	struct emu_env *env = ctx->env;
+	int ret;
+
+	ctx->run = true;
+
+	while( true )
+	{
+		struct emu_env_hook *hook = NULL;
+		hook = emu_env_w32_eip_check(env);
+
+		if ( hook != NULL )
+		{
+			if ( hook->hook.win->fnhook == NULL )
+			{
+				g_critical("unhooked call to %s", hook->hook.win->fnname);
+				break;
+			}else
+			if( ctx->run == false ) 
+			/* for now, we stop!
+			 * had a blocking io call
+			 * callback from main will come at a given point
+			 * and requeue us to the threadpool
+			 */
+				break;
+		}
+		else
+		{
+			ret = emu_cpu_parse(emu_cpu_get(e));
+			struct emu_env_hook *hook =NULL;
+			if ( ret != -1 )
+			{
+				hook = emu_env_linux_syscall_check(env);
+				if ( hook == NULL )
+				{
+					ret = emu_cpu_step(emu_cpu_get(e));
+				}else
+				{
+					if ( hook->hook.lin->fnhook != NULL )
+					{
+						hook->hook.lin->fnhook(env, hook);
+						if( ctx->run == false ) 
+						/* stop 
+						 * as mentioned previously
+						 */
+							break;
+					}else
+						break;
+				}
+			}
+
+			if ( ret == -1 )
+			{
+				g_debug("cpu error %s", emu_strerror(e));
+				break;
+			}
+		}
+	}
+}
 
 int run(struct emu *e, struct emu_env *env)
 {
-
-
 	int j=0;
 	int ret; //= emu_cpu_run(emu_cpu_get(e));
-
-
 
 	for ( j=0;j< 1000000;j++ )
 	{
