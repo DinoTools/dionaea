@@ -37,7 +37,7 @@ class httpd(connection):
 				self.state = 'BODY'
 				return len(data)
 		elif self.state == 'BODY':
-			print(data.decode())
+#			print(data.decode())
 			return len(data)
 		return 0
 

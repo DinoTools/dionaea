@@ -20,6 +20,19 @@ downloads =
 	tmp-suffix = ".tmp"
 }
 
+submit = 
+{
+	urls = ["http://onlineanalyzer.norman.com/nepenthes_upload.php",
+			"http://luigi.informatik.uni-mannheim.de/submit.php?action=verify"]
+	email = "nepenthesdev@gmail.com"
+}
+
+listen = 
+{
+	mode = "getifaddrs"
+	addrs = { eth0 = ["::"] }
+}
+
 modules = {
 
 	curl = 

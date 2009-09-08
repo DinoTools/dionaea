@@ -3,10 +3,12 @@ import sys
 import traceback
 
 from dionaea import *
+import tempfile
 
 # service imports
 import http
 import tftp
+import ftp
 import mirror
 from smb import smb
 
@@ -28,18 +30,21 @@ class slave():
 
 	def start(self, addrs):
 		print("STARTING SERVICES")
-		for addr in addrs:
-			try:
-				print(addr)
-				self.daemons[addr] = {}
-				for s in self.services:
-					self.daemons[addr][s] = []
-					d = s.start(s, addr, iface=addrs[addr])
-					self.daemons[addr][s].append(d)
-			except BaseException as e:
-				print(e)
-				traceback.print_exc(file=sys.stdout)
-
+		try:
+			for iface in addrs:
+				print(iface)
+				for addr in addrs[iface]:
+					print(addr)
+					self.daemons[addr] = {}
+					for service in self.services:
+						print(service)
+						if not service in self.daemons[addr]:
+							self.daemons[addr][service] = []
+						daemon = service.start(service, addr, iface=iface)
+						self.daemons[addr][service].append(daemon)
+		except Exception as e:
+			print(e)
+		print(self.daemons)
 
 # for netlink, 
 # allows listening on new addrs
@@ -83,6 +88,17 @@ class httpservice(service):
 	def stop(self, daemon):
 		daemon.close()
 
+class ftpservice(service):
+	def start(self, addr,  iface=None):
+		daemon = ftp.ftpd()
+#		daemon.chroot('/tmp/')
+		daemon.bind(addr, 21, iface=iface)
+		daemon.listen()
+		return daemon
+	def stop(self, daemon):
+		daemon.close()
+
+
 class tftpservice(service):
 	def start(self, addr,  iface=None):
 		daemon = tftp.TftpServer()
@@ -117,8 +133,11 @@ class epmapservice(service):
 	def stop(self, daemon):
 		daemon.close()
 
-mode = 'getifaddrs'
-addrs = { '::' : '*' }
+#mode = 'getifaddrs'
+#mode = 'manual'
+#addrs = { 'eth0' : ['127.0.0.1', '192.168.47.11'] }
+#mode = g_dionaea.config()['listen']['mode']
+#addrs = g_dionaea.config()['listen']['addrs']
 
 
 def start():
@@ -137,7 +156,9 @@ def start():
 				if af == 2 or af == 10:
 					configs = afs[af]
 					for config in afs[af]:
-						addrs[config['addr']] = iface
+						if iface not in addrs:
+							addrs[iface] = []
+							addrs[iface].append(config['addr'])
 		print(addrs)
 	elif mode == 'nl':
 		g_slave = nlslave()
@@ -145,18 +166,20 @@ def start():
 
 	g_slave.services.append(httpservice)
 	g_slave.services.append(tftpservice)
+	g_slave.services.append(ftpservice)
 	g_slave.services.append(mirrorservice)
 	g_slave.services.append(smbservice)
 	g_slave.services.append(epmapservice)
 
 	g_slave.start(addrs)
 
+
+
 def stop():
-	
+	print("STOP")	
 	global g_slave
 	for addr in g_slave.daemons:
 		for s in g_slave.daemons[addr]:
 			for d in g_slave.daemons[addr][s]:
 				s.stop(s, d)
 	del g_slave
-

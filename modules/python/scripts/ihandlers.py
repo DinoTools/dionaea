@@ -8,6 +8,7 @@ import ftp
 import cmd
 import emu
 import store
+import test
 
 logger = logging.getLogger('ihandlers')
 logger.setLevel(logging.DEBUG)
@@ -26,6 +27,7 @@ imp.reload(store)
 global g_handlers
 
 
+
 def start():
 	global g_handlers
 	g_handlers = []
@@ -34,6 +36,7 @@ def start():
 	g_handlers.append(emu.emuprofilehandler())
 	g_handlers.append(cmd.cmdshellhandler())
 	g_handlers.append(store.storehandler())
+	g_handlers.append(test.uniquedownloadihandler())
 
 
 def stop():
