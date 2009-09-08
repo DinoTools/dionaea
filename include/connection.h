@@ -203,7 +203,12 @@ struct connection
 		struct ev_timer free;
 	}events;
 
-//	struct bistream *bistream;
+	/**
+	 * associate this socket with some specific data 
+	 * which is not protocol related
+	 */
+	void *data;
+
 	struct processor_data *processor_data;
 	struct refcount refcount;
 	unsigned int flags;
@@ -221,7 +226,7 @@ enum connection_flags
 #define connection_flag_isset(c, fl)   ((c)->flags & ( 1 << (fl)))
 
 
-
+void connection_stop(struct connection *con);
 const char *connection_strerror(enum connection_error error);
 void connection_process(struct connection *con);
 
@@ -354,7 +359,7 @@ void connection_protocol_set(struct connection *con, struct protocol *proto);
 void *connection_protocol_ctx_get(struct connection *con);
 void connection_protocol_ctx_set(struct connection *con, void *data);
 int my_bind(int fd, struct sockaddr *s, socklen_t size);
-
+bool bind_local(struct connection *con);
 
 int connection_ref(struct connection *con);
 int connection_unref(struct connection *con);

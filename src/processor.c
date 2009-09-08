@@ -316,7 +316,7 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 	{
 //		if ( (dir == bistream_in && ctx->in) || 
 //			 (dir == bistream_out && ctx->out) )
-//			print_stream_chunk2(it->data);
+			print_stream_chunk2(it->data);
 	}
 	g_mutex_unlock(bs->mutex);
 }

@@ -432,7 +432,7 @@ void connection_close(struct connection *con)
 					con, 
 					connection_type_to_string(con->type), 
 					connection_state_to_string(con->state));
-			connection_tcp_disconnect(con);
+//			connection_tcp_disconnect(con);
 		}
 		break;
 
@@ -911,12 +911,8 @@ void connection_reconnect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	}
 }
 
-
-void connection_disconnect(struct connection *con)
+void connection_stop(struct connection *con)
 {
-	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
-//	bistream_debug(&con->bistream);
-
 	if ( ev_is_active(&con->events.io_in) )
 		ev_io_stop(CL, &con->events.io_in);
 
@@ -949,6 +945,14 @@ void connection_disconnect(struct connection *con)
 
 	if ( ev_is_active(&con->events.reconnect_timeout) )
 		ev_timer_stop(CL,  &con->events.reconnect_timeout);
+}
+
+void connection_disconnect(struct connection *con)
+{
+	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
+//	bistream_debug(&con->bistream);
+
+	connection_stop(con);
 
 	if ( con->socket != -1 )
 		close(con->socket);
@@ -1071,7 +1075,7 @@ double connection_sustain_timeout_get(struct connection *con)
 
 void connection_listen_timeout_set(struct connection *con, double timeout_interval_ms)
 {
-	g_debug(__PRETTY_FUNCTION__);
+	g_debug("%s con %p timeout_interval_ms %f", __PRETTY_FUNCTION__, con, timeout_interval_ms);
 
 	if( ev_is_active(&con->events.listen_timeout) )
 		ev_timer_stop(CL, &con->events.listen_timeout);
@@ -1453,6 +1457,8 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 		connection_set_nonblocking(accepted);
 
+		accepted->data = con->data;
+
 		// set protocol for accepted connection
 		memcpy(&accepted->protocol, &con->protocol, sizeof(struct protocol));
 		accepted->protocol.name = g_strdup(con->protocol.name);
@@ -1741,9 +1747,9 @@ void connection_tcp_disconnect(struct connection *con)
 	connection_set_state(con, connection_state_close);
 	connection_disconnect(con);
 
-	if ( con->protocol.disconnect != NULL && 
+	if( con->protocol.disconnect != NULL && 
 		 (state != connection_state_none &&
-		  state != connection_state_connecting))
+		  state != connection_state_connecting ) )
 	{
 		bool reconnect = con->protocol.disconnect(con, con->protocol.ctx);
 		g_debug("reconnect is %i", reconnect);
@@ -2593,7 +2599,7 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 		SSL_CTX_free(accepted->transport.tls.ctx);
 		connection_set_type(accepted, connection_type_accept);
 		accepted->socket = accepted_socket;
-
+		accepted->data = con->data;
 
 		connection_node_set_local(accepted);
 		connection_node_set_remote(accepted);
@@ -3361,12 +3367,14 @@ void connection_set_state(struct connection *con, enum connection_state state)
 
 int connection_ref(struct connection *con)
 {
+	g_warning("%s con %p", __PRETTY_FUNCTION__, con);
 	refcount_inc(&con->refcount);
 	return con->refcount.refs;
 }
 
 int connection_unref(struct connection *con)
 {
+	g_warning("%s con %p", __PRETTY_FUNCTION__, con);
 	refcount_dec(&con->refcount);
 	return con->refcount.refs;
 }
