@@ -136,8 +136,8 @@ class epmapservice(service):
 #mode = 'getifaddrs'
 #mode = 'manual'
 #addrs = { 'eth0' : ['127.0.0.1', '192.168.47.11'] }
-#mode = g_dionaea.config()['listen']['mode']
-#addrs = g_dionaea.config()['listen']['addrs']
+mode = g_dionaea.config()['listen']['mode']
+addrs = g_dionaea.config()['listen']['addrs']
 
 
 def start():
