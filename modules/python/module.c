@@ -363,7 +363,7 @@ struct module_api *module_init(struct dionaea *dionaea)
 void log_wrap(char *name, int number, char *file, int line, char *msg)
 {
 	char *log_domain;
-	GLogLevelFlags log_level;
+	GLogLevelFlags log_level = G_LOG_LEVEL_DEBUG;
 	int x = 0;
 
 #ifdef DEBUG
