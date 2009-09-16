@@ -38,6 +38,10 @@ cflags+=' '
 cflags+='@LIB_LCFG_CFLAGS@' #liblcfg
 cflags+=' '
 cflags+='@PYTHON_CSPEC@' # python
+cflags+=' '
+cflags+='@CFLAGS_DEFAULT@'
+cflags+=' '
+cflags+='@CFLAGS_DEBUG@'
 
 libs=''
 libs+='@PYTHON_LSPEC@' # python

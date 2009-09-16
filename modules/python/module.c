@@ -63,6 +63,8 @@
 #include "connection.h"
 #include "incident.h"
 
+#include "util.h"
+
 #define D_LOG_DOMAIN "python"
 PyObject *PyInit_python(void);
 
@@ -430,6 +432,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 	int i=0;
 
 	char *old_ifa_name = "";
+	pyafdict = NULL;
 	for( iface=ifaces[0]; i < count; iface = ifaces[i], i++ )
 	{
 		if( iface->ifa_addr == NULL )

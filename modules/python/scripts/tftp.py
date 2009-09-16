@@ -887,7 +887,7 @@ class TftpClient(TftpSession):
         self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix='tftp-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
 
     def handle_io_in(self, data):
-        print('packet from %s:%i' % (self.remote.host, self.remote.port))
+        logger.debug('Received packet from server %s:%i' % (self.remote.host, self.remote.port))
         
         if self.connected == False:
             self.connect(self.remote.host, self.remote.port)
@@ -979,22 +979,30 @@ class TftpClient(TftpSession):
         elif isinstance(recvpkt, TftpPacketACK):
             # Umm, we ACK, the server doesn't.
             self.state.state = 'err'
-            self.senderror(TftpErrors.IllegalTftpOp)
-            tftpassert(False, "Received ACK from server while in download")
+#            self.senderror(TftpErrors.IllegalTftpOp)
+            logger.warn("Received ACK from server while in download")
+#            tftpassert(False, "Received ACK from server while in download")
+            self.close()
 
         elif isinstance(recvpkt, TftpPacketERR):
             self.state.state = 'err'
-            self.senderror(TftpErrors.IllegalTftpOp)
-            tftpassert(False, "Received ERR from server: " + str(recvpkt))
+#            self.senderror(TftpErrors.IllegalTftpOp)
+            logger.warn("Received ERR from server: " + str(recvpkt))
+            self.close()
 
         elif isinstance(recvpkt, TftpPacketWRQ):
             self.state.state = 'err'
-            self.senderror(TftpErrors.IllegalTftpOp)
-            tftpassert(False, "Received WRQ from server: " + str(recvpkt))
+#            self.senderror(TftpErrors.IllegalTftpOp)
+#            tftpassert(False, "Received WRQ from server: " + str(recvpkt))
+            logger.warn("Received WRQ from server: " + str(recvpkt))
+            self.close()
         else:
             self.state.state = 'err'
-            self.senderror(TftpErrors.IllegalTftpOp)
-            tftpassert(False, "Received unknown packet type from server: " + str(recvpkt))
+#            self.senderror(TftpErrors.IllegalTftpOp)
+#            tftpassert(False, "Received unknown packet type from server: " + str(recvpkt))
+            logger.warn("Received unknown packet type from server: " + str(recvpkt))
+            self.close()
+    
         return len(data)
 
     def handle_error(self, err):
