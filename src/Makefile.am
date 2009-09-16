@@ -1,6 +1,6 @@
 AUTOMAKE_OPTIONS = foreign
 
-AM_CFLAGS = -I../include -I .. -fno-strict-aliasing -Wall -Werror -g
+AM_CFLAGS = -I../include -I .. -fno-strict-aliasing
 AM_LDFLAGS = 
 
 

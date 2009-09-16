@@ -2,8 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-AM_CFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -pipe -D _GNU_SOURCE
-AM_CFLAGS += -Wall -Werror
+AM_CFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
 
 AM_CFLAGS += $(LIB_CURL_CFLAGS)
 AM_LDFLAGS = $(LIB_CURL_LIBS)

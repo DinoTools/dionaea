@@ -743,15 +743,9 @@ AM_CONDITIONAL([BUILD_CURL_MODULE], [ test x$enable_curl = "xyes" ])
 AM_CONDITIONAL([BUILD_NL_MODULE], [ test x$enable_nl = "xyes" ])
 
 
-dnl **************************************************
-dnl * default cflags                                 *
-dnl **************************************************
-
-CFLAGS="${CFLAGS} ${LIB_EV_CFLAGS} ${LIB_GLIB_CFLAGS} ${LIB_LCFG_CFLAGS} -Wstrict-prototypes"
-
-
 ## debug
 
+AC_SUBST([CFLAGS_DEBUG])
 
 AC_MSG_CHECKING(whether debug code generation should be enabled)
 AC_ARG_ENABLE([debug],
@@ -759,11 +753,22 @@ AC_ARG_ENABLE([debug],
 		[enable_debug=${enableval}], [enable_debug="yes"])
 if test x"$enable_debug" = "xyes"; then
 	AC_DEFINE([DEBUG], 1, [enable debug code generation])
+	CFLAGS_DEBUG="-g"
 else
 	AC_DEFINE([NDEBUG], 1, [don't enable debug code generation])
+	CFLAGS_DEBUG=""
 fi
 AC_MSG_RESULT($enable_debug)
 
+dnl **************************************************
+dnl * default cflags                                 *
+dnl **************************************************
+
+AC_SUBST([CFLAGS_DEFAULT])
+CFLAGS_LFS=`getconf LFS_CFLAGS`
+CFLAGS_DEFAULT="-Wall -Werror"
+
+CFLAGS="${CFLAGS} -D _GNU_SOURCE ${LIB_EV_CFLAGS} ${LIB_GLIB_CFLAGS} ${LIB_LCFG_CFLAGS} ${CFLAGS_DEFAULT} -Wstrict-prototypes ${CFLAGS_DEBUG} ${CFLAGS_LFS}"
 
 
 AC_DEFUN([AC_DEFINE_DIR], [

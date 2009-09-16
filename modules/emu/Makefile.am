@@ -2,8 +2,8 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-AM_CFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src -pipe -D _GNU_SOURCE -fms-extensions
-AM_CFLAGS += -Wall -Werror
+AM_CFLAGS = -I$(top_srcdir)/include -I$(top_srcdir)/src
+AM_CFLAGS += -fms-extensions
 
 AM_CFLAGS += $(LIB_EMU_CFLAGS)
 AM_LDFLAGS = $(LIB_EMU_LIBS)
