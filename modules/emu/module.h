@@ -47,8 +47,11 @@ void emulate(struct connection *con, void *data, unsigned int size, unsigned int
 struct emu_env;
 struct emu_env_hook;
 
+enum emu_state { running, waiting, failed };
+
 struct emu_emulate_ctx 
 {
+	GMutex *mutex;
 	struct emu *emu;
 	struct emu_env *env;
 
@@ -63,9 +66,14 @@ struct emu_emulate_ctx
 	GHashTable *files;
 	unsigned long steps;
 	uint32_t esp;
-	bool run;
+	enum emu_state state;
 };
 
+struct emu_file
+{
+	FILE *fh;
+	char *path;
+};
 
 void user_hook_accept_cb(EV_P_ struct ev_io *w, int revents);
 uint32_t user_hook_accept(struct emu_env *env, struct emu_env_hook *hook, ...);

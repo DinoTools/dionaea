@@ -53,6 +53,7 @@
 #include "threads.h"
 #include "log.h"
 #include "incident.h"
+#include "util.h"
 
 #define D_LOG_DOMAIN "hooks"
 
@@ -92,12 +93,11 @@ int32_t hook_connection_accept_cb(struct connection *con)
 	uint32_t addrlen;
 	POP_DWORD(c, &addrlen);
 
-	int sa = rand(); // FIXME 
-	int *sx = malloc(sizeof(int));
-	*sx = sa;
-	g_hash_table_insert(ctx->sockets, sx, con);
+	con->protocol.ctx = g_malloc0(sizeof(int));
+	*(int *)con->protocol.ctx = con->socket;
+	g_hash_table_insert(ctx->sockets, con->protocol.ctx, con);
 
-	emu_cpu_reg32_set(c, eax, sa);
+	emu_cpu_reg32_set(c, eax, *(int32_t *)con->protocol.ctx);
 	emu_cpu_eip_set(c, eip_save);
 
 	connection_stop(con);
@@ -130,8 +130,10 @@ void proto_emu_connect_established(struct connection *con)
 
 void proto_emu_error(struct connection *con, enum connection_error error)
 {
-	g_debug(__PRETTY_FUNCTION__);
-	g_message("error %i %s", error, connection_strerror(error));
+	g_debug("%s con %p error %i",__PRETTY_FUNCTION__, con, error);
+	struct emu_emulate_ctx *ctx = con->data;
+//	g_message("error %i %s", error, connection_strerror(error));
+	ctx->state = failed;
 }
 
 uint32_t proto_emu_io_in(struct connection *con, void *context, unsigned char *data, uint32_t size)
@@ -144,7 +146,7 @@ uint32_t proto_emu_io_in(struct connection *con, void *context, unsigned char *d
 	GError *thread_error;
 	struct thread *t = thread_new(NULL, ctx, emulate_thread);
 	g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
-	return 0; //size;
+	return 0;
 }
 
 bool proto_emu_disconnect(struct connection *con, void *context)
@@ -152,38 +154,48 @@ bool proto_emu_disconnect(struct connection *con, void *context)
 	g_debug("%s con %p ctx %p ",__PRETTY_FUNCTION__, con, context);
 	struct emu_emulate_ctx *ctx = con->data;
 
-//	int *s = NULL;
-	if( 1 )//(s = g_hash_table_lookup(ctx->processes, con)) != NULL )
-	{
-		connection_ref(con);
-		GError *thread_error;
-		struct thread *t = thread_new(NULL, ctx, emulate_thread);
-		g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
-	}
+	GError *thread_error;
+	struct thread *t = thread_new(NULL, ctx, emulate_thread);
+	g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
+
 	return false;
 }
 
-bool proto_emu_disconnect_noaction(struct connection *con, void *context)
+bool proto_emu_idle_timeout(struct connection *con, void *context)
 {
 	g_debug("%s con %p ctx %p ",__PRETTY_FUNCTION__, con, context);
+	struct emu_emulate_ctx *ctx = con->data;
+
+	ctx->state = failed;
+
 	return false;
 }
 
-
-bool proto_emu_timeout(struct connection *con, void *context)
+bool proto_emu_sustain_timeout(struct connection *con, void *context)
 {
 	g_debug("%s con %p ctx %p ",__PRETTY_FUNCTION__, con, context);
+	struct emu_emulate_ctx *ctx = con->data;
+
+	ctx->state = failed;
+
 	return false;
 }
 
+bool proto_emu_listen_timeout(struct connection *con, void *context)
+{
+	g_debug("%s con %p ctx %p ",__PRETTY_FUNCTION__, con, context);
+	struct emu_emulate_ctx *ctx = con->data;
 
+	ctx->state = failed;
+
+	return false;
+}
 
 void *proto_emu_ctx_new(struct connection *con)
 {
 	g_debug("%s con %p ctx %p", __PRETTY_FUNCTION__, con, con->protocol.ctx);
-	return NULL;
+	return con->protocol.ctx;
 }
-
 
 void proto_emu_ctx_free(void *context)
 {
@@ -196,7 +208,9 @@ struct protocol proto_emu =
 	.ctx_free = proto_emu_ctx_free,
 	.established = proto_emu_established,
 	.error = proto_emu_error,
-	.idle_timeout = proto_emu_timeout,
+	.idle_timeout = proto_emu_idle_timeout,
+	.listen_timeout = proto_emu_listen_timeout,
+	.sustain_timeout = proto_emu_sustain_timeout,
 	.disconnect = proto_emu_disconnect,
 	.io_in = proto_emu_io_in,
 	.ctx = NULL,
@@ -260,6 +274,8 @@ int32_t	ll_win_hook_accept(struct emu_env *env, struct emu_env_hook *hook)
 	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
 	{
 		g_warning("invalid socket requested %i", s);
+		ctx->state = failed;
+		return 0;
 	}
 
 	GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
@@ -269,7 +285,7 @@ int32_t	ll_win_hook_accept(struct emu_env *env, struct emu_env_hook *hook)
 
 
 	RESTORE_ESP(env);
-	ctx->run = false;
+	ctx->state = waiting;
 	return 0;
 }
 
@@ -292,23 +308,18 @@ uint32_t user_hook_bind(struct emu_env *env, struct emu_env_hook *hook, ...)
 	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
 	{
 		g_warning("invalid socket requested %i", s);
-		return -1;
+		ctx->state = failed;
+		return 0;
 	}
 
 	struct sockaddr_in *si = (struct sockaddr_in *)addr;
 	char addrstr[128] = "::";
 	inet_ntop(si->sin_family, &si->sin_addr, addrstr, 128); 
 	int port = ntohs(si->sin_port);
-
 	connection_bind(con, addrstr, port, NULL);
+
     return 0;
 }
-
-void user_hook_connect_cb(struct ev_loop *loop, struct ev_io *w, int revents)
-{
-	g_debug("%s loop %p w %p revents %i", __PRETTY_FUNCTION__, loop, w, revents);
-}
-
 
 uint32_t user_hook_connect(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
@@ -325,24 +336,22 @@ uint32_t user_hook_connect(struct emu_env *env, struct emu_env_hook *hook, ...)
 	va_end(vl);
 
 	struct connection *con;
-	g_debug("socket ht %p", ctx->sockets);
-	g_debug("s %i", s);
-
 	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
 	{
 		g_warning("invalid socket requested %i", s);
+		ctx->state = failed;
 		return -1;
 	}
 
+	con->protocol.established = proto_emu_connect_established;
 	struct sockaddr_in *si = (struct sockaddr_in *)addr;
 	char addrstr[128] = "::";
 	inet_ntop(si->sin_family, &si->sin_addr, addrstr, 128); 
-//	int port = ntohs(si->sin_port);
+// 	int port = ntohs(si->sin_port)						  ;
+// 	connection_connect(con, addrstr, port, NULL);													  ;
 
-	con->protocol.established = proto_emu_connect_established;
 	connection_connect(con, "127.0.0.1", 4444, NULL);
-
-	ctx->run = false;
+	ctx->state = waiting;
 	return 0;
 }
 
@@ -357,19 +366,14 @@ uint32_t user_hook_close(struct emu_env *env, struct emu_env_hook *hook, ...)
 	va_end(vl);
 
 	struct connection *con;
-	g_debug("socket ht %p", ctx->sockets);
-	g_debug("s %i", s);
-
 	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
 	{
 		g_warning("invalid socket requested %i", s);
+		ctx->state = failed;
 		return -1;
 	}
 
-	g_hash_table_remove(ctx->sockets, &s);
-
-	if( con->type != connection_type_listen )
-		connection_unref(con);
+//	g_hash_table_remove(ctx->sockets, &s);
 
 	if( con->state != connection_state_close )
 	{		
@@ -394,14 +398,10 @@ uint32_t user_hook_listen(struct emu_env *env, struct emu_env_hook *hook, ...)
 	va_end(vl);
 
 	struct connection *con;
-
-	g_debug("socket ht %p", ctx->sockets);
-	g_debug("s %i", s);
-
 	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
 	{
 		g_warning("invalid socket requested %i", s);
-		g_hash_table_foreach(ctx->sockets, dump_sockets, NULL);
+		ctx->state = failed;
 		return 0;
 	}
 
@@ -413,7 +413,6 @@ uint32_t user_hook_listen(struct emu_env *env, struct emu_env_hook *hook, ...)
 	{
 	case connection_transport_tcp:
 		con->type = connection_type_listen;
-		con->socket = socket(con->local.domain, SOCK_STREAM, 0);
 
 		if ( bind_local(con) != true )
 			return -1;
@@ -421,8 +420,10 @@ uint32_t user_hook_listen(struct emu_env *env, struct emu_env_hook *hook, ...)
 		if ( listen(con->socket, 1) != 0 )
 		{
 			close(con->socket);
+			con->socket = -1;
 			g_warning("Could not listen %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
-			return -1;
+			ctx->state = failed;
+			return 0;
 		}
 		connection_set_nonblocking(con);
 		break;
@@ -493,20 +494,17 @@ int recv(
 
 
 	struct connection *con;
-
-	g_debug("socket ht %p", ctx->sockets);
-	g_debug("s %i", s);
-
 	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
 	{
 		g_warning("invalid socket requested %i", s);
+		ctx->state = failed;
 		return 0;
 	}
-
 
 	int returnvalue = 0;
 	if( con->transport.tcp.io_in->len > 0 )
 	{
+		g_debug("data availible (%i bytes)",  (int)con->transport.tcp.io_in->len);
 		returnvalue = MIN(con->transport.tcp.io_in->len, len);
 		emu_cpu_reg32_set(c, eax, returnvalue);
 
@@ -526,28 +524,14 @@ int recv(
 		}
 	}
 
+	RESTORE_ESP(env);
+	ctx->state = waiting;
+
+	g_debug("polling for io in ...");
 	GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
 	g_async_queue_push(aq, async_cmd_new(async_connection_io_in, con));
 	g_async_queue_unref(aq);
 	ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
-
-	RESTORE_ESP(env);
-	ctx->run = false;
-	return 0;
-}
-
-
-uint32_t user_hook_recv(struct emu_env *env, struct emu_env_hook *hook, ...)
-{
-	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
-
-	va_list vl;
-	va_start(vl, hook);
-	/* int socket(int domain, int type, int protocol); */
-	/*int domain 	= */(void)va_arg(vl,  int);
-	/*int type 		= */(void)va_arg(vl,  int);
-	/*int protocol 	= */(void)va_arg(vl, int);
-	va_end(vl);
 
 	return 0;
 }
@@ -567,13 +551,10 @@ uint32_t user_hook_send(struct emu_env *env, struct emu_env_hook *hook, ...)
 	va_end(vl);
 
 	struct connection *con;
-
-	g_debug("socket ht %p", ctx->sockets);
-	g_debug("s %i", s);
-
 	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
 	{
 		g_warning("invalid socket requested %i", s);
+		ctx->state = failed;
 		return 0;
 	}
 
@@ -597,28 +578,27 @@ uint32_t user_hook_socket(struct emu_env *env, struct emu_env_hook *hook, ...)
 
 	struct connection *con = NULL;
 	if( type == SOCK_STREAM )
-	{
 		con = connection_new(connection_transport_tcp);
-		memcpy(&con->protocol, &proto_emu, sizeof(struct protocol));
-		con->data = ctx;
-	}
 
-	int s = -1;
-	if( con != NULL )
-	{
-		s = rand(); // FIXME
-		int *sx = malloc(sizeof(int));
-		*sx = s;
-		g_hash_table_insert(ctx->sockets, sx, con);
-	}
+	if( con == NULL )
+		return -1;
 
-	return s;
+	/* this connection will not get free'd! */
+	con->events.free.repeat = 0.;
+	con->socket = socket(AF_INET, SOCK_STREAM, 0);
+	memcpy(&con->protocol, &proto_emu, sizeof(struct protocol));
+	con->protocol.ctx = g_malloc0(sizeof(int));
+	*(int *)con->protocol.ctx = con->socket;
+	con->data = ctx;
+	g_hash_table_insert(ctx->sockets, con->protocol.ctx, con);
+
+	return con->socket;
 }
 
 uint32_t user_hook_CreateFile(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
 	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
-//	struct emu_emulate_ctx *ctx = env->userdata;
+	struct emu_emulate_ctx *ctx = env->userdata;
 /*
 HANDLE CreateFile(
   LPCTSTR lpFileName,
@@ -642,14 +622,17 @@ HANDLE CreateFile(
 	/*int hTemplateFile			=*/(void)va_arg(vl, int);
 	va_end(vl);
 
-	uint32_t handle = 123123;
-	return (uint32_t)handle;
+
+	struct tempfile *tf = tempdownload_new("emu-");
+	g_hash_table_insert(ctx->files, &tf->fd, tf);
+
+	return (uint32_t)tf->fd;
 }
 
 uint32_t user_hook_WriteFile(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
 	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
-//	struct emu_emulate_ctx *ctx = env->userdata;
+	struct emu_emulate_ctx *ctx = env->userdata;
 /*
 BOOL WriteFile(
   HANDLE hFile,
@@ -662,12 +645,23 @@ BOOL WriteFile(
 
 	va_list vl;
 	va_start(vl, hook);
-	/* uint32_t hFile				=*/(void)va_arg(vl, uint32_t);
-	/* void *lpBuffer 				=*/(void)va_arg(vl, void *);
-	/* int   nNumberOfBytesToWrite 	=*/(void)va_arg(vl, int);
+	uint32_t hFile				= va_arg(vl, uint32_t);
+	void *lpBuffer 				= va_arg(vl, void *);
+	int   nNumberOfBytesToWrite = va_arg(vl, int);
 	/* int *lpNumberOfBytesWritten  =*/(void)va_arg(vl, int*);
 	/* int *lpOverlapped 		    =*/(void)va_arg(vl, int*);
 	va_end(vl);
+
+	struct tempfile *tf = NULL;
+	if( (tf = g_hash_table_lookup(ctx->files, &hFile)) == NULL)
+	{
+		g_warning("invalid file requested %i", hFile);
+		ctx->state = failed;
+		return 0;
+	}
+
+	fwrite(lpBuffer, nNumberOfBytesToWrite, 1, tf->fh);
+
 	return 1;
 }
 
@@ -675,7 +669,7 @@ BOOL WriteFile(
 uint32_t user_hook_CloseHandle(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
 	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
-//	struct emu_emulate_ctx *ctx = env->userdata;
+	struct emu_emulate_ctx *ctx = env->userdata;
 /*	
 BOOL CloseHandle(
   HANDLE hObject
@@ -684,9 +678,15 @@ BOOL CloseHandle(
 
 	va_list vl;
 	va_start(vl, hook);
-	/*uint32_t hObject =*/(void)va_arg(vl, uint32_t);
+	uint32_t hObject = va_arg(vl, uint32_t);
 	va_end(vl);
 
+	struct tempfile *tf = NULL;
+	if( (tf = g_hash_table_lookup(ctx->files, &hObject)) != NULL)
+	{
+		tempfile_close(tf);
+		return 0;
+	}
 	return 0;
 }
 
@@ -699,7 +699,7 @@ uint32_t user_hook_CreateProcess(struct emu_env *env, struct emu_env_hook *hook,
 	va_start(vl, hook);
 
 	/* char *pszImageName				  = */ (void)va_arg(vl, char *);
-	/* char *pszCmdLine                   = */ (void)va_arg(vl, char *);               
+	char *pszCmdLine                   = va_arg(vl, char *);               
 	/* void *psaProcess, 				  = */ (void)va_arg(vl, void *);
 	/* void *psaThread,  				  = */ (void)va_arg(vl, void *);
 	/* bool fInheritHandles,              = */ (void)va_arg(vl, char *);
@@ -708,36 +708,34 @@ uint32_t user_hook_CreateProcess(struct emu_env *env, struct emu_env_hook *hook,
 	/* char *pszCurDir                 	  = */ (void)va_arg(vl, char *);
 	STARTUPINFO *psiStartInfo          = va_arg(vl, STARTUPINFO *);
 	PROCESS_INFORMATION *pProcInfo     = va_arg(vl, PROCESS_INFORMATION *); 
+	va_end(vl);
 
-	struct connection *con = NULL;
-	g_debug("socket ht %p", ctx->sockets);
-	g_debug("s %i", psiStartInfo->hStdInput);
-
-	if( (con = g_hash_table_lookup(ctx->sockets, &psiStartInfo->hStdInput)) == NULL)
+	if ( pszCmdLine != NULL && strncasecmp(pszCmdLine, "cmd", 3) == 0 )
 	{
-		g_warning("invalid socket requested %i", psiStartInfo->hStdInput);
-//		g_hash_table_foreach(ctx->sockets, dump_sockets, NULL);
-		return 0;
+	
+		struct connection *con = NULL;
+		if( (con = g_hash_table_lookup(ctx->sockets, &psiStartInfo->hStdInput)) == NULL)
+		{
+			g_warning("invalid socket requested %i", psiStartInfo->hStdInput);
+	//		g_hash_table_foreach(ctx->sockets, dump_sockets, NULL);
+			return 0;
+		}
+	
+		struct incident *ix = incident_new("dionaea.module.emu.mkshell");
+		incident_value_ptr_set(ix, "con", (uintptr_t)con);
+		connection_ref(con);
+		GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
+		g_async_queue_push(aq, async_cmd_new(async_incident_report, ix));
+		g_async_queue_unref(aq);
+		ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
+	
+	//	psiStartInfo = NULL;
+	//	pProcInfo = NULL;
+	
+		pProcInfo->hProcess = *(int *)con->protocol.ctx;
+		g_hash_table_insert(ctx->processes, con->protocol.ctx, con);
 	}
 
-	struct incident *ix = incident_new("dionaea.module.emu.mkshell");
-	incident_value_ptr_set(ix, "con", (uintptr_t)con);
-	connection_ref(con);
-	GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
-	g_async_queue_push(aq, async_cmd_new(async_incident_report, ix));
-	g_async_queue_unref(aq);
-	ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
-
-//	psiStartInfo = NULL;
-//	pProcInfo = NULL;
-
-
-	int *p = malloc(sizeof(int));
-	*p = 12345; //rand(); // FIXME
-	pProcInfo->hProcess = *p;
-	g_hash_table_insert(ctx->processes, p, con);
-
-	va_end(vl);
 	return 0;
 }
 
@@ -759,17 +757,12 @@ uint32_t user_hook_WaitForSingleObject(struct emu_env *env, struct emu_env_hook 
 	int32_t hHandle = va_arg(vl, int32_t);
 	/*int32_t dwMilliseconds = */ (void)va_arg(vl, int32_t);
 	va_end(vl);
-	g_debug("handle %i", hHandle);
 
 	struct connection *con = NULL;
-	g_debug("socket ht %p", ctx->sockets);
-	g_debug("s %i", hHandle);
-
 	int h = hHandle;
 	if( (con = g_hash_table_lookup(ctx->processes, &h)) != NULL)
 	{
-		g_info("stopping");
-		ctx->run = false;
+		ctx->state = waiting;
 		return 0;
 	}
 
@@ -779,38 +772,19 @@ uint32_t user_hook_WaitForSingleObject(struct emu_env *env, struct emu_env_hook 
 uint32_t user_hook_WSASocket(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
 	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
-	struct emu_emulate_ctx *ctx = env->userdata;
+//	struct emu_emulate_ctx *ctx = env->userdata;
 
 	va_list vl;
 	va_start(vl, hook);
 	/* int socket(int domain, int type, int protocol); */
-	/*int domain 	= */(void)va_arg(vl,  int);
+	int domain 		= va_arg(vl,  int);
 	int type 		= va_arg(vl,  int);
-	/*int protocol 	= */(void)va_arg(vl, int);
+	int protocol 	= va_arg(vl, int);
 	(void)va_arg(vl, int);
 	(void)va_arg(vl, int);
 	(void)va_arg(vl, int);
 
 	va_end(vl);
 
-
-	struct connection *con = NULL;
-	if( type == SOCK_STREAM )
-	{
-		con = connection_new(connection_transport_tcp);
-		memcpy(&con->protocol, &proto_emu, sizeof(struct protocol));
-		con->data = ctx;
-//		connection_ref(con);
-	}
-
-	int s = -1;
-	if( con != NULL )
-	{
-		s = rand(); // FIXME 
-		int *sx = malloc(sizeof(int));
-		*sx = s;
-		g_hash_table_insert(ctx->sockets, sx, con);
-	}
-
-	return s;
+	return user_hook_socket(env, hook, domain, type, protocol);
 }

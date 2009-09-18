@@ -54,6 +54,8 @@
 #include "connection.h"
 
 
+#define D_LOG_DOMAIN "profile"
+
 #define	CODE_OFFSET 0x417000
 
 char *indents(int i)
@@ -327,17 +329,37 @@ void profile(struct connection *con, void *data, unsigned int size, unsigned int
 	emu_memory_write_block(mem, CODE_OFFSET, data,  size);
 	emu_cpu_eip_set(emu_cpu_get(e), CODE_OFFSET + offset);
 	run(e, env);
-	GString *str = g_string_new(NULL);
-	json_profile_debug(env->profile, str);
-	printf("%s", str->str);
-	struct incident *i = incident_new("dionaea.module.emu.profile");
-	incident_value_string_set(i, "profile", str);
-	incident_value_ptr_set(i, "con", (uintptr_t)con);
-	connection_ref(con);
-	GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
-	g_async_queue_push(aq, async_cmd_new(async_incident_report, i));
-	g_async_queue_unref(aq);
-	ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
+
+	bool needemu = false;
+
+	struct emu_profile_function *function;
+	for (function = emu_profile_functions_first(env->profile->functions); !emu_profile_functions_istail(function); function = emu_profile_functions_next(function))
+	{
+		if( strcmp("recv", function->fnname) == 0 )
+		{
+			g_message("Can not profile %s, emulating instead", function->fnname);
+			needemu = true;
+		}
+	}
+	
+
+	if( needemu == true )
+	{
+		emulate(con, data, size, offset);
+	}else
+	{
+		GString *str = g_string_new(NULL);
+		json_profile_debug(env->profile, str);
+		printf("%s", str->str);
+		struct incident *i = incident_new("dionaea.module.emu.profile");
+		incident_value_string_set(i, "profile", str);
+		incident_value_ptr_set(i, "con", (uintptr_t)con);
+		connection_ref(con);
+		GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
+		g_async_queue_push(aq, async_cmd_new(async_incident_report, i));
+		g_async_queue_unref(aq);
+		ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
+	}
 
 	emu_env_free(env);
 	emu_free(e);

@@ -82,6 +82,8 @@ static bool emu_hup(struct lcfgx_tree_node *node)
 	return true;
 }
 
+
+
 struct module_api *module_init(struct dionaea *d)
 {
     g_debug("%s:%i %s dionaea %p",__FILE__, __LINE__, __PRETTY_FUNCTION__, d);

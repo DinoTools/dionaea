@@ -29,6 +29,8 @@
 
 #include <glib.h>
 
+#include <unistd.h>
+
 #include <emu/emu.h>
 #include <emu/emu_memory.h>
 #include <emu/emu_cpu.h>
@@ -46,10 +48,13 @@
 #include <emu/emu_string.h>
 #include <emu/emu_shellcode.h>
 
+
 #include "connection.h"
 #include "module.h"
-
+#include "threads.h"
+#include "dionaea.h"
 #include "log.h"
+#include "util.h"
 
 #define D_LOG_DOMAIN "emulate"
 
@@ -86,6 +91,7 @@ void emulate(struct connection *con, void *data, unsigned int size, unsigned int
 
 	ctx->sockets = g_hash_table_new(g_int_hash, g_int_equal);
 	ctx->processes = g_hash_table_new(g_int_hash, g_int_equal);
+	ctx->files = g_hash_table_new(g_int_hash, g_int_equal);
 
 	ctx->emu = emu_new();
 	ctx->env = emu_env_new(ctx->emu);
@@ -93,6 +99,7 @@ void emulate(struct connection *con, void *data, unsigned int size, unsigned int
 	struct emu *e = ctx->emu;
 	struct emu_cpu *cpu = emu_cpu_get(ctx->emu);
 	ctx->env->userdata = ctx;
+	ctx->mutex = g_mutex_new();
 
 	emu_env_w32_load_dll(env->env.win,"ws2_32.dll");
 	emu_ll_w32_export_hook(env, "accept", ll_win_hook_accept, NULL);
@@ -136,6 +143,51 @@ void emulate(struct connection *con, void *data, unsigned int size, unsigned int
 	emulate_thread(NULL, ctx);
 }
 
+void emulate_ctx_free(void *data)
+{
+	struct emu_emulate_ctx *ctx = data;
+
+	GHashTableIter iter;
+	gpointer key, value;
+
+	g_hash_table_iter_init (&iter, ctx->files);
+	while ( g_hash_table_iter_next (&iter, &key, &value) )
+	{
+		g_debug("file key %p %i value %p \n", key, *(int *)key, value);
+		struct tempfile *tf = value;
+		tempfile_close(tf);
+		tempfile_free(tf);
+	}
+	g_hash_table_destroy(ctx->files);
+
+	g_hash_table_iter_init (&iter, ctx->processes);
+	while ( g_hash_table_iter_next (&iter, &key, &value) )
+	{
+		g_debug("process key %p %i value %p \n", key, *(int *)key, value);
+	}
+	g_hash_table_destroy(ctx->processes);
+
+	g_hash_table_iter_init (&iter, ctx->sockets);
+	while ( g_hash_table_iter_next (&iter, &key, &value) )
+	{
+		g_debug("connection key %p %i value %p \n", key, *(int *)key, value);
+		struct connection *con = value;
+		if( con->state != connection_state_close )
+		{/* avoid callbacks from connection_close() */
+			close(con->socket);
+			con->socket = -1;
+		}
+
+		g_free(key);
+
+		con->protocol.ctx = NULL;
+		con->events.free.repeat = .5;
+		connection_free(con);
+	}
+	g_hash_table_destroy(ctx->sockets);
+
+}
+
 void emulate_thread(gpointer data, gpointer user_data)
 {
 	struct emu_emulate_ctx *ctx = user_data;
@@ -143,10 +195,16 @@ void emulate_thread(gpointer data, gpointer user_data)
 	struct emu_env *env = ctx->env;
 	int ret;
 
-	ctx->run = true;
+	g_mutex_lock(ctx->mutex);
 
-	while( true )
+	if( ctx->state == waiting )
+		ctx->state = running;
+
+	while( ctx->state == running )
 	{
+		if( (ctx->steps % (1024*1024)) == 0 )
+			g_debug("steps %li", ctx->steps);
+		ctx->steps++;
 		struct emu_env_hook *hook = NULL;
 		hook = emu_env_w32_eip_check(env);
 
@@ -157,13 +215,13 @@ void emulate_thread(gpointer data, gpointer user_data)
 				g_critical("unhooked call to %s", hook->hook.win->fnname);
 				break;
 			}else
-			if( ctx->run == false ) 
+			if( ctx->state == waiting ) 
 			/* for now, we stop!
 			 * had a blocking io call
 			 * callback from main will come at a given point
 			 * and requeue us to the threadpool
 			 */
-				break;
+				goto unlock_and_return;
 		}
 		else
 		{
@@ -180,13 +238,12 @@ void emulate_thread(gpointer data, gpointer user_data)
 					if ( hook->hook.lin->fnhook != NULL )
 					{
 						hook->hook.lin->fnhook(env, hook);
-						if( ctx->run == false ) 
+						if( ctx->state == waiting )
 						/* stop 
 						 * as mentioned previously
 						 */
-							break;
-					}else
-						break;
+							goto unlock_and_return;
+					}
 				}
 			}
 
@@ -197,6 +254,23 @@ void emulate_thread(gpointer data, gpointer user_data)
 			}
 		}
 	}
+
+	if( ctx->state == failed )
+		g_debug("emulating shellcode failed");
+
+	g_mutex_unlock(ctx->mutex);
+
+
+	GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
+	g_async_queue_push(aq, async_cmd_new(emulate_ctx_free, ctx));
+	g_async_queue_unref(aq);
+	ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
+
+
+	return;
+
+unlock_and_return:
+	g_mutex_unlock(ctx->mutex);
 }
 
 int run(struct emu *e, struct emu_env *env)
