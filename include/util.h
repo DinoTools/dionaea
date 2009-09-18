@@ -33,3 +33,14 @@ bool parse_addr(char const * const addr, char const * const iface, uint16_t cons
 int ipv6_addr_linklocal(struct in6_addr const * const a);
 int ipv6_addr_v4mapped(struct in6_addr const * const a);
 
+struct tempfile
+{
+	int fd;
+	FILE *fh;
+	char *path;
+};
+
+struct tempfile *tempfile_new(char *path, char *prefix);
+struct tempfile *tempdownload_new(char *prefix);
+void tempfile_close(struct tempfile *tf);
+void tempfile_free(struct tempfile *tf);

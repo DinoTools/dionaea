@@ -134,7 +134,7 @@ struct connection *connection_new(enum connection_transport type)
 	refcount_init(&con->refcount);
 	con->events.close_timeout.repeat = 10.0;
 	con->events.connecting_timeout.repeat = 5.0;
-
+	con->events.free.repeat = 0.5;
 	return con;
 }
 
@@ -276,7 +276,8 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 	{
 	case connection_transport_udp:
 		con->type = connection_type_bind;
-		con->socket = socket(socket_domain, SOCK_DGRAM, 0);
+		if ( con->socket == -1 )
+			con->socket = socket(socket_domain, SOCK_DGRAM, 0);
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)); 
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)); 
 		if ( bind_local(con) != true )
@@ -322,7 +323,8 @@ bool connection_listen(struct connection *con, int len)
 	{
 	case connection_transport_tcp:
 		con->type = connection_type_listen;
-		con->socket = socket(con->local.domain, SOCK_STREAM, 0);
+		if ( con->socket == -1 )
+			con->socket = socket(con->local.domain, SOCK_STREAM, 0);
 
 		if ( bind_local(con) != true )
 			return false;
@@ -341,7 +343,8 @@ bool connection_listen(struct connection *con, int len)
 
 	case connection_transport_tls:
 		con->type = connection_type_listen;
-		con->socket = socket(con->local.domain, SOCK_STREAM, 0);
+		if ( con->socket == -1 )
+			con->socket = socket(con->local.domain, SOCK_STREAM, 0);
 
 		if ( bind_local(con) != true )
 			return false;
@@ -536,6 +539,12 @@ void connection_close_timeout_cb(EV_P_ struct ev_timer *w, int revents)
  * if closing a connection has the possibility 
  * to free the connection directly, the python object 'looses' ground, 
  * it got destroyed while in use. 
+ *  
+ * additionally, you may not want to delete the connection, even 
+ * if it was closed 
+ * if refcounts do not work, as you can't control the 
+ * (shell)code, set the free.repeat interval to 0. 
+ *  
  * @see connection_free_cb 
  * 
  * @param con
@@ -544,8 +553,11 @@ void connection_free(struct connection *con)
 {
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	ev_timer_stop(CL, &con->events.free);
-	ev_timer_init(&con->events.free, connection_free_cb, 0., .5);
-	ev_timer_again(CL, &con->events.free);
+	if( con->events.free.repeat > 0. )
+	{
+		ev_timer_init(&con->events.free, connection_free_cb, 0., con->events.free.repeat);
+		ev_timer_again(CL, &con->events.free);
+	}
 }
 
 /**
@@ -562,12 +574,6 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 
 	if ( ! refcount_is_zero(&con->refcount) )
 		return;
-
-#ifdef COMPLETE
-	struct action_connection *action = action_connection_new(ACTION_CONNECTION_FREE, con);
-	action_emit(g_dionaea, TOACTION(action));
-	action_connection_free(action);
-#endif
 
 	ev_timer_stop(EV_A_ w);
 
@@ -619,6 +625,15 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 	g_free(con);
 }
 
+/**
+ * Set the connection nonblocking
+ * this code is not really portable
+ * libcurl shows how to do better
+ * 
+ * @param con    the connection 
+ *  
+ * @see connection_set_blocking
+ */
 void connection_set_nonblocking(struct connection *con)
 {
 	g_debug(__PRETTY_FUNCTION__);
@@ -627,6 +642,11 @@ void connection_set_nonblocking(struct connection *con)
 	fcntl(con->socket, F_SETFL, flags);
 }
 
+/**
+ * Set the connection blocking again
+ * 
+ * @param con    The connection
+ */
 void connection_set_blocking(struct connection *con)
 {
 	g_debug(__PRETTY_FUNCTION__);
@@ -636,6 +656,16 @@ void connection_set_blocking(struct connection *con)
 }
 
 
+/**
+ * connect somewhere
+ * 
+ * we can connect to hostnames and ips
+ * As domains can have more than one A/AAAA record, 
+ * and we try to be fault tolerant, we do only complain 
+ * if we can not connect any of the resolved addresses
+ * 
+ * @param con    The connection
+ */
 void connection_connect_next_addr(struct connection *con)
 {
 	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
@@ -675,7 +705,7 @@ void connection_connect_next_addr(struct connection *con)
 
 			g_debug("tcp");
 
-			if ( con->socket <= 0 )
+			if ( con->socket == -1 )
 				con->socket = socket(socket_domain, SOCK_STREAM, 0);
 
 			if ( bind_local(con) != true )
@@ -727,7 +757,7 @@ void connection_connect_next_addr(struct connection *con)
 				con->protocol.ctx = con->protocol.ctx_new(con);
 
 			g_debug("ssl");
-			if ( con->socket <= 0 )
+			if ( con->socket == -1 )
 				con->socket = socket(socket_domain, SOCK_STREAM, 0);
 			connection_set_nonblocking(con);
 
@@ -774,7 +804,7 @@ void connection_connect_next_addr(struct connection *con)
 //			con->protocol.ctx = con->protocol.ctx_new(con);
 
 			g_debug("udp");
-			if ( con->socket <= 0 )
+			if ( con->socket == -1 )
 				con->socket = socket(socket_domain, SOCK_DGRAM, 0);
 
 //			if ( bind_local(con) != true )
@@ -814,6 +844,15 @@ void connection_connect_next_addr(struct connection *con)
 	}
 }
 
+/**
+ * connect somewhere
+ * 
+ * @param con    The connection
+ * @param addr   the address - ipv4/6 or domain
+ * @param port   the port, hostbyteorder
+ * @param iface_scope
+ *               iface scope, required for ipv6 link local scope
+ */
 void connection_connect(struct connection* con, const char* addr, uint16_t port, const char *iface_scope)
 {
 	g_debug("%s con %p addr %s port %i iface %s",__PRETTY_FUNCTION__, con, addr, port, iface_scope);
@@ -846,17 +885,40 @@ void connection_connect(struct connection* con, const char* addr, uint16_t port,
 	}
 }
 
+/**
+ * Set the reconnect timeout
+ * 
+ * Sometimes your connection may get disconnected, 
+ * the reconnect timeout allows specifying a delay 
+ * before trying to reconnect
+ * 
+ * @param con    The connection
+ * @param timeout_interval_ms
+ *               the delay in seconds
+ */
 void connection_reconnect_timeout_set(struct connection *con, double timeout_interval_ms)
 {
 	ev_timer_init(&con->events.reconnect_timeout, connection_reconnect_timeout_cb, 0., timeout_interval_ms);
 }
 
+/**
+ * Get the reconnect delay
+ * 
+ * @param con    The connection
+ * 
+ * @return the delay in seconds
+ */
 double connection_reconnect_timeout_get(struct connection *con)
 {
 	return con->events.reconnect_timeout.repeat;
 }
 
 
+/**
+ * Reconnect a connection - with delay
+ * 
+ * @param con The connection
+ */
 void connection_reconnect(struct connection *con)
 {
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);   
@@ -911,6 +973,11 @@ void connection_reconnect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	}
 }
 
+/**
+ * Stop all events for a connection
+ * 
+ * @param con    The connection
+ */
 void connection_stop(struct connection *con)
 {
 	if ( ev_is_active(&con->events.io_in) )
@@ -947,6 +1014,13 @@ void connection_stop(struct connection *con)
 		ev_timer_stop(CL,  &con->events.reconnect_timeout);
 }
 
+/**
+ * disconnects a connection
+ * closes the socket and stops all events
+ * 
+ * @param con    The connection 
+ * @see connection_stop 
+ */
 void connection_disconnect(struct connection *con)
 {
 	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
@@ -959,6 +1033,16 @@ void connection_disconnect(struct connection *con)
 	con->socket = -1;
 }
 
+/**
+ * Send something
+ * does not block,	buffers the data to send, and sends it when possible
+ * 
+ * @param con    The connection
+ * @param data   The data to send
+ * @param size   length of the data 
+ *  
+ * @see connection_send_string 
+ */
 void connection_send(struct connection *con, const void *data, uint32_t size)
 {
 	g_debug("%s con %p data %p size %i",__PRETTY_FUNCTION__, con, data, size);
@@ -997,13 +1081,30 @@ void connection_send(struct connection *con, const void *data, uint32_t size)
 	}
 }
 
+/**
+ * Send a zero terminated string
+ * 
+ * @param con    The connection
+ * @param str    The zero terminated string 
+ *  
+ * @see connection_send 
+ */
 void connection_send_string(struct connection *con, const char *str)
 {
 	connection_send(con, str, strlen(str));
 }
 
-
-
+/**
+ * set the connection idle timeout
+ * 
+ * the connection idle time is reset if io occurs
+ * if no io occurs for the specified timeout, 
+ * the protocols idle timeout callback is called
+ * 
+ * @param con    The connection
+ * @param timeout_interval_ms
+ *               idle timeout in seconds
+ */
 void connection_idle_timeout_set(struct connection *con, double timeout_interval_ms)
 {
 	g_debug("%s %p %f", __PRETTY_FUNCTION__, con, timeout_interval_ms);
@@ -1033,11 +1134,29 @@ void connection_idle_timeout_set(struct connection *con, double timeout_interval
 		ev_timer_again(CL, &con->events.idle_timeout);
 }
 
+/**
+ * Get the connections idle timeout
+ * 
+ * @param con    The connection
+ * 
+ * @return the connections idle timeout in seconds
+ */
 double connection_idle_timeout_get(struct connection *con)
 {
 	return con->events.idle_timeout.repeat;
 }
 
+/**
+ * Set the connections sustain timeout
+ * The sustain timeout is the maximum 
+ * allowed session time for the connection
+ * 
+ * If the connections duration is larger than the sustain timeout, 
+ * the protocols sustain timeout callback is called
+ * 
+ * @param con    The connection
+ * @param timeout_interval_ms
+ */
 void connection_sustain_timeout_set(struct connection *con, double timeout_interval_ms)
 {
 	g_debug("%s %p %f", __PRETTY_FUNCTION__, con, timeout_interval_ms);
@@ -1067,12 +1186,31 @@ void connection_sustain_timeout_set(struct connection *con, double timeout_inter
 		ev_timer_again(CL, &con->events.sustain_timeout);
 }
 
+/**
+ * Get the connections sustain timeout
+ * 
+ * @param con    The connection
+ * 
+ * @return the sustain timeout in seconds
+ */
 double connection_sustain_timeout_get(struct connection *con)
 {
 	return con->events.sustain_timeout.repeat;
 }
 
 
+/**
+ * Set the connections listen timeout
+ * 
+ * if a connection is listening, 
+ * you may want to close it automatically after a specified timeout
+ * If the connections is listening for a longer period than specified here, 
+ * the protocols listen timeout callback is called
+ * 
+ * @param con    The connection
+ * @param timeout_interval_ms
+ *               The timeout in seconds
+ */
 void connection_listen_timeout_set(struct connection *con, double timeout_interval_ms)
 {
 	g_debug("%s con %p timeout_interval_ms %f", __PRETTY_FUNCTION__, con, timeout_interval_ms);
@@ -1100,12 +1238,27 @@ void connection_listen_timeout_set(struct connection *con, double timeout_interv
 		ev_timer_again(CL, &con->events.sustain_timeout);
 }
 
+/**
+ * Get the connections listen timeout
+ * 
+ * @param con    The connection
+ * 
+ * @return the listen timeout in seconds
+ */
 double connection_listen_timeout_get(struct connection *con)
 {
 	return con->events.listen_timeout.repeat;
 }
 
 
+/**
+ * Set the connections handshake timeout
+ * TLS/SSL handshakes are special, they get a special timeout
+ * If the handshake takes longer than specified here, the connection gets closed
+ * 
+ * @param con    The connection
+ * @param timeout_interval_ms
+ */
 void connection_handshake_timeout_set(struct connection *con, double timeout_interval_ms)
 {
 	g_debug(__PRETTY_FUNCTION__);
@@ -1128,12 +1281,27 @@ void connection_handshake_timeout_set(struct connection *con, double timeout_int
 
 
 
+/**
+ * Get the connections handshake timeout
+ * 
+ * @param con    The connection
+ * 
+ * @return the handshake timeout in seconds
+ */
 double connection_handshake_timeout_get(struct connection *con)
 {
 	return con->events.handshake_timeout.repeat;
 }
 
 
+/**
+ * Set the connections connecting timeout
+ * Connecting some host may take some time, if you want to limit the time, set this timeout.
+ * 
+ * @param con    The connection
+ * @param timeout_interval_ms
+ *               connecting timeout in seconds
+ */
 void connection_connecting_timeout_set(struct connection *con, double timeout_interval_ms)
 {
 	g_debug(__PRETTY_FUNCTION__);
@@ -1157,6 +1325,13 @@ void connection_connecting_timeout_set(struct connection *con, double timeout_in
 		ev_timer_again(CL, &con->events.connecting_timeout);
 }
 
+/**
+ * Get the connections connecting timeout
+ * 
+ * @param con    The connection
+ * 
+ * @return the connecting timeout in seconds
+ */
 double connection_connecting_timeout_get(struct connection *con)
 {
 	return con->events.connecting_timeout.repeat;
@@ -1164,6 +1339,12 @@ double connection_connecting_timeout_get(struct connection *con)
 
 
 
+/**
+ * The connection was established!
+ * Great, inform the protcol about it and set the required event callbacks
+ * 
+ * @param con    The connection
+ */
 void connection_established(struct connection *con)
 {
 	g_debug("%s %p", __PRETTY_FUNCTION__, con);

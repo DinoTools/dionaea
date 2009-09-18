@@ -33,8 +33,18 @@
 #include <arpa/inet.h>
 #include <net/if.h>
 
+#include <stdio.h>
+
+#include <unistd.h>
+
 #include <glib.h>
 
+#include <lcfg/lcfg.h>
+#include <lcfgx/lcfgx_tree.h>
+
+
+
+#include "dionaea.h"
 #include "util.h"
 #include "log.h"
 
@@ -139,3 +149,43 @@ bool parse_addr(char const * const addr, char const * const iface, uint16_t cons
 	return false;
 }
 
+struct tempfile *tempfile_new(char *path, char *prefix)
+{
+	struct tempfile *tf = g_malloc0(sizeof(struct tempfile));
+
+	if( prefix )
+		tf->path = g_strdup_printf("%s/%sXXXXXX", path, prefix);
+	else
+		tf->path = g_strdup_printf("%s/XXXXXX", path);
+	tf->fd = mkstemp(tf->path);
+	tf->fh = fdopen(tf->fd, "w+");
+	return tf;
+}
+
+struct tempfile *tempdownload_new(char *prefix)
+{
+	struct lcfgx_tree_node *node;
+	if( lcfgx_get_string(g_dionaea->config.root, &node, "downloads.dir") != LCFGX_PATH_FOUND_TYPE_OK )
+	{
+		g_warning("missing downloads.dir in dionaea.conf");
+		return NULL;
+	}
+	return tempfile_new((char *)node->value.string.data, prefix);
+}
+
+void tempfile_close(struct tempfile *tf)
+{
+	if( tf->fh != NULL )
+		fclose(tf->fh);
+
+	if( tf->fd != -1 )
+		close(tf->fd);
+
+	tf->fd = -1;
+	tf->fh = NULL;
+}
+
+void tempfile_free(struct tempfile *tf)
+{
+	g_free(tf);
+}
