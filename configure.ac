@@ -4,6 +4,7 @@
 # $Id$
 
 sinclude(m4/az_python.m4)
+sinclude(m4/az_bind_ipv4_mapped_localhost.m4)
 
 AC_PREREQ(2.59)
 AC_INIT([dionaea], [0.1.0], [nepenthesdev@gmail.com])
@@ -39,6 +40,12 @@ AC_TYPE_SIGNAL
 AC_FUNC_ERROR_AT_LINE
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS([strndup inet_ntoa  memmove memset strdup strerror])
+
+
+dnl **************************************************
+dnl * bind() ipv4 mapped address?                    *
+dnl **************************************************
+AZ_FUNC_BIND_MAPPED_IPV4_LOCALHOST()
 
 
 dnl **************************************************
@@ -743,7 +750,9 @@ AM_CONDITIONAL([BUILD_CURL_MODULE], [ test x$enable_curl = "xyes" ])
 AM_CONDITIONAL([BUILD_NL_MODULE], [ test x$enable_nl = "xyes" ])
 
 
-## debug
+dnl **************************************************
+dnl * debug                                          *
+dnl **************************************************
 
 AC_SUBST([CFLAGS_DEBUG])
 
