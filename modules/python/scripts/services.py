@@ -158,7 +158,7 @@ def start():
 					for config in afs[af]:
 						if iface not in addrs:
 							addrs[iface] = []
-							addrs[iface].append(config['addr'])
+						addrs[iface].append(config['addr'])
 		print(addrs)
 	elif mode == 'nl':
 		g_slave = nlslave()
