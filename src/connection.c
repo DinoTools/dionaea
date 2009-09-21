@@ -265,7 +265,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 		strcpy(con->local.iface_scope, iface_scope);
 
 
-	if ( !parse_addr(con->local.hostname, con->local.iface_scope, ntohs(con->local.port), &sa, &socket_domain, &sizeof_sa) )
+	if ( !parse_addr(con->local.hostname, con->local.iface_scope, ntohs(con->local.port), &con->local.addr, &socket_domain, &sizeof_sa) )
 		return false;
 
 	con->local.domain = socket_domain;
@@ -689,8 +689,14 @@ void connection_connect_next_addr(struct connection *con)
 		{
 			if ( con->local.domain != socket_domain )
 			{
-				g_debug("remote will be unreachable due to different protocol versions (%i <-> %i)", socket_domain, con->local.domain);
-				continue;
+				if ( (con->local.domain == PF_INET6 && socket_domain == PF_INET && !ipv6_addr_v4mapped(&((struct sockaddr_in6 *)&con->local.addr)->sin6_addr)) || 
+					 (con->local.domain == PF_INET && socket_domain == PF_INET6 && !ipv6_addr_v4mapped(&((struct sockaddr_in6 *)&sa)->sin6_addr)) )
+				{
+					g_debug("remote will be unreachable due to different protocol versions (%i <-> %i) (%s <-> %s)", 
+							socket_domain, con->local.domain,
+							addr, con->local.hostname);
+					continue;
+				}
 			}
 		}
 

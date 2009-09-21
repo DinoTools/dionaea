@@ -43,4 +43,5 @@ struct tempfile
 struct tempfile *tempfile_new(char *path, char *prefix);
 struct tempfile *tempdownload_new(char *prefix);
 void tempfile_close(struct tempfile *tf);
+void tempfile_unlink(struct tempfile *tf);
 void tempfile_free(struct tempfile *tf);

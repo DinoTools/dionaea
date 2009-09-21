@@ -74,6 +74,23 @@ int ipv6_addr_v4mapped(struct in6_addr const * const a)
 		 a->s6_addr32[2] == htonl(0x0000ffff));
 }
 
+void ipv6_v6_map_v4(struct sockaddr_in6 *from, struct sockaddr_in *to)
+{
+	to->sin_family = PF_INET;
+	to->sin_port = from->sin6_port;
+	to->sin_addr.s_addr = from->sin6_addr.s6_addr32[3];
+}
+
+void ipv6_v4_map_v6(struct sockaddr_in *from, struct sockaddr_in6 *to)
+{
+	to->sin6_family = PF_INET6;
+	to->sin6_port = from->sin_port;
+	to->sin6_addr.s6_addr32[3] = from->sin_addr.s_addr;
+	to->sin6_addr.s6_addr32[2] = htonl(0x0000ffff);
+	to->sin6_addr.s6_addr32[1] = 0;
+	to->sin6_addr.s6_addr32[0] = 0;
+}
+
 bool parse_addr(char const * const addr, char const * const iface, uint16_t const port, struct sockaddr_storage * const sa, int * const socket_domain, socklen_t * const sizeof_sa)
 {
 	struct sockaddr_in6 *si6;
@@ -105,30 +122,22 @@ bool parse_addr(char const * const addr, char const * const iface, uint16_t cons
 		return true;
 	}
 
-#ifdef HAVE_V4_MAPPED_ADDRESS
-	validaddr = inet_pton(PF_INET, addr, &si6->sin6_addr.__in6_u.__u6_addr32[3]);
-	if ( validaddr > 0 )
-	{
-		si6->sin6_family = PF_INET6;
-		si6->sin6_port = htons(port);
-		*sizeof_sa = sizeof(struct sockaddr_in6);
-		*socket_domain = PF_INET6;
-		static const unsigned char V4mappedprefix[12]={0,0,0,0,0,0,0,0,0,0,0xff,0xff};
-		for (int i=0;i<12;i++ )
-			si6->sin6_addr.s6_addr[i] = V4mappedprefix[i];
-		return true;
-	}
-#else 
 	validaddr = inet_pton(PF_INET, addr, &si->sin_addr);
 	if ( validaddr > 0 )
 	{
 		si->sin_family = PF_INET;
 		si->sin_port = htons(port);
+		
+#ifdef BIND_IPV4_MAPPED_LOCALHOST_IPV6
+		ipv6_v4_map_v6(si, si6);
+		*sizeof_sa = sizeof(struct sockaddr_in6);
+		*socket_domain = PF_INET6;
+#else
 		*sizeof_sa = sizeof(struct sockaddr_in);
 		*socket_domain = PF_INET;
+#endif
 		return true;
 	}
-#endif
 
 	static const char *un_prefix = "un://";
 	if ( strncmp(addr, un_prefix,  strlen(un_prefix)) == 0 )
@@ -184,6 +193,12 @@ void tempfile_close(struct tempfile *tf)
 	tf->fd = -1;
 	tf->fh = NULL;
 }
+
+void tempfile_unlink(struct tempfile *tf)
+{
+	unlink(tf->path);
+}
+
 
 void tempfile_free(struct tempfile *tf)
 {
