@@ -43,6 +43,7 @@
 #include "module.h"
 #include "incident.h"
 #include "log.h"
+#include "util.h"
 
 #define D_LOG_DOMAIN "curl"
 
@@ -76,8 +77,7 @@ struct session
 	{
 		struct
 		{
-			int file;
-			char *path;
+			struct tempfile *file;
 		}download;
 
 		struct
@@ -114,9 +114,12 @@ static void session_free(struct session *session)
 	switch( session->type )
 	{
 	case session_type_download:
-		unlink(session->action.download.path);
-		if( session->action.download.path )
-			g_free(session->action.download.path);
+		if ( session->action.download.file )
+		{
+			tempfile_unlink(session->action.download.file);
+			tempfile_free(session->action.download.file);
+			session->action.download.file = NULL;
+		}
 		break;
 
 	case session_type_upload:
@@ -175,15 +178,15 @@ static void check_run_count(void)
 					if( msg->data.result == CURLE_OK )
 					{
 						g_info("DOWNLOAD DONE: %s => (%d) %s", eff_url, msg->data.result, session->error);
-						close(session->action.download.file);
+						tempfile_close(session->action.download.file);
 						struct incident *i = incident_new("dionaea.download.complete");
-						incident_value_string_set(i, "path", g_string_new(session->action.download.path));
+						incident_value_string_set(i, "path", g_string_new(session->action.download.file->path));
 						incident_report(i);
 						incident_free(i);
 					}else
 					{
 						g_warning("DOWNLOAD FAIL: %s => (%d) %s", eff_url, msg->data.result, session->error);
-						close(session->action.download.file);
+						tempfile_close(session->action.download.file);
 					}
 					break;
 
@@ -305,9 +308,9 @@ static size_t curl_writefunction_cb(void *ptr, size_t size, size_t nmemb, void *
 {
 	
 	struct session *session = (struct session *) data;
-	g_debug("session %p file %i", session, session->action.download.file);
+	g_debug("session %p file %i", session, session->action.download.file->fd);
 	if( session->type == session_type_download )
-		write(session->action.download.file, ptr, size*nmemb);
+		write(session->action.download.file->fd, ptr, size*nmemb);
 
 	return size * nmemb;
 }
@@ -446,10 +449,8 @@ static void session_download_new(const char *url, const char *laddr)
 	curl_runtime.queued++;
 	check_run_count();
 
-	session->action.download.path = g_strdup(curl_runtime.download_dir);
-	session->action.download.file = mkstemp(session->action.download.path);
-
-	g_debug("session %p file %i path %s", session, session->action.download.file, session->action.download.path);
+	session->action.download.file = tempfile_new(curl_runtime.download_dir, "http-");
+	g_debug("session %p file %i path %s", session, session->action.download.file->fd, session->action.download.file->path);
 }
 
 static void curl_ihandler_cb(struct incident *i, void *ctx)
