@@ -45,7 +45,7 @@ enum connection_error
 
 typedef void (*protocol_handler_established)(struct connection *con);
 typedef void (*protocol_handler_error)(struct connection *con, enum connection_error error);
-
+typedef void (*protocol_handler_origin)(struct connection *origin, struct connection *con);
 typedef unsigned int (*protocol_handler_io_in)(struct connection *con, void *context, unsigned char *data, uint32_t size);
 typedef void (*protocol_handler_io_out)(struct connection *con, void *context);
 
@@ -60,10 +60,14 @@ struct protocol
 	char *name;
 	protocol_handler_ctx_new  ctx_new;
 	protocol_handler_ctx_free ctx_free;
+	protocol_handler_origin origin;
 	protocol_handler_established established;
 	protocol_handler_error error;
 	protocol_handler_timeout sustain_timeout;
 	protocol_handler_timeout idle_timeout;
+	/**
+	 * Callback for timeouts when waiting to accept a connection
+	 */
 	protocol_handler_timeout listen_timeout;
 	protocol_handler_disconnect disconnect;
 	protocol_handler_io_in io_in;

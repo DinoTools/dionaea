@@ -100,6 +100,7 @@ void emulate(struct connection *con, void *data, unsigned int size, unsigned int
 	struct emu_cpu *cpu = emu_cpu_get(ctx->emu);
 	ctx->env->userdata = ctx;
 	ctx->mutex = g_mutex_new();
+	ctx->serial = 67;
 
 	emu_env_w32_load_dll(env->env.win,"ws2_32.dll");
 	emu_ll_w32_export_hook(env, "accept", ll_win_hook_accept, NULL);
@@ -186,6 +187,8 @@ void emulate_ctx_free(void *data)
 	}
 	g_hash_table_destroy(ctx->sockets);
 
+	if ( ctx->time != NULL )
+		g_timer_destroy(ctx->time);
 }
 
 void emulate_thread(gpointer data, gpointer user_data)
@@ -200,10 +203,31 @@ void emulate_thread(gpointer data, gpointer user_data)
 	if( ctx->state == waiting )
 		ctx->state = running;
 
+	if( ctx->time == NULL )
+		ctx->time = g_timer_new();
+	else
+		g_timer_continue(ctx->time);
+
 	while( ctx->state == running )
 	{
 		if( (ctx->steps % (1024*1024)) == 0 )
+		{
 			g_debug("steps %li", ctx->steps);
+			if ( ctx->steps > (1024*1024) * 1024 )
+			{
+				g_info("shellcode took too many steps ... (%li steps)",  ctx->steps);
+				ctx->state = failed;
+				break;
+			}
+
+			double elapsed = g_timer_elapsed(ctx->time, NULL);
+			if ( elapsed > 180.0 )
+			{
+				g_info("shellcode took too long ... (%f seconds)",  elapsed);
+				ctx->state = failed;
+				break;
+			}
+		}
 		ctx->steps++;
 		struct emu_env_hook *hook = NULL;
 		hook = emu_env_w32_eip_check(env);
@@ -222,8 +246,7 @@ void emulate_thread(gpointer data, gpointer user_data)
 			 * and requeue us to the threadpool
 			 */
 				goto unlock_and_return;
-		}
-		else
+		}else
 		{
 			ret = emu_cpu_parse(emu_cpu_get(e));
 			struct emu_env_hook *hook =NULL;
@@ -255,21 +278,25 @@ void emulate_thread(gpointer data, gpointer user_data)
 		}
 	}
 
+	g_timer_stop(ctx->time);
+
 	if( ctx->state == failed )
 		g_debug("emulating shellcode failed");
 
 	g_mutex_unlock(ctx->mutex);
 
+	double elapsed = g_timer_elapsed(ctx->time, NULL);
+	g_debug("shellcode took %f seconds on cpu, %li steps", elapsed, ctx->steps);
 
 	GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
 	g_async_queue_push(aq, async_cmd_new(emulate_ctx_free, ctx));
 	g_async_queue_unref(aq);
 	ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
-
-
 	return;
 
+
 unlock_and_return:
+	g_timer_stop(ctx->time);
 	g_mutex_unlock(ctx->mutex);
 }
 

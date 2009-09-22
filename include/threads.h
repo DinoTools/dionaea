@@ -54,7 +54,25 @@ struct thread
 
 struct thread *thread_new(struct connection *con, void *data, GFunc function);
 
+
+/**
+ * prototype for callbacks and data which are meant to be run in 
+ * the main loop - from threads 
+ * @see threads.cmds 
+ */
 typedef void (*async_cmd_cb)(void *data);
+
+
+/**
+ * data for async cmds
+ * pointer to function and data, 
+ * insert into dionaea->threads.cmds
+ * trigger dionaea->threads.trigger
+ * and your function will be run in the main loop
+ * 
+ * @see threads.cmds
+ * @see threads.trigger
+ */
 struct async_cmd
 {
 	async_cmd_cb function;

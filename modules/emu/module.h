@@ -67,6 +67,9 @@ struct emu_emulate_ctx
 	unsigned long steps;
 	uint32_t esp;
 	enum emu_state state;
+	GTimer *time;
+
+	int serial;
 };
 
 struct emu_file

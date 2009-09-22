@@ -1395,7 +1395,6 @@ void connection_established(struct connection *con)
 		// start only io_in
 		ev_io_start(CL, &con->events.io_in);
 
-
 		// inform protocol about new connection
 		con->protocol.established(con);
 
@@ -1658,6 +1657,11 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 		// create protocol specific data
 		accepted->protocol.ctx = con->protocol.ctx_new(accepted);
+
+		// teach new connection about parent
+		if ( con->protocol.origin != NULL )
+			con->protocol.origin(con, accepted);
+
 //		stream_processors_init(accepted);
 		accepted->stats.io_in.throttle.max_bytes_per_second = con->stats.io_in.throttle.max_bytes_per_second;
 		accepted->stats.io_out.throttle.max_bytes_per_second = con->stats.io_out.throttle.max_bytes_per_second;
