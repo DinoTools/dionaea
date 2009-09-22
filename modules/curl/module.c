@@ -512,7 +512,7 @@ static bool curl_new(struct dionaea *d)
 		return false;
 	}
 
-	curl_runtime.download_dir = g_strdup_printf("%s/http-XXXXXX", (char *)node->value.string.data);
+	curl_runtime.download_dir = g_strdup((char *)node->value.string.data);
 
 
 	if( curl_global_init(CURL_GLOBAL_ALL) != 0 )
