@@ -824,7 +824,7 @@ int recv(
 
 		if ((int32_t)returnvalue > 0)
 			emu_memory_write_block(emu_memory_get(env->emu), buf, con->transport.tcp.io_in->str, returnvalue);
-		con->transport.tcp.io_in->len -= returnvalue;
+		g_string_erase(con->transport.tcp.io_in, 0, returnvalue);
 		emu_cpu_eip_set(c, eip_save);
 		return 0;
 	}else
@@ -914,6 +914,7 @@ uint32_t user_hook_send(struct emu_env *env, struct emu_env_hook *hook, ...)
 	}
 
 	struct async_send_helper *help = g_malloc0(sizeof(struct async_send_helper));
+	help->con = con;
 	help->data = g_malloc0(len);
 	memcpy(help->data, buf, len);
 	help->size = len;
