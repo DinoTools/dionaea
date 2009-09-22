@@ -1079,7 +1079,7 @@ BOOL WriteFile(
 		return 0;
 	}
 
-	if ( tf->fh != -1 )
+	if ( tf->fd != -1 )
 		fwrite(lpBuffer, nNumberOfBytesToWrite, 1, tf->fh);
 
 	return 1;

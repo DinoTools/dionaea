@@ -143,3 +143,9 @@ import rlcompleter, readline
 readline.parse_and_bind('tab: complete')
 import dionaea
 dionaea.[tab][tab]
+
+# bind ipv4 mapped address and connect ipv4
+from dionaea import *
+c=connection("tcp")
+c.bind('::ffff:192.168.53.20', 0)
+c.connect('dionaea.carnivore.it', 80)

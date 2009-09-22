@@ -137,7 +137,7 @@ class epmapservice(service):
 #mode = 'manual'
 #addrs = { 'eth0' : ['127.0.0.1', '192.168.47.11'] }
 mode = g_dionaea.config()['listen']['mode']
-addrs = g_dionaea.config()['listen']['addrs']
+addrs = {} 
 
 
 def start():
@@ -145,6 +145,7 @@ def start():
 	global g_slave, mode, addrs
 	global addrs
 	if mode == 'manual':
+		addrs = g_dionaea.config()['listen']['addrs']
 		g_slave = slave()
 	elif mode == 'getifaddrs':
 		g_slave = slave()
