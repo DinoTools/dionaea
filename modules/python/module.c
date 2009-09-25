@@ -61,13 +61,16 @@
 #include "log.h"
 
 #include "connection.h"
+#include "protocol.h"
 #include "incident.h"
 
 #include "util.h"
+#include "module.h"
 
 #define D_LOG_DOMAIN "python"
 PyObject *PyInit_python(void);
 
+struct protocol *trace_proto;
 
 static struct python_runtime
 {
@@ -78,6 +81,18 @@ static struct python_runtime
 	struct termios read_termios;
 	struct termios poll_termios;
 	struct ihandler *mkshell_ihandler;
+	struct 
+	{
+		PyObject *module;
+		PyObject *export_tb;
+	}traceback;
+
+	struct 
+	{
+		struct protocol proto;
+		struct ihandler pyhandler;
+	} traceables;
+
 } runtime;
 
 struct import
@@ -85,6 +100,8 @@ struct import
 	char *name;
 	PyObject *module;
 };
+
+
 
 static bool config(struct lcfgx_tree_node *node)
 {
@@ -100,6 +117,7 @@ void python_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	
 	tcsetattr(0, TCSANOW, &runtime.read_termios);
 	PyRun_InteractiveOneFlags(runtime.stdin, "<stdin>", &cf);
+	traceback();
 	tcsetattr(0, TCSANOW, &runtime.poll_termios);
 }
 
@@ -250,7 +268,15 @@ static bool new(struct dionaea *dionaea)
 
 	Py_Initialize();
 
+	PyObject *name = PyUnicode_FromString("traceback");
+	runtime.traceback.module = PyImport_Import(name);
+	Py_DECREF(name);
+	runtime.traceback.export_tb = PyObject_GetAttrString(runtime.traceback.module, "extract_tb");
+
 	PyRun_SimpleString("import sys");
+
+	PyRun_SimpleString("from dionaea import *");
+	PyRun_SimpleString("init_traceables()");
 
 	char relpath[1024];
 	int i=0;
@@ -589,4 +615,231 @@ PyObject *pylcfg(PyObject *self, PyObject *args)
 	PyObject *obj =	pylcfgx_tree(g_dionaea->config.root);
 	return obj;
 }
+
+/**
+ * traceback requirements
+ * cython is rather special for exceptions
+ * you can create try/catch blocks, but you do not get access to the
+ * exception/traceback
+ * therefore we proxy all calls to cython code, and ask cython to preserve
+ * the exception flags, so we can take care in our proxy
+ *  
+ */
+
+
+void set_ihandler(struct ihandler *ih)
+{
+	memcpy(&runtime.traceables.pyhandler, ih, sizeof(struct ihandler));
+}
+
+void traceable_ihandler_cb (struct incident *i, void *ctx)
+{
+	g_debug("%s incident %p ctx %p",__PRETTY_FUNCTION__, i, ctx);
+	runtime.traceables.pyhandler.cb(i, ctx);
+	traceback();
+}
+
+/**
+ * called from cython code, 
+ * exports pointers to the cython protocol functions
+ * 
+ * @param p      the cython protocol
+ */
+void set_protocol(struct protocol *p)
+{
+	memcpy(&runtime.traceables.proto, p,  sizeof(struct protocol));
+}
+
+
+void *traceable_ctx_new_cb(struct connection *con)
+{
+	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
+	void *ctx = runtime.traceables.proto.ctx_new(con);
+	traceback();
+	return ctx;
+}
+
+void traceable_ctx_free_cb(void *ctx)
+{
+	g_debug("%s ctx %p", __PRETTY_FUNCTION__, ctx);
+	runtime.traceables.proto.ctx_free(ctx);
+	traceback();
+}
+
+void tracable_origin_cb(struct connection *origin, struct connection *con)
+{
+	g_debug("%s origin %p con %p", __PRETTY_FUNCTION__, origin, con);
+	runtime.traceables.proto.origin(origin, con);
+	traceback();
+}
+
+void traceable_established_cb(struct connection *con)
+{
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+	runtime.traceables.proto.established(con);
+	traceback();
+}
+
+
+uint32_t traceable_io_in_cb(struct connection *con, void *context, unsigned char *data, uint32_t size)
+{
+	g_debug("%s con %p ctx %p data %p size %i",__PRETTY_FUNCTION__, con, context, data, size);
+	uint32_t s = runtime.traceables.proto.io_in(con, context, data, size);
+	traceback();
+	return s;
+}
+
+void traceable_io_out_cb(struct connection *con, void *context)
+{
+	g_debug("%s con %p ctx %p",__PRETTY_FUNCTION__, con, context);
+	runtime.traceables.proto.io_out(con, context);
+	traceback();
+}
+
+void traceable_error_cb(struct connection *con, enum connection_error error)
+{
+	g_debug("%s con %p error %i",__PRETTY_FUNCTION__, con, error);
+	runtime.traceables.proto.error(con, error);
+}
+
+bool traceable_disconnect_cb(struct connection *con, void *context)
+{
+	g_debug("%s con %p ctx %p ",__PRETTY_FUNCTION__, con, context);
+	bool ret = runtime.traceables.proto.disconnect(con, context);
+	return ret;
+}
+
+bool traceable_idle_timeout_cb(struct connection *con, void *context)
+{
+	g_debug("%s con %p ctx %p ",__PRETTY_FUNCTION__, con, context);
+	bool ret = runtime.traceables.proto.idle_timeout(con, context);
+	traceback();
+	return ret;
+}
+
+bool traceable_listen_timeout_cb(struct connection *con, void *context)
+{
+	g_debug("%s con %p ctx %p ",__PRETTY_FUNCTION__, con, context);
+	bool ret = runtime.traceables.proto.listen_timeout(con, context);
+	traceback();
+	return ret;
+}
+
+bool traceable_sustain_timeout_cb(struct connection *con, void *context)
+{
+	g_debug("%s con %p ctx %p ",__PRETTY_FUNCTION__, con, context);
+	bool ret = runtime.traceables.proto.sustain_timeout(con, context);
+	traceback();
+	return ret;
+}
+
+
+static char *pyobjectstring(PyObject *obj)
+{
+	PyObject *pyobjectstr;
+
+	if ( obj == NULL )
+		return g_strdup("<null>");
+
+	if ( obj == Py_None )
+		return g_strdup("None");
+
+	if ( PyType_Check(obj) )
+		return g_strdup(((PyTypeObject* ) obj)->tp_name);
+
+	if ( PyUnicode_Check(obj) )
+		pyobjectstr = obj;
+	else
+	{
+		if ( (pyobjectstr = PyObject_Repr(obj)) != NULL )
+		{
+			if ( PyUnicode_Check(pyobjectstr) == 0 )
+			{
+				Py_XDECREF(pyobjectstr);
+				return g_strdup("<!utf8>");
+			}
+		}
+	}
+
+	Py_ssize_t pysize = PyUnicode_GetSize(pyobjectstr);
+	wchar_t * str = (wchar_t *) malloc((pysize + 1) * sizeof(wchar_t));
+	PyUnicode_AsWideChar((PyUnicodeObject *) pyobjectstr, str, pysize);
+	str[pysize] = '\0';
+
+	if ( pyobjectstr != obj )
+		Py_DECREF(pyobjectstr);
+
+	// measure size
+	size_t csize = wcstombs(0, str, 0);
+	if ( csize == (size_t) -1 )
+		return g_strdup("<!wcstombs>");
+
+	char *cstr = (char *) malloc(csize + 1);
+
+	// convert
+	wcstombs(cstr, str, csize + 1);
+	free(str);
+	return cstr;
+}
+
+
+void traceback(void)
+{
+	if(!PyErr_Occurred())
+	{
+		return;
+	}
+
+	PyObject *type;
+	PyObject *value;
+	PyObject *traceback;
+	PyErr_Fetch(&type, &value, &traceback);
+
+	char *type_string = NULL;
+	char *value_string = NULL;
+
+	if ( type != NULL )
+		type_string = pyobjectstring(type);
+	else
+		type_string = g_strdup("unknown type");
+
+	if ( value != NULL )
+		value_string = pyobjectstring(value);
+	else
+		value_string = g_strdup("unknown value");
+
+	g_warning("%s at %s", type_string, value_string);
+
+	g_free(type_string);
+	g_free(value_string);
+
+	PyObject *args = PyTuple_Pack(1, traceback);
+	PyObject *res = PyObject_CallObject(runtime.traceback.export_tb, args);
+
+	if ( res && PyList_Check(res) )
+	{
+		size_t k;
+		for ( k = PyList_GET_SIZE(res); k; --k )
+		{
+			PyObject *tuple = PyList_GET_ITEM(res, k-1);
+			char *filename = pyobjectstring(PyTuple_GET_ITEM(tuple, 0));
+			char *line_no = pyobjectstring(PyTuple_GET_ITEM(tuple, 1));
+			char *function_name = pyobjectstring(PyTuple_GET_ITEM(tuple, 2));
+			char *text = pyobjectstring(PyTuple_GET_ITEM(tuple, 3));
+//			g_warning(" %s:%s in %s \n\t %s", filename, line_no, function_name, text);
+			g_warning("%s:%s in %s", filename, line_no, function_name);
+			g_warning("\t %s", text);
+			
+			g_free(filename);
+			g_free(line_no);
+			g_free(function_name);
+			g_free(text);
+
+		}
+	}
+
+	Py_XDECREF(res);
+	Py_XDECREF(args);
+}
+
 

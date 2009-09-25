@@ -35,7 +35,7 @@ cdef extern from "module.h":
 	char * c_g_strdup "g_strdup" (char *)
 	cdef object c_pygetifaddrs "pygetifaddrs"(object self, object args)
 	cdef object c_pylcfg "pylcfg"(object self, object args)
-
+	
 
 #cdef extern from "../../include/dionaea.h":
 	ctypedef struct c_dionaea "struct dionaea":
@@ -378,6 +378,19 @@ cdef connection_timeouts connection_timeouts_from(c_connection *con):
 	return instance
 
 
+cdef extern from "modules.h":
+	void * c_traceable_ctx_new_cb "traceable_ctx_new_cb" (c_connection *con)
+	void * c_traceable_ctx_free_cb "traceable_ctx_free_cb" (void *ctx)
+	void c_tracable_origin_cb "tracable_origin_cb" (c_connection *origin, c_connection *con)
+	void c_traceable_established_cb "traceable_established_cb" (c_connection *con)
+	unsigned int c_traceable_io_in_cb "traceable_io_in_cb" (c_connection_ *con, void *context, c_unsigned_char *data, c_uint32_t size)
+	void c_traceable_io_out_cb "traceable_io_out_cb"(c_connection *con, void *context)
+	void c_traceable_error_cb "traceable_error_cb" (c_connection *con, c_connection_error error)
+	c_bool c_traceable_disconnect_cb "traceable_disconnect_cb" (c_connection *con, void *context)
+	c_bool c_traceable_idle_timeout_cb "traceable_idle_timeout_cb"(c_connection *con, void *context)
+	c_bool c_traceable_listen_timeout_cb "traceable_listen_timeout_cb" (c_connection *con, void *context)
+	c_bool c_traceable_sustain_timeout_cb "traceable_sustain_timeout_cb" (c_connection *con, void *context)
+
 cdef class connection:
 	"""the connection"""
 
@@ -406,16 +419,16 @@ cdef class connection:
 			protoname = self.__class__.__name__
 			protoname = protoname.encode()
 			self.thisptr.protocol.name = c_g_strdup(protoname)
-			self.thisptr.protocol.ctx_new = <protocol_handler_ctx_new>_factory
-			self.thisptr.protocol.ctx_free = <protocol_handler_ctx_free>_garbage
-			self.thisptr.protocol.established = <protocol_handler_established>handle_established_cb
-			self.thisptr.protocol.error = <protocol_handler_error>handle_error_cb
-			self.thisptr.protocol.idle_timeout = <protocol_handler_timeout>handle_timeout_idle_cb
-			self.thisptr.protocol.sustain_timeout = <protocol_handler_timeout>handle_timeout_sustain_cb
-			self.thisptr.protocol.listen_timeout = <protocol_handler_timeout>handle_timeout_listen_cb
-			self.thisptr.protocol.io_in = <protocol_handler_io_in> handle_io_in_cb
-			self.thisptr.protocol.io_out = <protocol_handler_io_out> handle_io_out_cb
-			self.thisptr.protocol.disconnect = <protocol_handler_disconnect> handle_disconnect_cb
+			self.thisptr.protocol.ctx_new = <protocol_handler_ctx_new>c_traceable_ctx_new_cb
+			self.thisptr.protocol.ctx_free = <protocol_handler_ctx_free>c_traceable_ctx_free_cb
+			self.thisptr.protocol.established = <protocol_handler_established>c_traceable_established_cb
+			self.thisptr.protocol.error = <protocol_handler_error>c_traceable_error_cb
+			self.thisptr.protocol.idle_timeout = <protocol_handler_timeout>c_traceable_idle_timeout_cb
+			self.thisptr.protocol.sustain_timeout = <protocol_handler_timeout>c_traceable_sustain_timeout_cb
+			self.thisptr.protocol.listen_timeout = <protocol_handler_timeout>c_traceable_listen_timeout_cb
+			self.thisptr.protocol.io_in = <protocol_handler_io_in> c_traceable_io_in_cb
+			self.thisptr.protocol.io_out = <protocol_handler_io_out> c_traceable_io_out_cb
+			self.thisptr.protocol.disconnect = <protocol_handler_disconnect> c_traceable_disconnect_cb
 			self.thisptr.protocol.ctx = <void *>self;
 #		else:
 #			print "connection is already assigned!"
@@ -796,12 +809,17 @@ cdef extern from "module.h":
 
 ######
 cdef extern from "../../include/incident.h":
-	ctypedef struct c_ihandler "struct ihandler":
-		pass
 
 	ctypedef void (*c_ihandler_cb) (c_incident *, void *ctx)
+	ctypedef struct c_ihandler "struct ihandler":
+		c_ihandler_cb cb
+
+
 	c_ihandler *c_ihandler_new "ihandler_new" (char *, c_ihandler_cb cb, void *ctx)
 	void c_ihandler_free "ihandler_free" (c_ihandler *)
+
+cdef extern from "module.h":
+	void c_traceable_ihandler_cb "traceable_ihandler_cb" (c_incident *, void *)
 
 cdef void c_python_ihandler_cb (c_incident *i, void *ctx) except *:
 	cdef ihandler handler
@@ -817,7 +835,7 @@ cdef class ihandler:
 	cdef c_ihandler *thisptr
 	def __init__(self, pattern):
 		pattern = pattern.encode()
-		self.thisptr = c_ihandler_new(pattern, <c_ihandler_cb> c_python_ihandler_cb, <void *>self)
+		self.thisptr = c_ihandler_new(pattern, <c_ihandler_cb> c_traceable_ihandler_cb, <void *>self)
 
 	def __dealloc__(self):
 		c_ihandler_free(self.thisptr)
@@ -831,5 +849,28 @@ cdef class ihandler:
 	def handle(self, i):
 		pass
 
+cdef extern from "modules.h":
+	void c_set_protocol "set_protocol" (c_protocol *)
+	void c_set_ihandler "set_ihandler" (c_ihandler *)
+
+def init_traceables():
+	cdef c_protocol proto
+	proto.ctx_new = <protocol_handler_ctx_new>_factory
+	proto.ctx_free = <protocol_handler_ctx_free>_garbage
+	proto.established = <protocol_handler_established>handle_established_cb
+	proto.error = <protocol_handler_error>handle_error_cb
+	proto.idle_timeout = <protocol_handler_timeout>handle_timeout_idle_cb
+	proto.sustain_timeout = <protocol_handler_timeout>handle_timeout_sustain_cb
+	proto.listen_timeout = <protocol_handler_timeout>handle_timeout_listen_cb
+	proto.io_in = <protocol_handler_io_in> handle_io_in_cb
+	proto.io_out = <protocol_handler_io_out> handle_io_out_cb
+	proto.disconnect = <protocol_handler_disconnect> handle_disconnect_cb
+	c_set_protocol(&proto)
+
+
+	cdef c_ihandler ih
+	ih.cb = <c_ihandler_cb>c_python_ihandler_cb
+	c_set_ihandler(&ih);
+	
 ###
 	

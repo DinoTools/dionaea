@@ -26,6 +26,7 @@
  *******************************************************************************/
 
 #include <stdbool.h>
+#include "connection.h"
 
 #define PY_CLONE(T)  (T)->ob_type->tp_new((T)->ob_type, __pyx_empty_tuple, NULL)
 #define PY_NEW(T) (((PyTypeObject*)(T))->tp_new( (PyTypeObject*)(T), __pyx_empty_tuple, NULL))
@@ -35,7 +36,36 @@
 #define REMOTE(C) (C)->remote
 #define LOCAL(C) (C)->local
 
+struct connection;
+
+unsigned int python_handle_io_in_cb(struct connection *con, void *context, unsigned char *data, uint32_t size);
 
 void log_wrap(char *name, int number, char *file, int line, char *msg);
+void traceback(void);
 PyObject *pygetifaddrs(PyObject *self, PyObject *args);
 PyObject *pylcfg(PyObject *self, PyObject *args);
+
+
+struct ihandler;
+struct incident;
+void set_ihandler(struct ihandler *ih);
+void traceable_ihandler_cb(struct incident *i, void *ctx);
+
+
+struct protocol;
+void set_protocol(struct protocol *p);
+void *traceable_ctx_new_cb(struct connection *con);
+void traceable_ctx_free_cb(void *ctx);
+void tracable_origin_cb(struct connection *origin, struct connection *con);
+void traceable_established_cb(struct connection *con);
+uint32_t traceable_io_in_cb(struct connection *con, void *context, unsigned char *data, uint32_t size);
+void traceable_io_out_cb(struct connection *con, void *context);
+void traceable_error_cb(struct connection *con, enum connection_error error);
+bool traceable_disconnect_cb(struct connection *con, void *context);
+bool traceable_idle_timeout_cb(struct connection *con, void *context);
+bool traceable_listen_timeout_cb(struct connection *con, void *context);
+bool traceable_sustain_timeout_cb(struct connection *con, void *context);
+
+
+
+
