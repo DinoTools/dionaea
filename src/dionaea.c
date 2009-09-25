@@ -439,7 +439,9 @@ int main (int argc, char *argv[])
 #ifdef HAVE_LIBGC
 		g_message("gc mode %s", opt->garbage);
 		if ( g_mem_gc_friendly != TRUE )
+		{
 			g_error("export G_DEBUG=gc-friendly\nexport G_SLICE=always-malloc\n for gc");
+		}
 
 		
 		static GMemVTable memory_vtable =
