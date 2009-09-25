@@ -191,11 +191,14 @@ class ftpd(connection):
 		self.user = 'bar'
 		self.dtp = None
 		self.cwd = '/'
-		self.basedir = '/tmp'
+		self.basedir = '/tmp/ranz'
 		self.dtp = None
 		self.dtf = None
 		self.limits = {}#{ '_out' : 8192 }
 #		self.process()
+
+	def chroot(self, p):
+		self.basedir = p
 
 	def sendline(self, data):
 		self.send(data + '\r\n')
@@ -204,6 +207,10 @@ class ftpd(connection):
 		msg = RESPONSE[key] % args
 		self.sendline(msg)
 
+
+	def handle_origin(self, parent):
+		logger.debug("setting basedir to %s" % parent.basedir)
+		self.basedir = parent.basedir
 
 	def handle_established(self):
 		self.reply(WELCOME_MSG, "Welcome to the ftp service")
@@ -235,15 +242,17 @@ class ftpd(connection):
 				cmd = line
 				args = ()
 			logger.warn("cmd '%s'" % cmd)
-			r = self.processcmd(cmd, *args)
+			r = self.processcmd(cmd, args)
 			if isinstance(r,tuple):
 				self.reply(*r)
 			elif r is not None:
 				self.reply(r)
 		return lastsep
 
-	def processcmd(self, cmd, *args):
+	def processcmd(self, cmd, args):
 		logger.debug("cmd '%s'" % cmd)
+		l = [i.decode() for i in args]
+
 		cmd = cmd.upper()
 		if self.state == self.UNAUTH:
 			if cmd != b'USER':
@@ -252,12 +261,12 @@ class ftpd(connection):
 		elif self.state == self.INAUTH:
 			if cmd != b'PASS':
 				return (BAD_CMD_SEQ, "PASS required after USER")
-			self.ftp_PASS(*args)
+			self.ftp_PASS(*l)
 		method = getattr(self, "ftp_" + cmd.decode(), None)
 		if method is not None:
-			return method(*args)
+			return method(*l)
 		else:
-			return (CMD_NOT_IMPLMNTD, cmd)
+			return (CMD_NOT_IMPLMNTD, cmd.decode())
 	
 
 	def ftp_USER(self, username):
@@ -316,104 +325,114 @@ class ftpd(connection):
 		self.reply(GOODBYE_MSG)
 		self.close()
 
+	def real_path(self, p=None):
+		if p:
+			name = os.path.join(self.cwd, p)
+		else:
+			name = self.cwd
+
+		if len(name) >= 1 and name[0] == '/':
+			name = name[1:]
+		name = os.path.join(self.basedir, name)
+		name = os.path.normpath(name)
+		return name
+
 	def ftp_RETR(self, p):
 		if not p:
 			return (SYNTAX_ERR_IN_ARGS, RETR)
-		try:
-			p = p.decode()
-		except UnicodeDecodeError:
-			return (FILE_NOT_FOUND,"")
-		name = os.path.join(self.cwd,p)
-		if len(name) >= 1 and name[0] == '/':
-			name = name[1:]
-		name = os.path.join(self.basedir,name)
-		name = os.path.normpath(name)
+
+		name = self.real_path(p)
+
+		if not name.startswith(self.basedir):
+			return (PERMISSION_DENIED, p)
+
 		if os.path.exists(name) and os.path.isfile(name):
-			if name.startswith(self.basedir):
-				if self.dtp:
-					if self.dtp.status == 'connected':
-						self.reply(FILE_STATUS_OK_OPEN_DATA_CNX)
-						self.dtp.send_file(name)
-					else:
-						logger.warn("dtp state %s %s:%i <-> %s:%i!" % 
-							(self.dtp.status, 
-							self.dtp.remote.host, self.dtp.remote.port,
-							self.dtp.local.host, self.dtp.local.port))
+			if self.dtp:
+				if self.dtp.status == 'connected':
+					self.reply(FILE_STATUS_OK_OPEN_DATA_CNX)
+					self.dtp.send_file(name)
 				else:
-					logger.warn("no dtp on %s:%i <-> %s:%i!" % 
-							(self.dtp.remote.host, self.dtp.remote.port,
-							self.dtp.local.host, self.dtp.local.port))
+					logger.warn("dtp state %s %s:%i <-> %s:%i!" % 
+						(self.dtp.status, 
+						self.dtp.remote.host, self.dtp.remote.port,
+						self.dtp.local.host, self.dtp.local.port))
 			else:
-				return (PERMISSION_DENIED, name[len(self.basedir):])
+				logger.warn("no dtp on %s:%i <-> %s:%i!" % 
+						(self.dtp.remote.host, self.dtp.remote.port,
+						self.dtp.local.host, self.dtp.local.port))
 		else:
-				return (FILE_NOT_FOUND, name[len(self.basedir):])
+				return (FILE_NOT_FOUND, p)
+
+	def ftp_STOR(self, p):
+		if not p:
+			return (SYNTAX_ERR_IN_ARGS, STOR)
+
+		file = self.real_path(p)
+		if os.path.exists(file):
+			return (PERMISSION_DENIED, p)
+
+		if not file.startswith(self.basedir):
+			return (PERMISSION_DENIED, p)
+
+		if self.dtp:
+			if self.dtp.status == 'connected':
+				self.reply(FILE_STATUS_OK_OPEN_DATA_CNX)
+				self.dtp.recv_file(file)
+			else:
+				logger.warn("dtp state %s %s:%i <-> %s:%i!" % 
+					(self.dtp.status, 
+					self.dtp.remote.host, self.dtp.remote.port,
+					self.dtp.local.host, self.dtp.local.port))
+		else:
+			logger.warn("no dtp on %s:%i <-> %s:%i!" % 
+					(self.dtp.remote.host, self.dtp.remote.port,
+					self.dtp.local.host, self.dtp.local.port))
+
 
 	def ftp_TYPE(self, t):
-		if t == b'I':
+		if t == 'I':
 			return (TYPE_SET_OK, 'I')
 		else:
 			return (CMD_NOT_IMPLMNTD_FOR_PARAM, t)
 
 	def ftp_LIST(self, p=None):
-		if p:
-			try:
-				p = p.decode()
-			except UnicodeDecodeError:
-				return (FILE_NOT_FOUND,"")
-			name = os.path.join(self.cwd, p)
-		else:
-			name = self.cwd
-		
-		if len(name) >= 1 and name[0] == '/':
-			name = name[1:]
+		name = self.real_path(p)
 
-		name = os.path.join(self.basedir, name)
-		name = os.path.normpath(name)
+		if not name.startswith(self.basedir):
+			return (FILE_NOT_FOUND, p)
 
 		if os.path.exists(name):
-			if name.startswith(self.basedir):
-				if self.dtp:
-					if self.dtp.status == 'connected':
-						self.reply(FILE_STATUS_OK_OPEN_DATA_CNX)
-						self.dtp.send_list(name, len(name)+1)
-					else:
-						logger.warn("dtp state %s %s:%i <-> %s:%i!" % 
-							(self.dtp.status, 
-							self.dtp.remote.host, self.dtp.remote.port,
-							self.dtp.local.host, self.dtp.local.port))
+			if self.dtp:
+				if self.dtp.status == 'connected':
+					self.reply(FILE_STATUS_OK_OPEN_DATA_CNX)
+					self.dtp.send_list(name, len(name)+1)
 				else:
-					logger.warn("no dtp on %s:%i <-> %s:%i!" % 
-							(self.dtp.remote.host, self.dtp.remote.port,
-							self.dtp.local.host, self.dtp.local.port))
+					logger.warn("dtp state %s %s:%i <-> %s:%i!" % 
+						(self.dtp.status, 
+						self.dtp.remote.host, self.dtp.remote.port,
+						self.dtp.local.host, self.dtp.local.port))
 			else:
-				return (PERMISSION_DENIED, name[len(self.basedir)+1:])
+				logger.warn("no dtp on %s:%i <-> %s:%i!" % 
+						(self.dtp.remote.host, self.dtp.remote.port,
+						self.dtp.local.host, self.dtp.local.port))
 		else:
-				return (FILE_NOT_FOUND, name[len(self.basedir)+1:])
-
+			return (PERMISSION_DENIED, p)
 
 	def ftp_PWD(self):
 		return (PWD_REPLY, self.cwd)
 
 	def ftp_CWD(self, p):
-		try:
-			p = p.decode()
-		except UnicodeDecodeError:
-			return (FILE_NOT_FOUND,"")
-		cwd = os.path.join(self.cwd, p)
+		cwd = self.real_path(p)
 
-		if cwd[0] == '/':
-			cwd = cwd[1:]
-		cwd = os.path.join(self.basedir, cwd)
-		cwd = os.path.normpath(cwd)
-		if os.path.exists(cwd) and os.path.isdir(cwd):
-			if cwd.startswith(self.basedir):
-				self.cwd = cwd[len(self.basedir):]
-				return REQ_FILE_ACTN_COMPLETED_OK
-			else:
-				return (PERMISSION_DENIED, cwd[len(self.basedir)+1:])
+		if not cwd.startswith(self.basedir):
+			return (FILE_NOT_FOUND, p)
 		else:
-			return (FILE_NOT_FOUND, cwd[len(self.basedir)+1:])
+			self.cwd = cwd[len(self.basedir):]
 
+		if os.path.exists(cwd) and os.path.isdir(cwd):
+			return REQ_FILE_ACTN_COMPLETED_OK
+		else:
+			return (PERMISSION_DENIED, p)
 
 	def ftp_PBSZ(self, arg):
 		return CMD_OK
@@ -422,32 +441,54 @@ class ftpd(connection):
 		return NAME_SYS_TYPE
 
 	def ftp_SIZE(self, p):
-		try:
-			p = p.decode()
-		except UnicodeDecodeError:
-			return (FILE_NOT_FOUND,"")
-		p = os.path.join(self.cwd, p)
-		if len(p) >= 1 and p[0] == '/':
-			p = p[1:]
-		p = os.path.join(self.basedir, p)
-		p = os.path.normpath(p)
-		if os.path.exists(p) and os.path.isfile(p):
-			return (FILE_STATUS, str(stat(p).st_size))
-		return (FILE_NOT_FOUND,path[len(self.basedir)+1:])
+		if not p:
+			return (FILE_NOT_FOUND,p)
+
+		file = self.real_path(p)
+
+		if os.path.exists(file) and os.path.isfile(file):
+			return (FILE_STATUS, str(stat(file).st_size))
+		return (FILE_NOT_FOUND,p)
 
 	def ftp_MDTM(self, p):
-		try:
-			p = p.decode()
-		except UnicodeDecodeError:
-			return (FILE_NOT_FOUND,"")
-		p = os.path.join(self.cwd, p)
-		if len(p) >= 1 and p[0] == '/':
-			p = p[1:]
-		p = os.path.join(self.basedir, p)
-		p = os.path.normpath(p)
-		if os.path.exists(p) and os.path.isfile(p):
-			return (FILE_STATUS, time.strftime('%Y%m%d%H%M%S', time.gmtime(stat(p).st_mtime)))
-		return (FILE_NOT_FOUND,path[len(self.basedir)+1:])
+		if not p:
+			return (FILE_NOT_FOUND,p)
+		file = self.real_path(p)
+
+		if not file.startswith(self.basedir):
+			return (FILE_NOT_FOUND, p)
+
+		if os.path.exists(file) and os.path.isfile(file):
+			return (FILE_STATUS, time.strftime('%Y%m%d%H%M%S', time.gmtime(stat(file).st_mtime)))
+		return (FILE_NOT_FOUND,p)
+
+	def ftp_RMD(self, p):
+		if not p:
+			return (FILE_NOT_FOUND,p)
+		dir = self.real_path(p)
+
+		if not dir.startswith(self.basedir):
+			return (FILE_NOT_FOUND, p)
+
+		if os.path.exists(dir) and os.path.isdir(dir):
+			os.rmdir(dir)
+			return REQ_FILE_ACTN_COMPLETED_OK
+		return (FILE_NOT_FOUND,p)
+
+	def ftp_MKD(self, p):
+		if not p:
+			return (FILE_NOT_FOUND,p)
+		dir = self.real_path(p)
+
+		if not dir.startswith(self.basedir):
+			return (FILE_NOT_FOUND, p)
+
+		if os.path.isdir(dir):
+			return (PERMISSION_DENIED, dir)
+		os.mkdir(dir)
+		return REQ_FILE_ACTN_COMPLETED_OK
+
+
 
 	def handle_error(self, err):
 		pass
@@ -528,9 +569,23 @@ class ftpdatacon(connection):
 			self.data = [ls(os.path.join(p,f), rm) for f in os.listdir(p)]
 		elif os.path.isfile(p):
 			self.data = [ls(p)]
-		self.off = 0
-		self.off = self.off + 1
-		self.send(self.data[self.off-1] + '\r\n')
+		logger.debug("p %s len %i" % (p, len(self.data)) )
+		if len(self.data) > 0:
+			self.off = 0
+			self.off = self.off + 1
+			self.send(self.data[self.off-1] + '\r\n')
+		else:
+			self.close()
+			if self.ctrl:
+				self.ctrl.dtp = None
+				self.ctrl.reply(TXFR_COMPLETE_OK)
+				
+
+	def recv_file(self, p):
+		logger.debug(p)
+		self.mode = 'recv_file'
+		self.file = io.open(p, 'wb+')
+		print(self.file)
 
 	def send_file(self, p):
 		self.mode = 'file'
@@ -545,6 +600,11 @@ class ftpdatacon(connection):
 				self.ctrl.reply(TXFR_COMPLETE_OK)
 				self.ctrl.dtp = None
 
+	def handle_io_in(self, data):
+		if self.mode == "recv_file":
+			self.file.write(data)
+			return len(data)
+
 	def handle_io_out(self):
 		logger.debug("io_out")
 		if self.mode == 'list':
@@ -554,8 +614,9 @@ class ftpdatacon(connection):
 			else:
 				self.close()
 				if self.ctrl:
-					self.ctrl.reply(TXFR_COMPLETE_OK)
 					self.ctrl.dtp = None
+					self.ctrl.reply(TXFR_COMPLETE_OK)
+					
 		elif self.mode == 'file':
 			w = self.file.read(1024)
 			self.send(w)
@@ -564,19 +625,24 @@ class ftpdatacon(connection):
 				self.close()
 				self.file.close()
 				if self.ctrl:
-					self.ctrl.reply(TXFR_COMPLETE_OK)
 					self.ctrl.dtp = None
+					self.ctrl.reply(TXFR_COMPLETE_OK)
+					
 
 	def handle_disconnect(self):
 		if self.ctrl:
 			if self.ctrl.dtf:
 				self.ctrl.dtf = None
-			if self.mode and self.ctrl.dtp:
+			if self.ctrl.dtp:
 				self.ctrl.dtp = None
 			if self.mode == 'file' and self.file:
 				self.file.close()
+			if self.mode == 'recv_file' and self.file:
+				self.file.close()
+				self.ctrl.reply(TXFR_COMPLETE_OK)
 		return 0
-	def learn(self, parent):
+
+	def handle_origin(self, parent):
 		pass
 #		if parent.limits._out:
 #			self._out.limit = parent.limits._out
@@ -592,14 +658,15 @@ class ftpdataconnect(ftpdatacon):
 class ftpdatalisten(ftpdatacon):
 	def __init__ (self, host=None, port=None, ctrl=None):
 		ftpdatacon.__init__(self,ctrl)
-		self.bind(host,port)
-		self.listen(1)
-		if ctrl.limits:
-			self._out.throttle = ctrl.limits['_out']
+		if host is not None:
+			self.bind(host,port)
+			self.listen(1)
+			if ctrl.limits:
+				self._out.throttle = ctrl.limits['_out']
 	def handle_established(self):
 		logger.debug("DATA connection established")
-	def learn(self, parent):
-		ftpdatacon.learn(self,parent)
+	def handle_origin(self, parent):
+		ftpdatacon.handle_origin(self,parent)
 		logger.debug("Meeting parent")
 		self.ctrl = parent.ctrl
 		self.ctrl.dtp = self
@@ -699,7 +766,7 @@ class ftpdata(connection):
 		self.timeouts.idle = 10
 		self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix='ftp-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
 
-	def learn(self, parent):
+	def handle_origin(self, parent):
 		self.ftp = parent.ftp
 		self.ftp.dataconn = self
 		self.ftp.datalistener.close()
@@ -799,9 +866,9 @@ class ftp:
 
 
 class ftpdownloadhandler(ihandler):
-	def __init__(self):
+	def __init__(self, path):
 		logger.debug("%s ready!" % (self.__class__.__name__))
-		ihandler.__init__(self, 'dionaea.download.offer')
+		ihandler.__init__(self, path)
 	def handle(self, icd):
 		logger.warn("do download")
 		url = icd.get("url")

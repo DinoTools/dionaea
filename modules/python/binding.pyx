@@ -70,6 +70,7 @@ cdef extern from "../../include/connection.h":
 
 	ctypedef void *(*protocol_handler_ctx_new)(c_connection_ *con)
 	ctypedef void (*protocol_handler_ctx_free)(void *data)
+	ctypedef void (*protocol_handler_origin)(c_connection_ *origin, c_connection_ *con)
 	ctypedef void (*protocol_handler_established)(c_connection_ *con)
 	ctypedef void (*protocol_handler_error)(c_connection_ *con, c_connection_error error)
 	ctypedef c_bool (*protocol_handler_timeout)(c_connection_ *con, void *context)
@@ -80,6 +81,7 @@ cdef extern from "../../include/connection.h":
 		char 								*name
 		protocol_handler_ctx_new  			ctx_new
 		protocol_handler_ctx_free 			ctx_free
+		protocol_handler_origin				origin
 		protocol_handler_established 		established
 		protocol_handler_error 				error
 		protocol_handler_timeout 			idle_timeout
@@ -381,7 +383,7 @@ cdef connection_timeouts connection_timeouts_from(c_connection *con):
 cdef extern from "modules.h":
 	void * c_traceable_ctx_new_cb "traceable_ctx_new_cb" (c_connection *con)
 	void * c_traceable_ctx_free_cb "traceable_ctx_free_cb" (void *ctx)
-	void c_tracable_origin_cb "tracable_origin_cb" (c_connection *origin, c_connection *con)
+	void c_traceable_origin_cb "traceable_origin_cb" (c_connection *origin, c_connection *con)
 	void c_traceable_established_cb "traceable_established_cb" (c_connection *con)
 	unsigned int c_traceable_io_in_cb "traceable_io_in_cb" (c_connection_ *con, void *context, c_unsigned_char *data, c_uint32_t size)
 	void c_traceable_io_out_cb "traceable_io_out_cb"(c_connection *con, void *context)
@@ -421,6 +423,7 @@ cdef class connection:
 			self.thisptr.protocol.name = c_g_strdup(protoname)
 			self.thisptr.protocol.ctx_new = <protocol_handler_ctx_new>c_traceable_ctx_new_cb
 			self.thisptr.protocol.ctx_free = <protocol_handler_ctx_free>c_traceable_ctx_free_cb
+			self.thisptr.protocol.origin = <protocol_handler_origin>c_traceable_origin_cb
 			self.thisptr.protocol.established = <protocol_handler_established>c_traceable_established_cb
 			self.thisptr.protocol.error = <protocol_handler_error>c_traceable_error_cb
 			self.thisptr.protocol.idle_timeout = <protocol_handler_timeout>c_traceable_idle_timeout_cb
@@ -455,7 +458,8 @@ cdef class connection:
 	def unref(self):
 		return c_connection_unref(self.thisptr)
 
-	def learn(self, p):
+	def handle_origin(self, p):
+		"""connection meets is parent"""
 		pass
 
 	def handle_timeout_sustain(self):
@@ -631,7 +635,6 @@ cdef connection _factory(c_connection *con):
 	instance.thisptr = con
 	INIT_C_CONNECTION_CLASS(parent,instance)
 	c_connection_protocol_ctx_set(con, <void *>instance)
-	instance.learn(parent)
 	return instance
 
 cdef void _garbage(void *context):
@@ -641,6 +644,12 @@ cdef void _garbage(void *context):
 	instance.thisptr = NULL
 	DECREF(instance)
 
+cdef void handle_origin_cb(c_connection *con, c_connection *origin) except *:
+#	print "origin_cb"
+	cdef connection instance
+	instance = <connection>c_connection_protocol_ctx_get(con)
+	parent = <connection>c_connection_protocol_ctx_get(origin)
+	instance.handle_origin(parent)
 
 cdef void handle_established_cb(c_connection *con) except *:
 #	print "established_cb"
@@ -663,7 +672,7 @@ cdef int handle_io_in_cb(c_connection *con, void *context, void *data, int size)
 
 	return instance.handle_io_in(bdata)
 	
-cdef int handle_io_out_cb(c_connection *con, void *context) except *:
+cdef void handle_io_out_cb(c_connection *con, void *context) except *:
 #	print "io_out_cb"
 	cdef connection instance
 	instance = <connection>context
@@ -685,20 +694,20 @@ cdef void handle_error_cb(c_connection *con, c_connection_error err) except *:
 	instance.handle_error(err)
 
 cdef c_bool handle_timeout_sustain_cb(c_connection *con, void *ctx) except *:
-#	print "sustain_cb"
+#	print "timeout_sustain_cb"
 	cdef connection instance
 	instance = <connection>ctx
 	return instance.handle_timeout_sustain()
 
 cdef c_bool handle_timeout_listen_cb(c_connection *con, void *ctx) except *:
-#	print "timeout_cb"
+#	print "timeout_listen_cb"
 	cdef connection instance
 	instance = <connection>ctx
 	return instance.handle_timeout_listen()
 
 
 cdef c_bool handle_timeout_idle_cb(c_connection *con, void *ctx) except *:
-#	print "idle_cb"
+#	print "timeout_idle_cb"
 	cdef connection instance
 	instance = <connection>ctx
 	return instance.handle_timeout_idle()
@@ -857,6 +866,7 @@ def init_traceables():
 	cdef c_protocol proto
 	proto.ctx_new = <protocol_handler_ctx_new>_factory
 	proto.ctx_free = <protocol_handler_ctx_free>_garbage
+	proto.origin = <protocol_handler_origin> handle_origin_cb
 	proto.established = <protocol_handler_established>handle_established_cb
 	proto.error = <protocol_handler_error>handle_error_cb
 	proto.idle_timeout = <protocol_handler_timeout>handle_timeout_idle_cb

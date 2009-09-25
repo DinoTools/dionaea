@@ -31,12 +31,12 @@ global g_handlers
 def start():
 	global g_handlers
 	g_handlers = []
-	g_handlers.append(ftp.ftpdownloadhandler())
-	g_handlers.append(tftp.tftpdownloadhandler())
-	g_handlers.append(emu.emuprofilehandler())
-	g_handlers.append(cmd.cmdshellhandler())
-	g_handlers.append(store.storehandler())
-	g_handlers.append(test.uniquedownloadihandler())
+	g_handlers.append(ftp.ftpdownloadhandler('dionaea.download.offer'))
+	g_handlers.append(tftp.tftpdownloadhandler('dionaea.download.offer'))
+	g_handlers.append(emu.emuprofilehandler('dionaea.module.emu.profile'))
+	g_handlers.append(cmd.cmdshellhandler('dionaea.service.shell.*'))
+	g_handlers.append(store.storehandler('dionaea.download.complete'))
+	g_handlers.append(test.uniquedownloadihandler('dionaea.download.complete.unique'))
 
 
 def stop():

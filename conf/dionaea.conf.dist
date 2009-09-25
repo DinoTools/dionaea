@@ -56,6 +56,15 @@ modules = {
 		imports	= [	"log",
 					"services",
 					"ihandlers"]
+		ftp = {
+			root = "var/dionaea/wwwroot"
+		}
+		tftp = {
+			root = "var/dionaea/wwwroot"
+		}
+		http = {
+			root = "var/dionaea/wwwroot"
+		}
 	}
 
 	/* nc is a test module */

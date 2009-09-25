@@ -83,6 +83,7 @@ class httpservice(service):
 	def start(self, addr, iface=None):
 		daemon = http.httpd()
 		daemon.bind(addr, 9999, iface=iface)
+		daemon.chroot(g_dionaea.config()['modules']['python']['http']['root'])
 		daemon.listen()
 		return daemon
 	def stop(self, daemon):
@@ -91,7 +92,7 @@ class httpservice(service):
 class ftpservice(service):
 	def start(self, addr,  iface=None):
 		daemon = ftp.ftpd()
-#		daemon.chroot('/tmp/')
+		daemon.chroot(g_dionaea.config()['modules']['python']['ftp']['root'])
 		daemon.bind(addr, 21, iface=iface)
 		daemon.listen()
 		return daemon
@@ -102,7 +103,7 @@ class ftpservice(service):
 class tftpservice(service):
 	def start(self, addr,  iface=None):
 		daemon = tftp.TftpServer()
-		daemon.chroot('/tmp/')
+		daemon.chroot(g_dionaea.config()['modules']['python']['tftp']['root'])
 		daemon.bind(addr, 69, iface=iface)
 		return daemon
 	def stop(self, daemon):

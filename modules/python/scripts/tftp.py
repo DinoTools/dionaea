@@ -663,14 +663,17 @@ class TftpServerHandler(TftpSession):
                 self.filename = os.path.abspath(self.filename)
                 logger.debug("The absolute path is %s" % self.filename)
                 # Security check. Make sure it's prefixed by the tftproot.
-                if self.filename.find(self.root) == 0:
+                if self.filename.startswith(self.root):
                     logger.debug("The path appears to be safe: %s" %
                             self.filename)
                 else:
-                    logger.warn("Insecure path: %s" % self.filename)
                     self.errors += 1
                     self.senderror(TftpErrors.AccessViolation)
-                    raise TftpException("Insecure path: %s" % self.filename)
+#                    raise TftpException("Insecure path: %s" % self.filename)
+                    logger.warn("Insecure path: %s" % self.filename)
+                    self.close()
+                    return len(data)
+
 
                 # Does the file exist?
                 if os.path.exists(self.filename):
@@ -715,7 +718,11 @@ class TftpServerHandler(TftpSession):
                     logger.warn("Requested file %s does not exist." %
                             self.filename)
                     self.senderror(TftpErrors.FileNotFound)
-                    raise TftpException("Requested file not found: %s" % self.filename)
+#                    raise TftpException("Requested file not found: %s" % self.filename)
+                    logger.warn("Requested file not found: %s" % self.filename)
+                    self.close()
+                    return len(data)
+
 
             else:
                 # We're receiving an RRQ when we're not expecting one.
@@ -757,14 +764,20 @@ class TftpServerHandler(TftpSession):
         elif isinstance(recvpkt, TftpPacketERR):
             logger.warn("Received error packet from client: %s" % recvpkt)
             self.state.state = 'err'
-            raise TftpException("Received error from client")
+            logger.warn("Received error from client")
+#            raise TftpException("Received error from client")
+            self.close()
+            return len(data)
 
         # Handle other packet types.
         else:
             logger.warn("Received packet %s while handling a download"
                     % recvpkt)
             self.senderror(TftpErrors.IllegalTftpOp)
-            raise TftpException("Invalid packet received during download")
+#            raise TftpException("Invalid packet received during download")
+            logger.warn("Invalid packet received during download")
+            self.close()
+            return len(data)
         return len(data)
 
     def start_download(self):
@@ -1021,9 +1034,9 @@ class TftpClient(TftpSession):
 from urllib import parse
 
 class tftpdownloadhandler(ihandler):
-    def __init__(self):
+    def __init__(self, path):
         logger.debug("%s ready!" % (self.__class__.__name__))
-        ihandler.__init__(self, 'dionaea.download.offer')
+        ihandler.__init__(self, path)
     def handle(self, icd):
         logger.warn("do download")
         url = icd.get("url")

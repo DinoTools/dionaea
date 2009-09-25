@@ -345,9 +345,9 @@ class remoteshell(cmdexe,connection):
 
 class cmdshellhandler(ihandler):
 
-	def __init__(self):
+	def __init__(self, path):
 		logger.debug("%s ready!" % (self.__class__.__name__))
-		ihandler.__init__(self, "dionaea.service.shell.*")
+		ihandler.__init__(self, path)
 
 	def handle(self, icd):
 		logger.warn("do shell")

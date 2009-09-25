@@ -16,11 +16,14 @@ class httpd(connection):
 		self.state = 'HEADER'
 
 	def handle_established(self):
-		self.processors()
+#		self.processors()
+		pass
 
-
+	def chroot(self, path):
+		pass
 
 	def handle_io_in(self, data):
+#		self.rockit()
 		if self.state == 'HEADER':
 			try:
 				data = data.decode()

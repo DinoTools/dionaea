@@ -9,19 +9,19 @@ logger.setLevel(logging.DEBUG)
 
 
 class uniquedownloadihandler(ihandler):
-	def __init__(self):
+	def __init__(self, path):
 		logger.debug("%s ready!" % (self.__class__.__name__))
-		ihandler.__init__(self, "dionaea.download.complete.unique")
+		ihandler.__init__(self, path)
 	def handle(self, icd):
 		logger.debug("submitting file")
 		try:
 			file = icd.get('file')
 			email = g_dionaea.config()['submit']['email']
+			urls = g_dionaea.config()['submit']['urls']
 		except:
-			logger.warn("complete download without file?")
 			return
 
-		for url in g_dionaea.config()['submit']['urls']:
+		for url in urls:
 			i = incident("dionaea.upload.request")
 			i.set('email', email)
 			i.set('url', url)

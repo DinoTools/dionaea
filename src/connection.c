@@ -1660,7 +1660,7 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 		// teach new connection about parent
 		if ( con->protocol.origin != NULL )
-			con->protocol.origin(con, accepted);
+			con->protocol.origin(accepted, con);
 
 //		stream_processors_init(accepted);
 		accepted->stats.io_in.throttle.max_bytes_per_second = con->stats.io_in.throttle.max_bytes_per_second;

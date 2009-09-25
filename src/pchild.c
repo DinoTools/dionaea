@@ -26,7 +26,6 @@
  *******************************************************************************/
 
 #include <stdbool.h>
-#include <glib.h>
 #include <unistd.h>
 #include <sys/types.h>          /* See NOTES */
 #include <sys/socket.h>
@@ -37,6 +36,8 @@
 #include <stdlib.h>
 #include <signal.h>
 
+#include <glib.h>
+
 #include "dionaea.h"
 #include "pchild.h"
 #include "log.h"
@@ -46,6 +47,7 @@
 struct pchild *pchild_new()
 {
 	struct pchild *p = g_malloc0(sizeof(struct pchild));
+	p->mutex = g_mutex_new();
 	return p;
 }
 
@@ -149,7 +151,7 @@ int pchild_recv_bind(int fd)
 
 int pchild_sent_bind(int sx, struct sockaddr *s, socklen_t size)
 {
-
+	g_mutex_lock(g_dionaea->pchild->mutex);
 	uintptr_t cmd = (uintptr_t)pchild_recv_bind;
 	if ( send(g_dionaea->pchild->fd, &cmd, sizeof(uintptr_t), 0) != sizeof(uintptr_t) )
 	{
@@ -192,11 +194,13 @@ int pchild_sent_bind(int sx, struct sockaddr *s, socklen_t size)
 	if ( sendmsg(g_dionaea->pchild->fd, &msg, 0) < 0 )
 	{
 		g_critical("sendmsg failed (%s)", strerror(errno));
+		g_mutex_unlock(g_dionaea->pchild->mutex);
 		return -1;
 	}
 
 	int ret=0;
 	recv(g_dionaea->pchild->fd, &ret, sizeof(int), 0);
+	g_mutex_unlock(g_dionaea->pchild->mutex);
 	if ( ret != 0 )
 	{
 		recv(g_dionaea->pchild->fd, &ret, sizeof(int), 0);
@@ -209,6 +213,7 @@ int pchild_sent_bind(int sx, struct sockaddr *s, socklen_t size)
 		errno = 0;
 		return ret;
 	}
+	
 }
 
 

@@ -666,10 +666,10 @@ void traceable_ctx_free_cb(void *ctx)
 	traceback();
 }
 
-void tracable_origin_cb(struct connection *origin, struct connection *con)
+void traceable_origin_cb(struct connection *con, struct connection *origin)
 {
 	g_debug("%s origin %p con %p", __PRETTY_FUNCTION__, origin, con);
-	runtime.traceables.proto.origin(origin, con);
+	runtime.traceables.proto.origin(con, origin);
 	traceback();
 }
 

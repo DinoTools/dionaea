@@ -59,8 +59,8 @@
 
 #define CL g_dionaea->loop
 
-#define BACKUP_ESP(env) ((struct emu_emulate_ctx *)env->userdata)->esp = emu_cpu_reg32_get(emu_cpu_get(env->emu),esp)
-#define RESTORE_ESP(env) emu_cpu_reg32_set(emu_cpu_get(env->emu),esp, ((struct emu_emulate_ctx *)env->userdata)->esp)
+#define BACKUP_ESP(env) ((struct emu_emulate_ctx *)env->userdata)->esp = emu_cpu_reg32_get(emu_cpu_get((env)->emu),esp)
+#define RESTORE_ESP(env) emu_cpu_reg32_set(emu_cpu_get(env->emu),esp, ((struct emu_emulate_ctx *)(env)->userdata)->esp)
 
 
 #define CONTINUE_EMULATION(ctx) \
@@ -127,9 +127,10 @@ int32_t hook_connection_accept_cb(struct connection *con)
  * 
  * @param parent The listening connection
  * @param con    The accepted connection 
+ * @see async_connection_accept 
  * @see protocol.origin 
  */
-void proto_emu_origin(struct connection *parent, struct connection *con)
+void proto_emu_origin(struct connection *con, struct connection *parent)
 {
 	connection_stop(parent);
 }
@@ -164,6 +165,7 @@ void proto_emu_accept_established(struct connection *con)
  * continue the emulation.
  *  
  * @param con    The connection 
+ * @see async_connection_connect 
  * @see user_hook_connect 
  * @see protocol.established 
  */
@@ -180,10 +182,17 @@ void proto_emu_connect_established(struct connection *con)
 
 /**
  * Callback for connect errors for protocol.error
- * 
+ *  
+ * Only possible when we connect somewhere blocking 
+ * we already halted emulation and wait for the connection to 
+ * finish 
+ * in this case establishing the connection failed 
+ *  
  * @param con    The connection
- * @param error
- */
+ * @param error 
+ * @see user_hook_connect 
+ * @see async_connection_connect 
+ */ 
 void proto_emu_error(struct connection *con, enum connection_error error)
 {
 	g_debug("%s con %p error %i",__PRETTY_FUNCTION__, con, error);
@@ -534,7 +543,8 @@ struct async_connect_helper
  * Helper function for async_cmd
  * sets a connection into the ev_loop by calling connection_connect
  * 
- * @param data the required async_helper information
+ * @param data the required async_helper information 
+ * @see user_hook_connect 
  */
 void async_connection_connect(void *data)
 {
@@ -560,6 +570,7 @@ void async_connection_connect(void *data)
  * @param hook
  * 
  * @return 
+ * @see async_connection_connect 
  * @see proto_emu_connect_established
  * @see proto_emu_error
  */
@@ -662,6 +673,7 @@ uint32_t user_hook_close(struct emu_env *env, struct emu_env_hook *hook, ...)
  * @param hook
  * 
  * @return 
+ * @see user_hook_bind 
  */
 uint32_t user_hook_listen(struct emu_env *env, struct emu_env_hook *hook, ...)
 {

@@ -12,8 +12,11 @@ install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/binaries/
+	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/wwwroot/
 	$(INSTALL_DATA) $(srcdir)/conf/dionaea.conf.dist $(DESTDIR)$(sysconfdir)/dionaea/dionaea.conf.dist;
 	if [ ! -e $(DESTDIR)$(sysconfdir)/dionaea/dionaea.conf ]; then \
 		$(INSTALL_DATA) $(srcdir)/conf/dionaea.conf.dist $(DESTDIR)$(sysconfdir)/dionaea/dionaea.conf; \
 	fi
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/log
+	
+

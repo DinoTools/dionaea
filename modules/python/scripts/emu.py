@@ -9,9 +9,9 @@ logger.setLevel(logging.DEBUG)
 
 class emuprofilehandler(ihandler):
 
-	def __init__(self):
+	def __init__(self, path):
 		logger.debug("%s ready!" % (self.__class__.__name__))
-		ihandler.__init__(self, "dionaea.module.emu.profile")
+		ihandler.__init__(self, path)
 
 	def handle(self, icd):
 		logger.warn("profiling")

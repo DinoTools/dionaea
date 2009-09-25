@@ -701,7 +701,7 @@ int main (int argc, char *argv[])
 		g_error("Could not change user");
 	}
 
-
+	g_info("Installing signal handlers");
 	// signals
 	d->signals = g_malloc0(sizeof(struct signals));
 	ev_signal_init(&d->signals->sigint,  sigint_cb, SIGINT);

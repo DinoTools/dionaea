@@ -56,7 +56,7 @@ struct protocol;
 void set_protocol(struct protocol *p);
 void *traceable_ctx_new_cb(struct connection *con);
 void traceable_ctx_free_cb(void *ctx);
-void tracable_origin_cb(struct connection *origin, struct connection *con);
+void traceable_origin_cb(struct connection *origin, struct connection *con);
 void traceable_established_cb(struct connection *con);
 uint32_t traceable_io_in_cb(struct connection *con, void *context, unsigned char *data, uint32_t size);
 void traceable_io_out_cb(struct connection *con, void *context);
