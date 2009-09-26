@@ -28,6 +28,9 @@
 #include <ev.h>
 #include <glib.h>
 
+#include <lcfg/lcfg.h>
+#include <lcfgx/lcfgx_tree.h>
+
 #include <emu/emu.h>
 #include <emu/emu_shellcode.h>
 
@@ -46,18 +49,63 @@ struct processor proc_emu =
 	.name = "emu",
 	.new = proc_emu_ctx_new,  
 	.free = proc_emu_ctx_free,
+	.cfg = proc_emu_ctx_cfg_new,
 	.thread_io_in = proc_emu_on_io_in,
 };
 
-
-struct emu_ctx 
+void *proc_emu_ctx_cfg_new(struct lcfgx_tree_node *node)
 {
-	int offset;
-};
+	g_debug("%s node %p", __PRETTY_FUNCTION__, node);
+	lcfgx_tree_dump(node,0);
+	struct emu_config *conf = g_malloc0(sizeof(struct emu_config));
+	
+	struct lcfgx_tree_node *n;
+	if( lcfgx_get_string(node, &n, "emulation.limits.files") == LCFGX_PATH_FOUND_TYPE_OK )
+		conf->limits.files = strtol(n->value.string.data, NULL, 10);
+	else
+		goto err;
+
+	if( lcfgx_get_string(node, &n, "emulation.limits.sockets") == LCFGX_PATH_FOUND_TYPE_OK )
+		conf->limits.sockets = strtol(n->value.string.data, NULL, 10);
+	else
+		goto err;
+
+	if( lcfgx_get_string(node, &n, "emulation.limits.steps") == LCFGX_PATH_FOUND_TYPE_OK )
+		conf->limits.steps = strtol(n->value.string.data, NULL, 10);
+	else
+		goto err;
+
+	if( lcfgx_get_string(node, &n, "emulation.limits.idle") == LCFGX_PATH_FOUND_TYPE_OK )
+		conf->limits.idle = strtod(n->value.string.data, NULL);
+	else
+		goto err;
+
+	if( lcfgx_get_string(node, &n, "emulation.limits.sustain") == LCFGX_PATH_FOUND_TYPE_OK )
+		conf->limits.sustain = strtod(n->value.string.data, NULL);
+	else
+		goto err;
+
+	if( lcfgx_get_string(node, &n, "emulation.limits.cpu") == LCFGX_PATH_FOUND_TYPE_OK )
+		conf->limits.cpu = strtod(n->value.string.data, NULL);
+	else
+		goto err;
+
+	g_debug(" files %i sockets %i steps %i idle %f sustain %f cpu %f ", conf->limits.files,
+			conf->limits.sockets, conf->limits.steps, conf->limits.idle, conf->limits.sustain, conf->limits.cpu);
+
+//	g_error("STOP");
+	return conf;
+
+err:
+	g_warning("configuration incomplete");
+	g_free(conf);
+	return NULL;
+}
 
 void *proc_emu_ctx_new(void *cfg)
 {
 	struct emu_ctx *ctx = g_malloc0(sizeof(struct emu_ctx));
+	ctx->config = cfg;
 	return ctx;
 }
 
@@ -89,7 +137,7 @@ void proc_emu_on_io_in(struct connection *con, struct processor_data *pd)
 			g_async_queue_unref(aq);
 			ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
 			g_critical("shellcode found offset %i", ret);
-			profile(con, streamdata, size, ret);
+			profile(ctx->config, con, streamdata, size, ret);
 
 			pd->state = processor_done;
 		}

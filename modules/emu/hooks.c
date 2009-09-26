@@ -552,8 +552,8 @@ void async_connection_connect(void *data)
 	struct async_connect_helper *help = data;
 	struct connection *con = help->con;
 	con->protocol.established = proto_emu_connect_established;
-	connection_connect(con, help->hostname, help->port, NULL);
-//	connection_connect(con, "127.0.0.1", 4444, NULL);
+//	connection_connect(con, help->hostname, help->port, NULL);
+	connection_connect(con, "127.0.0.1", 4444, NULL);
 	g_free(help->hostname);
 	g_free(help);
 }
@@ -739,6 +739,9 @@ void async_connection_io_in(void *data)
 {
 	g_debug("%s data %p", __PRETTY_FUNCTION__, data);
 	struct connection *con = data;
+	struct emu_emulate_ctx *ctx = con->data;
+	struct emu_config *conf = ctx->config;
+
 	switch ( con->trans )
 	{
 	case connection_transport_tcp:
@@ -748,7 +751,7 @@ void async_connection_io_in(void *data)
 		g_warning("repeat %f", con->events.sustain_timeout.repeat);
 
 		if( con->events.sustain_timeout.repeat == 0. )
-			connection_sustain_timeout_set(con, 10.);
+			connection_sustain_timeout_set(con, conf->limits.sustain);
 		else
 			connection_sustain_timeout_set(con, ev_timer_remaining(CL, &con->events.sustain_timeout));
 		break;
@@ -961,6 +964,8 @@ uint32_t user_hook_socket(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
 	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
 	struct emu_emulate_ctx *ctx = env->userdata;
+	struct emu_config *conf = ctx->config;
+
 
 	va_list vl;
 	va_start(vl, hook);
@@ -971,7 +976,7 @@ uint32_t user_hook_socket(struct emu_env *env, struct emu_env_hook *hook, ...)
 	va_end(vl);
 
 
-	if( g_hash_table_size(ctx->sockets) > 3)
+	if( g_hash_table_size(ctx->sockets) > conf->limits.sockets)
 	{
 		g_warning("Too many open sockets (%i)", g_hash_table_size(ctx->sockets));
 		ctx->state = failed;
@@ -1014,6 +1019,8 @@ uint32_t user_hook_CreateFile(struct emu_env *env, struct emu_env_hook *hook, ..
 {
 	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
 	struct emu_emulate_ctx *ctx = env->userdata;
+	struct emu_config *conf = ctx->config;
+
 /*
 HANDLE CreateFile(
   LPCTSTR lpFileName,
@@ -1037,7 +1044,7 @@ HANDLE CreateFile(
 	/*int hTemplateFile			=*/(void)va_arg(vl, int);
 	va_end(vl);
 
-	if( g_hash_table_size(ctx->files) > 3)
+	if( g_hash_table_size(ctx->files) > conf->limits.files)
 	{
 		g_warning("Too many open files (%i)", g_hash_table_size(ctx->files));
 		ctx->state = failed;

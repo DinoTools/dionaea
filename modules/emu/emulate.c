@@ -85,9 +85,10 @@ int32_t emu_ll_w32_export_hook(struct emu_env *env,	const char *exportname,	int3
 
 
 
-void emulate(struct connection *con, void *data, unsigned int size, unsigned int offset)
+void emulate(struct emu_config *conf, struct connection *con, void *data, unsigned int size, unsigned int offset)
 {
 	struct emu_emulate_ctx *ctx = g_malloc0(sizeof(struct emu_emulate_ctx));
+	ctx->config = conf;
 
 	ctx->sockets = g_hash_table_new(g_int_hash, g_int_equal);
 	ctx->processes = g_hash_table_new(g_int_hash, g_int_equal);
@@ -194,6 +195,7 @@ void emulate_ctx_free(void *data)
 void emulate_thread(gpointer data, gpointer user_data)
 {
 	struct emu_emulate_ctx *ctx = user_data;
+	struct emu_config *conf = ctx->config;
 	struct emu *e = ctx->emu;
 	struct emu_env *env = ctx->env;
 	int ret;
@@ -213,7 +215,7 @@ void emulate_thread(gpointer data, gpointer user_data)
 		if( (ctx->steps % (1024*1024)) == 0 )
 		{
 			g_debug("steps %li", ctx->steps);
-			if ( ctx->steps > (1024*1024) * 1024 )
+			if ( ctx->steps > conf->limits.steps )
 			{
 				g_info("shellcode took too many steps ... (%li steps)",  ctx->steps);
 				ctx->state = failed;
@@ -221,7 +223,7 @@ void emulate_thread(gpointer data, gpointer user_data)
 			}
 
 			double elapsed = g_timer_elapsed(ctx->time, NULL);
-			if ( elapsed > 180.0 )
+			if ( elapsed > conf->limits.cpu )
 			{
 				g_info("shellcode took too long ... (%f seconds)",  elapsed);
 				ctx->state = failed;

@@ -316,7 +316,7 @@ void json_profile_function_debug(struct emu_profile_function *function, int inde
 
 }
 
-void profile(struct connection *con, void *data, unsigned int size, unsigned int offset)
+void profile(struct emu_config *conf, struct connection *con, void *data, unsigned int size, unsigned int offset)
 {
 	struct emu *e = emu_new();
 	struct emu_env *env = emu_env_new(e);
@@ -345,7 +345,7 @@ void profile(struct connection *con, void *data, unsigned int size, unsigned int
 
 	if( needemu == true )
 	{
-		emulate(con, data, size, offset);
+		emulate(conf, con, data, size, offset);
 	}else
 	{
 		GString *str = g_string_new(NULL);

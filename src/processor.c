@@ -27,12 +27,16 @@ bool processors_tree_create(GNode *tree, struct lcfgx_tree_node *node)
 	struct lcfgx_tree_node *n;
 	if( lcfgx_get_map(node, &n, "config") == LCFGX_PATH_FOUND_TYPE_OK )
 	{
-/*		if( pt->cfg == NULL )
+		if( pt->cfg != NULL )
 		{
-			return false;
+			if( (pt->config = pt->cfg(n)) == NULL )
+			{
+				g_error("processor %s rejected config", node->key);
+			}
 		}
-		pt->config = pt->cfg(n);
-*/
+	}else
+	{
+		g_debug("processor %s has no config", node->key);
 	}
 
 	GNode *me = g_node_new(pt);
