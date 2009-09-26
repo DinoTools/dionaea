@@ -65,6 +65,11 @@ void *proc_emu_ctx_cfg_new(struct lcfgx_tree_node *node)
 	else
 		goto err;
 
+	if( lcfgx_get_string(node, &n, "emulation.limits.filesize") == LCFGX_PATH_FOUND_TYPE_OK )
+		conf->limits.filesize = strtol(n->value.string.data, NULL, 10);
+	else
+		goto err;
+
 	if( lcfgx_get_string(node, &n, "emulation.limits.sockets") == LCFGX_PATH_FOUND_TYPE_OK )
 		conf->limits.sockets = strtol(n->value.string.data, NULL, 10);
 	else
@@ -90,7 +95,7 @@ void *proc_emu_ctx_cfg_new(struct lcfgx_tree_node *node)
 	else
 		goto err;
 
-	g_debug(" files %i sockets %i steps %i idle %f sustain %f cpu %f ", conf->limits.files,
+	g_debug(" files %i filesize %i sockets %i steps %i idle %f sustain %f cpu %f ", conf->limits.files, conf->limits.filesize,
 			conf->limits.sockets, conf->limits.steps, conf->limits.idle, conf->limits.sustain, conf->limits.cpu);
 
 //	g_error("STOP");
@@ -104,6 +109,10 @@ err:
 
 void *proc_emu_ctx_new(void *cfg)
 {
+	if ( cfg == NULL )
+	{
+		g_error("emulation needs configuration");
+	}
 	struct emu_ctx *ctx = g_malloc0(sizeof(struct emu_ctx));
 	ctx->config = cfg;
 	return ctx;

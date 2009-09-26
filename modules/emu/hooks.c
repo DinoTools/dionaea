@@ -1072,6 +1072,7 @@ uint32_t user_hook_WriteFile(struct emu_env *env, struct emu_env_hook *hook, ...
 {
 	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
 	struct emu_emulate_ctx *ctx = env->userdata;
+	struct emu_config *conf = ctx->config;
 /*
 BOOL WriteFile(
   HANDLE hFile,
@@ -1100,8 +1101,15 @@ BOOL WriteFile(
 	}
 
 	if ( tf->fd != -1 )
+	{
 		fwrite(lpBuffer, nNumberOfBytesToWrite, 1, tf->fh);
-
+		long size;
+		if ( (size = ftell(tf->fh)) >  conf->limits.filesize)
+		{
+			g_warning("File too large");
+			ctx->state = failed;
+		}
+	}
 	return 1;
 }
 

@@ -42,6 +42,7 @@ struct emu_config
 	struct 
 	{
 		int files;
+		int filesize;
 		int sockets;
 		double sustain;
 		double idle;

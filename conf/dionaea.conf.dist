@@ -9,8 +9,19 @@ processors =
 { 
 	emu = 
 	{
-		detect = "yes"
-		profile = "yes"
+		config = {
+			emulation = {
+				limits = {
+					files = "3"
+					filesize = "524288" // 512 * 1024
+					sockets = "3"
+					sustain = "120"
+					idle = "30"
+					cpu = "120"
+					steps = "1073741824" // 1024 * 1024 * 1024
+				}
+			}
+		}
 	}
 }
 
