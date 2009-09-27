@@ -349,7 +349,7 @@ class cmdshellhandler(ihandler):
 		logger.debug("%s ready!" % (self.__class__.__name__))
 		ihandler.__init__(self, path)
 
-	def handle(self, icd):
+	def handle_incident(self, icd):
 		logger.warn("do shell")
 		c = remoteshell()
 		con = icd.get("con")

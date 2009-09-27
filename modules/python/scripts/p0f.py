@@ -88,7 +88,7 @@ class p0fHandler(ihandler):
 		ihandler.__init__(self, 'dionaea.connection.*.accept')
 		self.p0fpath = p0fpath
 
-	def handle(self, i):
+	def handle_incident(self, i):
 		logger.warn("p0f action")
 		i.dump()
 		con = i.get('con')

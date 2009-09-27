@@ -12,7 +12,7 @@ class uniquedownloadihandler(ihandler):
 	def __init__(self, path):
 		logger.debug("%s ready!" % (self.__class__.__name__))
 		ihandler.__init__(self, path)
-	def handle(self, icd):
+	def handle_incident(self, icd):
 		logger.debug("submitting file")
 		try:
 			file = icd.get('file')

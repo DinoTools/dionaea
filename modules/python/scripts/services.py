@@ -54,7 +54,7 @@ class nlslave(ihandler):
 		ihandler.__init__(self, "dionaea.*.addr.*")
 		self.services = []
 		self.daemons = {}
-	def handle(self, icd):
+	def handle_incident(self, icd):
 		print("SERVANT!\n")
 		addr = icd.get("addr")
 		iface = icd.get("iface")

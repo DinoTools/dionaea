@@ -837,7 +837,7 @@ cdef void c_python_ihandler_cb (c_incident *i, void *ctx) except *:
 	pi = NEW_C_INCIDENT_CLASS(incident)
 	pi.thisptr = i
 	INIT_C_INCIDENT_CLASS(pi,pi)
-	handler.handle(pi)
+	handler.handle_incident(pi)
 	
 
 cdef class ihandler:
@@ -855,7 +855,7 @@ cdef class ihandler:
 	def unregister(self):
 		pass
 
-	def handle(self, i):
+	def handle_incident(self, i):
 		pass
 
 cdef extern from "modules.h":

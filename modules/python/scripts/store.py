@@ -11,7 +11,7 @@ class storehandler(ihandler):
 	def __init__(self, path):
 		logger.debug("%s ready!" % (self.__class__.__name__))
 		ihandler.__init__(self, path)
-	def handle(self, icd):
+	def handle_incident(self, icd):
 		logger.debug("storing file")
 		p = icd.get('path')
 		logger.debug("got path")
