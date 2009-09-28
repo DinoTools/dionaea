@@ -704,7 +704,12 @@ uint32_t user_hook_listen(struct emu_env *env, struct emu_env_hook *hook, ...)
 		con->type = connection_type_listen;
 
 		if ( bind_local(con) != true )
-			return -1;
+		{	
+			g_warning("Could not bind %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
+			ctx->state = failed;
+			return 0;
+		}
+
 
 		if ( listen(con->socket, 1) != 0 )
 		{
