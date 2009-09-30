@@ -552,8 +552,8 @@ void async_connection_connect(void *data)
 	struct async_connect_helper *help = data;
 	struct connection *con = help->con;
 	con->protocol.established = proto_emu_connect_established;
-//	connection_connect(con, help->hostname, help->port, NULL);
-	connection_connect(con, "127.0.0.1", 4444, NULL);
+	connection_connect(con, help->hostname, help->port, NULL);
+//	connection_connect(con, "127.0.0.1", 4444, NULL);
 	g_free(help->hostname);
 	g_free(help);
 }
