@@ -296,7 +296,7 @@ class smbd(connection):
 
 	def handle_disconnect(self):
 		self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix="smb-" + self.remote.host + ":" + str(self.remote.port) + "-", suffix=".py", dir=g_dionaea.config()['bistreams']['python']['dir'])
-		self.fileobj.write("stream = ")
+		self.fileobj.write(b"stream = ")
 		self.fileobj.write(str(self.bistream).encode())
 		self.fileobj.close()
 		return 0
