@@ -29,6 +29,7 @@ from dionaea import *
 
 import traceback
 import logging
+import tempfile
 
 from .include.smbfields import *
 
