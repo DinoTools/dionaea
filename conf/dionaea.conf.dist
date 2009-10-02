@@ -20,6 +20,18 @@ processors =
 					cpu = "120"
 					steps = "1073741824" // 1024 * 1024 * 1024
 				}
+
+				/**
+				 * api default arguments for development 
+				 * disabled by default
+				 * not working yet 
+				 */
+				api = {
+					connect = {
+						host = "127.0.0.1"
+						port = "4444"
+					}
+				}
 			}
 		}
 	}
@@ -29,6 +41,14 @@ downloads =
 {
 	dir = "var/dionaea/binaries"
 	tmp-suffix = ".tmp"
+}
+
+bistreams =
+{
+	python = 
+	{
+		dir = "var/dionaea/bistreams"
+	}
 }
 
 submit = 
