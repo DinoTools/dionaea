@@ -399,7 +399,7 @@ cdef class connection:
 	cdef c_connection *thisptr
 	cdef bint factory
 	cdef object __weakref__
-	bistream = []
+	
 
 	def __cinit__(self):
 #		print "hello cinit"
@@ -438,6 +438,8 @@ cdef class connection:
 
 		if self.factory == False and self.thisptr.protocol.ctx == <void *>self:
 			INCREF(self)
+		
+		self.bistream = []
 
 #	def __dealloc__(self):
 #		print "goodbye connection"
@@ -664,13 +666,17 @@ cdef int handle_io_in_cb(c_connection *con, void *context, void *data, int size)
 
 	bdata = bytesfrom(<char *>data, size)
 
+	len = instance.handle_io_in(bdata)
+
+	bdata = bytesfrom(<char *>data, len)
+
 	if instance.thisptr.processor_data != NULL:
 		if len(instance.bistream) > 0 and instance.bistream[-1][0] == u'in':
 			instance.bistream[-1] = (u'in', instance.bistream[-1][1] + bdata)
 		else:
 			instance.bistream.append((u'in',bdata))
 
-	return instance.handle_io_in(bdata)
+	return len
 	
 cdef void handle_io_out_cb(c_connection *con, void *context) except *:
 #	print "io_out_cb"
