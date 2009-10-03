@@ -66,6 +66,7 @@ bool traceable_idle_timeout_cb(struct connection *con, void *context);
 bool traceable_listen_timeout_cb(struct connection *con, void *context);
 bool traceable_sustain_timeout_cb(struct connection *con, void *context);
 
-
-
+struct processor;
+void set_processor(struct processor *);
+void python_processor_bistream_create(struct connection *con);
 
