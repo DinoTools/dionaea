@@ -399,15 +399,17 @@ cdef class connection:
 	cdef c_connection *thisptr
 	cdef bint factory
 	cdef object __weakref__
-	
+
 
 	def __cinit__(self):
 #		print "hello cinit"
 		self.thisptr = NULL
 		self.factory = False
+		
 
 	def __init__(self, con_type=None):
 		cdef c_connection_transport enum_type 
+		
 		if self.thisptr == NULL:
 			if isinstance(con_type, unicode):
 				con_type_utf8 = con_type.encode(u'UTF-8')
@@ -438,8 +440,6 @@ cdef class connection:
 
 		if self.factory == False and self.thisptr.protocol.ctx == <void *>self:
 			INCREF(self)
-		
-		self.bistream = []
 
 #	def __dealloc__(self):
 #		print "goodbye connection"
@@ -561,6 +561,8 @@ cdef class connection:
 		if self.thisptr == NULL:
 			raise ReferenceError('the object requested does not exist')
 		c_connection_process(self.thisptr)
+		self.bistream = []
+
 
 
 	property remote:
@@ -666,9 +668,9 @@ cdef int handle_io_in_cb(c_connection *con, void *context, void *data, int size)
 
 	bdata = bytesfrom(<char *>data, size)
 
-	len = instance.handle_io_in(bdata)
+	l = instance.handle_io_in(bdata)
 
-	bdata = bytesfrom(<char *>data, len)
+	bdata = bytesfrom(<char *>data, l)
 
 	if instance.thisptr.processor_data != NULL:
 		if len(instance.bistream) > 0 and instance.bistream[-1][0] == u'in':
@@ -676,7 +678,7 @@ cdef int handle_io_in_cb(c_connection *con, void *context, void *data, int size)
 		else:
 			instance.bistream.append((u'in',bdata))
 
-	return len
+	return l
 	
 cdef void handle_io_out_cb(c_connection *con, void *context) except *:
 #	print "io_out_cb"
@@ -797,12 +799,10 @@ cdef class incident:
 		if key == b'con':
 			if c_incident_value_ptr_get(self.thisptr, key, &x) == False:
 				raise AttributeError(u"%s does not exist" % key.decode())
-	
-			if key == 'con':
-				c = NEW_C_CONNECTION_CLASS(connection)
-				c.thisptr = <c_connection *>x
-				INIT_C_CONNECTION_CLASS(c, c)
-				return c
+			c = NEW_C_CONNECTION_CLASS(connection)
+			c.thisptr = <c_connection *>x
+			INIT_C_CONNECTION_CLASS(c, c)
+			return c
 		elif c_incident_value_string_get(self.thisptr, key, &s) == True:
 			return stringfrom(s.str, s.len)
 		elif c_incident_value_int_get(self.thisptr, key, &i) == True:
