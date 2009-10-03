@@ -63,7 +63,7 @@
 #include "connection.h"
 #include "protocol.h"
 #include "incident.h"
-
+#include "processor.h"
 #include "util.h"
 #include "module.h"
 
@@ -91,6 +91,7 @@ static struct python_runtime
 	{
 		struct protocol proto;
 		struct ihandler pyhandler;
+		struct processor processor;
 	} traceables;
 
 } runtime;
@@ -733,6 +734,74 @@ bool traceable_sustain_timeout_cb(struct connection *con, void *context)
 	return ret;
 }
 
+/**
+ * python bistreams are special 
+ * we want to allow python to access the bistream dump as part 
+ * of the connection object, therefore we create a dummy stream 
+ * processor, which is only attached to python connections 
+ *  
+ *  
+ */
+
+void set_processor(struct processor *p)
+{
+	memcpy(&runtime.traceables.processor, p, sizeof(struct processor));
+}
+
+void python_processor_bistream_create(struct connection *con);
+void python_processor_bistream_remove(struct connection *con);
+void python_processor_bistream_io_in(struct connection *con, struct processor_data *pd, void *data, int size);
+void python_processor_bistream_io_out(struct connection *con, struct processor_data *pd, void *data, int size);
+void python_processor_bistream_free(void *data);
+
+struct processor proc_python_bistream =
+{
+	.name = "python-processor-bistream",
+	.free = python_processor_bistream_free,
+	.io_in = python_processor_bistream_io_in,
+	.io_out = python_processor_bistream_io_out,
+};
+
+struct processor_data proc_python_bistream_processor_data = 
+{
+	.processor = &proc_python_bistream,
+};
+
+void python_processor_bistream_create(struct connection *con)
+{
+
+	struct processor_data *pd = processor_data_new();
+	pd->processor = &proc_python_bistream;
+	con->processor_data->filters = g_list_append(con->processor_data->filters, pd);
+}
+
+void python_processor_bistream_remove(struct connection *con)
+{
+	GList *it;
+	for ( it = g_list_first(con->processor_data->filters); it != NULL; it = g_list_next(it) )
+	{
+		if( it->data == &proc_python_bistream_processor_data )
+		{
+			con->processor_data->filters = g_list_remove(con->processor_data->filters, it);
+			return;
+		}
+	}
+}
+
+
+void python_processor_bistream_io_in(struct connection *con, struct processor_data *pd, void *data, int size)
+{
+	runtime.traceables.processor.io_in(con, NULL, data, size);
+}
+
+void python_processor_bistream_io_out(struct connection *con, struct processor_data *pd, void *data, int size)
+{
+	runtime.traceables.processor.io_out(con, NULL, data, size);
+}
+
+void python_processor_bistream_free(void *data)
+{
+}
 
 static char *pyobjectstring(PyObject *obj)
 {

@@ -393,6 +393,16 @@ cdef extern from "modules.h":
 	c_bool c_traceable_listen_timeout_cb "traceable_listen_timeout_cb" (c_connection *con, void *context)
 	c_bool c_traceable_sustain_timeout_cb "traceable_sustain_timeout_cb" (c_connection *con, void *context)
 
+cdef extern from "processor.h":
+	ctypedef void (*processor_io)(c_connection *con, c_processor_data *pd, void *data, int size)
+	ctypedef struct c_processor "struct processor":
+		processor_io io_in
+		processor_io io_out
+	void c_python_processor_bistream_create "python_processor_bistream_create"(c_connection *con)
+
+
+
+
 cdef class connection:
 	"""the connection"""
 
@@ -543,11 +553,6 @@ cdef class connection:
 			raise ValueError(u"requires text/bytes input, got %s" % type(data))
 		c_connection_send(self.thisptr, data_bytes, len(data_bytes))
 
-		if self.thisptr.processor_data != NULL:
-			if len(self.bistream) > 0 and self.bistream[-1][0] == u'out':
-				self.bistream[-1] = (u'out', self.bistream[-1][1] + data_bytes)
-			else:
-				self.bistream.append((u'out',data_bytes))
 
 
 	def close(self):
@@ -561,6 +566,7 @@ cdef class connection:
 		if self.thisptr == NULL:
 			raise ReferenceError('the object requested does not exist')
 		c_connection_process(self.thisptr)
+		c_python_processor_bistream_create(self.thisptr)
 		self.bistream = []
 
 
@@ -665,19 +671,8 @@ cdef int handle_io_in_cb(c_connection *con, void *context, void *data, int size)
 #	print "io_in_cb"
 	cdef connection instance
 	instance = <connection>context
-
 	bdata = bytesfrom(<char *>data, size)
-
 	l = instance.handle_io_in(bdata)
-
-	bdata = bytesfrom(<char *>data, l)
-
-	if instance.thisptr.processor_data != NULL:
-		if len(instance.bistream) > 0 and instance.bistream[-1][0] == u'in':
-			instance.bistream[-1] = (u'in', instance.bistream[-1][1] + bdata)
-		else:
-			instance.bistream.append((u'in',bdata))
-
 	return l
 	
 cdef void handle_io_out_cb(c_connection *con, void *context) except *:
@@ -719,6 +714,30 @@ cdef c_bool handle_timeout_idle_cb(c_connection *con, void *ctx) except *:
 	cdef connection instance
 	instance = <connection>ctx
 	return instance.handle_timeout_idle()
+
+
+cdef void process_io_in(c_connection *con, c_processor_data *pd, void *data, int size) except *:
+	bdata = bytesfrom(<char *>data, size)
+	cdef connection instance
+	instance = <connection>c_connection_protocol_ctx_get(con)
+
+	if instance.thisptr.processor_data != NULL:
+		if len(instance.bistream) > 0 and instance.bistream[-1][0] == u'in':
+			instance.bistream[-1] = (u'in', instance.bistream[-1][1] + bdata)
+		else:
+			instance.bistream.append((u'in',bdata))
+	return
+
+cdef void process_io_out(c_connection *con, c_processor_data *pd, void *data, int size) except *:
+	cdef connection instance
+	instance = <connection>c_connection_protocol_ctx_get(con)
+	if instance.thisptr.processor_data != NULL:
+		bdata = bytesfrom(<char *>data, size)
+		if len(instance.bistream) > 0 and instance.bistream[-1][0] == u'out':
+			instance.bistream[-1] = (u'out', instance.bistream[-1][1] + bdata)
+		else:
+			instance.bistream.append((u'out',bdata))
+	return
 
 
 def dlhfn(name, number, path, line, msg):
@@ -867,6 +886,7 @@ cdef class ihandler:
 cdef extern from "modules.h":
 	void c_set_protocol "set_protocol" (c_protocol *)
 	void c_set_ihandler "set_ihandler" (c_ihandler *)
+	void c_set_processor "set_processor" (c_processor *)
 
 def init_traceables():
 	cdef c_protocol proto
@@ -887,6 +907,11 @@ def init_traceables():
 	cdef c_ihandler ih
 	ih.cb = <c_ihandler_cb>c_python_ihandler_cb
 	c_set_ihandler(&ih);
+
+	cdef c_processor p
+	p.io_in = <processor_io>process_io_in
+	p.io_out = <processor_io>process_io_out
+	c_set_processor(&p)
 	
 ###
 	
