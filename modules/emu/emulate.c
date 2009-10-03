@@ -205,6 +205,7 @@ void emulate_thread(gpointer data, gpointer user_data)
 	if( ctx->state == waiting )
 		ctx->state = running;
 
+	
 	if( ctx->time == NULL )
 		ctx->time = g_timer_new();
 	else
@@ -221,13 +222,15 @@ void emulate_thread(gpointer data, gpointer user_data)
 				ctx->state = failed;
 				break;
 			}
-
-			double elapsed = g_timer_elapsed(ctx->time, NULL);
-			if ( elapsed > conf->limits.cpu )
+			if ( conf->limits.cpu > 0. )
 			{
-				g_info("shellcode took too long ... (%f seconds)",  elapsed);
-				ctx->state = failed;
-				break;
+				double elapsed = g_timer_elapsed(ctx->time, NULL);
+				if ( elapsed > conf->limits.cpu )
+				{
+					g_info("shellcode took too long ... (%f seconds)",  elapsed);
+					ctx->state = failed;
+					break;
+				}
 			}
 		}
 		ctx->steps++;

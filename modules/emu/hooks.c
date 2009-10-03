@@ -231,6 +231,38 @@ uint32_t proto_emu_io_in(struct connection *con, void *context, unsigned char *d
 
 
 /**
+ * Callback for protocol.io_out 
+ *  
+ * This callback is called if we wanted to send something, and 
+ * our send buffer got flushed. 
+ *  
+ * We stop all events on the connection, and continue emulation.
+ *  
+ * This callback is required, as it is possible other api calls 
+ * to the same connection may be done, and suspend all events 
+ * for the connection, so the io_out buffer is never flushed. 
+ *  
+ * Currently send() is only used for the 4byte cookie during 
+ * session negotiation of the 'link' protocol.<p> 
+ * These 4 bytes which fits into a tcp buffer without problems, 
+ * and can not cause problems therefore, but ... things may 
+ * change.
+ *  
+ * @param con     The connection
+ * @param context The protocol context
+ */
+void proto_emu_io_out(struct connection *con, void *context)
+{
+	g_debug("%s con %p ctx %p",__PRETTY_FUNCTION__, con, context);
+	struct emu_emulate_ctx *ctx = con->data;
+
+	connection_stop(con);
+
+	CONTINUE_EMULATION(ctx);
+	return;
+}
+
+/**
  * Callback for protocol.disconnect
  * This callback can only occur if the connection is waiting for io, 
  * like recv.
@@ -366,6 +398,7 @@ struct protocol proto_emu =
 	.sustain_timeout = proto_emu_sustain_timeout,
 	.disconnect = proto_emu_disconnect,
 	.io_in = proto_emu_io_in,
+	.io_out = proto_emu_io_out,
 	.ctx = NULL,
 };
 
@@ -624,7 +657,9 @@ uint32_t user_hook_connect(struct emu_env *env, struct emu_env_hook *hook, ...)
  * libemu hook for close()
  * 
  * closes the connection
- * 
+ * Does not remove the connection from our tracking, as we will 
+ * cleanup later on. 
+ *  
  * @param env
  * @param hook
  * 
@@ -647,8 +682,6 @@ uint32_t user_hook_close(struct emu_env *env, struct emu_env_hook *hook, ...)
 		ctx->state = failed;
 		return -1;
 	}
-
-//	g_hash_table_remove(ctx->sockets, &s);
 
 	if( con->state != connection_state_close )
 	{		
@@ -837,7 +870,12 @@ int recv(
 
 	int returnvalue = 0;
 	if( con->transport.tcp.io_in->len > 0 )
-	{
+ 	{ 
+		/** 
+		 *  Case 1:
+		 *  we still have data pending, so we can provide it to the
+		 *  shellcode
+		 */
 		g_debug("data availible (%i bytes)",  (int)con->transport.tcp.io_in->len);
 		returnvalue = MIN(con->transport.tcp.io_in->len, len);
 		emu_cpu_reg32_set(c, eax, returnvalue);
@@ -847,16 +885,34 @@ int recv(
 		g_string_erase(con->transport.tcp.io_in, 0, returnvalue);
 		emu_cpu_eip_set(c, eip_save);
 		return 0;
-	}else
-	{
-		g_debug("recv connection state %s", connection_state_to_string(con->state));
-		if( con->state == connection_state_close )
-		{
-			emu_cpu_reg32_set(c, eax, 0);
-			emu_cpu_eip_set(c, eip_save);
-			return 0;
-		}
 	}
+
+	/**
+	 * Case 2: 
+	 * No data avalible
+	 *  
+	 */
+	g_debug("recv connection state %s", connection_state_to_string(con->state));
+	if ( con->state == connection_state_close )
+	{
+		/**
+		 * Case 2a: 
+		 * Connection was closed, notify the shellcode about it by 
+		 * returning 0 to recv() 
+		 *  
+		 */
+		emu_cpu_reg32_set(c, eax, 0);
+		emu_cpu_eip_set(c, eip_save);
+		return 0;
+	}
+
+	/**
+	 * Case 2b: 
+	 * Connection is still alive, 
+	 * discard emulation, 
+	 * poll for data
+	 *  
+	 */
 
 	RESTORE_ESP(env);
 	ctx->state = waiting;
@@ -943,6 +999,8 @@ uint32_t user_hook_send(struct emu_env *env, struct emu_env_hook *hook, ...)
 	g_async_queue_push(aq, async_cmd_new(async_connection_send, help));
 	g_async_queue_unref(aq);
 	ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
+
+	ctx->state = waiting;
 
 	return len;
 }
@@ -1040,7 +1098,7 @@ HANDLE CreateFile(
 
 	va_list vl;
 	va_start(vl, hook);
-	/*char *lpFileName			=*/ va_arg(vl, char *);
+	/*char *lpFileName			=*/(void)va_arg(vl, char *);
 	/*int dwDesiredAccess		=*/(void)va_arg(vl, int);
 	/*int dwShareMode			=*/(void)va_arg(vl, int);
 	/*int lpSecurityAttributes	=*/(void)va_arg(vl, int);
