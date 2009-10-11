@@ -23,20 +23,20 @@ bool processors_tree_create(GNode *tree, struct lcfgx_tree_node *node)
 
 	struct processor *pt = g_malloc0(sizeof(struct processor));
 	memcpy(pt, p, sizeof(struct processor));
-
 	struct lcfgx_tree_node *n;
-	if( lcfgx_get_map(node, &n, "config") == LCFGX_PATH_FOUND_TYPE_OK )
+
+	if( pt->cfg != NULL )
 	{
-		if( pt->cfg != NULL )
+		if( lcfgx_get_map(node, &n, "config") == LCFGX_PATH_FOUND_TYPE_OK )
 		{
 			if( (pt->config = pt->cfg(n)) == NULL )
 			{
 				g_error("processor %s rejected config", node->key);
 			}
+		}else
+		{
+			g_error("processor %s expects config", node->key);
 		}
-	}else
-	{
-		g_debug("processor %s has no config", node->key);
 	}
 
 	GNode *me = g_node_new(pt);
@@ -147,6 +147,10 @@ struct processor_data *processor_data_new(void)
 
 void processor_data_free(struct processor_data *pd)
 {
+/*	g_debug("%s pd %p", __PRETTY_FUNCTION__, pd);
+	if ( pd == NULL )
+		return;
+*/
 	bistream_free(pd->bistream);
 	g_mutex_free(pd->mutex);
 	refcount_exit(&pd->queued);
