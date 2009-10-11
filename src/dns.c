@@ -49,7 +49,7 @@ void udns_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 //	puts(__PRETTY_FUNCTION__);
 //	int dns_timeouts(ctx, int maxwait, time_t now)
 	int ret = dns_timeouts(g_dionaea->dns->dns, 3, 0);
-	if ( ret == -1 )
+	if( ret == -1 )
 	{
 		ev_timer_stop(EV_A_ &g_dionaea->dns->dns_timeout);
 	} else
@@ -64,25 +64,25 @@ void udns_set_timeout_cb(struct dns_ctx *ctx, int timeout, void *data)
 {
 //	puts(__PRETTY_FUNCTION__);
 	struct ev_loop *loop = data;
-	if ( ctx == NULL )
+	if( ctx == NULL )
 	{
 //		printf("removing DNS timeout %s:%i\n", __FILE__,  __LINE__);
 		ev_timer_stop(loop, &g_dionaea->dns->dns_timeout);
 	} else
 	{
-		if ( timeout < 0 )
+		if( timeout < 0 )
 		{
 			ev_timer_stop(loop, &g_dionaea->dns->dns_timeout);
 //			printf("removing DNS timeout %s:%i\n", __FILE__,  __LINE__);
 		} else
-		if ( timeout == 0 )
+			if( timeout == 0 )
 		{
 //			printf("immediate DNS timeout  %s:%i\n", __FILE__,  __LINE__);
 			ev_timer_stop(loop, &g_dionaea->dns->dns_timeout);
 			ev_timer_init(&g_dionaea->dns->dns_timeout, udns_timeout_cb, 0.0, 0.);
 			ev_timer_start(loop, &g_dionaea->dns->dns_timeout);
 		} else
-		if ( timeout > 0 )
+			if( timeout > 0 )
 		{
 //			printf("resetting DNS timeout to %i  %s:%i\n", timeout, __FILE__,  __LINE__);
 			ev_timer_stop(loop, &g_dionaea->dns->dns_timeout);

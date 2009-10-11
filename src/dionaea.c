@@ -53,7 +53,7 @@
 #include "config.h"
 
 #ifdef HAVE_LIBGC
-#include <gc.h>
+	#include <gc.h>
 #endif
 
 #include "config.h"
@@ -118,39 +118,39 @@ bool options_parse(struct options* options, int argc, char* argv[])
 	{
 		int option_index = 0;
 		static struct option long_options[] = {
-			{ "config",			1, 0, 'c' },
-			{ "daemonize",		1, 0, 'D' },
-			{ "group",			1, 0, 'g' },
-			{ "garbage",		1, 0, 'G' },
-			{ "help", 			0, 0, 'h' },
-			{ "large-help",		0, 0, 'H' },
-			{ "log-levels",		0, 0, 'l' },
-			{ "log-domains",	0, 0, 'L' },
-			{ "user", 			1, 0, 'u' },
-			{ "chroot",			1, 0, 'r' },
-			{ "pid-file",		1, 0, 'p' },
-			{ "version",		0, 0, 'V' },
-			{ "workingdir",		0, 0, 'w' },
-			{ 0, 0, 0, 0 }
+			{ "config",         1, 0, 'c'},
+			{ "daemonize",      1, 0, 'D'},
+			{ "group",          1, 0, 'g'},
+			{ "garbage",        1, 0, 'G'},
+			{ "help",           0, 0, 'h'},
+			{ "large-help",     0, 0, 'H'},
+			{ "log-levels",     0, 0, 'l'},
+			{ "log-domains",    0, 0, 'L'},
+			{ "user",           1, 0, 'u'},
+			{ "chroot",         1, 0, 'r'},
+			{ "pid-file",       1, 0, 'p'},
+			{ "version",        0, 0, 'V'},
+			{ "workingdir",     0, 0, 'w'},
+			{ 0, 0, 0, 0}
 		};
 
 		int c = getopt_long(argc, argv, "c:Dg:G:hHl:L:p:r:u:Vw:", long_options, (int *)&option_index);
-		if (c == -1)
+		if( c == -1 )
 			break;
 
-		switch (c)
+		switch( c )
 		{
 		case 'c':
 			options->config = g_strdup(optarg);
 			break;
 
 		case 'D':
-			options->daemon = true;	
-            break;
+			options->daemon = true; 
+			break;
 
 		case 'g':
 			options->group.name = g_strdup(optarg);
-            break;
+			break;
 
 #ifdef HAVE_LIBGC
 		case 'G':
@@ -208,7 +208,7 @@ bool options_parse(struct options* options, int argc, char* argv[])
 		}
 	}
 
-	if ( options->config == NULL )
+	if( options->config == NULL )
 		options->config = strdup(PREFIX"/etc/dionaea/dionaea.conf");
 
 	if( options->workingdir == NULL )
@@ -219,49 +219,49 @@ bool options_parse(struct options* options, int argc, char* argv[])
 
 bool options_validate(struct options *opt)
 {
-	if ( opt->user.name != NULL )
+	if( opt->user.name != NULL )
 	{
 
 		struct passwd *pass;                                
 
-		if (isdigit(*opt->user.name) != 0)
+		if( isdigit(*opt->user.name) != 0 )
 		{
 			opt->user.id = atoi(opt->user.name);
 			g_debug("User %s has uid %i\n",opt->user.name,opt->user.id);
-		}else
-		if ( (pass = getpwnam(opt->user.name)) == NULL )
+		} else
+			if( (pass = getpwnam(opt->user.name)) == NULL )
 		{
 			g_warning("Could not get id for user '%s'\n", opt->user.name);
 			return false;
-		}else
+		} else
 		{
 			g_debug("User %s has uid %i\n",opt->user.name,pass->pw_uid);
 			opt->user.id = pass->pw_uid;
 		}
 	}
 
-	if ( opt->group.name != NULL )
+	if( opt->group.name != NULL )
 	{
 		struct group *grp;
-		if (isdigit(*opt->group.name) != 0)
+		if( isdigit(*opt->group.name) != 0 )
 		{
 			opt->group.id = atoi(opt->group.name);
 			g_debug("Group %s has gid %i\n", opt->group.name, opt->group.id);
-		}else
-		if ( (grp = getgrnam(opt->group.name)) == NULL )
+		} else
+			if( (grp = getgrnam(opt->group.name)) == NULL )
 		{
 			g_warning("Could not get id for group '%s'\n",opt->group.name);
 			return false;
-		}else
+		} else
 		{
 			g_debug("Group %s has gid %i\n",opt->group.name, grp->gr_gid);
 			opt->group.id = grp->gr_gid;
 		}
 	}
-	
-	if ( opt->garbage != NULL )
+
+	if( opt->garbage != NULL )
 	{
-		if ( strcmp(opt->garbage, "collect" ) != 0 && strcmp(opt->garbage, "debug" ) != 0 )
+		if( strcmp(opt->garbage, "collect" ) != 0 && strcmp(opt->garbage, "debug" ) != 0 )
 		{
 			g_error("Invalid garbage mode %s\n", opt->garbage);
 			return false;
@@ -269,7 +269,7 @@ bool options_validate(struct options *opt)
 	}
 
 	opt->stdout.filter = log_filter_new(opt->stdout.domains, opt->stdout.levels);
-	if ( opt->stdout.filter == NULL )
+	if( opt->stdout.filter == NULL )
 		return false;
 
 	return true;
@@ -288,54 +288,54 @@ void show_version(void)
 
 
 #if defined(__FreeBSD__)
-#  define MY_OS "FreeBSD"
+	#define MY_OS "FreeBSD"
 #elif defined(linux) || defined (__linux)
-#  define MY_OS "Linux"
+	#define MY_OS "Linux"
 #elif defined (__MACOSX__) || defined (__APPLE__)
-#  define MY_OS "Mac OS X"
+	#define MY_OS "Mac OS X"
 #elif defined(__NetBSD__)
-#  define MY_OS "NetBSD"
+	#define MY_OS "NetBSD"
 #elif defined(__OpenBSD__)
-#  define MY_OS "OpenBSD"
+	#define MY_OS "OpenBSD"
 #elif defined(_WIN32) || defined(__WIN32__) || defined(__TOS_WIN__)
-#  define MY_OS "Windows"
+	#define MY_OS "Windows"
 #elif defined(CYGWIN)
-#  define MY_OS "Cygwin\Windows"
+	#define MY_OS "Cygwin\Windows"
 #else
-#  define MY_OS "Unknown OS"
+	#define MY_OS "Unknown OS"
 #endif
 
 
 #if defined(__alpha__) || defined(__alpha) || defined(_M_ALPHA)
-#  define MY_ARCH "Alpha"
+	#define MY_ARCH "Alpha"
 #elif defined(__arm__)
-#  if defined(__ARMEB__)
-#    define MY_ARCH "ARMeb"
-#  else 
-#    define MY_ARCH "ARM"
-#  endif 
+	#if defined(__ARMEB__)
+		#define MY_ARCH "ARMeb"
+	#else 
+		#define MY_ARCH "ARM"
+	#endif 
 #elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86) || defined(_X86_) || defined(__THW_INTEL)
-#  define MY_ARCH "x86"
+	#define MY_ARCH "x86"
 #elif defined(__x86_64__) || defined(__amd64__)
-#  define MY_ARCH "x86_64"
+	#define MY_ARCH "x86_64"
 #elif defined(__ia64__) || defined(_IA64) || defined(__IA64__) || defined(_M_IA64)
-#  define MY_ARCH "Intel Architecture-64"
+	#define MY_ARCH "Intel Architecture-64"
 #elif defined(__mips__) || defined(__mips) || defined(__MIPS__)
-#  if defined(__mips32__) || defined(__mips32)
-#    define MY_ARCH "MIPS32"
-#  else 
-#    define MY_ARCH "MIPS"
-#  endif 
+	#if defined(__mips32__) || defined(__mips32)
+		#define MY_ARCH "MIPS32"
+	#else 
+		#define MY_ARCH "MIPS"
+	#endif 
 #elif defined(__hppa__) || defined(__hppa)
-#  define MY_ARCH "PA RISC"
+	#define MY_ARCH "PA RISC"
 #elif defined(__powerpc) || defined(__powerpc__) || defined(__POWERPC__) || defined(__ppc__) || defined(_M_PPC) || defined(__PPC) || defined(__PPC__)
-#  define MY_ARCH "PowerPC"
+	#define MY_ARCH "PowerPC"
 #elif defined(__THW_RS6000) || defined(_IBMR2) || defined(_POWER) || defined(_ARCH_PWR) || defined(_ARCH_PWR2)
-#  define MY_ARCH "RS/6000"
+	#define MY_ARCH "RS/6000"
 #elif defined(__sparc__) || defined(sparc) || defined(__sparc)
-#  define MY_ARCH "SPARC"
+	#define MY_ARCH "SPARC"
 #else
-#  define MY_ARCH "Unknown Architecture"
+	#define MY_ARCH "Unknown Architecture"
 #endif
 
 	struct utsname sysinfo;
@@ -345,14 +345,14 @@ void show_version(void)
 	printf("Dionaea Version %s \n",VERSION);
 	printf("Compiled on %s/%s at %s %s with %s %s \n",MY_OS,MY_ARCH,__DATE__, __TIME__,MY_COMPILER,__VERSION__);
 
-	if (i == 0)
+	if( i == 0 )
 	{
 		printf("Started on %s running %s/%s release %s\n",
 			   sysinfo.nodename,
 			   sysinfo.sysname, 
 			   sysinfo.machine,
 			   sysinfo.release
-			   );
+			  );
 	}
 
 	printf("\n");
@@ -367,36 +367,36 @@ void show_help(bool defaults)
 	{
 		const char *info;
 		const char *verbose;
-        const char *description;
+		const char *description;
 		const char *standard;
 	} help_info;
 
 	help_info myopts[]=
 	{
-        {"c",	"config=FILE",			"use FILE as configuration file",				SYSCONFDIR "/dionaea.conf"	},
-		{"D",	"daemonize",			"run as daemon",						0						},
-		{"g",	"group=GROUP",			"switch to GROUP after startup (use with -u)", "keep current group"},
+		{"c",   "config=FILE",          "use FILE as configuration file",               SYSCONFDIR "/dionaea.conf"},
+		{"D",   "daemonize",            "run as daemon",                        0},
+		{"g",   "group=GROUP",          "switch to GROUP after startup (use with -u)", "keep current group"},
 #ifdef HAVE_LIBGC
-		{"G",	"garbage=[collect|debug]","garbage collect,  usefull to debug memory leaks, does NOT work with valgrind",	0						},	
+		{"G",   "garbage=[collect|debug]","garbage collect,  usefull to debug memory leaks, does NOT work with valgrind",   0},  
 #endif
-		{"h",	"help",					"display help",							0						},
-		{"H",	"large-help",			"display help with default values",		0						},
-		{"l",	"log-levels=WHAT",		"which levels to log, valid values all, debug, info, message, warning, critical, error, combine using ',', exclude with - prefix",	0},
-		{"L",	"log-domains=WHAT",		"which domains use * and ? wildcards, combine using ',', exclude using -",	0},
-		{"u",	"user=USER",			"switch to USER after startup",	"keep current user"},
-		{"p",	"pid-file=FILE",		"write pid to file",	0},
-        {"r",	"chroot=DIR",			"chroot to DIR after startup",				"don't chroot"		},
-		{"V",	"version",				"show version",							""						},
-		{"w",	"workingdir=DIR",		"set the process' working dir to DIR",			PREFIX		},
+		{"h",   "help",                 "display help",                         0},
+		{"H",   "large-help",           "display help with default values",     0},
+		{"l",   "log-levels=WHAT",      "which levels to log, valid values all, debug, info, message, warning, critical, error, combine using ',', exclude with - prefix",  0},
+		{"L",   "log-domains=WHAT",     "which domains use * and ? wildcards, combine using ',', exclude using -",  0},
+		{"u",   "user=USER",            "switch to USER after startup", "keep current user"},
+		{"p",   "pid-file=FILE",        "write pid to file",    0},
+		{"r",   "chroot=DIR",           "chroot to DIR after startup",              "don't chroot"},
+		{"V",   "version",              "show version",                         ""},
+		{"w",   "workingdir=DIR",       "set the process' working dir to DIR",          PREFIX},
 	};
 	show_version();
 
-	for ( int i=0;i<sizeof(myopts)/sizeof(help_info);i++ )
+	for( int i=0;i<sizeof(myopts)/sizeof(help_info);i++ )
 	{
 		printf("  -%s, --%-25s %s\n", myopts[i].info,
-			myopts[i].verbose,
-			myopts[i].description);
-		
+			   myopts[i].verbose,
+			   myopts[i].description);
+
 		if( defaults == true && myopts[i].standard )
 		{
 			printf("%-35s Default value/behaviour: %s\n", "", myopts[i].standard);
@@ -422,28 +422,28 @@ int main (int argc, char *argv[])
 	struct options *opt = malloc(sizeof(struct options));
 	memset(opt, 0, sizeof(struct options));
 
-	if ( options_parse(opt, argc, argv) == false)
-	{	
+	if( options_parse(opt, argc, argv) == false )
+	{
 		g_error("Could not parse options!\n");
 	}
 
-	if ( options_validate(opt) == false )
-	{	
+	if( options_validate(opt) == false )
+	{
 		g_error("Invalid options");
 	}
 
 	g_log_set_default_handler(logger_stdout_log, opt->stdout.filter);
 	// gc
-	if ( opt->garbage != NULL)
+	if( opt->garbage != NULL )
 	{
 #ifdef HAVE_LIBGC
 		g_message("gc mode %s", opt->garbage);
-		if ( g_mem_gc_friendly != TRUE )
+		if( g_mem_gc_friendly != TRUE )
 		{
 			g_error("export G_DEBUG=gc-friendly\nexport G_SLICE=always-malloc\n for gc");
 		}
 
-		
+
 		static GMemVTable memory_vtable =
 		{
 			.malloc = GC_malloc,
@@ -452,7 +452,7 @@ int main (int argc, char *argv[])
 		};
 
 		g_mem_set_vtable(&memory_vtable);
-		if ( strcmp(opt->garbage, "debug") == 0)
+		if( strcmp(opt->garbage, "debug") == 0 )
 			GC_find_leak = 1;
 
 		// set libev allocator
@@ -461,8 +461,8 @@ int main (int argc, char *argv[])
 #endif
 	}
 
-	if ( opt->workingdir != NULL && chdir(opt->workingdir) != 0)
-	{	
+	if( opt->workingdir != NULL && chdir(opt->workingdir) != 0 )
+	{
 		g_error("Invalid directory %s (%s)", opt->workingdir, strerror(errno));
 	}
 
@@ -470,13 +470,13 @@ int main (int argc, char *argv[])
 	g_dionaea = d;
 
 	// config
-	if ( (d->config.config = lcfg_new(opt->config)) == NULL)
-	{	
+	if( (d->config.config = lcfg_new(opt->config)) == NULL )
+	{
 		g_error("config not found");
 	}
 
 	if( lcfg_parse(d->config.config) != lcfg_status_ok )
-	{	
+	{
 		g_error("lcfg error: %s\n", lcfg_error_get(d->config.config));
 	}
 
@@ -488,12 +488,12 @@ int main (int argc, char *argv[])
 
 
 	// no daemon logs to stdout by default
-	if ( opt->daemon == false )
+	if( opt->daemon == false )
 	{
 		struct logger *l = logger_new(logger_stdout_log, NULL, NULL, NULL, opt->stdout.filter);
 		d->logging->loggers = g_list_append(d->logging->loggers, l);
 	}
-	
+
 	// log to file - if specified in config
 	struct lcfgx_tree_node *f;
 	if( lcfgx_get_string(g_dionaea->config.root, &f, "logging.file") == LCFGX_PATH_FOUND_TYPE_OK )
@@ -502,23 +502,23 @@ int main (int argc, char *argv[])
 		char *domains = NULL;
 		char *levels = NULL;
 
-		if ( lcfgx_get_string(g_dionaea->config.root, &f, "logging.domains") == LCFGX_PATH_FOUND_TYPE_OK )
+		if( lcfgx_get_string(g_dionaea->config.root, &f, "logging.domains") == LCFGX_PATH_FOUND_TYPE_OK )
 			domains = f->value.string.data;
 
-		if ( lcfgx_get_string(g_dionaea->config.root, &f, "logging.levels") == LCFGX_PATH_FOUND_TYPE_OK )
+		if( lcfgx_get_string(g_dionaea->config.root, &f, "logging.levels") == LCFGX_PATH_FOUND_TYPE_OK )
 			levels = f->value.string.data;
 
 		g_debug("Logfile %s %s %s", file, domains, levels);
 		struct log_filter *lf = log_filter_new(domains, levels);
-		if ( lf == NULL )
+		if( lf == NULL )
 			return -1;
 
 		struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
-		if ( *file != '/' )
+		if( *file != '/' )
 		{
 			fd->file = g_malloc0(PATH_MAX+1);
 			g_snprintf(fd->file, PATH_MAX, "%s/log/dionaea.log", LOCALESTATEDIR);
-		}else
+		} else
 			fd->file = g_strdup(file);
 
 		fd->filter = lf;
@@ -527,25 +527,25 @@ int main (int argc, char *argv[])
 		d->logging->loggers = g_list_append(d->logging->loggers, l);
 	}
 
-	for ( GList *it = d->logging->loggers; it != NULL; it = it->next	 )
-	{	
+	for( GList *it = d->logging->loggers; it != NULL; it = it->next )
+	{
 		struct logger *l = it->data;
-		if ( l->open != NULL )
+		if( l->open != NULL )
 			l->open(l->data);
 	}
 
 	// daemon
-	if ( opt->daemon &&	daemon(1, 0) != 0)
-	{	
+	if( opt->daemon && daemon(1, 0) != 0 )
+	{
 		g_error("Could not daemonize (%s)", strerror(errno));
 	}
 
 	// pidfile
-	if ( opt->pidfile != NULL )
+	if( opt->pidfile != NULL )
 	{
 		FILE *p = fopen(opt->pidfile,"w+");
-		if ( p == NULL )
-		{	
+		if( p == NULL )
+		{
 			g_error("Could not write pid file to %s", opt->pidfile);
 		}
 		char pidstr[16];
@@ -570,8 +570,8 @@ int main (int argc, char *argv[])
 			"devpoll",
 			"port"
 		};
-		for ( int i=0; i<sizeof(backend)/sizeof(const char *); i++ )
-			if ( b == 1 << i )
+		for( int i=0; i<sizeof(backend)/sizeof(const char *); i++ )
+			if( b == 1 << i )
 				g_message("libev backend is %s", backend[i]);
 	}
 	ev_set_syserr_cb(log_ev_fatal_error);
@@ -581,7 +581,7 @@ int main (int argc, char *argv[])
 	SSL_load_error_strings();
 	SSL_library_init();
 	SSL_COMP_add_compression_method(0xe0, COMP_zlib());
-	g_message("%s",	SSLeay_version(SSLEAY_VERSION));
+	g_message("%s", SSLeay_version(SSLEAY_VERSION));
 
 
 	// udns 
@@ -598,7 +598,7 @@ int main (int argc, char *argv[])
 
 
 	// glib thread init
-	if ( !g_thread_supported () )
+	if( !g_thread_supported () )
 		g_thread_init (NULL);
 
 	// logging continued ...
@@ -626,8 +626,8 @@ int main (int argc, char *argv[])
 
 	// privileged child
 	d->pchild = pchild_new();
-	if ( pchild_init() == false)
-	{	
+	if( pchild_init() == false )
+	{
 		g_error("Could not init privileged child!");
 	}
 
@@ -645,7 +645,7 @@ int main (int argc, char *argv[])
 	if( lcfgx_get_map(d->config.root, &n, "processors") == LCFGX_PATH_FOUND_TYPE_OK )
 	{
 		lcfgx_tree_dump(n,0);
-		for(struct lcfgx_tree_node *it = n->value.elements; it != NULL; it = it->next)
+		for( struct lcfgx_tree_node *it = n->value.elements; it != NULL; it = it->next )
 		{
 			processors_tree_create(d->processors->tree, it);
 		}
@@ -666,20 +666,20 @@ int main (int argc, char *argv[])
 	ev_async_start(d->loop, &d->threads->trigger);
 
 	// chroot
-	if ( opt->root != NULL && chroot(opt->root) != 0 )
+	if( opt->root != NULL && chroot(opt->root) != 0 )
 	{
 		g_error("Could not chroot(\"%s\") (%s)", opt->root, strerror(errno));
 	}
 
 	// drop
-	if ( opt->group.name != NULL && 
-		 setresgid(opt->group.id, opt->group.id, opt->group.id) < 0)
+	if( opt->group.name != NULL && 
+		setresgid(opt->group.id, opt->group.id, opt->group.id) < 0 )
 	{
 		g_error("Could not change group");
 	}
 
-	if ( opt->user.name != NULL && 
-		 setresuid(opt->user.id, opt->user.id, opt->user.id) < 0)
+	if( opt->user.name != NULL && 
+		setresuid(opt->user.id, opt->user.id, opt->user.id) < 0 )
 	{
 		g_error("Could not change user");
 	}
@@ -737,10 +737,10 @@ int main (int argc, char *argv[])
 
 	// close logs
 	g_debug("Closing logs");
-	for (GList *it = d->logging->loggers; it != NULL; it = it->next)
+	for( GList *it = d->logging->loggers; it != NULL; it = it->next )
 	{
 		struct logger *l = it->data;
-		if (l->close != NULL)
+		if( l->close != NULL )
 			l->close(l->data);
 	}
 

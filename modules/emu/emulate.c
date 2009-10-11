@@ -58,13 +58,13 @@
 
 #define D_LOG_DOMAIN "emulate"
 
-int32_t emu_ll_w32_export_hook(struct emu_env *env,	const char *exportname,	int32_t	(*llhook)(struct emu_env *env, struct emu_env_hook *hook), void *userdata)
+int32_t emu_ll_w32_export_hook(struct emu_env *env, const char *exportname, int32_t (*llhook)(struct emu_env *env, struct emu_env_hook *hook), void *userdata)
 {
 	int numdlls=0;
-	while ( env->env.win->loaded_dlls[numdlls] != NULL )
+	while( env->env.win->loaded_dlls[numdlls] != NULL )
 	{
 		struct emu_hashtable_item *ehi = emu_hashtable_search(env->env.win->loaded_dlls[numdlls]->exports_by_fnname, (void *)exportname);
-		if (ehi != NULL)
+		if( ehi != NULL )
 		{
 #if 0
 			printf("hooked %s\n",  exportname);
@@ -130,7 +130,7 @@ void emulate(struct emu_config *conf, struct connection *con, void *data, unsign
 #define CODE_OFFSET 0x417000
 
 	int j;
-	for ( j=0; j<8; j++ )  
+	for( j=0; j<8; j++ )
 		emu_cpu_reg32_set(cpu,j , 0);
 
 // set flags
@@ -153,7 +153,7 @@ void emulate_ctx_free(void *data)
 	gpointer key, value;
 
 	g_hash_table_iter_init (&iter, ctx->files);
-	while ( g_hash_table_iter_next (&iter, &key, &value) )
+	while( g_hash_table_iter_next (&iter, &key, &value) )
 	{
 		g_debug("file key %p %i value %p \n", key, *(int *)key, value);
 		struct tempfile *tf = value;
@@ -163,14 +163,14 @@ void emulate_ctx_free(void *data)
 	g_hash_table_destroy(ctx->files);
 
 	g_hash_table_iter_init (&iter, ctx->processes);
-	while ( g_hash_table_iter_next (&iter, &key, &value) )
+	while( g_hash_table_iter_next (&iter, &key, &value) )
 	{
 		g_debug("process key %p %i value %p \n", key, *(int *)key, value);
 	}
 	g_hash_table_destroy(ctx->processes);
 
 	g_hash_table_iter_init (&iter, ctx->sockets);
-	while ( g_hash_table_iter_next (&iter, &key, &value) )
+	while( g_hash_table_iter_next (&iter, &key, &value) )
 	{
 		g_debug("connection key %p %i value %p \n", key, *(int *)key, value);
 		struct connection *con = value;
@@ -188,7 +188,7 @@ void emulate_ctx_free(void *data)
 	}
 	g_hash_table_destroy(ctx->sockets);
 
-	if ( ctx->time != NULL )
+	if( ctx->time != NULL )
 		g_timer_destroy(ctx->time);
 }
 
@@ -205,7 +205,7 @@ void emulate_thread(gpointer data, gpointer user_data)
 	if( ctx->state == waiting )
 		ctx->state = running;
 
-	
+
 	if( ctx->time == NULL )
 		ctx->time = g_timer_new();
 	else
@@ -216,16 +216,16 @@ void emulate_thread(gpointer data, gpointer user_data)
 		if( (ctx->steps % (1024*1024)) == 0 )
 		{
 			g_debug("steps %li", ctx->steps);
-			if ( ctx->steps > conf->limits.steps )
+			if( ctx->steps > conf->limits.steps )
 			{
 				g_info("shellcode took too many steps ... (%li steps)",  ctx->steps);
 				ctx->state = failed;
 				break;
 			}
-			if ( conf->limits.cpu > 0. )
+			if( conf->limits.cpu > 0. )
 			{
 				double elapsed = g_timer_elapsed(ctx->time, NULL);
-				if ( elapsed > conf->limits.cpu )
+				if( elapsed > conf->limits.cpu )
 				{
 					g_info("shellcode took too long ... (%f seconds)",  elapsed);
 					ctx->state = failed;
@@ -237,45 +237,45 @@ void emulate_thread(gpointer data, gpointer user_data)
 		struct emu_env_hook *hook = NULL;
 		hook = emu_env_w32_eip_check(env);
 
-		if ( hook != NULL )
+		if( hook != NULL )
 		{
-			if ( hook->hook.win->fnhook == NULL )
+			if( hook->hook.win->fnhook == NULL )
 			{
 				g_critical("unhooked call to %s", hook->hook.win->fnname);
 				break;
-			}else
-			if( ctx->state == waiting ) 
-			/* for now, we stop!
-			 * had a blocking io call
-			 * callback from main will come at a given point
-			 * and requeue us to the threadpool
-			 */
+			} else
+				if( ctx->state == waiting )
+				/* for now, we stop!
+				 * had a blocking io call
+				 * callback from main will come at a given point
+				 * and requeue us to the threadpool
+				 */
 				goto unlock_and_return;
-		}else
+		} else
 		{
 			ret = emu_cpu_parse(emu_cpu_get(e));
 			struct emu_env_hook *hook =NULL;
-			if ( ret != -1 )
+			if( ret != -1 )
 			{
 				hook = emu_env_linux_syscall_check(env);
-				if ( hook == NULL )
+				if( hook == NULL )
 				{
 					ret = emu_cpu_step(emu_cpu_get(e));
-				}else
+				} else
 				{
-					if ( hook->hook.lin->fnhook != NULL )
+					if( hook->hook.lin->fnhook != NULL )
 					{
 						hook->hook.lin->fnhook(env, hook);
 						if( ctx->state == waiting )
-						/* stop 
-						 * as mentioned previously
-						 */
+							/* stop 
+							 * as mentioned previously
+							 */
 							goto unlock_and_return;
 					}
 				}
 			}
 
-			if ( ret == -1 )
+			if( ret == -1 )
 			{
 				g_debug("cpu error %s", emu_strerror(e));
 				break;
@@ -300,7 +300,7 @@ void emulate_thread(gpointer data, gpointer user_data)
 	return;
 
 
-unlock_and_return:
+	unlock_and_return:
 	g_timer_stop(ctx->time);
 	g_mutex_unlock(ctx->mutex);
 }
@@ -310,40 +310,38 @@ int run(struct emu *e, struct emu_env *env)
 	int j=0;
 	int ret; //= emu_cpu_run(emu_cpu_get(e));
 
-	for ( j=0;j< 1000000;j++ )
+	for( j=0;j< 1000000;j++ )
 	{
 		struct emu_env_hook *hook = NULL;
 		hook = emu_env_w32_eip_check(env);
 
-		if ( hook != NULL )
+		if( hook != NULL )
 		{
-			if ( hook->hook.win->fnhook == NULL )
+			if( hook->hook.win->fnhook == NULL )
 			{
 				g_critical("unhooked call to %s", hook->hook.win->fnname);
 				break;
 			}
-		}
-		else
+		} else
 		{
 			ret = emu_cpu_parse(emu_cpu_get(e));
 			struct emu_env_hook *hook =NULL;
-			if ( ret != -1 )
+			if( ret != -1 )
 			{
 				hook = emu_env_linux_syscall_check(env);
-				if ( hook == NULL )
+				if( hook == NULL )
 				{
 					ret = emu_cpu_step(emu_cpu_get(e));
-				}
-				else
+				} else
 				{
-					if ( hook->hook.lin->fnhook != NULL )
+					if( hook->hook.lin->fnhook != NULL )
 						hook->hook.lin->fnhook(env, hook);
 					else
 						break;
 				}
 			}
 
-			if ( ret == -1 )
+			if( ret == -1 )
 			{
 				g_debug("cpu error %s", emu_strerror(e));
 				break;

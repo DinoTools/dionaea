@@ -62,16 +62,16 @@ struct opaque_data
 	char *name;
 	union
 	{
-		GString 	*string;
-		long int 	integer;
-		uintptr_t 	ptr;
+		GString     *string;
+		long int    integer;
+		uintptr_t   ptr;
 	}opaque;
 };
 
 struct incident
 {
 	char *origin;
-	GHashTable 	*data;
+	GHashTable  *data;
 };
 
 struct incident *incident_new(const char *origin);
@@ -93,7 +93,7 @@ void incident_report(struct incident *i);
 	incident_value_string_set(e, "string_test", g_string_new("4711"));
 	incident_value_ptr_set(e, "ptr_test", 0x4711);
 	incident_dump(e);
- 	incident_report(e);
- 	incident_free(e)
+	incident_report(e);
+	incident_free(e)
 */
 

@@ -40,7 +40,7 @@ struct bistream *bistream_new()
 {
 	struct bistream *bs = g_malloc0(sizeof(struct bistream));
 	enum bistream_direction it;
-	for ( it = bistream_in; it <= bistream_out; it++ )
+	for( it = bistream_in; it <= bistream_out; it++ )
 	{
 		bs->streams[it].mutex = g_mutex_new();
 		bs->streams[it].stream_chunks = NULL;
@@ -53,15 +53,15 @@ struct bistream *bistream_new()
 void bistream_free(struct bistream *bs)
 {
 	enum bistream_direction dir;
-	for ( dir = bistream_in; dir <= bistream_out; dir++ )
+	for( dir = bistream_in; dir <= bistream_out; dir++ )
 	{
 		g_mutex_free(bs->streams[dir].mutex);
 		g_list_free(bs->streams[dir].stream_chunks);
 	}
-	
+
 	GList *it;
 
-	while ( (it = g_list_first(bs->stream_sequence)) != NULL)
+	while( (it = g_list_first(bs->stream_sequence)) != NULL )
 	{
 		struct stream_chunk *sc = it->data;
 		g_string_free(sc->data, TRUE);
@@ -90,16 +90,16 @@ void bistream_data_add(struct bistream *bs, enum bistream_direction dir, void *d
 	struct stream_chunk *lastbistreamsc = NULL;
 	struct stream_chunk *laststreamsc = NULL;
 
-	if (lastbistream != NULL)
+	if( lastbistream != NULL )
 		lastbistreamsc = lastbistream->data;
 
-	if (laststream != NULL)
+	if( laststream != NULL )
 		laststreamsc = laststream->data;
 
 	g_mutex_lock(bs->mutex);
 	g_mutex_lock(bs->streams[dir].mutex);
 
-	if (lastbistreamsc == laststreamsc && lastbistreamsc == NULL)
+	if( lastbistreamsc == laststreamsc && lastbistreamsc == NULL )
 	{
 		struct stream_chunk *sc = stream_chunk_new(data, size, dir);
 		sc->bistream_offset = 0;
@@ -107,19 +107,19 @@ void bistream_data_add(struct bistream *bs, enum bistream_direction dir, void *d
 		bs->stream_sequence =  g_list_append(bs->stream_sequence, sc);
 		bs->streams[dir].stream_chunks = g_list_append(bs->streams[dir].stream_chunks, sc);
 
-	}else
-	if (lastbistreamsc == laststreamsc && lastbistreamsc != NULL)
+	} else
+		if( lastbistreamsc == laststreamsc && lastbistreamsc != NULL )
 	{
 		g_string_append_len(laststreamsc->data, data, size);
-	}else
+	} else
 	{
 		uint32_t stream_offset = 0;
 		uint32_t bistream_offset = 0;
 
-		if (laststreamsc != NULL)
+		if( laststreamsc != NULL )
 			stream_offset = laststreamsc->stream_offset + laststreamsc->data->len;
 
-		if (lastbistreamsc != NULL)
+		if( lastbistreamsc != NULL )
 			bistream_offset = lastbistreamsc->bistream_offset + lastbistreamsc->data->len;
 
 		struct stream_chunk *sc = stream_chunk_new(data, size, dir);
@@ -141,35 +141,35 @@ void print_stream_chunk2(struct stream_chunk *sc)
 	uint32_t bistream_offset = sc->bistream_offset;
 	char buf[256];
 	int off=0;
-	for (c=0;c<sc->data->len; c+=16)
+	for( c=0;c<sc->data->len; c+=16 )
 	{
 		off += sprintf(buf, "0x%04x | ", bistream_offset + c);
-		if (sc->direction == bistream_out)
+		if( sc->direction == bistream_out )
 			off += sprintf(buf+off, "%49s", " ");
 
 		int i;
-		for (i=0;i<16;i++)
+		for( i=0;i<16;i++ )
 		{
-			if (i+c < sc->data->len)
+			if( i+c < sc->data->len )
 				off += sprintf(buf+off, "%02x ", ((unsigned char *)sc->data->str)[c+i]);
 			else
-				off += sprintf(buf+off, "   ");
+				off	+= sprintf(buf+off, "   ");
 		}
 
-		if (sc->direction == bistream_in)
+		if( sc->direction == bistream_in )
 			off += sprintf(buf+off,"%49s", " ");
 
 		off += sprintf(buf+off, "  | ");
 
-		for (i=0;i<16;i++)
+		for( i=0;i<16;i++ )
 		{
-			if (i+c < sc->data->len)
+			if( i+c < sc->data->len )
 			{
-				if (isprint(((unsigned char *)sc->data->str)[c+i]) )
+				if( isprint(((unsigned char *)sc->data->str)[c+i]) )
 					off += sprintf(buf+off, "%c", ((unsigned char *)sc->data->str)[c+i]);
 				else
-					off += sprintf(buf+off, ".");
-			}else
+					off	+= sprintf(buf+off, ".");
+			} else
 			{
 				off += sprintf(buf+off, " ");
 			}
@@ -189,34 +189,34 @@ void print_stream_chunk(struct stream_chunk *sc)
 	uint32_t stream_offset = sc->stream_offset;
 	uint32_t bistream_offset = sc->bistream_offset;
 
-	for (c=0;c<sc->data->len; c+=16)
+	for( c=0;c<sc->data->len; c+=16 )
 	{
 		printf("0x%04x | ", bistream_offset + c);
-		if (sc->direction == bistream_out)
+		if( sc->direction == bistream_out )
 			printf("%49s", " ");
 
 		int i;
-		for (i=0;i<16;i++)
+		for( i=0;i<16;i++ )
 		{
-			if (i+c < sc->data->len)
+			if( i+c < sc->data->len )
 				printf("%02x ", ((unsigned char *)sc->data->str)[c+i]);
 			else
 				printf("   ");
 		}
 
-		if (sc->direction == bistream_in)
+		if( sc->direction == bistream_in )
 			printf("%49s", " ");
 
 		printf("  | ");
-		for (i=0;i<16;i++)
+		for( i=0;i<16;i++ )
 		{
-			if (i+c < sc->data->len)
+			if( i+c < sc->data->len )
 			{
-				if (isprint(((unsigned char *)sc->data->str)[c+i]) )
+				if( isprint(((unsigned char *)sc->data->str)[c+i]) )
 					printf("%c", ((unsigned char *)sc->data->str)[c+i]);
 				else
 					printf(".");
-			}else
+			} else
 				printf(" ");
 
 		}
@@ -229,7 +229,7 @@ void bistream_debug(struct bistream *bs)
 {
 	GList *it;
 	g_mutex_lock(bs->mutex);
-	for (it = g_list_first(bs->stream_sequence); it != NULL; it = g_list_next(it))
+	for( it = g_list_first(bs->stream_sequence); it != NULL; it = g_list_next(it) )
 	{
 		print_stream_chunk2(it->data);
 	}
@@ -240,7 +240,7 @@ uint32_t sizeof_stream_chunks(GList *stream_chunks)
 {
 	GList *it;
 	uint32_t size = 0;
-	for (it = g_list_first(stream_chunks); it != NULL; it = g_list_next(it))
+	for( it = g_list_first(stream_chunks); it != NULL; it = g_list_next(it) )
 		size += ((struct stream_chunk *)it)->data->len;
 	return size;
 }
@@ -253,7 +253,7 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 	GList *last = g_list_last(bs->streams[dir].stream_chunks);
 	GList *first = g_list_first(bs->streams[dir].stream_chunks);
 
-	if (!first || !last)
+	if( !first || !last )
 	{
 		g_mutex_unlock(bs->streams[dir].mutex);
 		return -1;
@@ -262,7 +262,7 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 	struct stream_chunk *lastsc = last->data;
 
 
-	if (end == -1)
+	if( end == -1 )
 		end = lastsc->stream_offset + lastsc->data->len;
 /*
 	printf("end %i\n",  end);
@@ -270,7 +270,7 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 	printf("lastsc->... %i\n", (int)lastsc->data->len);
 	printf("start %i\n", start);
 */
-	if (end > lastsc->stream_offset + lastsc->data->len || start >= end)
+	if( end > lastsc->stream_offset + lastsc->data->len || start >= end )
 	{
 		g_mutex_unlock(bs->streams[dir].mutex);
 		return -1;
@@ -283,26 +283,26 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 	struct stream_chunk *itsc = it->data;
 
 
-	while(itsc->stream_offset != start && itsc->stream_offset + itsc->data->len <= start)
+	while( itsc->stream_offset != start && itsc->stream_offset + itsc->data->len <= start )
 	{
 		g_debug("itsc %p offset %i size %i", itsc,  itsc->stream_offset, (int)itsc->data->len);
-        it = g_list_next(it);
+		it = g_list_next(it);
 		itsc = it->data;
 	}
 
 	g_debug("found stream begin %p stream_offset %i size %i", itsc,  itsc->stream_offset, (int)itsc->data->len);
 
 	int32_t offset = 0;
-	while(itsc->stream_offset < end)
+	while( itsc->stream_offset < end )
 	{
 		itsc = it->data;
 		uint32_t start_offset = 0;
 		uint32_t end_offset = itsc->data->len-1;
 
-		if (itsc->stream_offset < start)
+		if( itsc->stream_offset < start )
 			start_offset = start - itsc->stream_offset;
 
-		if (itsc->stream_offset + itsc->data->len > end)
+		if( itsc->stream_offset + itsc->data->len > end )
 			end_offset = end - itsc->stream_offset;
 
 		int32_t size = end_offset - start_offset;
@@ -313,7 +313,7 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 		offset+=size;
 
 		it = g_list_next(it);
-		if (it == NULL)
+		if( it == NULL )
 			break;
 	}
 	g_mutex_unlock(bs->streams[dir].mutex);

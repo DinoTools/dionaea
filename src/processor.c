@@ -33,7 +33,7 @@ bool processors_tree_create(GNode *tree, struct lcfgx_tree_node *node)
 			{
 				g_error("processor %s rejected config", node->key);
 			}
-		}else
+		} else
 		{
 			g_error("processor %s expects config", node->key);
 		}
@@ -47,7 +47,7 @@ bool processors_tree_create(GNode *tree, struct lcfgx_tree_node *node)
 		struct lcfgx_tree_node *it;
 		for( it = n->value.elements; it != NULL; it = it->next )
 		{
-			if ( processors_tree_create(me, it) != true)
+			if( processors_tree_create(me, it) != true )
 				return false;
 		}
 	}
@@ -56,7 +56,7 @@ bool processors_tree_create(GNode *tree, struct lcfgx_tree_node *node)
 
 void processors_tree_dump(GNode *tree, int indent)
 {
-	for(GNode *it = g_node_first_sibling(tree); it != NULL; it = it->next)
+	for( GNode *it = g_node_first_sibling(tree); it != NULL; it = it->next )
 	{
 		if( it->data )
 		{
@@ -94,7 +94,7 @@ void processor_data_deletion(struct processor_data *pd)
 {
 	g_debug("%s pd %p", __PRETTY_FUNCTION__, pd);
 	GList *it;
-	while ( (it = g_list_first(pd->filters)) != NULL)
+	while( (it = g_list_first(pd->filters)) != NULL )
 	{
 		struct processor_data *proc_data = it->data;
 		processor_data_deletion(proc_data);
@@ -108,9 +108,9 @@ void processors_init(struct connection *con)
 {
 	g_debug("%s con %p\n", __PRETTY_FUNCTION__, con);
 	con->processor_data = processor_data_new();
-	for(GNode *it = g_node_first_sibling(g_dionaea->processors->tree->children); 
-		 it != NULL; 
-		 it = it->next)
+	for( GNode *it = g_node_first_sibling(g_dionaea->processors->tree->children); 
+	   it != NULL; 
+	   it = it->next )
 	{
 		processor_data_creation(con, con->processor_data, it);
 	}
@@ -122,7 +122,7 @@ void processors_clear(struct connection *con)
 	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 
 	GList *it;
-	while ( (it = g_list_first(con->processor_data->filters)) != NULL)
+	while( (it = g_list_first(con->processor_data->filters)) != NULL )
 	{
 		struct processor_data *proc_data = it->data;
 		processor_data_deletion(proc_data);
@@ -130,7 +130,7 @@ void processors_clear(struct connection *con)
 	}
 	processor_data_free(con->processor_data);
 	con->processor_data = NULL;
-		
+
 }
 
 struct processor_data *processor_data_new(void)
@@ -160,15 +160,14 @@ void processor_data_free(struct processor_data *pd)
 void recurse_io(GList *list, struct connection *con, enum bistream_direction dir);
 void recurse_io_process(struct processor_data *pd, struct connection *con, enum bistream_direction dir)
 {
-	if( dir == bistream_in)
+	if( dir == bistream_in )
 	{
-		if ( pd->processor->thread_io_in != NULL )
+		if( pd->processor->thread_io_in != NULL )
 		{
 			pd->processor->thread_io_in(con, pd);
 			recurse_io(pd->filters, con, dir);
 		}
-	}
-	else
+	} else
 	{
 		if( pd->processor->thread_io_out != NULL )
 		{
@@ -181,7 +180,7 @@ void recurse_io_process(struct processor_data *pd, struct connection *con, enum 
 void recurse_io(GList *list, struct connection *con, enum bistream_direction dir)
 {
 	GList *it;
-	for ( it = g_list_first(list); it != NULL; it = g_list_next(it) )
+	for( it = g_list_first(list); it != NULL; it = g_list_next(it) )
 	{
 		struct processor_data *pd = it->data;
 		recurse_io_process(pd, con, dir);
@@ -191,7 +190,7 @@ void recurse_io(GList *list, struct connection *con, enum bistream_direction dir
 void processors_io_in_thread(void *data, void *userdata)
 {
 	g_debug("%s data %p userdata %p", __PRETTY_FUNCTION__, data,  userdata);
- 	struct connection *con = data;
+	struct connection *con = data;
 	struct processor_data *pd = userdata;
 	g_mutex_lock(pd->mutex);
 	refcount_dec(&pd->queued);
@@ -203,7 +202,7 @@ void processors_io_in_thread(void *data, void *userdata)
 void processors_io_out_thread(void *data, void *userdata)
 {
 	g_debug("%s data %p userdata %p", __PRETTY_FUNCTION__, data,  userdata);
- 	struct connection *con = data;
+	struct connection *con = data;
 	struct processor_data *pd = userdata;
 	g_mutex_lock(pd->mutex);
 	refcount_dec(&pd->queued);
@@ -219,26 +218,26 @@ void processors_io_in(struct connection *con, void *data, int size)
 	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 
 	GList *it;
-	for ( it = g_list_first(con->processor_data->filters);	it != NULL;	it = g_list_next(it) )
+	for( it = g_list_first(con->processor_data->filters);  it != NULL; it = g_list_next(it) )
 	{
 		struct processor_data *pd = it->data;
 
-		if ( pd->processor->io_in != NULL )
+		if( pd->processor->io_in != NULL )
 		{
 			pd->processor->io_in(con, pd, data, size);
-		}else
-		if ( pd->processor->thread_io_in != NULL )
+		} else
+			if( pd->processor->thread_io_in != NULL )
 		{
 			struct bistream *bistream = pd->bistream;
 			bistream_data_add(bistream, bistream_in, data, size);
 
 			g_mutex_lock(pd->queued.mutex);
-			if ( pd->queued.refs == 0 )
+			if( pd->queued.refs == 0 )
 			{
 				pd->queued.refs++;
 				GError *thread_error;
 				struct thread *t = thread_new(con, pd, processors_io_in_thread);
-	
+
 				connection_ref(con);
 				g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
 			}
@@ -252,20 +251,20 @@ void processors_io_out(struct connection *con, void *data, int size)
 	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 
 	GList *it;
-	for ( it = g_list_first(con->processor_data->filters);	it != NULL;	it = g_list_next(it) )
+	for( it = g_list_first(con->processor_data->filters);  it != NULL; it = g_list_next(it) )
 	{
 		struct processor_data *pd = it->data;
 
-		if ( pd->processor->io_out != NULL )
+		if( pd->processor->io_out != NULL )
 		{
 			pd->processor->io_out(con, pd, data, size);
-		}else
-		if ( pd->processor->thread_io_out != NULL )
+		} else
+			if( pd->processor->thread_io_out != NULL )
 		{
 			struct bistream *bistream = pd->bistream;
 			bistream_data_add(bistream, bistream_out, data, size);
 			g_mutex_lock(pd->queued.mutex);
-			if ( pd->queued.refs == 0 )
+			if( pd->queued.refs == 0 )
 			{
 				pd->queued.refs++;
 				GError *thread_error;
@@ -320,11 +319,11 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 	struct bistream *bs = pd->bistream;
 	GList *it;
 	g_mutex_lock(bs->mutex);
-	for (it = g_list_first(bs->stream_sequence); it != NULL; it = g_list_next(it))
+	for( it = g_list_first(bs->stream_sequence); it != NULL; it = g_list_next(it) )
 	{
 //		if ( (dir == bistream_in && ctx->in) || 
 //			 (dir == bistream_out && ctx->out) )
-			print_stream_chunk2(it->data);
+		print_stream_chunk2(it->data);
 	}
 	g_mutex_unlock(bs->mutex);
 }
@@ -378,7 +377,7 @@ void proc_unicode_on_io_in(struct connection *con, struct processor_data *pd)
 	void *streamdata = NULL;
 	int32_t size = bistream_get_stream(pd->bistream, bistream_in, ctx->io_in_offset, -1, &streamdata);
 	ctx->io_in_offset += size;
-	for (GList *it = g_list_first(pd->filters); it != NULL; it = g_list_next(it))
+	for( GList *it = g_list_first(pd->filters); it != NULL; it = g_list_next(it) )
 	{
 		struct processor_data *filter = it->data;
 		struct bistream *bs = filter->bistream;
@@ -449,7 +448,7 @@ void proc_filter_on_io_in(struct connection *con, struct processor_data *pd)
 {
 	struct proc_filter_ctx *ctx = pd->ctx;
 	g_debug("%s con %p pd %p io_in_offset %i proto %s", __PRETTY_FUNCTION__, con, pd, ctx->io_in_offset, con->protocol.name);
-		
+
 	void *streamdata = NULL;
 	int32_t size = bistream_get_stream(pd->bistream, bistream_in, ctx->io_in_offset, -1, &streamdata);
 
@@ -457,7 +456,7 @@ void proc_filter_on_io_in(struct connection *con, struct processor_data *pd)
 		return;
 
 	ctx->io_in_offset += size;
-	for( GList *it = g_list_first(pd->filters); it != NULL; it = g_list_next(it))
+	for( GList *it = g_list_first(pd->filters); it != NULL; it = g_list_next(it) )
 	{
 		struct processor_data *filter = it->data;
 		struct bistream *bs = filter->bistream;
@@ -477,7 +476,7 @@ void proc_filter_on_io_out(struct connection *con, struct processor_data *pd)
 		return;
 
 	ctx->io_out_offset += size;
-	for( GList *it = g_list_first(pd->filters); it != NULL; it = g_list_next(it))
+	for( GList *it = g_list_first(pd->filters); it != NULL; it = g_list_next(it) )
 	{
 		struct processor_data *filter = it->data;
 		struct bistream *bs = filter->bistream;

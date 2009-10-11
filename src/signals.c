@@ -49,13 +49,13 @@ void sighup_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 	g_warning("%s loop %p w %p revents %i",__PRETTY_FUNCTION__, loop, w, revents);
 
 	g_info("Reloading config");
-	if ( (g_dionaea->config.config = lcfg_new(g_dionaea->config.name)) == NULL)
-	{	
+	if( (g_dionaea->config.config = lcfg_new(g_dionaea->config.name)) == NULL )
+	{
 		g_critical("config not found");
 	}
 
 	if( lcfg_parse(g_dionaea->config.config) != lcfg_status_ok )
-	{	
+	{
 		g_critical("lcfg error: %s\n", lcfg_error_get(g_dionaea->config.config));
 	}
 
@@ -66,11 +66,11 @@ void sighup_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 	modules_hup();
 
 	// loggers hup
-	for (GList *it = g_dionaea->logging->loggers; it != NULL; it = it->next)
+	for( GList *it = g_dionaea->logging->loggers; it != NULL; it = it->next )
 	{
 		struct logger *l = it->data;
 		g_message("Logger %p hup %p", l, l->log);
-		if (l->hup != NULL)
+		if( l->hup != NULL )
 			l->hup(l->data);
 	}
 }
@@ -83,7 +83,7 @@ void sigsegv_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 	g_warning("%s loop %p w %p revents %i",__PRETTY_FUNCTION__, loop, w, revents);
 //	g_warning("%s sig %i",__PRETTY_FUNCTION__, sig);
 	char cmd[100];
-	char progname[100];	
+	char progname[100]; 
 	char *p;
 	int n;
 
@@ -92,9 +92,9 @@ void sigsegv_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 
 	p = strrchr(progname, '/');
 	*p = 0;
-	
+
 	snprintf(cmd, sizeof(cmd), "%s/bin/dionaea-backtrace %d > /tmp/segv_%s.%d.out 2>&1", 
-		 PREFIX, (int)getpid(), p+1, (int)getpid());
+			 PREFIX, (int)getpid(), p+1, (int)getpid());
 	system(cmd);
 	signal(SIGSEGV, SIG_DFL);
 //	return 0;

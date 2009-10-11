@@ -71,7 +71,7 @@ do \
 	g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error); \
 } while (0)
 
-void dump_sockets(gpointer key, gpointer value,	gpointer user_data)
+void dump_sockets(gpointer key, gpointer value, gpointer user_data)
 {
 	printf("key %p %i value %p \n", key, *(int *)key, value);
 }
@@ -427,7 +427,7 @@ void async_connection_accept(void *data)
 {
 	g_debug("%s data %p", __PRETTY_FUNCTION__, data);
 	struct connection *con = data;
-	switch ( con->trans )
+	switch( con->trans )
 	{
 	case connection_transport_tcp:
 		ev_io_init(&con->events.io_in, connection_tcp_accept_cb, con->socket, EV_READ);
@@ -448,7 +448,7 @@ void async_connection_accept(void *data)
 
 	con->events.listen_timeout.repeat = 15.0;
 
-	if ( con->events.listen_timeout.repeat > 0. )
+	if( con->events.listen_timeout.repeat > 0. )
 	{
 		ev_timer_init(&con->events.listen_timeout, connection_tcp_listen_timeout_cb, 0., con->events.listen_timeout.repeat);
 		ev_timer_again(CL, &con->events.listen_timeout);
@@ -476,7 +476,7 @@ void async_connection_accept(void *data)
  * @see proto_emu_accept_established
  * @see proto_emu_origin
  */
-int32_t	ll_win_hook_accept(struct emu_env *env, struct emu_env_hook *hook)
+int32_t ll_win_hook_accept(struct emu_env *env, struct emu_env_hook *hook)
 {
 	g_debug("%s env %p hook %p", __PRETTY_FUNCTION__, env, hook);
 	struct emu_emulate_ctx *ctx = env->userdata;
@@ -504,7 +504,7 @@ int32_t	ll_win_hook_accept(struct emu_env *env, struct emu_env_hook *hook)
 	POP_DWORD(c, &addrlen);
 
 	struct connection *con;
-	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
+	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL )
 	{
 		g_warning("invalid socket requested %i", s);
 		ctx->state = failed;
@@ -543,13 +543,13 @@ uint32_t user_hook_bind(struct emu_env *env, struct emu_env_hook *hook, ...)
 	va_list vl;
 	va_start(vl, hook);
 
-	int s 					= va_arg(vl,  int);
-	struct sockaddr* addr 	= va_arg(vl,  struct sockaddr *);
+	int s                   = va_arg(vl,  int);
+	struct sockaddr* addr   = va_arg(vl,  struct sockaddr *);
 	/*socklen_t addrlen 		= */(void)va_arg(vl,  socklen_t );
 	va_end(vl);
 
 	struct connection *con;
-	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
+	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL )
 	{
 		g_warning("invalid socket requested %i", s);
 		ctx->state = failed;
@@ -562,7 +562,7 @@ uint32_t user_hook_bind(struct emu_env *env, struct emu_env_hook *hook, ...)
 	int port = ntohs(si->sin_port);
 	connection_bind(con, addrstr, port, NULL);
 
-    return 0;
+	return 0;
 }
 
 struct async_connect_helper
@@ -622,20 +622,20 @@ uint32_t user_hook_connect(struct emu_env *env, struct emu_env_hook *hook, ...)
 	va_end(vl);
 
 	struct connection *con;
-	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
+	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL )
 	{
 		g_warning("invalid socket requested %i", s);
 		ctx->state = failed;
 		return -1;
 	}
 
-	
+
 	struct sockaddr_in *si = (struct sockaddr_in *)addr;
 	char addrstr[128] = "::";
 	if( inet_ntop(si->sin_family, &si->sin_addr, addrstr, 128) == NULL )
 		ctx->state = failed;
 
- 	int port = ntohs(si->sin_port);
+	int port = ntohs(si->sin_port);
 
 	struct async_connect_helper *help = g_malloc0(sizeof(struct async_connect_helper));
 	help->con = con;
@@ -672,11 +672,11 @@ uint32_t user_hook_close(struct emu_env *env, struct emu_env_hook *hook, ...)
 
 	va_list vl;
 	va_start(vl, hook);
-	int s 					= va_arg(vl,  int);
+	int s                   = va_arg(vl,  int);
 	va_end(vl);
 
 	struct connection *con;
-	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
+	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL )
 	{
 		g_warning("invalid socket requested %i", s);
 		ctx->state = failed;
@@ -684,7 +684,7 @@ uint32_t user_hook_close(struct emu_env *env, struct emu_env_hook *hook, ...)
 	}
 
 	if( con->state != connection_state_close )
-	{		
+	{
 		GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
 		g_async_queue_push(aq, async_cmd_new((async_cmd_cb)connection_close, con));
 		g_async_queue_unref(aq);
@@ -715,12 +715,12 @@ uint32_t user_hook_listen(struct emu_env *env, struct emu_env_hook *hook, ...)
 	va_list vl;
 	va_start(vl, hook);
 
-	int s 					= va_arg(vl,  int);
+	int s                   = va_arg(vl,  int);
 	/*int backlog			 	= */(void)va_arg(vl,  int);
 	va_end(vl);
 
 	struct connection *con;
-	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
+	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL )
 	{
 		g_warning("invalid socket requested %i", s);
 		ctx->state = failed;
@@ -731,20 +731,20 @@ uint32_t user_hook_listen(struct emu_env *env, struct emu_env_hook *hook, ...)
 	// as we do not accept connections yet ...
 	// duplicate code from connection_listen
 
-	switch ( con->trans )
+	switch( con->trans )
 	{
 	case connection_transport_tcp:
 		con->type = connection_type_listen;
 
-		if ( bind_local(con) != true )
-		{	
+		if( bind_local(con) != true )
+		{
 			g_warning("Could not bind %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
 			ctx->state = failed;
 			return 0;
 		}
 
 
-		if ( listen(con->socket, 1) != 0 )
+		if( listen(con->socket, 1) != 0 )
 		{
 			close(con->socket);
 			con->socket = -1;
@@ -763,7 +763,7 @@ uint32_t user_hook_listen(struct emu_env *env, struct emu_env_hook *hook, ...)
 		break;
 	}
 
-    return 0;
+	return 0;
 }
 
 
@@ -780,7 +780,7 @@ void async_connection_io_in(void *data)
 	struct emu_emulate_ctx *ctx = con->data;
 	struct emu_config *conf = ctx->config;
 
-	switch ( con->trans )
+	switch( con->trans )
 	{
 	case connection_transport_tcp:
 		ev_io_init(&con->events.io_in, connection_tcp_io_in_cb, con->socket, EV_READ);
@@ -800,7 +800,7 @@ void async_connection_io_in(void *data)
 		break;
 	}
 
-	if ( con->events.listen_timeout.repeat > 0. )
+	if( con->events.listen_timeout.repeat > 0. )
 		ev_timer_again(CL, &con->events.listen_timeout);
 }
 
@@ -828,7 +828,7 @@ void async_connection_io_in(void *data)
  * @see proto_emu_sustain_timeout
  * @see async_connection_io_in
  */
-int32_t	ll_win_hook_recv(struct emu_env *env, struct emu_env_hook *hook)
+int32_t ll_win_hook_recv(struct emu_env *env, struct emu_env_hook *hook)
 {
 	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
 	struct emu_emulate_ctx *ctx = env->userdata;
@@ -861,7 +861,7 @@ int recv(
 
 
 	struct connection *con;
-	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
+	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL )
 	{
 		g_warning("invalid socket requested %i", s);
 		ctx->state = failed;
@@ -870,7 +870,7 @@ int recv(
 
 	int returnvalue = 0;
 	if( con->transport.tcp.io_in->len > 0 )
- 	{ 
+	{
 		/** 
 		 *  Case 1:
 		 *  we still have data pending, so we can provide it to the
@@ -880,7 +880,7 @@ int recv(
 		returnvalue = MIN(con->transport.tcp.io_in->len, len);
 		emu_cpu_reg32_set(c, eax, returnvalue);
 
-		if ((int32_t)returnvalue > 0)
+		if( (int32_t)returnvalue > 0 )
 			emu_memory_write_block(emu_memory_get(env->emu), buf, con->transport.tcp.io_in->str, returnvalue);
 		g_string_erase(con->transport.tcp.io_in, 0, returnvalue);
 		emu_cpu_eip_set(c, eip_save);
@@ -893,7 +893,7 @@ int recv(
 	 *  
 	 */
 	g_debug("recv connection state %s", connection_state_to_string(con->state));
-	if ( con->state == connection_state_close )
+	if( con->state == connection_state_close )
 	{
 		/**
 		 * Case 2a: 
@@ -975,14 +975,14 @@ uint32_t user_hook_send(struct emu_env *env, struct emu_env_hook *hook, ...)
 	va_list vl;
 	va_start(vl, hook);
 	/* ssize_t send(int sockfd, const void *buf, size_t len, int flags); */
-	int s		= va_arg(vl,  int);
-	char* buf	= va_arg(vl,  char *);
-	int len		= va_arg(vl,  int);
+	int s       = va_arg(vl,  int);
+	char* buf   = va_arg(vl,  char *);
+	int len     = va_arg(vl,  int);
 	/*int flags	= */(void)va_arg(vl,  int);
 	va_end(vl);
 
 	struct connection *con;
-	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL)
+	if( (con = g_hash_table_lookup(ctx->sockets, &s)) == NULL )
 	{
 		g_warning("invalid socket requested %i", s);
 		ctx->state = failed;
@@ -1034,12 +1034,12 @@ uint32_t user_hook_socket(struct emu_env *env, struct emu_env_hook *hook, ...)
 	va_start(vl, hook);
 	/* int socket(int domain, int type, int protocol); */
 	/*int domain 	= */(void)va_arg(vl,  int);
-	int type 		= va_arg(vl,  int);
+	int type        = va_arg(vl,  int);
 	/*int protocol 	= */(void)va_arg(vl, int);
 	va_end(vl);
 
 
-	if( g_hash_table_size(ctx->sockets) > conf->limits.sockets)
+	if( g_hash_table_size(ctx->sockets) > conf->limits.sockets )
 	{
 		g_warning("Too many open sockets (%i)", g_hash_table_size(ctx->sockets));
 		ctx->state = failed;
@@ -1107,7 +1107,7 @@ HANDLE CreateFile(
 	/*int hTemplateFile			=*/(void)va_arg(vl, int);
 	va_end(vl);
 
-	if( g_hash_table_size(ctx->files) > conf->limits.files)
+	if( g_hash_table_size(ctx->files) > conf->limits.files )
 	{
 		g_warning("Too many open files (%i)", g_hash_table_size(ctx->files));
 		ctx->state = failed;
@@ -1117,7 +1117,7 @@ HANDLE CreateFile(
 	struct tempfile *tf = tempdownload_new("emu-");
 	g_hash_table_insert(ctx->files, &tf->fd, tf);
 
-	return (uint32_t)tf->fd;
+	return(uint32_t)tf->fd;
 }
 
 /**
@@ -1148,26 +1148,26 @@ BOOL WriteFile(
 
 	va_list vl;
 	va_start(vl, hook);
-	uint32_t hFile				= va_arg(vl, uint32_t);
-	void *lpBuffer 				= va_arg(vl, void *);
+	uint32_t hFile              = va_arg(vl, uint32_t);
+	void *lpBuffer              = va_arg(vl, void *);
 	int   nNumberOfBytesToWrite = va_arg(vl, int);
 	/* int *lpNumberOfBytesWritten  =*/(void)va_arg(vl, int*);
 	/* int *lpOverlapped 		    =*/(void)va_arg(vl, int*);
 	va_end(vl);
 
 	struct tempfile *tf = NULL;
-	if( (tf = g_hash_table_lookup(ctx->files, &hFile)) == NULL)
+	if( (tf = g_hash_table_lookup(ctx->files, &hFile)) == NULL )
 	{
 		g_warning("invalid file requested %i", hFile);
 		ctx->state = failed;
 		return 0;
 	}
 
-	if ( tf->fd != -1 )
+	if( tf->fd != -1 )
 	{
 		fwrite(lpBuffer, nNumberOfBytesToWrite, 1, tf->fh);
 		long size;
-		if ( (size = ftell(tf->fh)) >  conf->limits.filesize)
+		if( (size = ftell(tf->fh)) >  conf->limits.filesize )
 		{
 			g_warning("File too large");
 			ctx->state = failed;
@@ -1205,7 +1205,7 @@ BOOL CloseHandle(
 	va_end(vl);
 
 	struct tempfile *tf = NULL;
-	if( (tf = g_hash_table_lookup(ctx->files, &hObject)) != NULL)
+	if( (tf = g_hash_table_lookup(ctx->files, &hObject)) != NULL )
 	{
 		tempfile_close(tf);
 		return 0;
@@ -1244,17 +1244,17 @@ uint32_t user_hook_CreateProcess(struct emu_env *env, struct emu_env_hook *hook,
 	PROCESS_INFORMATION *pProcInfo     = va_arg(vl, PROCESS_INFORMATION *); 
 	va_end(vl);
 
-	if ( pszCmdLine != NULL && strncasecmp(pszCmdLine, "cmd", 3) == 0 )
+	if( pszCmdLine != NULL && strncasecmp(pszCmdLine, "cmd", 3) == 0 )
 	{
-	
+
 		struct connection *con = NULL;
-		if( (con = g_hash_table_lookup(ctx->sockets, &psiStartInfo->hStdInput)) == NULL)
+		if( (con = g_hash_table_lookup(ctx->sockets, &psiStartInfo->hStdInput)) == NULL )
 		{
 			g_warning("invalid socket requested %i", psiStartInfo->hStdInput);
-	//		g_hash_table_foreach(ctx->sockets, dump_sockets, NULL);
+			//		g_hash_table_foreach(ctx->sockets, dump_sockets, NULL);
 			return 0;
 		}
-	
+
 		struct incident *ix = incident_new("dionaea.module.emu.mkshell");
 		incident_value_ptr_set(ix, "con", (uintptr_t)con);
 		connection_ref(con);
@@ -1262,10 +1262,10 @@ uint32_t user_hook_CreateProcess(struct emu_env *env, struct emu_env_hook *hook,
 		g_async_queue_push(aq, async_cmd_new(async_incident_report, ix));
 		g_async_queue_unref(aq);
 		ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
-	
-	//	psiStartInfo = NULL;
-	//	pProcInfo = NULL;
-	
+
+		//	psiStartInfo = NULL;
+		//	pProcInfo = NULL;
+
 		pProcInfo->hProcess = *(int *)con->protocol.ctx;
 		g_hash_table_insert(ctx->processes, con->protocol.ctx, con);
 	}
@@ -1304,7 +1304,7 @@ uint32_t user_hook_WaitForSingleObject(struct emu_env *env, struct emu_env_hook 
 
 	struct connection *con = NULL;
 	int h = hHandle;
-	if( (con = g_hash_table_lookup(ctx->processes, &h)) != NULL)
+	if( (con = g_hash_table_lookup(ctx->processes, &h)) != NULL )
 	{
 		ctx->state = waiting;
 		return 0;
@@ -1333,9 +1333,9 @@ uint32_t user_hook_WSASocket(struct emu_env *env, struct emu_env_hook *hook, ...
 	va_list vl;
 	va_start(vl, hook);
 	/* int socket(int domain, int type, int protocol); */
-	int domain 		= va_arg(vl,  int);
-	int type 		= va_arg(vl,  int);
-	int protocol 	= va_arg(vl, int);
+	int domain      = va_arg(vl,  int);
+	int type        = va_arg(vl,  int);
+	int protocol    = va_arg(vl, int);
 	(void)va_arg(vl, int);
 	(void)va_arg(vl, int);
 	(void)va_arg(vl, int);

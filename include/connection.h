@@ -190,10 +190,10 @@ struct connection
 		struct ev_io io_in;
 		struct ev_io io_out;
 		struct ev_timer listen_timeout;	// tcp listen
-		struct ev_timer connecting_timeout; // tcp-connect, ssl-connect
+		struct ev_timer connecting_timeout;	// tcp-connect, ssl-connect
 		struct ev_timer sustain_timeout; // tcp&ssl (connect&accept)
 		struct ev_timer idle_timeout; // tcp&ssl (connect&accept)
-		struct ev_timer dns_timeout;	
+		struct ev_timer dns_timeout;    
 		struct ev_timer handshake_timeout; // ssl connect & accept
 
 		struct ev_timer close_timeout; // ssl connect & accept
@@ -258,7 +258,7 @@ bool connection_stats_accounting_limit_exceeded(struct connection_stats *stats);
 void connection_throttle_io_in_set(struct connection *con, uint32_t max_bytes_per_second);
 void connection_throttle_io_out_set(struct connection *con, uint32_t max_bytes_per_second);
 
-int	connection_throttle(struct connection *con, struct connection_throttle *thr);
+int connection_throttle(struct connection *con, struct connection_throttle *thr);
 void connection_throttle_update(struct connection *con, struct connection_throttle *thr, int bytes);
 
 void connection_throttle_io_in_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
@@ -343,7 +343,7 @@ void connection_tls_error(struct connection *con);
 void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents);
 
 bool connection_transport_from_string(const char *type_str, enum connection_transport *type);
-const char *connection_transport_to_string(enum	connection_transport trans);
+const char *connection_transport_to_string(enum connection_transport trans);
 
 const char *connection_state_to_string(enum connection_state state);
 const char *connection_type_to_string(enum connection_type type);

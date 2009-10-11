@@ -44,7 +44,7 @@ struct opaque_data *opaque_data_new(void)
 
 void opaque_data_free(struct opaque_data *d)
 {
-	if ( d->type == opaque_type_string )
+	if( d->type == opaque_type_string )
 		g_string_free(d->opaque.string, TRUE);
 	g_free(d);
 }
@@ -88,12 +88,12 @@ void incident_free(struct incident *e)
 struct opaque_data *incident_value_get(struct incident *e, const char *name, enum opaque_data_type t)
 {
 	struct opaque_data *d;
-	if ( ( d = g_hash_table_lookup(e->data, name)) == NULL)
+	if( ( d = g_hash_table_lookup(e->data, name)) == NULL )
 	{
 		g_warning("could not find key '%s'", name);
 		return NULL;
 	}
-	if ( d->type != t )
+	if( d->type != t )
 		return NULL;
 	return d;
 }
@@ -111,7 +111,7 @@ bool incident_value_int_set(struct incident *e, const char *name, long int val)
 bool incident_value_int_get(struct incident *e, const char *name, long int *val)
 {
 	struct opaque_data *d = incident_value_get(e, name, opaque_type_int);
-	if ( d == NULL )
+	if( d == NULL )
 		return false;
 	*val = d->opaque.integer;
 	return true;
@@ -131,7 +131,7 @@ bool incident_value_ptr_set(struct incident *e, const char *name, uintptr_t val)
 bool incident_value_ptr_get(struct incident *e, const char *name, uintptr_t *val)
 {
 	struct opaque_data *d = incident_value_get(e, name, opaque_type_ptr);
-	if ( d == NULL )
+	if( d == NULL )
 		return false;
 	*val = d->opaque.ptr;
 	return true;
@@ -150,7 +150,7 @@ bool incident_value_string_set(struct incident *e, const char *name, GString *va
 bool incident_value_string_get(struct incident *e, const char *name, GString **val)
 {
 	struct opaque_data *d = incident_value_get(e, name, opaque_type_string);
-	if ( d == NULL )
+	if( d == NULL )
 		return false;
 	*val = d->opaque.string;
 	return true;
@@ -160,23 +160,23 @@ void incident_dump(struct incident *e)
 {
 	GHashTableIter iter;
 	gpointer key, value;
-	
+
 	g_hash_table_iter_init (&iter, e->data);
 	g_debug("incident %p %s", e, e->origin);
-	while ( g_hash_table_iter_next (&iter, &key, &value) )
+	while( g_hash_table_iter_next (&iter, &key, &value) )
 	{
 		char x[1024];
 		char *name = key;
 		struct opaque_data *d = value;
-		if ( d->type == opaque_type_int )
+		if( d->type == opaque_type_int )
 		{
 			g_snprintf(x, 1023, "%s: (int) %li", name, d->opaque.integer);
-		}else
-		if ( d->type == opaque_type_string )
+		} else
+			if( d->type == opaque_type_string )
 		{
 			g_snprintf(x, 1023, "%s: (string) %.*s", name, (int)d->opaque.string->len, d->opaque.string->str);
-		}else
-		if ( d->type == opaque_type_ptr )
+		} else
+			if( d->type == opaque_type_ptr )
 		{
 			g_snprintf(x, 1023, "%s: (ptr) %p", name, (void *)d->opaque.ptr);
 		}
@@ -188,10 +188,10 @@ void incident_dump(struct incident *e)
 void incident_report(struct incident *i)
 {
 	g_debug("reporting %p", i);
-	for(GList *it=g_dionaea->ihandlers->handlers; it != NULL; it = g_list_next(it))
+	for( GList *it=g_dionaea->ihandlers->handlers; it != NULL; it = g_list_next(it) )
 	{
 		struct ihandler *ih = it->data;
-		if ( g_pattern_match(ih->match, strlen(i->origin), i->origin, NULL ) == TRUE)
+		if( g_pattern_match(ih->match, strlen(i->origin), i->origin, NULL ) == TRUE )
 		{
 			ih->cb(i, ih->ctx);
 		}

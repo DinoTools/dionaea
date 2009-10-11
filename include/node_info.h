@@ -38,7 +38,7 @@
 struct node_info
 {
 	struct sockaddr_storage addr;
-	int domain; // socket domain
+	int domain;	// socket domain
 	char ip_string[INET_STRLEN+1];
 	char port_string[PORT_STRLEN+1];
 	uint16_t port;

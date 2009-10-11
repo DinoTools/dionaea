@@ -46,8 +46,8 @@ struct module_api
 struct module
 {
 	char *name;
-    GModule *module;
-    module_init_function module_init;
+	GModule *module;
+	module_init_function module_init;
 	struct lcfgx_tree_node *config;
 	struct module_api api;
 };
@@ -58,7 +58,7 @@ void module_free(struct module *module);
 
 struct modules
 {
-    GList *modules;
+	GList *modules;
 };
 
 

@@ -58,7 +58,7 @@ struct dionaea
 	struct logging *logging;
 
 	struct signals *signals;
-	
+
 	struct ihandlers *ihandlers;
 
 	struct threads *threads;

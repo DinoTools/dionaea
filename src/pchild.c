@@ -55,7 +55,7 @@ void pchild_run(int fd)
 {
 	pchild_cmd cmd;
 	uintptr_t x;
-	while ( recv(fd, &x, sizeof(uintptr_t), 0) ==  sizeof(uintptr_t))
+	while( recv(fd, &x, sizeof(uintptr_t), 0) ==  sizeof(uintptr_t) )
 	{
 		cmd = (pchild_cmd)x;
 		cmd(fd);
@@ -70,18 +70,18 @@ bool pchild_init(void)
 	pid_t   pid;
 
 
-	if ( socketpair(PF_UNIX, SOCK_STREAM, 0, pair) < 0 )
+	if( socketpair(PF_UNIX, SOCK_STREAM, 0, pair) < 0 )
 	{
 		return false;
 	}
 
 
-	if ( (pid = fork()) < 0 )
+	if( (pid = fork()) < 0 )
 	{
 		return false;
 	}
 
-	if ( pid != 0 )
+	if( pid != 0 )
 	{
 		g_dionaea->pchild->fd = pair[0];
 		close(pair[1]);
@@ -120,24 +120,24 @@ int pchild_recv_bind(int fd)
 	msg.msg_control = data;
 	msg.msg_controllen = 1024;
 
-	if ( recvmsg(fd, &msg, 0) > 0 )
+	if( recvmsg(fd, &msg, 0) > 0 )
 	{
 		cmsg = CMSG_FIRSTHDR(&msg);
-		while ( cmsg != NULL )
+		while( cmsg != NULL )
 		{
-			if ( cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type  == SCM_RIGHTS )
+			if( cmsg->cmsg_level == SOL_SOCKET && cmsg->cmsg_type  == SCM_RIGHTS )
 			{
 				int bind_fd = *(int *) CMSG_DATA(cmsg);
 				int ret = bind(bind_fd, (struct sockaddr *)&sa, sizeof_sa);
 				int err = errno;
 				close(bind_fd);
-				if ( write(fd, &ret, sizeof(int)) < 0 )
+				if( write(fd, &ret, sizeof(int)) < 0 )
 				{
 					perror("write");
 				}
-				if ( ret != 0 )
+				if( ret != 0 )
 				{
-					if ( write(fd, &err, sizeof(int)) < 0 )
+					if( write(fd, &err, sizeof(int)) < 0 )
 					{
 						perror("write");
 					}
@@ -153,7 +153,7 @@ int pchild_sent_bind(int sx, struct sockaddr *s, socklen_t size)
 {
 	g_mutex_lock(g_dionaea->pchild->mutex);
 	uintptr_t cmd = (uintptr_t)pchild_recv_bind;
-	if ( send(g_dionaea->pchild->fd, &cmd, sizeof(uintptr_t), 0) != sizeof(uintptr_t) )
+	if( send(g_dionaea->pchild->fd, &cmd, sizeof(uintptr_t), 0) != sizeof(uintptr_t) )
 	{
 		g_error("pchild seems to be dead!");
 	}
@@ -191,7 +191,7 @@ int pchild_sent_bind(int sx, struct sockaddr *s, socklen_t size)
 	msg.msg_controllen = cmsg->cmsg_len;
 
 	g_debug("sending msg to child to bind port ...");
-	if ( sendmsg(g_dionaea->pchild->fd, &msg, 0) < 0 )
+	if( sendmsg(g_dionaea->pchild->fd, &msg, 0) < 0 )
 	{
 		g_critical("sendmsg failed (%s)", strerror(errno));
 		g_mutex_unlock(g_dionaea->pchild->mutex);
@@ -201,7 +201,7 @@ int pchild_sent_bind(int sx, struct sockaddr *s, socklen_t size)
 	int ret=0;
 	recv(g_dionaea->pchild->fd, &ret, sizeof(int), 0);
 	g_mutex_unlock(g_dionaea->pchild->mutex);
-	if ( ret != 0 )
+	if( ret != 0 )
 	{
 		recv(g_dionaea->pchild->fd, &ret, sizeof(int), 0);
 		g_critical("bind failed (%s)", strerror(ret));
@@ -213,7 +213,7 @@ int pchild_sent_bind(int sx, struct sockaddr *s, socklen_t size)
 		errno = 0;
 		return ret;
 	}
-	
+
 }
 
 

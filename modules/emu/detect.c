@@ -58,7 +58,7 @@ void *proc_emu_ctx_cfg_new(struct lcfgx_tree_node *node)
 	g_debug("%s node %p", __PRETTY_FUNCTION__, node);
 	lcfgx_tree_dump(node,0);
 	struct emu_config *conf = g_malloc0(sizeof(struct emu_config));
-	
+
 	struct lcfgx_tree_node *n;
 	if( lcfgx_get_string(node, &n, "emulation.limits.files") == LCFGX_PATH_FOUND_TYPE_OK )
 		conf->limits.files = strtol(n->value.string.data, NULL, 10);
@@ -101,7 +101,7 @@ void *proc_emu_ctx_cfg_new(struct lcfgx_tree_node *node)
 //	g_error("STOP");
 	return conf;
 
-err:
+	err:
 	g_warning("configuration incomplete");
 	g_free(conf);
 	return NULL;
@@ -109,7 +109,7 @@ err:
 
 void *proc_emu_ctx_new(void *cfg)
 {
-	if ( cfg == NULL )
+	if( cfg == NULL )
 	{
 		g_error("emulation needs configuration");
 	}
@@ -132,7 +132,7 @@ void proc_emu_on_io_in(struct connection *con, struct processor_data *pd)
 	void *streamdata = NULL;
 	int32_t size = bistream_get_stream(pd->bistream, bistream_in, offset, -1, &streamdata);
 	int ret = 0;
-	if ( size != -1 )
+	if( size != -1 )
 	{
 		struct emu *e = emu_new();
 		ret = emu_shellcode_test(e, streamdata, size);

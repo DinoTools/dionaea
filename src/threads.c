@@ -59,7 +59,7 @@ void trigger_cb(struct ev_loop *loop, struct ev_async *w, int revents)
 {
 	GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
 	struct async_cmd *cmd;
-	while ( (cmd = g_async_queue_try_pop(aq)) != NULL )
+	while( (cmd = g_async_queue_try_pop(aq)) != NULL )
 	{
 		cmd->function(cmd->data);
 		g_free(cmd);

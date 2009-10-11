@@ -74,7 +74,7 @@ static int json_escape_str(GString *target, char *str)
 	do
 	{
 		c = str[pos];
-		switch ( c )
+		switch( c )
 		{
 		case '\0':
 			break;
@@ -85,43 +85,43 @@ static int json_escape_str(GString *target, char *str)
 		case '"':
 		case '\\':
 		case '/':
-			if ( pos - start_offset > 0 )
+			if( pos - start_offset > 0 )
 				g_string_append_len(target, str + start_offset, pos - start_offset);
-			if ( c == '\b' ) 
+			if( c == '\b' )
 				g_string_append_len(target, "\\b", 2);
-			else if ( c == '\n' ) 
+			else if( c == '\n' )
 				g_string_append_len(target, "\\n", 2);
-			else if ( c == '\r' ) 
+			else if( c == '\r' )
 				g_string_append_len(target, "\\r", 2);
-			else if ( c == '\t' ) 
+			else if( c == '\t' )
 				g_string_append_len(target, "\\t", 2);
-			else if ( c == '"' ) 
+			else if( c == '"' )
 				g_string_append_len(target, "\\\"", 2);
-			else if ( c == '\\' ) 
+			else if( c == '\\' )
 				g_string_append_len(target, "\\\\", 2);
-			else if ( c == '/' ) 
+			else if( c == '/' )
 				g_string_append_len(target, "\\/", 2);
 			start_offset = ++pos;
 			break;
 		default:
-			if ( c < ' ' )
+			if( c < ' ' )
 			{
-				if ( pos - start_offset > 0 )
+				if( pos - start_offset > 0 )
 					g_string_append_len(target, str + start_offset, pos - start_offset);
 				g_string_append_printf(target, "\\u00%c%c",json_hex_chars[c >> 4], json_hex_chars[c & 0xf]);
 				start_offset = ++pos;
-			} else 
+			} else
 				pos++;
 		}
-	} while ( c );
-	if ( pos - start_offset > 0 )
+	} while( c );
+	if( pos - start_offset > 0 )
 		g_string_append_len(target, str + start_offset, pos - start_offset);
 	return 0;
 }
 
 void json_profile_argument_debug(struct emu_profile_argument *argument, int indent, bool has_name, GString *str)
 {
-	switch(argument->render)
+	switch( argument->render )
 	{
 	case render_struct:
 		if( has_name )
@@ -133,11 +133,11 @@ void json_profile_argument_debug(struct emu_profile_argument *argument, int inde
 
 
 		struct emu_profile_argument *argumentit;
-		for (argumentit = emu_profile_arguments_first(argument->value.tstruct.arguments); 
-			  !emu_profile_arguments_istail(argumentit); 
-			  argumentit = emu_profile_arguments_next(argumentit))
+		for( argumentit = emu_profile_arguments_first(argument->value.tstruct.arguments); 
+		   !emu_profile_arguments_istail(argumentit); 
+		   argumentit = emu_profile_arguments_next(argumentit) )
 		{
-			if(argumentit != emu_profile_arguments_first(argument->value.tstruct.arguments))
+			if( argumentit != emu_profile_arguments_first(argument->value.tstruct.arguments) )
 				g_string_append_printf(str, ",\n");
 //				printf(",\n");
 			json_profile_argument_debug(argumentit,indent+1, true, str);
@@ -155,11 +155,11 @@ void json_profile_argument_debug(struct emu_profile_argument *argument, int inde
 		else
 			g_string_append_printf(str, "[\n");
 //			printf("[\n");
-		for (argumentit = emu_profile_arguments_first(argument->value.tstruct.arguments); 
-			  !emu_profile_arguments_istail(argumentit); 
-			  argumentit = emu_profile_arguments_next(argumentit))
+		for( argumentit = emu_profile_arguments_first(argument->value.tstruct.arguments); 
+		   !emu_profile_arguments_istail(argumentit); 
+		   argumentit = emu_profile_arguments_next(argumentit) )
 		{
-			if(argumentit != emu_profile_arguments_first(argument->value.tstruct.arguments))
+			if( argumentit != emu_profile_arguments_first(argument->value.tstruct.arguments) )
 				g_string_append_printf(str, ",\n");
 //				printf(",\n");
 			json_profile_argument_debug(argumentit,indent+1, false, str);
@@ -194,15 +194,15 @@ void json_profile_argument_debug(struct emu_profile_argument *argument, int inde
 			char *data = argument->value.tchar;
 			GString *escaped = g_string_sized_new(strlen(data)*2);
 			json_escape_str(escaped, data);
-			
+
 			if( has_name )
 				g_string_append_printf(str, "%*s\"%s\" : \"%s\"", indent*4, " ", argument->argname, escaped->str);
-	//			printf("%*s\"%s\" : \"%s\"", indent*4, " ", argument->argname, argument->value.tchar);
+			//			printf("%*s\"%s\" : \"%s\"", indent*4, " ", argument->argname, argument->value.tchar);
 			else
 				g_string_append_printf(str, "%*s\"%s\"", indent*4, " ", escaped->str);
-	//			printf("%*s\"%s\"", indent*4, " ", argument->value.tchar);
+			//			printf("%*s\"%s\"", indent*4, " ", argument->value.tchar);
 			g_string_free(escaped, TRUE);
-	
+
 		}
 		break;
 
@@ -251,9 +251,9 @@ void json_profile_debug(struct emu_profile *profile, GString *str)
 	struct emu_profile_function *function;
 	g_string_append_printf(str, "[\n");
 //	printf("[\n");
-	for (function = emu_profile_functions_first(profile->functions); !emu_profile_functions_istail(function); function = emu_profile_functions_next(function))
+	for( function = emu_profile_functions_first(profile->functions); !emu_profile_functions_istail(function); function = emu_profile_functions_next(function) )
 	{
-		if( function !=  emu_profile_functions_first(profile->functions))
+		if( function !=  emu_profile_functions_first(profile->functions) )
 //			printf(",\n");
 			g_string_append_printf(str, ",\n");
 		json_profile_function_debug(function, 1, str);
@@ -276,21 +276,21 @@ void json_profile_function_debug(struct emu_profile_function *function, int inde
 	g_string_append_printf(str, "%*s\"args\" : [ \n", indent*4, " ");
 //	printf("%*s\"args\" : [ \n", indent*4, " ");
 	struct emu_profile_argument *argument;
-	for (argument = emu_profile_arguments_first(function->arguments); 
-		  !emu_profile_arguments_istail(argument); 
-		  argument = emu_profile_arguments_next(argument))
+	for( argument = emu_profile_arguments_first(function->arguments); 
+	   !emu_profile_arguments_istail(argument); 
+	   argument = emu_profile_arguments_next(argument) )
 	{
-		if(argument != emu_profile_arguments_first(function->arguments))
+		if( argument != emu_profile_arguments_first(function->arguments) )
 			g_string_append_printf(str, ",\n");
 //			printf(",\n");
 		json_profile_argument_debug(argument,indent+1, false, str);
 	}
 	g_string_append_printf(str, "\n");
 //	printf("\n");
-	
+
 	g_string_append_printf(str, "%*s],\n", indent*4, " ");
 //	printf("%*s],\n", indent*4, " ");
-	switch (function->return_value->render)
+	switch( function->return_value->render )
 	{
 	case render_none:
 		g_string_append_printf(str, "%*s\"return\": \"void\"\n", indent*4, " ");
@@ -333,7 +333,7 @@ void profile(struct emu_config *conf, struct connection *con, void *data, unsign
 	bool needemu = false;
 
 	struct emu_profile_function *function;
-	for (function = emu_profile_functions_first(env->profile->functions); !emu_profile_functions_istail(function); function = emu_profile_functions_next(function))
+	for( function = emu_profile_functions_first(env->profile->functions); !emu_profile_functions_istail(function); function = emu_profile_functions_next(function) )
 	{
 		if( strcmp("recv", function->fnname) == 0 )
 		{
@@ -341,12 +341,12 @@ void profile(struct emu_config *conf, struct connection *con, void *data, unsign
 			needemu = true;
 		}
 	}
-	
+
 
 	if( needemu == true )
 	{
 		emulate(conf, con, data, size, offset);
-	}else
+	} else
 	{
 		GString *str = g_string_new(NULL);
 		json_profile_debug(env->profile, str);

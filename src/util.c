@@ -65,13 +65,13 @@ int ipv6_addr_loopback(struct in6_addr const * const a)
 
 int ipv6_addr_linklocal(struct in6_addr const * const a)
 {
-	return ((a->s6_addr32[0] & htonl(0xFFC00000)) == htonl(0xFE800000));
+	return((a->s6_addr32[0] & htonl(0xFFC00000)) == htonl(0xFE800000));
 }
 
 int ipv6_addr_v4mapped(struct in6_addr const * const a)
 {
-	return ((a->s6_addr32[0] | a->s6_addr32[1]) == 0 &&
-		 a->s6_addr32[2] == htonl(0x0000ffff));
+	return((a->s6_addr32[0] | a->s6_addr32[1]) == 0 &&
+		   a->s6_addr32[2] == htonl(0x0000ffff));
 }
 
 void ipv6_v6_map_v4(struct sockaddr_in6 *from, struct sockaddr_in *to)
@@ -104,7 +104,7 @@ bool parse_addr(char const * const addr, char const * const iface, uint16_t cons
 
 	int validaddr = inet_pton(PF_INET6, addr, &si6->sin6_addr);
 
-	if ( validaddr > 0 )
+	if( validaddr > 0 )
 	{
 		si6->sin6_family = PF_INET6;
 		si6->sin6_port = htons(port);
@@ -112,7 +112,7 @@ bool parse_addr(char const * const addr, char const * const iface, uint16_t cons
 		*socket_domain = PF_INET6;
 		if( ipv6_addr_linklocal(&si6->sin6_addr) )
 		{
-			if ( iface == NULL || strlen(iface) == 0 || if_nametoindex(iface) == 0)
+			if( iface == NULL || strlen(iface) == 0 || if_nametoindex(iface) == 0 )
 			{
 				g_warning("Link Local address %s without valid scope id?", addr);
 				return false;
@@ -123,11 +123,11 @@ bool parse_addr(char const * const addr, char const * const iface, uint16_t cons
 	}
 
 	validaddr = inet_pton(PF_INET, addr, &si->sin_addr);
-	if ( validaddr > 0 )
+	if( validaddr > 0 )
 	{
 		si->sin_family = PF_INET;
 		si->sin_port = htons(port);
-		
+
 #ifdef BIND_IPV4_MAPPED_LOCALHOST_IPV6
 		ipv6_v4_map_v6(si, si6);
 		*sizeof_sa = sizeof(struct sockaddr_in6);
@@ -140,10 +140,10 @@ bool parse_addr(char const * const addr, char const * const iface, uint16_t cons
 	}
 
 	static const char *un_prefix = "un://";
-	if ( strncmp(addr, un_prefix,  strlen(un_prefix)) == 0 )
+	if( strncmp(addr, un_prefix,  strlen(un_prefix)) == 0 )
 	{
 		const char *p = addr + strlen(un_prefix);
-		if( strlen(p) > sizeof(struct sockaddr_storage) - sizeof(unsigned short))
+		if( strlen(p) > sizeof(struct sockaddr_storage) - sizeof(unsigned short) )
 		{
 			g_warning("unix path would not fit into buffer\n");
 			return false;

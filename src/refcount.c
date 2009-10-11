@@ -58,7 +58,7 @@ bool refcount_is_zero(struct refcount *rc)
 	bool ret = false;
 
 	g_mutex_lock(rc->mutex);
-	if ( rc->refs == 0 )
+	if( rc->refs == 0 )
 		ret = true;
 	g_mutex_unlock(rc->mutex);
 	return ret;

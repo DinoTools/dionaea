@@ -67,7 +67,7 @@ static bool emu_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
 //	struct lcfgx_tree_node *v;
-    return true;
+	return true;
 }
 
 static bool emu_free(void)

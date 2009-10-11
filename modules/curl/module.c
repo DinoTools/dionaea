@@ -82,9 +82,9 @@ struct session
 
 		struct
 		{
-			struct curl_httppost	*formpost;
-			struct curl_httppost	*last;
-			struct curl_slist		*headers;
+			struct curl_httppost    *formpost;
+			struct curl_httppost    *last;
+			struct curl_slist       *headers;
 		}upload;
 	}action;
 };
@@ -114,7 +114,7 @@ static void session_free(struct session *session)
 	switch( session->type )
 	{
 	case session_type_download:
-		if ( session->action.download.file )
+		if( session->action.download.file )
 		{
 			tempfile_unlink(session->action.download.file);
 			tempfile_free(session->action.download.file);
@@ -183,7 +183,7 @@ static void check_run_count(void)
 						incident_value_string_set(i, "path", g_string_new(session->action.download.file->path));
 						incident_report(i);
 						incident_free(i);
-					}else
+					} else
 					{
 						g_warning("DOWNLOAD FAIL: %s => (%d) %s", eff_url, msg->data.result, session->error);
 						tempfile_close(session->action.download.file);
@@ -194,7 +194,7 @@ static void check_run_count(void)
 					if( msg->data.result == CURLE_OK )
 					{
 						g_info("UPLOAD DONE: %s => (%d) %s", eff_url, msg->data.result, session->error);
-					}else
+					} else
 					{
 						g_warning("UPLOAD FAIL: %s => (%d) %s", eff_url, msg->data.result, session->error);
 					}
@@ -306,7 +306,7 @@ static int curl_socketfunction_cb(CURL *easy, curl_socket_t s, int action, void 
 /* CURLOPT_WRITEFUNCTION */
 static size_t curl_writefunction_cb(void *ptr, size_t size, size_t nmemb, void *data)
 {
-	
+
 	struct session *session = (struct session *) data;
 	g_debug("session %p file %i", session, session->action.download.file->fd);
 	if( session->type == session_type_download )
@@ -332,13 +332,13 @@ static int curl_debugfunction_cb(CURL *easy, curl_infotype type, char *data, siz
 
 	struct session *session;
 	curl_easy_getinfo(easy, CURLINFO_PRIVATE, &session);
-	switch ( type )
+	switch( type )
 	{
 	case CURLINFO_TEXT:
 		{
 			char *text = g_strdup(data);
 			int len = strlen(text);
-			if ( text[len-1] == '\n' )
+			if( text[len-1] == '\n' )
 				text[len-1] = '\0';
 			g_debug("%s: %s", session->url, text);
 			g_free(text);
@@ -354,7 +354,7 @@ static int curl_debugfunction_cb(CURL *easy, curl_infotype type, char *data, siz
 	default:
 		break;
 	}
-	
+
 	return 0;
 }
 
@@ -366,7 +366,7 @@ void session_upload_new(const char *url, const char *email, const char *file)
 
 	session->type = session_type_upload;
 	session->url = g_strdup(url);
-    
+
 //	char *name = "foobar";
 
 	curl_formadd(&session->action.upload.formpost,
@@ -398,8 +398,8 @@ void session_upload_new(const char *url, const char *email, const char *file)
 
 
 	curl_easy_setopt(session->easy, CURLOPT_URL, session->url);
-	curl_easy_setopt(session->easy,	CURLOPT_HTTPPOST, session->action.upload.formpost);
-	curl_easy_setopt(session->easy,	CURLOPT_HTTPHEADER, session->action.upload.headers);
+	curl_easy_setopt(session->easy, CURLOPT_HTTPPOST, session->action.upload.formpost);
+	curl_easy_setopt(session->easy, CURLOPT_HTTPHEADER, session->action.upload.headers);
 	curl_easy_setopt(session->easy, CURLOPT_WRITEFUNCTION, curl_writefunction_cb);
 	curl_easy_setopt(session->easy, CURLOPT_WRITEDATA, session);
 	curl_easy_setopt(session->easy, CURLOPT_DEBUGFUNCTION, curl_debugfunction_cb);
@@ -412,7 +412,7 @@ void session_upload_new(const char *url, const char *email, const char *file)
 	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_TIME, 3L);
 	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_LIMIT, 10L);
 	curl_easy_setopt(session->easy, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
-	
+
 	g_debug("Adding easy %p to multi %p (%s)", session->easy, curl_runtime.multi, url);
 	rc = curl_multi_add_handle(curl_runtime.multi, session->easy);
 	curl_runtime.queued++;
@@ -457,23 +457,22 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 {
 	g_debug("%s i %p ctx %p", __PRETTY_FUNCTION__, i, ctx);
 	GString *url;
-	if( strcmp(i->origin, "dionaea.download.offer") == 0  )
+	if( strcmp(i->origin, "dionaea.download.offer") == 0 )
 	{
-		if ( incident_value_string_get(i, "url", &url) )
+		if( incident_value_string_get(i, "url", &url) )
 		{
-			if ( strncasecmp(url->str,  "http", 4) != 0)
+			if( strncasecmp(url->str,  "http", 4) != 0 )
 				return;
-	
+
 			char *addr = NULL;
 			struct connection *con;
-			if ( incident_value_ptr_get(i, "con", (uintptr_t *)&con) )
+			if( incident_value_ptr_get(i, "con", (uintptr_t *)&con) )
 				addr = con->local.ip_string;
 			session_download_new(url->str, addr);
-		}
-		else
+		} else
 			g_critical("download without url?");
-	}else
-	if( strcmp(i->origin, "dionaea.upload.request") == 0  )
+	} else
+		if( strcmp(i->origin, "dionaea.upload.request") == 0 )
 	{
 		GString *url;
 		GString *email;
@@ -481,7 +480,7 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 
 		if( incident_value_string_get(i, "file", &file) == true && 
 			incident_value_string_get(i, "email", &email) == true &&
-			incident_value_string_get(i, "url", &url) == true)
+			incident_value_string_get(i, "url", &url) == true )
 		{
 			session_upload_new(url->str, email->str, file->str);
 		}
@@ -523,9 +522,9 @@ static bool curl_new(struct dionaea *d)
 
 	GString *features = g_string_new("");
 	GString *protocols = g_string_new("");
-	if ( curlinfo->features )
+	if( curlinfo->features )
 	{
-		
+
 		struct curl_feature
 		{
 			const char *name;
@@ -549,13 +548,13 @@ static bool curl_new(struct dionaea *d)
 			{"libz", CURL_VERSION_LIBZ},
 			{"charconv", CURL_VERSION_CONV}
 		};
-		for (unsigned int i=0; i<sizeof(feats)/sizeof(feats[0]); i++ )
-			if ( curlinfo->features & feats[i].bitmask )
+		for( unsigned int i=0; i<sizeof(feats)/sizeof(feats[0]); i++ )
+			if( curlinfo->features & feats[i].bitmask )
 				g_string_append_printf(features, ",%s", feats[i].name);
 
 	}
-	if ( curlinfo->protocols )
-		for (const char * const *proto=curlinfo->protocols; *proto; ++proto )
+	if( curlinfo->protocols )
+		for( const char * const *proto=curlinfo->protocols; *proto; ++proto )
 			g_string_append_printf(protocols, ",%s", *proto);
 
 	g_info("curl version %s features:%s protocols:%s ", curlinfo->version, features->str+1, protocols->str+1);

@@ -17,7 +17,7 @@ struct processors
 
 
 enum processor_state 
-{ 
+{
 	processor_done, 
 	processor_continue 
 };
@@ -37,8 +37,8 @@ struct processor
 {
 	const char *name;
 	processor_cfg_new cfg;
-	processor_process process;	
-	processor_ctx_new new;	
+	processor_process process;  
+	processor_ctx_new new;  
 	processor_ctx_free free;
 	processor_io io_in;
 	processor_io io_out;
@@ -57,7 +57,7 @@ struct processor_data
 	void *ctx;
 	struct bistream *bistream;
 
-	GList *filters; // of type struct stream_processor_data
+	GList *filters;	// of type struct stream_processor_data
 };
 
 bool processors_tree_create(GNode *tree, struct lcfgx_tree_node *node);

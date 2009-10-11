@@ -81,16 +81,16 @@ struct logger
 	log_util_fn close;
 	log_util_fn hup;
 	GLogFunc log;
-	
+
 	void *data;
 };
 struct logger *logger_new(GLogFunc log, log_util_fn xopen, log_util_fn hup, log_util_fn xclose, void *data);
 
 
 void log_multiplexer(const gchar *log_domain, 
-			GLogLevelFlags log_level,
-			const gchar *message,
-            gpointer user_data);
+					 GLogLevelFlags log_level,
+					 const gchar *message,
+					 gpointer user_data);
 
 
 struct logger_file_data
@@ -101,17 +101,17 @@ struct logger_file_data
 };
 
 void logger_file_log(const gchar *log_domain, 
-			GLogLevelFlags log_level,
-			const gchar *message,
-            gpointer user_data);
+					 GLogLevelFlags log_level,
+					 const gchar *message,
+					 gpointer user_data);
 bool logger_file_open(void *data);
 bool logger_file_close(void *data);
 bool logger_file_hup(void *data);
 
 
 void logger_stdout_log(const gchar *log_domain, 
-			GLogLevelFlags log_level,
-			const gchar *message,
-            gpointer user_data);
+					   GLogLevelFlags log_level,
+					   const gchar *message,
+					   gpointer user_data);
 
 
