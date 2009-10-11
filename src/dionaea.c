@@ -665,25 +665,6 @@ int main (int argc, char *argv[])
 	ev_async_init(&d->threads->trigger, trigger_cb);
 	ev_async_start(d->loop, &d->threads->trigger);
 
-	// thread pool
-	int threads = sysconf(_SC_NPROCESSORS_ONLN);
-	threads = (threads <= 1?2:threads);
-	GError *thread_error = NULL;
-	g_message("Creating %i threads in pool", threads);
-	d->threads->pool = g_thread_pool_new(threadpool_wrapper, NULL, threads, TRUE, &thread_error);
-
-	if( thread_error != NULL )
-	{
-		g_error("Could not create thread pool (%s)",  thread_error->message);
-	}
-
-	// periodic thread pool surveillance
-	ev_periodic_init(&d->threads->surveillance, surveillance_cb, 0., 5., NULL);
-	ev_periodic_start(d->loop, &d->threads->surveillance);
-
-
-
-
 	// chroot
 	if ( opt->root != NULL && chroot(opt->root) != 0 )
 	{
@@ -714,6 +695,22 @@ int main (int argc, char *argv[])
 //	ev_signal_start(d->loop, &d->signals->sigsegv);
 //	signal(SIGSEGV, (sighandler_t) segv_handler);
 //	signal(SIGBUS, (sighandler_t) segv_handler);
+
+	// thread pool
+	int threads = sysconf(_SC_NPROCESSORS_ONLN);
+	threads = (threads <= 1?2:threads);
+	GError *thread_error = NULL;
+	g_message("Creating %i threads in pool", threads);
+	d->threads->pool = g_thread_pool_new(threadpool_wrapper, NULL, threads, TRUE, &thread_error);
+
+	if( thread_error != NULL )
+	{
+		g_error("Could not create thread pool (%s)",  thread_error->message);
+	}
+
+	// periodic thread pool surveillance
+	ev_periodic_init(&d->threads->surveillance, surveillance_cb, 0., 5., NULL);
+	ev_periodic_start(d->loop, &d->threads->surveillance);
 
 
 	// loop	
