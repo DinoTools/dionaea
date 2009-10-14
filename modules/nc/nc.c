@@ -71,83 +71,82 @@ static bool nc_new(struct dionaea *d)
 //		return false;
 
 //	lcfgx_tree_dump(nc_runtime.config, 0);
-	for (v = nc_runtime.config->value.elements; v != NULL; v = v->next)
+	for( v = nc_runtime.config->value.elements; v != NULL; v = v->next )
 	{
 		g_message("node %s", (char *)v->key);
-		if (strcmp(v->key, "services" ) != 0 && 
+		if( strcmp(v->key, "services" ) != 0 && 
 			strcmp(v->key, "clients" ) != 0 )
 			continue;
 
-		for(struct lcfgx_tree_node *it = v->value.elements; it != NULL; it = it->next)
+		for( struct lcfgx_tree_node *it = v->value.elements; it != NULL; it = it->next )
 		{
 			struct lcfgx_tree_node *node;
 			enum connection_transport trans = connection_transport_tcp;
-	
-			if(lcfgx_get_string(it, &node, "type") == LCFGX_PATH_FOUND_TYPE_OK)
-				if ( connection_transport_from_string(node->value.string.data, &trans) == false)
+
+			if( lcfgx_get_string(it, &node, "type") == LCFGX_PATH_FOUND_TYPE_OK )
+				if( connection_transport_from_string(node->value.string.data, &trans) == false )
 					continue;
-	
+
 			struct connection *con = connection_new(trans);
-	
+
 			char *host = "::";
-			if(lcfgx_get_string(it, &node, "host") == LCFGX_PATH_FOUND_TYPE_OK)
+			if( lcfgx_get_string(it, &node, "host") == LCFGX_PATH_FOUND_TYPE_OK )
 				host = node->value.string.data;
-	
+
 			int port = 4711;
-			if(lcfgx_get_string(it, &node, "port") == LCFGX_PATH_FOUND_TYPE_OK)
+			if( lcfgx_get_string(it, &node, "port") == LCFGX_PATH_FOUND_TYPE_OK )
 				port = atoi(node->value.string.data);
-	
+
 			char *iface = NULL;
-			if(lcfgx_get_string(it, &node, "iface") == LCFGX_PATH_FOUND_TYPE_OK)
+			if( lcfgx_get_string(it, &node, "iface") == LCFGX_PATH_FOUND_TYPE_OK )
 				iface = node->value.string.data;
-			
-			if (strcmp(v->key, "services" ) == 0)
+
+			if( strcmp(v->key, "services" ) == 0 )
 			{
 				connection_bind(con, host, port, iface);
 				connection_listen(con, 10);
 			}
-	
-			if(lcfgx_get_string(it, &node, "throttle.in") == LCFGX_PATH_FOUND_TYPE_OK)
+
+			if( lcfgx_get_string(it, &node, "throttle.in") == LCFGX_PATH_FOUND_TYPE_OK )
 				connection_throttle_io_in_set(con, atoi(node->value.string.data));
 			g_message("throttle in %s", (char *)node->value.string.data);
-	
-			if(lcfgx_get_string(it, &node, "throttle.out") == LCFGX_PATH_FOUND_TYPE_OK)
+
+			if( lcfgx_get_string(it, &node, "throttle.out") == LCFGX_PATH_FOUND_TYPE_OK )
 				connection_throttle_io_out_set(con, atoi(node->value.string.data));
-	
-			if (strcmp(v->key, "services" ) == 0)
-				if(lcfgx_get_string(it, &node, "timeout.listen") == LCFGX_PATH_FOUND_TYPE_OK)
+
+			if( strcmp(v->key, "services" ) == 0 )
+				if( lcfgx_get_string(it, &node, "timeout.listen") == LCFGX_PATH_FOUND_TYPE_OK )
 					connection_listen_timeout_set(con,  atoi(node->value.string.data));
-	
-			if (strcmp(v->key, "clients" ) == 0)
-				if (lcfgx_get_string(it, &node, "timeout.reconnect") == LCFGX_PATH_FOUND_TYPE_OK)
+
+			if( strcmp(v->key, "clients" ) == 0 )
+				if( lcfgx_get_string(it, &node, "timeout.reconnect") == LCFGX_PATH_FOUND_TYPE_OK )
 					connection_reconnect_timeout_set(con,  atoi(node->value.string.data));
-	
-			if(lcfgx_get_string(it, &node, "timeout.connect") == LCFGX_PATH_FOUND_TYPE_OK)
+
+			if( lcfgx_get_string(it, &node, "timeout.connect") == LCFGX_PATH_FOUND_TYPE_OK )
 				connection_idle_timeout_set(con,  atoi(node->value.string.data));
-	
-			if(lcfgx_get_string(it, &node, "proto") == LCFGX_PATH_FOUND_TYPE_OK )
+
+			if( lcfgx_get_string(it, &node, "proto") == LCFGX_PATH_FOUND_TYPE_OK )
 			{
-				if ( memcmp("redir", node->value.string.data, MIN(strlen("redir"), node->value.string.len) ) == 0 ) 
+				if( memcmp("redir", node->value.string.data, MIN(strlen("redir"), node->value.string.len) ) == 0 )
 					connection_protocol_set(con, &proto_nc_redir);
 				else
-				if ( memcmp("source", node->value.string.data, MIN(strlen("source"), node->value.string.len) ) == 0 ) 
+					if( memcmp("source", node->value.string.data, MIN(strlen("source"), node->value.string.len) ) == 0 )
 					connection_protocol_set(con, &proto_nc_source);
 				else
-				if ( memcmp("sink", node->value.string.data, MIN(strlen("sink"), node->value.string.len) ) == 0 ) 
+					if( memcmp("sink", node->value.string.data, MIN(strlen("sink"), node->value.string.len) ) == 0 )
 					connection_protocol_set(con, &proto_nc_sink);
 				else
 					connection_protocol_set(con, &proto_nc_redir);
-			}
-			else
+			} else
 				connection_protocol_set(con, &proto_nc_redir);
-	
-	
-			if (strcmp(v->key, "clients" ) == 0)
+
+
+			if( strcmp(v->key, "clients" ) == 0 )
 				connection_connect(con, host, port, iface);
 		}
 	}
 
-    return true;
+	return true;
 }
 
 static bool nc_free(void)
@@ -164,7 +163,7 @@ static bool nc_hup(struct lcfgx_tree_node *node)
 
 struct module_api *module_init(struct dionaea *d)
 {
-    g_debug("%s:%i %s dionaea %p",__FILE__, __LINE__, __PRETTY_FUNCTION__, d);
+	g_debug("%s:%i %s dionaea %p",__FILE__, __LINE__, __PRETTY_FUNCTION__, d);
 	static struct module_api nc_api =
 	{
 		.config = &nc_config,

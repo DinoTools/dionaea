@@ -115,7 +115,7 @@ void python_io_in_cb(EV_P_ struct ev_io *w, int revents)
 {
 	PyCompilerFlags cf;
 	cf.cf_flags = 0;
-	
+
 	tcsetattr(0, TCSANOW, &runtime.read_termios);
 	PyRun_InteractiveOneFlags(runtime.stdin, "<stdin>", &cf);
 	traceback();
@@ -126,7 +126,7 @@ static void python_mkshell_ihandler_cb(struct incident *i, void *ctx)
 {
 	g_debug("%s i %p ctx %p", __PRETTY_FUNCTION__, i, ctx);
 	struct connection *con;
-	if ( incident_value_ptr_get(i, "con", (uintptr_t *)&con) )
+	if( incident_value_ptr_get(i, "con", (uintptr_t *)&con) )
 	{
 		g_debug("mkshell for %p", con);
 		const char *name = "cmd";
@@ -158,10 +158,9 @@ static void python_mkshell_ihandler_cb(struct incident *i, void *ctx)
 		ev_io_start(g_dionaea->loop, &con->events.io_in);
 //		ev_io_start(g_dionaea->loop, &con->events.io_out);
 		con->protocol.established(con);
-	}
-	else
+	} else
 		g_critical("mkshell fail");
-	
+
 }
 
 static bool hupy(struct lcfgx_tree_node *node)
@@ -169,10 +168,10 @@ static bool hupy(struct lcfgx_tree_node *node)
 	g_debug("%s node %p",  __PRETTY_FUNCTION__, node);
 	runtime.config = node;
 	struct lcfgx_tree_node *files;
-	if(lcfgx_get_list(runtime.config, &files, "imports") == LCFGX_PATH_FOUND_TYPE_OK)
+	if( lcfgx_get_list(runtime.config, &files, "imports") == LCFGX_PATH_FOUND_TYPE_OK )
 	{
 		struct lcfgx_tree_node *file;
-		for (file = files->value.elements; file != NULL; file = file->next)
+		for( file = files->value.elements; file != NULL; file = file->next )
 		{
 			char *name = file->value.string.data;
 			struct import *i;
@@ -189,7 +188,7 @@ static bool hupy(struct lcfgx_tree_node *node)
 					Py_DECREF(arglist);
 					Py_XDECREF(r);
 					Py_DECREF(func);
-				}else
+				} else
 					PyErr_Clear();
 
 				PyObject *module = PyImport_ReloadModule(i->module);
@@ -198,7 +197,7 @@ static bool hupy(struct lcfgx_tree_node *node)
 					PyErr_Print();
 					g_critical("Reloading module %s failed", i->name);
 					module = i->module;
-				}else
+				} else
 				{
 					Py_DECREF(module); 
 					i->module = module;
@@ -211,10 +210,10 @@ static bool hupy(struct lcfgx_tree_node *node)
 					Py_DECREF(arglist);
 					Py_XDECREF(r);
 					Py_DECREF(func);
-				}else
+				} else
 					PyErr_Clear();
 
-			}else
+			} else
 			{
 				g_message("New Import %s", name);
 				PyObject *module = PyImport_ImportModule(name);
@@ -237,7 +236,7 @@ static bool hupy(struct lcfgx_tree_node *node)
 					Py_DECREF(arglist);
 					Py_XDECREF(r);
 					Py_DECREF(func);
-				}else
+				} else
 					PyErr_Clear();
 
 			}
@@ -282,16 +281,16 @@ static bool new(struct dionaea *dionaea)
 	char relpath[1024];
 	int i=0;
 	struct lcfgx_tree_node *paths;
-	if(lcfgx_get_list(runtime.config, &paths, "sys_path") == LCFGX_PATH_FOUND_TYPE_OK)
+	if( lcfgx_get_list(runtime.config, &paths, "sys_path") == LCFGX_PATH_FOUND_TYPE_OK )
 	{
 		struct lcfgx_tree_node *path;
-		for (path = paths->value.elements; path != NULL; path = path->next)
+		for( path = paths->value.elements; path != NULL; path = path->next )
 		{
 			char *name = path->value.string.data;
 			if( strcmp(name, "default") == 0 )
 				sprintf(relpath, "sys.path.insert(%i, '%s/lib/dionaea/python/')", i, PREFIX);
-			else 
-			if( *name == '/' )
+			else
+				if( *name == '/' )
 				sprintf(relpath, "sys.path.insert(%i, '%s')", i, name);
 			else
 				sprintf(relpath, "sys.path.insert(%i, '%s/%s')", i, PREFIX, name);
@@ -303,10 +302,10 @@ static bool new(struct dionaea *dionaea)
 
 	runtime.imports = g_hash_table_new(g_str_hash, g_str_equal);
 	struct lcfgx_tree_node *files;
-	if(lcfgx_get_list(runtime.config, &files, "imports") == LCFGX_PATH_FOUND_TYPE_OK)
+	if( lcfgx_get_list(runtime.config, &files, "imports") == LCFGX_PATH_FOUND_TYPE_OK )
 	{
 		struct lcfgx_tree_node *file;
-		for (file = files->value.elements; file != NULL; file = file->next)
+		for( file = files->value.elements; file != NULL; file = file->next )
 		{
 			char *name = file->value.string.data;
 			PyObject *module = PyImport_ImportModule(name);
@@ -328,7 +327,7 @@ static bool new(struct dionaea *dionaea)
 				Py_DECREF(arglist);
 				Py_XDECREF(r);
 				Py_DECREF(func);
-			}else
+			} else
 				PyErr_Clear();
 		}
 	}
@@ -344,13 +343,13 @@ static bool new(struct dionaea *dionaea)
 
 		PyObject *v;
 		v = PySys_GetObject("ps1");
-		if( v == NULL ) 
+		if( v == NULL )
 		{
 			PySys_SetObject("ps1", v = PyUnicode_FromString(">>> "));
 			Py_XDECREF(v);
 		}
 		v = PySys_GetObject("ps2");
-		if( v == NULL ) 
+		if( v == NULL )
 		{
 			PySys_SetObject("ps2", v = PyUnicode_FromString("... "));
 			Py_XDECREF(v);
@@ -373,20 +372,6 @@ static bool new(struct dionaea *dionaea)
 	return true;
 }
 
-struct module_api *module_init(struct dionaea *dionaea)
-{
-    g_debug("%s:%i %s dionaea %p",__FILE__, __LINE__, __PRETTY_FUNCTION__, dionaea);
-	static struct module_api python_api =
-	{
-		.config = &config,
-		.prepare = NULL,
-		.new = &new,
-		.free = &freepy,
-		.hup = &hupy
-	};
-    return &python_api;
-}
-
 void log_wrap(char *name, int number, char *file, int line, char *msg)
 {
 	char *log_domain;
@@ -399,22 +384,23 @@ void log_wrap(char *name, int number, char *file, int line, char *msg)
 	x = asprintf(&log_domain, "%s", name);
 #endif
 
-	if ( number == 0 || number == 10 )	
+	if( number == 0 || number == 10 )
 		log_level = G_LOG_LEVEL_DEBUG;
 	else
-	if ( number == 20 )	
+		if( number == 20 )
 		log_level = G_LOG_LEVEL_INFO;
-	if ( number == 30 )	
+	if( number == 30 )
 		log_level = G_LOG_LEVEL_WARNING;
-	if ( number == 40 )	
+	if( number == 40 )
 		log_level = G_LOG_LEVEL_ERROR;
-	if ( number == 50 )	
+	if( number == 50 )
 		log_level = G_LOG_LEVEL_CRITICAL;
 
 	g_log(log_domain, log_level, "%s", msg);
 	free(log_domain);
 
 }
+
 
 static int cmp_ifaddrs_by_ifa_name(const void *p1, const void *p2)
 {
@@ -485,7 +471,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 		{
 			pyaflist = PyList_New(0);
 			PyDict_SetItem(pyafdict, pyaf, pyaflist);
-		}else
+		} else
 		{
 			pyaflist = PyDict_GetItem(pyafdict, pyaf);
 		}
@@ -502,10 +488,10 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 			pyaddr = PyUnicode_FromString(ip_string);
 			PyDict_SetItemString(pyafdetails, "addr", pyaddr);
 			Py_DECREF(pyaddr);
-		}else
-		if( iface->ifa_addr->sa_family == AF_PACKET && PyList_Size(pyaflist) == 0)
+		} else
+			if( iface->ifa_addr->sa_family == AF_PACKET && PyList_Size(pyaflist) == 0 )
 		{
-	        struct sockaddr_ll *lladdr = (struct sockaddr_ll *)iface->ifa_addr;
+			struct sockaddr_ll *lladdr = (struct sockaddr_ll *)iface->ifa_addr;
 
 			int len = lladdr->sll_halen;
 			char *data = (char *)lladdr->sll_addr;
@@ -528,7 +514,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 
 
 		offset = ADDROFFSET(iface->ifa_netmask);
-		if( offset && iface->ifa_addr->sa_family != AF_PACKET)
+		if( offset && iface->ifa_addr->sa_family != AF_PACKET )
 		{
 			inet_ntop(iface->ifa_addr->sa_family, offset, ip_string, INET6_ADDRSTRLEN);
 			pynetmask = PyUnicode_FromString(ip_string);
@@ -536,11 +522,11 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 			Py_DECREF(pynetmask);
 		}
 
-		if( iface->ifa_addr->sa_family == AF_INET6)
- 		{
+		if( iface->ifa_addr->sa_family == AF_INET6 )
+		{
 			struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)iface->ifa_addr;
 
-			if ( ipv6_addr_linklocal(&sa6->sin6_addr) )
+			if( ipv6_addr_linklocal(&sa6->sin6_addr) )
 			{	// local scope address
 				pyscopeid = PyLong_FromLong(if_nametoindex(iface->ifa_name));
 				PyDict_SetItemString(pyafdetails, "scope", pyscopeid);
@@ -552,7 +538,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 		{
 			offset = ADDROFFSET(iface->ifa_ifu.ifu_broadaddr);
 			if( offset )
-			{	
+			{
 				inet_ntop(iface->ifa_addr->sa_family, offset, ip_string, INET6_ADDRSTRLEN);
 				pybroadcast = PyUnicode_FromString(ip_string);
 				PyDict_SetItemString(pyafdetails, "broadcast", pybroadcast);
@@ -564,7 +550,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 		{
 			offset = ADDROFFSET(iface->ifa_ifu.ifu_dstaddr);
 			if( offset )
-			{	
+			{
 				inet_ntop(iface->ifa_addr->sa_family, offset, ip_string, INET6_ADDRSTRLEN);
 				pypointtopoint = PyUnicode_FromString(ip_string);
 				PyDict_SetItemString(pyafdetails, "pointtopoint", pypointtopoint);
@@ -583,8 +569,9 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 PyObject *pylcfgx_tree(struct lcfgx_tree_node *node)
 {
 	PyObject *obj = NULL;
-	if ( node->type == lcfgx_map )
-	{ 	obj = PyDict_New();
+	if( node->type == lcfgx_map )
+	{
+		obj = PyDict_New();
 		struct lcfgx_tree_node *it;
 		for( it = node->value.elements; it != NULL; it = it->next )
 		{
@@ -592,8 +579,8 @@ PyObject *pylcfgx_tree(struct lcfgx_tree_node *node)
 			PyDict_SetItemString(obj, it->key, val);
 			Py_DECREF(val);
 		}
-	}else
-	if( node->type == lcfgx_list )
+	} else
+		if( node->type == lcfgx_list )
 	{
 		obj = PyList_New(0);
 		struct lcfgx_tree_node *it;
@@ -603,8 +590,8 @@ PyObject *pylcfgx_tree(struct lcfgx_tree_node *node)
 			PyList_Append(obj, val);
 			Py_DECREF(val);
 		}
-	}else 
-	if( node->type == lcfgx_string )
+	} else
+		if( node->type == lcfgx_string )
 	{
 		obj = PyUnicode_FromStringAndSize(node->value.string.data, node->value.string.len);
 	}
@@ -613,7 +600,7 @@ PyObject *pylcfgx_tree(struct lcfgx_tree_node *node)
 
 PyObject *pylcfg(PyObject *self, PyObject *args)
 {
-	PyObject *obj =	pylcfgx_tree(g_dionaea->config.root);
+	PyObject *obj = pylcfgx_tree(g_dionaea->config.root);
 	return obj;
 }
 
@@ -778,7 +765,7 @@ void python_processor_bistream_create(struct connection *con)
 void python_processor_bistream_remove(struct connection *con)
 {
 	GList *it;
-	for ( it = g_list_first(con->processor_data->filters); it != NULL; it = g_list_next(it) )
+	for( it = g_list_first(con->processor_data->filters); it != NULL; it = g_list_next(it) )
 	{
 		if( it->data == &proc_python_bistream_processor_data )
 		{
@@ -807,22 +794,22 @@ static char *pyobjectstring(PyObject *obj)
 {
 	PyObject *pyobjectstr;
 
-	if ( obj == NULL )
+	if( obj == NULL )
 		return g_strdup("<null>");
 
-	if ( obj == Py_None )
+	if( obj == Py_None )
 		return g_strdup("None");
 
-	if ( PyType_Check(obj) )
+	if( PyType_Check(obj) )
 		return g_strdup(((PyTypeObject* ) obj)->tp_name);
 
-	if ( PyUnicode_Check(obj) )
+	if( PyUnicode_Check(obj) )
 		pyobjectstr = obj;
 	else
 	{
-		if ( (pyobjectstr = PyObject_Repr(obj)) != NULL )
+		if( (pyobjectstr = PyObject_Repr(obj)) != NULL )
 		{
-			if ( PyUnicode_Check(pyobjectstr) == 0 )
+			if( PyUnicode_Check(pyobjectstr) == 0 )
 			{
 				Py_XDECREF(pyobjectstr);
 				return g_strdup("<!utf8>");
@@ -835,12 +822,12 @@ static char *pyobjectstring(PyObject *obj)
 	PyUnicode_AsWideChar((PyUnicodeObject *) pyobjectstr, str, pysize);
 	str[pysize] = '\0';
 
-	if ( pyobjectstr != obj )
+	if( pyobjectstr != obj )
 		Py_DECREF(pyobjectstr);
 
 	// measure size
 	size_t csize = wcstombs(0, str, 0);
-	if ( csize == (size_t) -1 )
+	if( csize == (size_t) -1 )
 		return g_strdup("<!wcstombs>");
 
 	char *cstr = (char *) malloc(csize + 1);
@@ -854,7 +841,7 @@ static char *pyobjectstring(PyObject *obj)
 
 void traceback(void)
 {
-	if(!PyErr_Occurred())
+	if( !PyErr_Occurred() )
 	{
 		return;
 	}
@@ -867,12 +854,12 @@ void traceback(void)
 	char *type_string = NULL;
 	char *value_string = NULL;
 
-	if ( type != NULL )
+	if( type != NULL )
 		type_string = pyobjectstring(type);
 	else
-		type_string = g_strdup("unknown type");
+		type_string	= g_strdup("unknown type");
 
-	if ( value != NULL )
+	if( value != NULL )
 		value_string = pyobjectstring(value);
 	else
 		value_string = g_strdup("unknown value");
@@ -885,10 +872,10 @@ void traceback(void)
 	PyObject *args = PyTuple_Pack(1, traceback);
 	PyObject *res = PyObject_CallObject(runtime.traceback.export_tb, args);
 
-	if ( res && PyList_Check(res) )
+	if( res && PyList_Check(res) )
 	{
 		size_t k;
-		for ( k = PyList_GET_SIZE(res); k; --k )
+		for( k = PyList_GET_SIZE(res); k; --k )
 		{
 			PyObject *tuple = PyList_GET_ITEM(res, k-1);
 			char *filename = pyobjectstring(PyTuple_GET_ITEM(tuple, 0));
@@ -898,7 +885,7 @@ void traceback(void)
 //			g_warning(" %s:%s in %s \n\t %s", filename, line_no, function_name, text);
 			g_warning("%s:%s in %s", filename, line_no, function_name);
 			g_warning("\t %s", text);
-			
+
 			g_free(filename);
 			g_free(line_no);
 			g_free(function_name);
@@ -911,4 +898,17 @@ void traceback(void)
 	Py_XDECREF(args);
 }
 
+struct module_api *module_init(struct dionaea *dionaea)
+{
+    g_debug("%s:%i %s dionaea %p",__FILE__, __LINE__, __PRETTY_FUNCTION__, dionaea);
+	static struct module_api python_api =
+	{
+		.config = &config,
+		.prepare = NULL,
+		.new = &new,
+		.free = &freepy,
+		.hup = &hupy
+	};
+    return &python_api;
+}
 
