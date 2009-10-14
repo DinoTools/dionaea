@@ -77,10 +77,30 @@ struct module *module_new(const char *name, const char *module_path)
 void module_free(struct module *m)
 {
 	g_debug("%s module %p name %s", __PRETTY_FUNCTION__, m, m->name);
+
+	/** 
+	 *  
+	 * Modules may leak memory, we want to be able to use Valgrind 
+	 * to debug, therefore we do not run dlclose for the module 
+	 * 
+	 * Citing 'The Valgrind FAQ': 
+	 *  
+	 * 4.2. The stack traces given by Memcheck (or another tool)
+	 * aren't helpful. How can I improve them?
+	 *  
+	 * ... 
+	 * Also, for leak reports involving shared objects, if the 
+	 * shared object is unloaded before the program terminates, 
+	 * Valgrind will discard the debug information and the error 
+	 * message will be full of ??? entries. The workaround here is 
+	 * to avoid calling dlclose on these shared objects. 
+	 * ...
+	 */
+#ifndef DEBUG
 	g_module_close(m->module);
+#endif
 	g_free(m->name);
 	g_free(m);
-
 }
 
 
