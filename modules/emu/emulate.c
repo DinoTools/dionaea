@@ -190,6 +190,11 @@ void emulate_ctx_free(void *data)
 
 	if( ctx->time != NULL )
 		g_timer_destroy(ctx->time);
+
+	emu_free(ctx->emu);
+	emu_env_free(ctx->env);
+	g_mutex_free(ctx->mutex);
+	g_free(ctx);
 }
 
 void emulate_thread(gpointer data, gpointer user_data)
