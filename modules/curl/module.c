@@ -444,13 +444,14 @@ static void session_download_new(const char *url, const char *laddr)
 
 	if( laddr )
 		curl_easy_setopt(session->easy, CURLOPT_INTERFACE, session->laddr);
+
+	session->action.download.file = tempfile_new(curl_runtime.download_dir, "http-");
+	g_debug("session %p file %i path %s", session, session->action.download.file->fd, session->action.download.file->path);
+
 	g_debug("Adding easy %p to multi %p (%s)", session->easy, curl_runtime.multi, url);
 	rc = curl_multi_add_handle(curl_runtime.multi, session->easy);
 	curl_runtime.queued++;
 	check_run_count();
-
-	session->action.download.file = tempfile_new(curl_runtime.download_dir, "http-");
-	g_debug("session %p file %i path %s", session, session->action.download.file->fd, session->action.download.file->path);
 }
 
 static void curl_ihandler_cb(struct incident *i, void *ctx)
