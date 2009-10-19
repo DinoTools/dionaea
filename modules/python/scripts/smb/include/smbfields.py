@@ -162,24 +162,29 @@ SMB_Header_Flags2 = [
 ]
 
 # SMB_Header.Command
+
+SMB_COM_CLOSE              = 0x04
 SMB_COM_TRANS              = 0x25
 SMB_COM_READ               = 0x2E
 SMB_COM_WRITE              = 0x2F
 SMB_COM_TREE_DISCONNECT    = 0x71
 SMB_COM_NEGOTIATE          = 0x72
 SMB_COM_SESSION_SETUP_ANDX = 0x73
+SMB_COM_LOGOFF_ANDX        = 0x74
 SMB_COM_TREE_CONNECT_ANDX  = 0x75
 SMB_COM_NT_CREATE_ANDX     = 0xA2
 SMB_COM_NONE               = 0xFF
 
 
 SMB_Commands = {
+ SMB_COM_CLOSE				:"SMB_COM_CLOSE",
  SMB_COM_TRANS              :"SMB_COM_TRANS",
  SMB_COM_READ               :"SMB_COM_READ",
  SMB_COM_WRITE              :"SMB_COM_WRITE",
  SMB_COM_TREE_DISCONNECT    :"SMB_COM_TREE_DISCONNECT",
  SMB_COM_NEGOTIATE          :"SMB_COM_NEGOTIATE",
  SMB_COM_SESSION_SETUP_ANDX :"SMB_COM_SESSION_SETUP_ANDX",
+ SMB_COM_LOGOFF_ANDX        :"SMB_COM_LOGOFF_ANDX",
  SMB_COM_TREE_CONNECT_ANDX  :"SMB_COM_TREE_CONNECT_ANDX",
  SMB_COM_NT_CREATE_ANDX     :"SMB_COM_NT_CREATE_ANDX",
  SMB_COM_NONE               :"SMB_COM_NONE",
@@ -530,11 +535,14 @@ class SMB_Write_AndX_Request(Packet):
 		LEIntField("Offset",0),
 		XIntField("Reserved2",0xffffffff),
 		XLEShortField("WriteMode",8),
-		LEShortField("Remaining",0),
+		FieldLenField("Remaining", None, fmt='<H', length_of="Data"),
 		LEShortField("DataLenHigh",0), #multiply with 64k		
 		LEShortField("DataLenLow",0),
 		LEShortField("DataOffset",0),
 		IntField("HighOffset",0),
+		XLEShortField("ByteCount",  0),
+		StrFixedLenField("Padding", 0xEE, 1),
+		StrLenField("Data", b"", length_from=lambda x:x.Remaining),
 	]
 
 class SMB_Write_AndX_Response(Packet):
@@ -563,10 +571,11 @@ class SMB_Read_AndX_Request(Packet):
 		LEIntField("Offset",0),
 		LEShortField("MaxCountLow",0),
 		LEShortField("MinCount",0),
-		LEShortField("Remaining",0),
 		IntField("FixGap1", 0xffffffff),
+		LEShortField("Remaining",0),
+		LEIntField("HighOffset", 0),
 		LEShortField("ByteCount",0),
-		IntField("FixGap2", 0),
+#		IntField("FixGap2", 0),
 	]
 
 class SMB_Read_AndX_Response(Packet):
@@ -718,7 +727,7 @@ bind_bottom_up(SMB_Header, SMB_Write_AndX_Response, Command=lambda x: x==0x2f, F
 bind_bottom_up(SMB_Header, SMB_Read_AndX_Request, Command=lambda x: x==0x2e, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Read_AndX_Response, Command=lambda x: x==0x2e, Flags=lambda x: x&0x80)
 
-bind_bottom_up(SMB_Write_AndX_Request, SMB_Data)
+#bind_bottom_up(SMB_Write_AndX_Request, SMB_Data)
 bind_bottom_up(SMB_Read_AndX_Response, SMB_Data)
 
 bind_bottom_up(SMB_Trans_Request, DCERPC_Header)

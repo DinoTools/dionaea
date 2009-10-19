@@ -131,7 +131,7 @@ class smbd(connection):
 			# some rest seems to be not parsed correctly
 			# could be start of some other packet, junk, or failed packet dissection
 			# TODO: recover from this...
-			return len(data) #-len(p.getlayer(Raw).load)
+			return len(data) - len(p.getlayer(Raw).load)
 
 		return len(data)
 
@@ -164,17 +164,17 @@ class smbd(connection):
 #				r = SMB_Sessionsetup_AndX_Response2()
 #			else:
 				r = SMB_Sessionsetup_ESEC_AndX_Response()
-		elif p.getlayer(SMB_Header).Command == 0x75:
+		elif p.getlayer(SMB_Header).Command == SMB_COM_TREE_CONNECT_ANDX:
 			r = SMB_Treeconnect_AndX_Response()
-		elif p.getlayer(SMB_Header).Command == 0x71:
+		elif p.getlayer(SMB_Header).Command == SMB_COM_TREE_DISCONNECT:
 			r = SMB_Treedisconnect()
-		elif p.getlayer(SMB_Header).Command == 0xa2:
+		elif p.getlayer(SMB_Header).Command == SMB_COM_NT_CREATE_ANDX:
 			r = SMB_NTcreate_AndX_Response()
-		elif p.getlayer(SMB_Header).Command == 0x2f:
+		elif p.getlayer(SMB_Header).Command == SMB_COM_WRITE:
 			r = SMB_Write_AndX_Response()
 			r.CountLow = p.getlayer(SMB_Write_AndX_Request).DataLenLow
-			self.buf += p.getlayer(SMB_Data).Bytes
-		elif p.getlayer(SMB_Header).Command == 0x2e:
+			self.buf += p.getlayer(SMB_Write_AndX_Request).Data
+		elif p.getlayer(SMB_Header).Command == SMB_COM_READ:
 			r = SMB_Read_AndX_Response()
 			if self.state['lastcmd'] == 'SMB_COM_WRITE':
 				# lastcmd was WRITE
@@ -194,17 +194,17 @@ class smbd(connection):
 				return rp
 
 			rdata = SMB_Data()
-			if p.getlayer(SMB_Read_AndX_Request).MaxCountLow < len(self.outbuf.build())-self.state['readcount'] :
-				rdata.Bytecount = p.getlayer(SMB_Read_AndX_Request).MaxCountLow+1
-			else:
-				rdata.Bytecount = len(self.outbuf.build()) - self.state['readcount'] +1
+#			if p.getlayer(SMB_Read_AndX_Request).MaxCountLow < len(self.outbuf.build())-self.state['readcount'] :
+#				rdata.Bytecount = p.getlayer(SMB_Read_AndX_Request).MaxCountLow+1
+#			else:
+#				rdata.Bytecount = len(self.outbuf.build()) - self.state['readcount'] +1
+#
+#			rdata.Bytes = b'\x00' + self.outbuf.build()[ self.state['readcount']: self.state['readcount'] + p.getlayer(SMB_Read_AndX_Request).MaxCountLow ]
 
-			rdata.Bytes = b'\x00' + self.outbuf.build()[ self.state['readcount']: self.state['readcount'] + p.getlayer(SMB_Read_AndX_Request).MaxCountLow ]
-
-			self.state['readcount'] += len(rdata.Bytes)-1
-			r.DataLenLow = len(rdata.Bytes)-1
-			
+			self.state['readcount'] += p.Remaining
+			r.DataLenLow = p.Remaining
 			r /= rdata
+
 		elif p.getlayer(SMB_Header).Command == 0x25:
 			self.outbuf = self.process_dcerpc_packet(p.getlayer(DCERPC_Header))
 
