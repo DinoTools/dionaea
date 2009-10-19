@@ -30,17 +30,159 @@ import datetime
 from .packet import *
 from .fieldtypes import *
 
+# Capabilities
+CAP_RAW_MODE           = 0x0001 # The server supports SMB_COM_READ_RAW and SMB_COM_WRITE_RAW (obsolescent)
+CAP_MPX_MODE           = 0x0002 # The server supports	SMB_COM_READ_MPX and SMB_COM_WRITE_MPX (obsolescent)
+CAP_UNICODE            = 0x0004 # The server supports UNICODE strings
+CAP_LARGE_FILES        = 0x0008 # The server supports large files with 64 bit offsets
+CAP_NT_SMBS            = 0x0010 # The server supports the SMBs particular to the NT LM 0.12 dialect. Implies CAP_NT_FIND.
+CAP_RPC_REMOTE_APIS    = 0x0020 # The server supports remote admin API requests via DCE RPC
+CAP_STATUS32           = 0x0040 # The server can respond with 32 bit status codes in Status.Status
+CAP_LEVEL_II_OPLOCKS   = 0x0080 # The server supports level 2 oplocks	
+								# 
+CAP_LOCK_AND_READ      = 0x0100 # The server supports the SMB,SMB_COM_LOCK_AND_READ
+CAP_NT_FIND            = 0x0200 # Reserved
+CAP_NOT_USED		   = 0x0400
+CAP_NOT_USED		   = 0x0800
+CAP_DFS                = 0x1000 # The server is DFS aware
+CAP_INFOLEVEL_PASSTHRU = 0x2000 # The server supports NT information level requests passing	through
+CAP_LARGE_READX        = 0x4000 # The server supports large SMB_COM_READ_ANDX (up to 64k)
+CAP_LARGE_WRITEX       = 0x8000 # The server supports large SMB_COM_WRITE_ANDX (up to 64k)
+
+CAP_NOT_USED		   = 0x00010000
+CAP_NOT_USED		   = 0x00020000
+CAP_NOT_USED		   = 0x00040000
+CAP_NOT_USED		   = 0x00080000
+CAP_NOT_USED		   = 0x00100000
+CAP_NOT_USED		   = 0x00200000
+CAP_NOT_USED		   = 0x00400000
+CAP_UNIX               = 0x00800000 # The server supports CIFS Extensions for UNIX. (See Appendix D for more detail)
+
+CAP_NOT_USED		   = 0x01000000
+CAP_RESERVED           = 0x02000000 # Reserved for future use 
+CAP_NOT_USED		   = 0x04000000
+CAP_NOT_USED		   = 0x08000000
+CAP_NOT_USED		   = 0x10000000
+CAP_BULK_TRANSFER      = 0x20000000 # The server supports SMB_BULK_READ,	SMB_BULK_WRITE (should be 0, no known implementations)
+CAP_COMPRESSED_DATA    = 0x40000000 # The server supports compressed data transfer	(BULK_TRANSFER capability is required to support compressed data transfer).
+CAP_EXTENDED_SECURITY  = 0x80000000 # The server supports extended security exchanges
+
+SMB_Negotiate_Capabilities = [
+	"RAW_MODE",
+	"MPX_MODE",
+	"UNICODE",
+	"LARGE_FILES",
+	"NT_SMBS",
+	"RPC_REMOTE_APIS",
+	"STATUS32",
+	"LEVEL_II_OPLOCKS",
+
+	"LOCK_AND_READ",
+	"NT_FIND",
+	"0x0400",
+	"0x0800",
+	"DFS",
+	"INFOLEVEL_PASSTHRU",
+	"LARGE_READX",
+	"LARGE_WRITEX",
+
+	"0x00010000",
+	"0x00020000",
+	"0x00040000",
+	"0x00080000",
+	"0x00100000",
+	"0x00200000",
+	"0x00400000",
+	"UNIX",
+
+	"0x01000000",
+	"0x02000000",
+	"0x04000000",
+	"0x08000000",
+	"0x10000000",
+	"BULK_TRANSFER",
+	"COMPRESSED_DATA",
+	"EXTENDED_SECURITY",
+]
+
+# SMB_Header.Flags
+SMB_FLAGS_LOCK_AND_READ         = (1<<0) # Reserved for obsolescent requests LOCK_AND_READ, WRITE_AND_CLOSE LANMAN1.0
+SMB_FLAGS_RECEIVE_BUFFER_POSTED = (1<<1) #
+SMB_FLAGS_CASES_ENSITIVITY      = (1<<3) # When on, all pathnames in this SMB must be treated as case-less. When off, the pathnames are case sensitive. LANMAN1.0
+SMB_FLAGS_CANONICAL_PATHNAMES   = (1<<4) # Obsolescent \u2013 client case maps (canonicalizes) file and directory names; servers must ignore this flag.	5 Reserved for obsolescent requests \u2013 oplocks supported for SMB_COM_OPEN, SMB_COM_CREATE and SMB_COM_CREATE_NEW. Servers must ignore when processing all other SMB commands. LANMAN1.0
+SMB_FLAGS_OPLOCKS               = (1<<5) #
+SMB_FLAGS_NOTIFY                = (1<<6) #
+SMB_FLAGS_REQUEST_RESPONSE      = (1<<7) # When on, this SMB is	being sent from the server in response to a client request. The	Command field usually contains the same value in a protocol	request from the client to the server as in the matching response from the server to the client. This bit unambiguously distinguishes the command request from the command response. 
+
+SMB_Header_Flags = [
+"LOCKANDREAD",
+"RECVBUF",
+"-",
+"CASE",
+
+"CANON",
+"OPLOCKS",
+"NOTIFY",
+"REQ_RESP",
+]
+
+
+# SMB_Header.Flags2
+SMB_FLAGS2_KNOWS_LONG_NAMES    = (1)  # If set in a request, the server may return long components in path names in the response.	LM1.2X002
+SMB_FLAGS2_KNOWS_EAS           = (1<<1)  # If set, the client is aware of extended attributes (EAs).
+SMB_FLAGS2_SECURITY_SIGNATURE  = (1<<2)  # If set, the SMB is integrity checked.
+SMB_FLAGS2_RESERVED1           = (1<<3)  # Reserved for future use
+SMB_FLAGS2_IS_LONG_NAME        = (1<<6)  # If set, any path name in the request is a long name.
+SMB_FLAGS2_EXT_SEC             = (1<<11) # If set, the client is aware of Extended Security negotiation.	NT LM 0.12
+SMB_FLAGS2_DFS                 = (1<<12) # If set, any request pathnames in this SMB should be resolved in the Distributed File System. NT LM 0.12
+SMB_FLAGS2_PAGING_IO           = (1<<13) # If set, indicates that a read will be permitted if the client does not have read permission but does have execute permission. This flag is only useful on a read request.
+SMB_FLAGS2_ERR_STATUS          = (1<<14) # If set, specifies that the returned error code is a 32 bit	error code in Status.Status. Otherwise the Status.DosError.ErrorClass and Status.DosError.Error	fields contain the DOS-style error information. When passing NT status codes is negotiated, this flag should be set for every SMB. NT LM 0.12
+SMB_FLAGS2_UNICODE             = (1<<15) # If set, any fields of datatype STRING in this SMB	message are encoded as UNICODE. Otherwise, they	are in ASCII. The character encoding for Unicode fields SHOULD be UTF-16 (little endian). NT LM 0.12
+
+SMB_Header_Flags2 = [
+"KNOWS_LONG_NAMES",
+"KNOWS_EAS",     
+"SECURITY_SIGNATURE",
+"RESERVED3",
+
+"RESERVED4",
+"RESERVED5",
+"IS_LONG_NAME",
+"RESERVED7",
+
+"RESERVED8",
+"RESERVED9",
+"RESERVED10",
+"EXT_SEC",      
+
+"DFS",                 
+"PAGING_IO",
+"ERR_STATUS",         
+"UNICODE",        
+]
+
+# SMB_Header.Command
+SMB_COM_TRANS              = 0x25
+SMB_COM_READ               = 0x2E
+SMB_COM_WRITE              = 0x2F
+SMB_COM_TREE_DISCONNECT    = 0x71
+SMB_COM_NEGOTIATE          = 0x72
+SMB_COM_SESSION_SETUP_ANDX = 0x73
+SMB_COM_TREE_CONNECT_ANDX  = 0x75
+SMB_COM_NT_CREATE_ANDX     = 0xA2
+SMB_COM_NONE               = 0xFF
+
 
 SMB_Commands = {
-	0x25:"SMB_COM_TRANS",
-	0x2E:"SMB_COM_READ",
-	0x2F:"SMB_COM_WRITE",
-	0x71:"SMB_COM_TREE_DISCONNECT",
-	0x72:"SMB_COM_NEGOTIATE",
-	0x73:"SMB_COM_SESSION_SETUP_ANDX",
-	0x75:"SMB_COM_TREE_CONNECT_ANDX",
-	0xA2:"SMB_COM_NT_CREATE_ANDX",
-	0xFF:"SMB_COM_NONE",
+ SMB_COM_TRANS              :"SMB_COM_TRANS",
+ SMB_COM_READ               :"SMB_COM_READ",
+ SMB_COM_WRITE              :"SMB_COM_WRITE",
+ SMB_COM_TREE_DISCONNECT    :"SMB_COM_TREE_DISCONNECT",
+ SMB_COM_NEGOTIATE          :"SMB_COM_NEGOTIATE",
+ SMB_COM_SESSION_SETUP_ANDX :"SMB_COM_SESSION_SETUP_ANDX",
+ SMB_COM_TREE_CONNECT_ANDX  :"SMB_COM_TREE_CONNECT_ANDX",
+ SMB_COM_NT_CREATE_ANDX     :"SMB_COM_NT_CREATE_ANDX",
+ SMB_COM_NONE               :"SMB_COM_NONE",
 }
 
 DCERPC_PacketTypes = {
@@ -98,10 +240,12 @@ class SMB_Header(Packet):
 	name="SMB Header"
 	fields_desc = [
 		StrFixedLenField("Start",b'\xffSMB',4),
-		XByteEnumField("Command",0x72,SMB_Commands),
+		XByteEnumField("Command",SMB_COM_NEGOTIATE,SMB_Commands),
 		LEIntField("Status",0),
-		XByteField("Flags",0x98),
-		XLEShortField("Flags2",0x1 | 32768),
+#		XByteField("Flags",0x98),
+		FlagsField("Flags", 0x98, 8, SMB_Header_Flags),
+#		XLEShortField("Flags2",SMB_FLAGS2_KNOWS_LONG_NAMES|SMB_FLAGS2_UNICODE),
+		FlagsField("Flags2", SMB_FLAGS2_KNOWS_LONG_NAMES|SMB_FLAGS2_UNICODE, -16, SMB_Header_Flags2),
 		LEShortField("PIDHigh",0x0000),
 		LELongField("Signature",0x0),
 		LEShortField("Unused",0x0),
@@ -152,6 +296,7 @@ class SMB_Negociate_Protocol_Response(Packet):
 		LEIntField("MaxRawBuffer",65536),
 		LEIntField("SessionKey",0),
 		XLEIntField("Capabilities",0x8000e3fd),
+#		FlagsField("Capabilties", 0x8000e3fd, -32, SMB_Negotiate_Capabilities),
 		NTTimeField("SystemTime",datetime.datetime.now()),
 		ShortField("SystemTimeZone",0xc4ff),
 		ByteField("KeyLength", 0),
@@ -173,7 +318,8 @@ class SMB_Sessionsetup_ESEC_AndX_Request(Packet):
 		LEIntField("SessionKey",0),
 		FieldLenField("SecurityBlobLength", None, fmt='<H', length_of="SecurityBlob"),
 		LEIntField("Reserved",0),
-		XLEIntField("Capabilities",0x05),
+#		XLEIntField("Capabilities",0x05),
+		FlagsField("Capabilties", 0x8000e3fd, -32, SMB_Negotiate_Capabilities),
 		LEShortField("ByteCount",35),
 		StrLenField("SecurityBlob", "Pass", length_from=lambda x:x.SecurityBlobLength),
 		StrFixedLenField("Padding", "\x00", length_from=lambda x:(x.SecurityBlobLength+1)%2), 
@@ -257,7 +403,8 @@ class SMB_Sessionsetup_AndX_Request2(Packet):
 		FieldLenField("PasswordLength", None, fmt='<H', length_of="Password"),
 		LEShortField("UnicodePasswordLength",0),
 		LEIntField("Reserved2",0),
-		XLEIntField("Capabilities",0),
+#		XLEIntField("Capabilities",0),
+		FlagsField("Capabilties", 0x8000e3fd, -32, SMB_Negotiate_Capabilities),
 		LEShortField("ByteCount",35),
 		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
 		SMBNullField("Account", ""),
@@ -556,8 +703,8 @@ bind_bottom_up(NBTSession, SMB_Header, TYPE = lambda x: x==0)
 bind_bottom_up(SMB_Header, SMB_Negociate_Protocol_Response, Command=lambda x: x==0x72, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Negociate_Protocol_Request_Counts, Command=lambda x: x==0x72, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Request, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: not x&2)
-bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Request2, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: x&2 and not x&32768)
-bind_bottom_up(SMB_Header, SMB_Sessionsetup_ESEC_AndX_Request, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: x&2 and x&32768)
+bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Request2, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: x&2 and not x&SMB_FLAGS2_UNICODE)
+bind_bottom_up(SMB_Header, SMB_Sessionsetup_ESEC_AndX_Request, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: x&2 and x&SMB_FLAGS2_UNICODE)
 bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Response, Command=lambda x: x==0x73, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Treedisconnect, Command=lambda x: x==0x71)
 bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Request, Command=lambda x: x==0x75, Flags=lambda x: not x&0x80)

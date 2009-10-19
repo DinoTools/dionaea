@@ -104,6 +104,8 @@ class smbd(connection):
 			self.close()
 			return len(data)
 
+		p.show()
+
 		r = self.process(p)
 		smblog.debug('packet: {0}'.format(p.summary()))
 
