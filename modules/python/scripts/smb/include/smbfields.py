@@ -535,13 +535,17 @@ class SMB_NTcreate_AndX_Response(Packet):
 		StrLenField("FixStrangeness", strange_packet_tail, length_from=lambda x:len(strange_packet_tail)),
 	]
 
+# page 83
+# the manual says there is a Padding Byte right after the bytecount
+# wireshark disagrees
+# so we swim with the fishes for now
 
 class SMB_Write_AndX_Request(Packet):
 	name = "SMB Write AndX Request"
 	fields_desc = [
 		ByteField("WordCount",14),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
-		ByteField("Reserved1",0),
+		ByteField("AndXReserved",0),
 		LEShortField("AndXOffset",0),
 		XLEShortField("FID",0),
 		LEIntField("Offset",0),
@@ -551,9 +555,9 @@ class SMB_Write_AndX_Request(Packet):
 		LEShortField("DataLenHigh",0), #multiply with 64k		
 		LEShortField("DataLenLow",0),
 		LEShortField("DataOffset",0),
-		IntField("HighOffset",0),
+		ConditionalField(IntField("HighOffset",0), lambda x:x.WordCount==14),
 		XLEShortField("ByteCount",  0),
-		StrFixedLenField("Padding", 0xEE, 1),
+#		StrFixedLenField("Padding", 0xEE, 1),
 		StrLenField("Data", b"", length_from=lambda x:x.Remaining),
 	]
 
@@ -563,7 +567,7 @@ class SMB_Write_AndX_Response(Packet):
 	fields_desc = [
 		ByteField("WordCount",6),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
-		ByteField("Reserved1",0),
+		ByteField("AndXReserved",0),
 		LEShortField("AndXOffset",47),
 		LEShortField("CountLow",0),
 		LEShortField("Remaining",0xffff),
@@ -572,6 +576,8 @@ class SMB_Write_AndX_Response(Packet):
 		LEShortField("ByteCount",0),
 	]
 
+# page 82
+# I have no idea why we need the FixGap's
 class SMB_Read_AndX_Request(Packet):
 	name = "SMB Read AndX Request"
 	fields_desc = [
@@ -585,9 +591,9 @@ class SMB_Read_AndX_Request(Packet):
 		LEShortField("MinCount",0),
 		IntField("FixGap1", 0xffffffff),
 		LEShortField("Remaining",0),
-		LEIntField("HighOffset", 0),
+		ConditionalField(LEIntField("HighOffset", 0), lambda x:x.WordCount==12),
 		LEShortField("ByteCount",0),
-#		IntField("FixGap2", 0),
+		IntField("FixGap2", 0),
 	]
 
 class SMB_Read_AndX_Response(Packet):

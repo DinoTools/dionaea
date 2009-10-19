@@ -226,7 +226,8 @@ class smbd(connection):
 			
 			r /= rdata
 		else:
-			smblog.critical('unknown SMB Command. bailing out.')
+			smblog.critical('...unknown SMB Command. bailing out.')
+			p.show()
 
 		if r:
 			smbh = SMB_Header()
@@ -261,7 +262,7 @@ class smbd(connection):
 				ctxitem = DCERPC_Ack_CtxItem()
 				for uuid in registered_calls:
 					if tmp.UUID == bytes.fromhex(uuid):
-						smblog.info('Found a registered UUID ({}). Accepting Bind.'.format(tmp.UUID))
+						smblog.info('Found a registered UUID (%s). Accepting Bind. (%s)' % (tmp.UUID, str(uuid)))
 						self.state['uuid'] = uuid
 						# Copy Transfer Syntax to CtxItem
 						ctxitem.AckResult = 0
@@ -295,6 +296,7 @@ class smbd(connection):
 		else:
 			# unknown DCERPC packet -> logcrit and bail out.
 			smblog.critical('unknown DCERPC packet. bailing out.')
+			dcep.show()
 
 		return outbuf
 
