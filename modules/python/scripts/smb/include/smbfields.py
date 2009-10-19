@@ -101,7 +101,7 @@ class SMB_Header(Packet):
 		XByteEnumField("Command",0x72,SMB_Commands),
 		LEIntField("Status",0),
 		XByteField("Flags",0x98),
-		XLEShortField("Flags2",0x1),
+		XLEShortField("Flags2",0x1 | 32768),
 		LEShortField("PIDHigh",0x0000),
 		LELongField("Signature",0x0),
 		LEShortField("Unused",0x0),
@@ -151,7 +151,7 @@ class SMB_Negociate_Protocol_Response(Packet):
 		LEIntField("MaxBufferS",4096),
 		LEIntField("MaxRawBuffer",65536),
 		LEIntField("SessionKey",0),
-		XLEIntField("Capabilities",0x20),
+		XLEIntField("Capabilities",0x8000e3fd),
 		NTTimeField("SystemTime",datetime.datetime.now()),
 		ShortField("SystemTimeZone",0xc4ff),
 		ByteField("KeyLength", 0),
@@ -163,24 +163,39 @@ class SMB_Negociate_Protocol_Response(Packet):
 class SMB_Sessionsetup_ESEC_AndX_Request(Packet):
 	name="SMB Sessionsetup ESEC AndX Request"
 	fields_desc = [
-		ByteField("WordCount",13),
+		ByteField("WordCount",12),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
-		ByteField("Reserved1",0),
+		ByteField("AndXReserved",0),
 		LEShortField("AndXOffset",96),
-		LEShortField("MaxBufferS",2920),
+		LEShortField("MaxBufferSize",2920),
 		LEShortField("MaxMPXCount",50),
 		LEShortField("VCNumber",0),
 		LEIntField("SessionKey",0),
 		FieldLenField("SecurityBlobLength", None, fmt='<H', length_of="SecurityBlob"),
-		LEIntField("Reserved2",0),
+		LEIntField("Reserved",0),
 		XLEIntField("Capabilities",0x05),
 		LEShortField("ByteCount",35),
 		StrLenField("SecurityBlob", "Pass", length_from=lambda x:x.SecurityBlobLength),
-		FixGapField("FixGap", b'\0'),
-		SMBNullField("NativeOS","Windows"),
-		SMBNullField("NativeLanManager","Windows"),
-		SMBNullField("PrimaryDomain","WORKGROUP")
+		UnicodeNullField("NativeOS","Windows"),
+		UnicodeNullField("NativeLanManager","Windows"),
 	]
+
+class SMB_Sessionsetup_ESEC_AndX_Response(Packet):
+	name="SMB Sessionsetup ESEC AndX Response"
+	smb_cmd = 0x73
+	fields_desc = [
+		ByteField("WordCount",4),
+		ByteEnumField("AndXCommand",0xff,SMB_Commands),
+		ByteField("AndXReserved",0),
+		LEShortField("AndXOffset",0),
+		XLEShortField("Action",1),
+		FieldLenField("SecurityBlobLength", None, fmt='<H', length_of="SecurityBlob"),
+		StrLenField("SecurityBlob", "", length_from=lambda x:x.SecurityBlobLength),
+		LEShortField("ByteCount",75),
+		UnicodeNullField("NativeOS","Windows 5.1"),
+		UnicodeNullField("NativeLanManager","Windows 2000 LAN Manager"),
+	]
+
 
 class SMB_Sessionsetup_AndX_Request(Packet):
 	name="SMB Sessionsetup AndX Request"
@@ -195,31 +210,6 @@ class SMB_Sessionsetup_AndX_Request(Packet):
 		LEIntField("SessionKey",0),
 		FieldLenField("PasswordLength", None, fmt='<H', length_of="Password"),
 		LEIntField("Reserved2",0),
-		LEShortField("ByteCount",35),
-		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
-		SMBNullField("Account", ""),
-		SMBNullField("PrimaryDomain","WORKGROUP"),
-		SMBNullField("NativeOS","Windows"),
-		SMBNullField("NativeLanManager","Windows"),
-	]
-
-# ugly support for strange wordcount 13
-# TODO: make it possible to catch both wordcounts with one class
-class SMB_Sessionsetup_AndX_Request2(Packet):
-	name="SMB Sessionsetup AndX Request2"
-	fields_desc = [
-		ByteField("WordCount",13),
-		ByteEnumField("AndXCommand",0xff,SMB_Commands),
-		ByteField("Reserved1",0),
-		LEShortField("AndXOffset",0),
-		LEShortField("MaxBufferS",2920),
-		LEShortField("MaxMPXCount",50),
-		LEShortField("VCNumber",0),
-		LEIntField("SessionKey",0),
-		FieldLenField("PasswordLength", None, fmt='<H', length_of="Password"),
-		LEShortField("UnicodePasswordLength",0),
-		LEIntField("Reserved2",0),
-		XLEIntField("Capabilities",0),
 		LEShortField("ByteCount",35),
 		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
 		SMBNullField("Account", ""),
@@ -245,6 +235,35 @@ class SMB_Sessionsetup_AndX_Response(Packet):
 		StrNullField("PrimaryDomain","WORKGROUP"),
 	]
 
+
+# CIFS-TR-1p00_FINAL.pdf 665616b44740177c86051c961fdf6768
+# page 65
+# WordCount 13 is used to negotiate "NT LM 0.12" if the server does not support
+# Extended Security
+class SMB_Sessionsetup_AndX_Request2(Packet):
+	name="SMB Sessionsetup AndX Request2"
+	fields_desc = [
+		ByteField("WordCount",13),
+		ByteEnumField("AndXCommand",0xff,SMB_Commands),
+		ByteField("Reserved1",0),
+		LEShortField("AndXOffset",0),
+		LEShortField("MaxBufferS",2920),
+		LEShortField("MaxMPXCount",50),
+		LEShortField("VCNumber",0),
+		LEIntField("SessionKey",0),
+		FieldLenField("PasswordLength", None, fmt='<H', length_of="Password"),
+		LEShortField("UnicodePasswordLength",0),
+		LEIntField("Reserved2",0),
+		XLEIntField("Capabilities",0),
+		LEShortField("ByteCount",35),
+		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
+		SMBNullField("Account", ""),
+		SMBNullField("PrimaryDomain","WORKGROUP"),
+		SMBNullField("NativeOS","Windows"),
+		SMBNullField("NativeLanManager","Windows"),
+	]
+
+
 class SMB_Sessionsetup_AndX_Response2(Packet):
 	name="SMB Sessionsetup AndX Response"
 	smb_cmd = 0x73
@@ -255,10 +274,11 @@ class SMB_Sessionsetup_AndX_Response2(Packet):
 		LEShortField("AndXOffset",0),
 		XLEShortField("Action",1),
 		LEShortField("ByteCount",47),
-		StrNullField("NativeOS","Windows 5.1"),
-		StrNullField("NativeLanManager","Windows 2000 LAN Manager"),
-		StrNullField("PrimaryDomain","WORKGROUP"),
+		UnicodeNullField("NativeOS","Windows 5.1"),
+		UnicodeNullField("NativeLanManager","Windows 2000 LAN Manager"),
+		UnicodeNullField("PrimaryDomain","WORKGROUP"),
 	]
+
 
 class SMB_Treeconnect_AndX_Request(Packet):
 	name = "SMB Treeconnect AndX Request"
@@ -387,7 +407,7 @@ class SMB_Read_AndX_Request(Packet):
 	fields_desc = [
 		ByteField("WordCount",10),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
-		ByteField("Reserved1",0),
+		ByteField("AndXReserved",0),
 		LEShortField("AndXOffset",0),
 		XLEShortField("FID",0),
 		LEIntField("Offset",0),
@@ -533,7 +553,8 @@ bind_bottom_up(NBTSession, SMB_Header, TYPE = lambda x: x==0)
 bind_bottom_up(SMB_Header, SMB_Negociate_Protocol_Response, Command=lambda x: x==0x72, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Negociate_Protocol_Request_Counts, Command=lambda x: x==0x72, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Request, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: not x&2)
-bind_bottom_up(SMB_Header, SMB_Sessionsetup_ESEC_AndX_Request, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: x&2)
+bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Request2, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: x&2 and not x&32768)
+bind_bottom_up(SMB_Header, SMB_Sessionsetup_ESEC_AndX_Request, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: x&2 and x&32768)
 bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Response, Command=lambda x: x==0x73, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Treedisconnect, Command=lambda x: x==0x71)
 bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Request, Command=lambda x: x==0x75, Flags=lambda x: not x&0x80)
@@ -558,6 +579,7 @@ bind_bottom_up(DCERPC_Bind, DCERPC_CtxItem)
 bind_bottom_up(DCERPC_CtxItem, DCERPC_CtxItem)
 
 bind_bottom_up(SMB_Sessionsetup_AndX_Request, SMB_Treeconnect_AndX_Request, AndXCommand=lambda x: x==0x75)
+bind_bottom_up(SMB_Sessionsetup_AndX_Request2, SMB_Treeconnect_AndX_Request, AndXCommand=lambda x: x==0x75)
 bind_bottom_up(SMB_Negociate_Protocol_Request_Counts, SMB_Negociate_Protocol_Request_Tail)
 bind_bottom_up(SMB_Negociate_Protocol_Request_Tail, SMB_Negociate_Protocol_Request_Tail)
 bind_bottom_up(SMB_Header, SMB_Parameters)

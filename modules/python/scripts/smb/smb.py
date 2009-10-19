@@ -80,17 +80,11 @@ class smbd(connection):
 	def handle_io_in(self,data):
 
 		try:
-			p = NBTSession(data)
+			p = NBTSession(data, _ctx=self)
 		except:
 			t = traceback.format_exc()
 			smblog.critical(t)
 			return len(data)
-
-		smblog.debug('packet: {0}'.format(p.summary()))
-
-		if p.haslayer(Raw):
-			smblog.warning('p.haslayer(Raw): {0}'.format(p.getlayer(Raw).build()))
-			p.show()
 
 		if len(data) < (p.LENGTH+4):
 			#we probably do not have the whole packet yet -> return 0
@@ -111,6 +105,13 @@ class smbd(connection):
 			return len(data)
 
 		r = self.process(p)
+		smblog.debug('packet: {0}'.format(p.summary()))
+
+		if p.haslayer(Raw):
+			smblog.warning('p.haslayer(Raw): {0}'.format(p.getlayer(Raw).build()))
+			p.show()
+
+
 		if r:
 			smblog.debug('response: {0}'.format(r.summary()))
 			#r.show()
@@ -153,13 +154,14 @@ class smbd(connection):
 
 		#elif self.state == STATE_SESSIONSETUP and p.getlayer(SMB_Header).Command == 0x73:
 		elif p.getlayer(SMB_Header).Command == 0x73:
-			r = None
-			if p.haslayer(Raw):
-				#try decoding with wordcount 13
-				p.getlayer(SMB_Header).decode_payload_as(SMB_Sessionsetup_AndX_Request2)
-				r = SMB_Sessionsetup_AndX_Response2()
-			else:
-				r = SMB_Sessionsetup_AndX_Response2()
+#			r = None
+#			if p.getlayer(SMB_Sessionsetup_ESEC_AndX_Request).WordCount == 13:
+#				print("\n\nDECODING\n\n")
+#				#try decoding with wordcount 13
+#				p.getlayer(SMB_Header).decode_payload_as(SMB_Sessionsetup_AndX_Request2)
+#				r = SMB_Sessionsetup_AndX_Response2()
+#			else:
+				r = SMB_Sessionsetup_ESEC_AndX_Response()
 		elif p.getlayer(SMB_Header).Command == 0x75:
 			r = SMB_Treeconnect_AndX_Response()
 		elif p.getlayer(SMB_Header).Command == 0x71:

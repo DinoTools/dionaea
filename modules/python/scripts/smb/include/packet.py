@@ -114,7 +114,9 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
         for lower,fval in self.overload_fields.items():
             print("%-20s  %s" % (lower.__name__, ", ".join("%-12s" % ("%s=%r"%i) for i in fval.items())))
 
-    def __init__(self, _pkt="", post_transform=None, _internal=0, _underlayer=None, **fields):
+    def __init__(self, _pkt="", _ctx=None, post_transform=None, _internal=0, _underlayer=None, **fields):
+        if _ctx:
+            self.ctx = _ctx
         self.time  = time.time()
         self.sent_time = 0
         if self.name is None:
@@ -141,6 +143,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
             self.post_transforms = []
         else:
             self.post_transforms = [post_transform]
+
 
     def init_fields(self):
         self.do_init_fields(self.fields_desc)
