@@ -587,10 +587,7 @@ class UnicodeNullField(StrField):
         # must be word-aligned with respect to the beginning of the SMB. Should the string not naturally
         # fall on a two-byte boundary, a null byte of padding will be inserted, and the Unicode string will
         # begin at the next address.
-        if len(s) % 2 == 0:
-            return s+val.encode('utf-16')[2:]+b"\0\0"
-        else:
-            return s+b"\x00"+val.encode('utf-16')[2:]+b"\0\0"
+        return s+val.encode('utf-16')[2:]+b"\0\0"
     def getfield(self, pkt, s):
         l = s.find(b"\0\0")
         if l < 0:

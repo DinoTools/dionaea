@@ -176,8 +176,10 @@ class SMB_Sessionsetup_ESEC_AndX_Request(Packet):
 		XLEIntField("Capabilities",0x05),
 		LEShortField("ByteCount",35),
 		StrLenField("SecurityBlob", "Pass", length_from=lambda x:x.SecurityBlobLength),
+		StrFixedLenField("Padding", "\x00", length_from=lambda x:(x.SecurityBlobLength+1)%2), 
 		UnicodeNullField("NativeOS","Windows"),
 		UnicodeNullField("NativeLanManager","Windows"),
+		UnicodeNullField("PrimaryDomain","WORKGROUP"),
 	]
 
 class SMB_Sessionsetup_ESEC_AndX_Response(Packet):
@@ -192,6 +194,7 @@ class SMB_Sessionsetup_ESEC_AndX_Response(Packet):
 		FieldLenField("SecurityBlobLength", None, fmt='<H', length_of="SecurityBlob"),
 		StrLenField("SecurityBlob", "", length_from=lambda x:x.SecurityBlobLength),
 		LEShortField("ByteCount",75),
+		StrFixedLenField("Padding", "\x00", length_from=lambda x:(len(x.SecurityBlob)+1)%2), 
 		UnicodeNullField("NativeOS","Windows 5.1"),
 		UnicodeNullField("NativeLanManager","Windows 2000 LAN Manager"),
 	]
