@@ -15,6 +15,7 @@ class cmdexe:
 			self.send = self.void
 		self.files = {}
 		self.cwd = 'C:\WINDOWS\System32'
+		self.con = None
 
 	def handle_io_in(self, data):
 		logger.debug(data)
@@ -158,6 +159,8 @@ class cmdexe:
 						i = incident("dionaea.download.offer")
 						if self.con:
 							i.set("con", self.con)
+						elif isinstance(self, connection):
+							i.set("con", self)
 						i.set("url", "ftp://%s:%s@%s:%i/%s" % (user,passwd,host,port,dfile))
 						i.report()
 				elif args[0] == 'cd':
@@ -198,6 +201,8 @@ class cmdexe:
 					i = incident("dionaea.download.offer")
 					if self.con:
 						i.set("con", self.con)
+					elif isinstance(self, connection):
+						i.set("con", self)
 					i.set("url", "ftp://%s:%s@%s:%i/%s" % (user,passwd,host,port,dfile))
 					i.report()
 
@@ -221,6 +226,10 @@ class cmdexe:
 			i = incident("dionaea.download.offer")
 			url = 'tftp://' + host + '/' + file
 			i.set('url', url)
+			if self.con:
+				i.set("con", self.con)
+			elif isinstance(self, connection):
+				i.set("con", self)
 			i.report()
 			return "downloading",None
 		return None,None

@@ -197,10 +197,13 @@ DCERPC_PacketTypes = {
 }
 
 class SMBNullField(StrField):
-	def __init__(self, name, default, fmt="H", remain=0):
-		StrField.__init__(self, name, default, fmt, remain)
+	def __init__(self, name, default, fmt="H", remain=0, utf16=True):
+		if utf16:
+			UnicodeNullField.__init__(self, name, default, fmt, remain)
+		else:
+			StrField.__init__(self, name, default, fmt, remain)
 	def addfield(self, pkt, s, val):
-		if pkt.firstlayer().getlayer(SMB_Header).Flags2 & 0x8000:
+		if pkt.firstlayer().getlayer(SMB_Header).Flags2 & SMB_FLAGS2_UNICODE:
 			return UnicodeNullField.addfield(self, pkt, s, val)
 		else:
 			return StrNullField.addfield(self, pkt, s, val)
@@ -366,10 +369,10 @@ class SMB_Sessionsetup_AndX_Request(Packet):
 		LEIntField("Reserved2",0),
 		LEShortField("ByteCount",35),
 		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
-		SMBNullField("Account", ""),
-		SMBNullField("PrimaryDomain","WORKGROUP"),
-		SMBNullField("NativeOS","Windows"),
-		SMBNullField("NativeLanManager","Windows"),
+		SMBNullField("Account", "", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		SMBNullField("PrimaryDomain","WORKGROUP", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		SMBNullField("NativeOS","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		SMBNullField("NativeLanManager","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 	]
 
 class SMB_Sessionsetup_AndX_Response(Packet):
@@ -399,23 +402,26 @@ class SMB_Sessionsetup_AndX_Request2(Packet):
 	fields_desc = [
 		ByteField("WordCount",13),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
-		ByteField("Reserved1",0),
+		ByteField("AndXReserved",0),
 		LEShortField("AndXOffset",0),
-		LEShortField("MaxBufferS",2920),
+		LEShortField("MaxBufferSize",2920),
 		LEShortField("MaxMPXCount",50),
 		LEShortField("VCNumber",0),
 		LEIntField("SessionKey",0),
 		FieldLenField("PasswordLength", None, fmt='<H', length_of="Password"),
-		LEShortField("UnicodePasswordLength",0),
+		FieldLenField("UnicodePasswordLength", None, fmt='<H', length_of="UnicodePassword"),
 		LEIntField("Reserved2",0),
 #		XLEIntField("Capabilities",0),
 		FlagsField("Capabilties", 0x8000e3fd, -32, SMB_Negotiate_Capabilities),
 		LEShortField("ByteCount",35),
 		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
-		SMBNullField("Account", ""),
-		SMBNullField("PrimaryDomain","WORKGROUP"),
-		SMBNullField("NativeOS","Windows"),
-		SMBNullField("NativeLanManager","Windows"),
+		StrLenField("UnicodePassword", "UniPass", length_from=lambda x:x.UnicodePasswordLength),
+		StrFixedLenField("Padding", "\x00", length_from=lambda x:(x.PasswordLength+1)%2), 
+		SMBNullField("Account", "", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		SMBNullField("PrimaryDomain","WORKGROUP", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		SMBNullField("NativeOS","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		SMBNullField("NativeLanManager","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		StrFixedLenField("Padding2", "\x00", length_from=lambda x:(len(x.Account)+len(x.PrimaryDomain)+len(x.NativeOS)+len(x.NativeLanManager)+1)%2), 
 	]
 
 
@@ -434,7 +440,10 @@ class SMB_Sessionsetup_AndX_Response2(Packet):
 		UnicodeNullField("PrimaryDomain","WORKGROUP"),
 	]
 
-
+# CIFS-TR-1p00_FINAL.pdf 665616b44740177c86051c961fdf6768
+# page 35
+# Strings that are never passed in Unicode are:
+# * The service name string in the Tree_Connect_AndX SMB.
 class SMB_Treeconnect_AndX_Request(Packet):
 	name = "SMB Treeconnect AndX Request"
 	fields_desc = [
@@ -447,8 +456,8 @@ class SMB_Treeconnect_AndX_Request(Packet):
 		LEShortField("ByteCount",18),
 		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
 		FixGapField("FixGap", b'\0'),
-		SMBNullField("Path","\\\\WIN2K\\IPC$"),
-		SMBNullField("Service","IPC")
+		SMBNullField("Path","\\\\WIN2K\\IPC$", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		StrNullField("Service","IPC")
 	]
 
 class SMB_Treedisconnect(Packet):
@@ -494,8 +503,11 @@ class SMB_NTcreate_AndX_Request(Packet):
 		XByteField("SecurityFlags",0),
 		LEShortField("ByteCount",0),
 		FixGapField("FixGap", b'\0'),
-		SMBNullField("Filename","\\lsarpc")
+		SMBNullField("Filename","\\lsarpc", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE)
 	]
+
+
+# page 77
 
 class SMB_NTcreate_AndX_Response(Packet):
 	name="SMB NTcreate AndX Response"
@@ -595,6 +607,7 @@ class SMB_Read_AndX_Response(Packet):
 		StrLenField("Reserved3", b"\0"*6, length_from=lambda x:6),
 	]
 
+# page 44
 class SMB_Trans_Request(Packet):
 	name = "SMB Trans Request"
 	fields_desc = [
@@ -712,8 +725,8 @@ bind_bottom_up(NBTSession, SMB_Header, TYPE = lambda x: x==0)
 bind_bottom_up(SMB_Header, SMB_Negociate_Protocol_Response, Command=lambda x: x==0x72, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Negociate_Protocol_Request_Counts, Command=lambda x: x==0x72, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Request, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: not x&2)
-bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Request2, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: x&2 and not x&SMB_FLAGS2_UNICODE)
-bind_bottom_up(SMB_Header, SMB_Sessionsetup_ESEC_AndX_Request, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: x&2 and x&SMB_FLAGS2_UNICODE)
+bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Request2, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: x&2 and not x&SMB_FLAGS2_EXT_SEC)
+bind_bottom_up(SMB_Header, SMB_Sessionsetup_ESEC_AndX_Request, Command=lambda x: x==0x73, Flags=lambda x: not x&0x80, Flags2=lambda x: x&2 and x&SMB_FLAGS2_EXT_SEC)
 bind_bottom_up(SMB_Header, SMB_Sessionsetup_AndX_Response, Command=lambda x: x==0x73, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Treedisconnect, Command=lambda x: x==0x71)
 bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Request, Command=lambda x: x==0x75, Flags=lambda x: not x&0x80)

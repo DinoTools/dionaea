@@ -700,20 +700,20 @@ cdef c_bool handle_timeout_sustain_cb(c_connection *con, void *ctx) except *:
 #	print "timeout_sustain_cb"
 	cdef connection instance
 	instance = <connection>ctx
-	return instance.handle_timeout_sustain()
+	return <bint> instance.handle_timeout_sustain()
 
 cdef c_bool handle_timeout_listen_cb(c_connection *con, void *ctx) except *:
 #	print "timeout_listen_cb"
 	cdef connection instance
 	instance = <connection>ctx
-	return instance.handle_timeout_listen()
+	return <bint> instance.handle_timeout_listen()
 
 
 cdef c_bool handle_timeout_idle_cb(c_connection *con, void *ctx) except *:
 #	print "timeout_idle_cb"
 	cdef connection instance
 	instance = <connection>ctx
-	return instance.handle_timeout_idle()
+	return <bint> instance.handle_timeout_idle()
 
 
 cdef void process_io_in(c_connection *con, c_processor_data *pd, void *data, int size) except *:
