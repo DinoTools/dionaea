@@ -93,8 +93,12 @@ static struct python_runtime
 		struct ihandler pyhandler;
 		struct processor processor;
 	} traceables;
-
+	GString *sys_path;
 } runtime;
+
+
+
+
 
 struct import
 {
@@ -268,6 +272,8 @@ static bool new(struct dionaea *dionaea)
 
 	Py_Initialize();
 
+	runtime.sys_path = g_string_new(PREFIX"/lib/dionaea/python/");
+
 	PyObject *name = PyUnicode_FromString("traceback");
 	runtime.traceback.module = PyImport_Import(name);
 	Py_DECREF(name);
@@ -379,6 +385,9 @@ void log_wrap(char *name, int number, char *file, int line, char *msg)
 	int x = 0;
 
 #ifdef DEBUG
+	if ( strncmp(file, runtime.sys_path->str, runtime.sys_path->len) == 0 )
+		file += runtime.sys_path->len;
+
 	x = asprintf(&log_domain, "%s %s:%i", name, file, line);
 #else
 	x = asprintf(&log_domain, "%s", name);

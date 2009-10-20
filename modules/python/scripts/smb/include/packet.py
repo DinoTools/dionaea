@@ -7,6 +7,11 @@
 
 import time
 import itertools
+import logging
+
+logger = logging.getLogger('scapy')
+logger.setLevel(logging.DEBUG)
+
 
 from .fieldtypes import StrField,ConditionalField,Emph,PacketListField
 from .helpers import VolatileValue, Gen, SetGen, BasePacket
@@ -621,7 +626,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
         self.show(*args,**kargs)
     def show(self, indent=3, lvl="", label_lvl=""):
         """Prints a hierarchical view of the packet. "indent" gives the size of indentation for each layer."""
-        print("%s%s %s %s" % (label_lvl,
+        logger.debug("%s%s %s %s" % (label_lvl,
                               "###[",
                               self.name,
                               "]###"))
@@ -630,12 +635,12 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
                 continue
             fvalue = self.getfieldval(f.name)
             if isinstance(fvalue, Packet) or (f.islist and f.holds_packets and type(fvalue) is list):
-                print("%s  \\%-10s\\" % (label_lvl+lvl, f.name))
+                logger.debug("%s  \\%-10s\\" % (label_lvl+lvl, f.name))
                 fvalue_gen = SetGen(fvalue,_iterpacket=0)
                 for fvalue in fvalue_gen:
                     fvalue.show(indent=indent, label_lvl=label_lvl+lvl+"   |")
             else:
-                print("%s  %-10s%s %s" % (label_lvl+lvl,
+                logger.debug("%s  %-10s%s %s" % (label_lvl+lvl,
                                           f.name,
                                           "=",
                                           f.i2repr(self,fvalue)))
