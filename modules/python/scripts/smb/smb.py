@@ -194,18 +194,18 @@ class smbd(connection):
 				return rp
 
 			rdata = SMB_Data()
-#			if p.getlayer(SMB_Read_AndX_Request).MaxCountLow < len(self.outbuf.build())-self.state['readcount'] :
+			if p.getlayer(SMB_Read_AndX_Request).MaxCountLow < len(self.outbuf.build())-self.state['readcount'] :
 #				rdata.Bytecount = p.getlayer(SMB_Read_AndX_Request).MaxCountLow+1
 #			else:
-#				rdata.Bytecount = len(self.outbuf.build()) - self.state['readcount'] +1
-#
-#			rdata.Bytes = b'\x00' + self.outbuf.build()[ self.state['readcount']: self.state['readcount'] + p.getlayer(SMB_Read_AndX_Request).MaxCountLow ]
+				rdata.Bytecount = len(self.outbuf.build()) - self.state['readcount']
+
+			rdata.Bytes = self.outbuf.build()[ self.state['readcount']: self.state['readcount'] + p.getlayer(SMB_Read_AndX_Request).MaxCountLow ]
 
 			self.state['readcount'] += p.Remaining
 			r.DataLenLow = p.Remaining
 			r /= rdata
 
-		elif p.getlayer(SMB_Header).Command == 0x25:
+		elif p.getlayer(SMB_Header).Command == SMB_COM_TRANS:
 			self.outbuf = self.process_dcerpc_packet(p.getlayer(DCERPC_Header))
 
 			if not self.outbuf:
@@ -252,6 +252,9 @@ class smbd(connection):
 
 		outbuf = None
 
+		smblog.debug("data")
+		dcep.show()
+
 		if dcep.PacketType == 11: #bind
 			outbuf = DCERPC_Header()/DCERPC_Bind_Ack()
 
@@ -274,6 +277,8 @@ class smbd(connection):
 		
 			outbuf.NumCtxItems = c
 			outbuf.FragLen = len(outbuf.build())
+			smblog.debug("dce reply")
+			outbuf.show()
 		elif dcep.PacketType == 0: #request
 			callbacklist = []
 			if 'uuid' in self.state:
@@ -297,7 +302,6 @@ class smbd(connection):
 			# unknown DCERPC packet -> logcrit and bail out.
 			smblog.critical('unknown DCERPC packet. bailing out.')
 
-		dcep.show()
 
 		return outbuf
 
