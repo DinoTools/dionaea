@@ -296,7 +296,8 @@ class smbd(connection):
 		else:
 			# unknown DCERPC packet -> logcrit and bail out.
 			smblog.critical('unknown DCERPC packet. bailing out.')
-			dcep.show()
+
+		dcep.show()
 
 		return outbuf
 

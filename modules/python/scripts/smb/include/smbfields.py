@@ -537,8 +537,7 @@ class SMB_NTcreate_AndX_Response(Packet):
 
 # page 83
 # the manual says there is a Padding Byte right after the bytecount
-# wireshark disagrees
-# so we swim with the fishes for now
+# the padding length is the difference of ByteCount and Remaining
 
 class SMB_Write_AndX_Request(Packet):
 	name = "SMB Write AndX Request"
@@ -557,7 +556,7 @@ class SMB_Write_AndX_Request(Packet):
 		LEShortField("DataOffset",0),
 		ConditionalField(IntField("HighOffset",0), lambda x:x.WordCount==14),
 		XLEShortField("ByteCount",  0),
-#		StrFixedLenField("Padding", 0xEE, 1),
+		StrLenField("Padding", None, length_from=lambda x:x.ByteCount-x.Remaining),
 		StrLenField("Data", b"", length_from=lambda x:x.Remaining),
 	]
 
