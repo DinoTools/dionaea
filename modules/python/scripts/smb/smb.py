@@ -202,7 +202,7 @@ class smbd(connection):
 			rdata.Bytes = self.outbuf.build()[ self.state['readcount']: self.state['readcount'] + p.getlayer(SMB_Read_AndX_Request).MaxCountLow ]
 
 			self.state['readcount'] += p.Remaining
-			r.DataLenLow = p.Remaining
+			r.DataLenLow = len(rdata.Bytes)
 			r /= rdata
 
 		elif p.getlayer(SMB_Header).Command == SMB_COM_TRANS:
