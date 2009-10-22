@@ -577,6 +577,11 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 
 	ev_timer_stop(EV_A_ w);
 
+	struct incident *i = incident_new("dionaea.connection.free");
+	incident_value_ptr_set(i, "con", (uintptr_t)con);
+	incident_report(i);
+	incident_free(i);
+
 	switch( con->trans )
 	{
 	case connection_transport_tcp:
