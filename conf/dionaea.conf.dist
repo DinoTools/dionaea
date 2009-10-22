@@ -96,6 +96,14 @@ modules = {
 		http = {
 			root = "var/dionaea/wwwroot"
 		}
+		surfids = {
+			sslmode = "require"
+			host = "surfids.example.com" // change this
+			port = "5432"                // maybe this
+			username = "surfids"         // this
+			password = "secret"          // and this
+			dbname = "idsserver"
+		}
 	}
 
 	/* nc is a test module */
