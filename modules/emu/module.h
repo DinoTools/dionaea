@@ -78,6 +78,8 @@ struct emu_emulate_ctx
 {
 	struct emu_config *config;
 
+	struct connection *ctxcon;
+
 	GMutex *mutex;
 	struct emu *emu;
 	struct emu_env *env;

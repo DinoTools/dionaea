@@ -55,6 +55,7 @@
 #include "dionaea.h"
 #include "log.h"
 #include "util.h"
+#include "incident.h"
 
 #define D_LOG_DOMAIN "emulate"
 
@@ -93,6 +94,10 @@ void emulate(struct emu_config *conf, struct connection *con, void *data, unsign
 	ctx->sockets = g_hash_table_new(g_int_hash, g_int_equal);
 	ctx->processes = g_hash_table_new(g_int_hash, g_int_equal);
 	ctx->files = g_hash_table_new(g_int_hash, g_int_equal);
+
+	ctx->ctxcon = con;
+	if( con )
+		connection_ref(ctx->ctxcon);
 
 	ctx->emu = emu_new();
 	ctx->env = emu_env_new(ctx->emu);
@@ -157,7 +162,16 @@ void emulate_ctx_free(void *data)
 	{
 		g_debug("file key %p %i value %p \n", key, *(int *)key, value);
 		struct tempfile *tf = value;
-		tempfile_close(tf);
+		if( tf->fh == NULL )
+		{ /* file was closed by shellcode */
+			struct incident *i = incident_new("dionaea.download.complete");
+			incident_value_string_set(i, "path", g_string_new(tf->path));
+			if( ctx->ctxcon )
+				incident_value_ptr_set(i, "con", (uintptr_t)ctx->ctxcon);
+			incident_report(i);
+			incident_free(i);
+		}else
+			tempfile_close(tf);
 		tempfile_free(tf);
 	}
 	g_hash_table_destroy(ctx->files);
@@ -172,9 +186,12 @@ void emulate_ctx_free(void *data)
 	g_hash_table_iter_init (&iter, ctx->sockets);
 	while( g_hash_table_iter_next (&iter, &key, &value) )
 	{
-		g_debug("connection key %p %i value %p \n", key, *(int *)key, value);
 		struct connection *con = value;
-		if( con->state != connection_state_close )
+		g_debug("connection key %p %i value %p type %s state %s socket %i\n", key, *(int *)key, value, 
+				connection_type_to_string(con->type),
+				connection_state_to_string(con->state),
+				con->socket);
+		if( con->socket != -1 )
 		{/* avoid callbacks from connection_close() */
 			close(con->socket);
 			con->socket = -1;
@@ -194,6 +211,8 @@ void emulate_ctx_free(void *data)
 	emu_free(ctx->emu);
 	emu_env_free(ctx->env);
 	g_mutex_free(ctx->mutex);
+	if( ctx->ctxcon != NULL )
+		connection_unref(ctx->ctxcon);
 	g_free(ctx);
 }
 

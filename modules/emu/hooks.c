@@ -154,6 +154,7 @@ void proto_emu_accept_established(struct connection *con)
 
 	connection_stop(con);
 	hook_connection_accept_cb(con);
+	con->events.free.repeat = 0.;
 	CONTINUE_EMULATION(ctx);
 }
 
@@ -690,7 +691,7 @@ uint32_t user_hook_close(struct emu_env *env, struct emu_env_hook *hook, ...)
 		g_async_queue_unref(aq);
 		ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
 	}
-
+	
 	return 0;
 }
 
@@ -1206,7 +1207,18 @@ BOOL CloseHandle(
 
 	struct tempfile *tf = NULL;
 	if( (tf = g_hash_table_lookup(ctx->files, &hObject)) != NULL )
-	{
+ 	{
+		/**
+		 * if shellcode closes a file, it should be ready for further
+		 * inspection, but we are in a thread, and if we submit an
+		 * incident to report the new file, the file could be gone if
+		 * the thread finishes before the incident is handled
+		 * therefore we do not report the new file here, but wait for
+		 * the shellcode emulation to finish, and report done files from
+		 * the emulation_ctx_free function which is run from the
+		 * main-process
+		 * 
+		 */
 		tempfile_close(tf);
 		return 0;
 	}
