@@ -338,13 +338,16 @@ class remoteshell(cmdexe,connection):
 		return False
 
 	def handle_error(self, err):
-		pass
+		if self.con:
+			self.con.unref()
 
 	def handle_timeout_idle (self):
 		self.send("\n")
 		return True
 
 	def handle_timeout_listen (self):
+		if hasattr(self,'con') and self.con:
+			self.con.unref()
 		return False
 
 	def handle_timeout_sustain(self):
