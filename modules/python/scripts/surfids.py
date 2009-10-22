@@ -17,10 +17,9 @@ AS_DOWNLOAD_OFFER                  = 0x00010
 AS_DOWNLOAD_SUCCESS                = 0x00020
 
 
-DT_DIALOGUE_NAME                   = 0x00001
-DT_SHELLCODEHANDLER_NAME           = 0x00002
-DT_DOWNLOAD_URL                    = 0x00004
-DT_DOWNLOAD_HASH                   = 0x00008
+DT_PROTOCOL_NAME                   = 80
+DT_EMULATION_PROFILE               = 81
+DT_SHELLCODE_ACTION                = 82
 
 class surfnetidshandler(ihandler):
 	def __init__(self, path):
@@ -60,7 +59,7 @@ class surfnetidshandler(ihandler):
 		self.attacks[con] = attackid
 		logger.info("accepted connection from %s:%i to %s:%i (id=%i)" % 
 			(con.remote.host, con.remote.port, con.local.host, con.local.port, attackid))
-		self.stmt_detail_add(attackid, con.local.host, DT_DIALOGUE_NAME, con.protocol)
+		self.stmt_detail_add(attackid, con.local.host, DT_PROTOCOL_NAME, con.protocol)
 
 	def handle_incident_dionaea_connection_free(self, icd):
 		con=icd.con
@@ -78,7 +77,7 @@ class surfnetidshandler(ihandler):
 #		self.stmt_detail_add(attackid, con.local.host, 
 		logger.info("emu profile for attackid %i" % attackid)
 		self.stmt_attack_update_severity(attackid, AS_DEFINITLY_MALICIOUS_CONNECTION)
-		self.stmt_detail_add(attackid, con.local.host, DT_SHELLCODEHANDLER_NAME, icd.profile)
+		self.stmt_detail_add(attackid, con.local.host, DT_EMULATION_PROFILE, icd.profile)
 
 	def handle_incident_dionaea_download_offer(self, icd):
 		con=icd.con
@@ -96,11 +95,14 @@ class surfnetidshandler(ihandler):
 		con=icd.con
 		attackid = self.attacks[con]
 		logger.info("listen shell for attackid %i" % attackid)
+		self.stmt_detail_add(attackid, con.local.host, DT_SHELLCODE_ACTION, "bindshell://"+str(icd.port) )
 
 	def handle_incident_dionaea_service_shell_connect(self, icd):
 		con=icd.con
 		attackid = self.attacks[con]
 		logger.info("connect shell for attackid %i" % attackid)
+		self.stmt_detail_add(attackid, con.local.host, DT_SHELLCODE_ACTION, "connectbackshell://"+str(icd.host)+":"+str(icd.port) )
+		
 
 	def handle_incident_dionaea_detect_attack(self, icd):
 		con=icd.con

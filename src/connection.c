@@ -1651,10 +1651,7 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 		accepted->data = con->data;
 
 		// set protocol for accepted connection
-		memcpy(&accepted->protocol, &con->protocol, sizeof(struct protocol));
-		accepted->protocol.name = g_strdup(con->protocol.name);
-
-//	accepted->protocol.ctx = con->protocol.ctx;
+		connection_protocol_set(accepted, &con->protocol);
 
 		// copy connect timeout to new connection
 		ev_timer_init(&accepted->events.idle_timeout, connection_tcp_idle_timeout_cb, 0. ,con->events.idle_timeout.repeat);
@@ -2810,8 +2807,7 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 		connection_set_nonblocking(accepted);
 
 		// set protocol for accepted connection
-		memcpy(&accepted->protocol, &con->protocol, sizeof(struct protocol));
-		accepted->protocol.name = g_strdup(con->protocol.name);
+		connection_protocol_set(accepted, &con->protocol);
 
 		accepted->stats.io_out.throttle.max_bytes_per_second = con->stats.io_out.throttle.max_bytes_per_second;
 
@@ -3491,6 +3487,10 @@ const char *connection_transport_to_string(enum connection_transport trans)
 void connection_protocol_set(struct connection *con, struct protocol *proto)
 {
 	memcpy(&con->protocol, proto, sizeof(struct protocol));
+	if( con->protocol.name )
+		con->protocol.name = g_strdup(con->protocol.name);
+	else
+		con->protocol.name = g_strdup("unknown");
 }
 
 void connection_protocol_ctx_set(struct connection *con, void *data)

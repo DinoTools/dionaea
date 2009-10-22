@@ -389,6 +389,7 @@ void proto_emu_ctx_free(void *context)
 
 struct protocol proto_emu = 
 {
+	.name = "emulation",
 	.ctx_new = proto_emu_ctx_new,
 	.ctx_free = proto_emu_ctx_free,
 	.origin = proto_emu_origin,
@@ -1058,7 +1059,7 @@ uint32_t user_hook_socket(struct emu_env *env, struct emu_env_hook *hook, ...)
 	con->events.free.repeat = 0.;
 
 	con->socket = socket(AF_INET, SOCK_STREAM, 0);
-	memcpy(&con->protocol, &proto_emu, sizeof(struct protocol));
+	connection_protocol_set(con, &proto_emu);
 	con->protocol.ctx = g_malloc0(sizeof(int));
 	*(int *)con->protocol.ctx = ctx->serial++;
 	con->data = ctx;
