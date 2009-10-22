@@ -78,6 +78,7 @@ struct session
 		struct
 		{
 			struct tempfile *file;
+			struct connection *ctxcon;
 		}download;
 
 		struct
@@ -119,6 +120,8 @@ static void session_free(struct session *session)
 			tempfile_unlink(session->action.download.file);
 			tempfile_free(session->action.download.file);
 			session->action.download.file = NULL;
+			if( session->action.download.ctxcon != NULL )
+				connection_unref(session->action.download.ctxcon);
 		}
 		break;
 
@@ -181,6 +184,10 @@ static void check_run_count(void)
 						tempfile_close(session->action.download.file);
 						struct incident *i = incident_new("dionaea.download.complete");
 						incident_value_string_set(i, "path", g_string_new(session->action.download.file->path));
+						incident_value_string_set(i, "url", g_string_new(session->url));
+						if( session->action.download.ctxcon )
+							incident_value_ptr_set(i, "con", (uintptr_t)session->action.download.ctxcon);
+
 						incident_report(i);
 						incident_free(i);
 					} else
@@ -419,15 +426,15 @@ void session_upload_new(const char *url, const char *email, const char *file)
 	check_run_count();
 }
 
-static void session_download_new(const char *url, const char *laddr)
+static void session_download_new(const char *url, struct connection *con)
 {
-	g_debug("%s url %s laddr %s", __PRETTY_FUNCTION__, url, laddr);
+	g_debug("%s url %s con %p", __PRETTY_FUNCTION__, url, con);
 	struct session *session = session_new();
 	CURLMcode rc;
 	session->type = session_type_download;
 	session->url = g_strdup(url);
-	if( laddr )
-		session->laddr = g_strdup(laddr);
+	if( con )
+		session->laddr = g_strdup(con->local.ip_string);
 	curl_easy_setopt(session->easy, CURLOPT_URL, session->url);
 	curl_easy_setopt(session->easy, CURLOPT_WRITEFUNCTION, curl_writefunction_cb);
 	curl_easy_setopt(session->easy, CURLOPT_WRITEDATA, session);
@@ -442,10 +449,15 @@ static void session_download_new(const char *url, const char *laddr)
 	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_LIMIT, 10L);
 	curl_easy_setopt(session->easy, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");  
 
-	if( laddr )
+	if( con )
+	{
 		curl_easy_setopt(session->easy, CURLOPT_INTERFACE, session->laddr);
+		connection_ref(con);
+	}
 
 	session->action.download.file = tempfile_new(curl_runtime.download_dir, "http-");
+	session->action.download.ctxcon = con;
+
 	g_debug("session %p file %i path %s", session, session->action.download.file->fd, session->action.download.file->path);
 
 	g_debug("Adding easy %p to multi %p (%s)", session->easy, curl_runtime.multi, url);
@@ -465,11 +477,9 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 			if( strncasecmp(url->str,  "http", 4) != 0 )
 				return;
 
-			char *addr = NULL;
 			struct connection *con;
-			if( incident_value_ptr_get(i, "con", (uintptr_t *)&con) )
-				addr = con->local.ip_string;
-			session_download_new(url->str, addr);
+			incident_value_ptr_get(i, "con", (uintptr_t *)&con);
+			session_download_new(url->str, con);
 		} else
 			g_critical("download without url?");
 	} else
