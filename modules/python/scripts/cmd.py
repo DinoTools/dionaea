@@ -15,7 +15,7 @@ class cmdexe:
 			self.send = self.void
 		self.files = {}
 		self.cwd = 'C:\WINDOWS\System32'
-		self.con = None
+
 
 	def handle_io_in(self, data):
 		logger.debug(data)
@@ -157,11 +157,9 @@ class cmdexe:
 					elif len(args) == 2:
 						dfile = args[1]
 						i = incident("dionaea.download.offer")
-						if self.con:
-							i.set("con", self.con)
-						elif isinstance(self, connection):
-							i.set("con", self)
-						i.set("url", "ftp://%s:%s@%s:%i/%s" % (user,passwd,host,port,dfile))
+						if hasattr(self, 'con'):
+							i.con = self.con
+						i.url = "ftp://%s:%s@%s:%i/%s" % (user,passwd,host,port,dfile)
 						i.report()
 				elif args[0] == 'cd':
 					if len(args) == 1:
@@ -199,11 +197,9 @@ class cmdexe:
 					dfile = args[0]
 					state = 'NEXT_IS_SOMETHING'
 					i = incident("dionaea.download.offer")
-					if self.con:
-						i.set("con", self.con)
-					elif isinstance(self, connection):
-						i.set("con", self)
-					i.set("url", "ftp://%s:%s@%s:%i/%s" % (user,passwd,host,port,dfile))
+					if hasattr(self, 'con'):
+						i.con = self.con
+					i.url = "ftp://%s:%s@%s:%i/%s" % (user,passwd,host,port,dfile)
 					i.report()
 
 
@@ -225,11 +221,9 @@ class cmdexe:
 #			logger.debug("TFTP %s %s" % (host, file))
 			i = incident("dionaea.download.offer")
 			url = 'tftp://' + host + '/' + file
-			i.set('url', url)
-			if self.con:
-				i.set("con", self.con)
-			elif isinstance(self, connection):
-				i.set("con", self)
+			i.url = url
+			if hasattr(self, 'con'):
+				i.con = self.con
 			i.report()
 			return "downloading",None
 		return None,None
@@ -323,7 +317,7 @@ class cmdexe:
 
 
 class remoteshell(cmdexe,connection):
-	def __init__(self):
+	def __init__(self, con=None):
 		connection.__init__(self,'tcp')
 		cmdexe.__init__(self, self.send)
 		self.timeouts.listen = 10
@@ -331,11 +325,16 @@ class remoteshell(cmdexe,connection):
 		self.timeouts.idle = 1
 		self.timeouts.sustain = 15
 		self._in.accounting.limit = 1024
+		self.con = con
+		if con:
+			con.ref()
 
 	def handle_established(self):
 		self.send("Microsoft Windows 2000 [Version 5.00.2195]\n(C) Copyright 1985-2000 Microsoft Corp.\n\nC:\\WINDOWS\\System32>")
 
 	def handle_disconnect(self):
+		if self.con:
+			self.con.unref()
 		return False
 
 	def handle_error(self, err):
@@ -351,6 +350,10 @@ class remoteshell(cmdexe,connection):
 	def handle_timeout_sustain(self):
 		return False
 
+	def handle_origin(self, parent):
+		self.con = parent.con
+		parent.con = None
+
 
 class cmdshellhandler(ihandler):
 
@@ -360,8 +363,8 @@ class cmdshellhandler(ihandler):
 
 	def handle_incident(self, icd):
 		logger.warn("do shell")
-		c = remoteshell()
-		con = icd.get("con")
+		con = icd.con
+		c = remoteshell(con)
 		if icd.origin == "dionaea.service.shell.listen":
 			c.bind(con.local.host,icd.get('port'))
 			c.listen()

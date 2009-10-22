@@ -454,6 +454,45 @@ cdef class connection:
 #	def __dealloc__(self):
 #		print "goodbye connection"
 	
+	# we want to be able to store connections in a dict
+	# therefore we need __richcmp__ and __hash__
+	# connection from the same c connection are equal
+	# if you store connections in a dict, 
+	# be aware to delete once the c-core free's them
+	# as you'd access invalid memory else
+	# could be addressed by making c_connection observeable
+	# so it notices all observing python instances if it gets free'd
+	# and sets their .thisptr to NULL
+	# ... maybe later
+	def __richcmp__(a, b, int t):
+		if not isinstance(b, connection):
+			return False
+
+		if not isinstance(a, connection):
+			return False
+
+		if t == 0: # <
+			return (<connection>a).thisptr <= (<connection>b).thisptr
+
+		if t == 1: # <=
+			return (<connection>a).thisptr <= (<connection>b).thisptr
+
+		if t == 2: # == 
+			return (<connection>a).thisptr == (<connection>b).thisptr
+
+		if t == 3: # != 
+			return (<connection>a).thisptr != (<connection>b).thisptr
+
+		if t == 4: # >
+			return (<connection>a).thisptr > (<connection>b).thisptr
+
+		if t == 5: # >=
+			return (<connection>a).thisptr >= (<connection>b).thisptr
+
+	def __hash__(self):
+		return <long>self.thisptr
+
+
 	def handle_established(self):
 		"""callback once the connection is established"""
 		pass
@@ -598,6 +637,12 @@ cdef class connection:
 			if self.thisptr == NULL:
 				raise ReferenceError('the object requested does not exist')
 			return c_connection_transport_to_string(self.thisptr.trans).decode()
+
+	property protocol:
+		def __get__(self):
+			if self.thisptr == NULL:
+				raise ReferenceError('the object requested does not exist')
+			return self.thisptr.protocol.name.decode()
 
 	property status:
 		"""the connection status, resolving, connecting ...."""
@@ -795,6 +840,12 @@ cdef class incident:
 		c_incident_dump(self.thisptr)
 
 	def set(self, key, value):
+		self.__setattr__(key, value)
+
+	def get(self, key):
+		return self.__getattr__(key)
+
+	def __setattr__(self, key, value):
 		cdef connection con
 		if isinstance(key, unicode):
 			key = key.encode()
@@ -808,7 +859,7 @@ cdef class incident:
 				value = value.encode()
 			c_incident_value_string_set(self.thisptr, key, c_g_string_new(value))
 
-	def get(self, key):
+	def __getattr__(self, key):
 		cdef c_uintptr_t x
 		cdef connection c
 		cdef c_GString *s
@@ -862,7 +913,19 @@ cdef void c_python_ihandler_cb (c_incident *i, void *ctx) except *:
 	pi = NEW_C_INCIDENT_CLASS(incident)
 	pi.thisptr = i
 	INIT_C_INCIDENT_CLASS(pi,pi)
-	handler.handle_incident(pi)
+	origin = pi.origin
+	if isinstance(origin, bytes):
+		origin = origin.decode('ascii')
+	elif not isinstance(origin, unicode):
+		raise ValueError(u"requires text/bytes input, got %s" % type(origin))
+	origin = origin.replace(u".",u"_")
+	try:
+		method = getattr(handler, u"handle_incident_" + origin)
+	except:
+		handler.handle_incident(pi)
+		return
+
+	method(pi)
 	
 
 cdef class ihandler:

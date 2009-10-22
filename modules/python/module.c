@@ -335,6 +335,7 @@ static bool new(struct dionaea *dionaea)
 				Py_DECREF(func);
 			} else
 				PyErr_Clear();
+			traceback();
 		}
 	}
 

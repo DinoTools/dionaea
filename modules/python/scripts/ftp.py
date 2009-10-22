@@ -697,7 +697,7 @@ class ftpctrl(connection):
 		dlen = dlen - len(remain)
 
 		for line in lines:
-			print(line)
+			logger.debug("FTP LINE: " + str(line))
 			c = int(line[:3])
 			s = line[3:4]
 			if self.state == 'USER':
@@ -783,15 +783,18 @@ class ftpdata(connection):
 
 	def handle_disconnect(self):
 		logger.debug("received %i bytes" %(self._in.accounting.bytes))
-#		print(type(self.file))
-#		print(self.file)
-		self.fileobj.close()
-		icd = incident("dionaea.download.complete")
-		icd.set('path', self.fileobj.name)
-		icd.report()
-		self.fileobj.unlink(self.fileobj.name)
-		self.ftp.dataconn = None
-		self.ftp.datadone()
+		if hasattr(self, 'fileobj'):
+	#		print(type(self.file))
+	#		print(self.file)
+			self.fileobj.close()
+			icd = incident("dionaea.download.complete")
+			icd.path = self.fileobj.name
+			icd.con = self.ftp.con
+			icd.url = self.ftp.url
+			icd.report()
+			self.fileobj.unlink(self.fileobj.name)
+			self.ftp.dataconn = None
+			self.ftp.datadone()
 		return False
 
 	def handle_timeout_listen(self):
@@ -803,16 +806,21 @@ class ftp:
 	def __init__(self):
 		self.ctrl = ftpctrl(self)
 
-	def download(self, local, user, passwd, host, port, file, mode):
+	def download(self, con, user, passwd, host, port, file, mode, url):
 		self.user = user
 		self.passwd = passwd
 		self.host = host
 		self.port = port
 		self.file = file
 		self.mode = mode
-		if local:
-			self.local = local
-			self.ctrl.bind(local, 0)
+		self.con = con
+		self.url = url
+
+		if con:
+			self.local = con.local.host
+			self.ctrl.bind(self.local, 0)
+			self.con.ref()
+
 		self.ctrl.connect(host, port)
 		self.dataconn = None
 		self.datalistener = None
@@ -848,12 +856,15 @@ class ftp:
 		if self.ctrl and self.ctrl.state == 'QUIT' and self.dataconn == None:
 			logger.info("proceed processing file!")
 			self.ctrl = None
-
+			self.finish()
 
 	def fail(self):
 		self.finish()
 
 	def finish(self):
+		if self.con:
+			self.con.unref()
+			self.con = None
 		if self.ctrl != None:
 			self.ctrl.close()
 			self.ctrl = None
@@ -864,23 +875,21 @@ class ftp:
 			self.dataconn.close()
 			self.dataconn = None
 
-
 class ftpdownloadhandler(ihandler):
 	def __init__(self, path):
 		logger.debug("%s ready!" % (self.__class__.__name__))
 		ihandler.__init__(self, path)
 	def handle_incident(self, icd):
 		logger.warn("do download")
-		url = icd.get("url")
+		url = icd.url
 		p = urllib.parse.urlsplit(url)
 		print(p)
 		if p.scheme == 'ftp':
 			try:
-				con = icd.get('con')
-				lhost = con.local.host
+				con = icd.con
 			except AttributeError:
-				lhost = None
+				con = None
 			f = ftp()
-			f.download(lhost, p.username, p.password, p.hostname, p.port, p.path, 'binary')
+			f.download(con, p.username, p.password, p.hostname, p.port, p.path, 'binary', url)
 
 

@@ -13,21 +13,28 @@ class storehandler(ihandler):
 		ihandler.__init__(self, path)
 	def handle_incident(self, icd):
 		logger.debug("storing file")
-		p = icd.get('path')
-		logger.debug("got path")
+		p = icd.path
 		md5 = md5file(p)
-		logger.debug("got hash")
 		n = g_dionaea.config()['downloads']['dir'] + '/' + md5
-		logger.debug("got n")
+		i = incident("dionaea.download.complete.hash")
+		i.file = n
+		i.url = icd.url
+		i.con = icd.con
+		i.md5hash = md5
+		i.report()
+
 		try:
 			f = os.stat(n)
+			i = incident("dionaea.download.complete.again")
+			logger.debug("file %s already existed" % md5)
 		except OSError:
 			logger.debug("saving new file %s to %s" % (md5, n))
 			os.link(p, n)
 			i = incident("dionaea.download.complete.unique")
-			i.set("file", n)
-			i.report()
-			return
-		logger.debug("file %s already existed" % md5)
+		i.file = n
+		i.con = icd.con
+		i.report()
+
+		
 
 

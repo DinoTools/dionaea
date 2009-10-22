@@ -16,8 +16,8 @@ class httpd(connection):
 		self.state = 'HEADER'
 
 	def handle_established(self):
-#		self.processors()
-		pass
+		self.processors()
+#		pass
 
 	def chroot(self, path):
 		pass

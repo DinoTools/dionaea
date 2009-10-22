@@ -9,7 +9,7 @@ import cmd
 import emu
 import store
 import test
-
+import surfids
 logger = logging.getLogger('ihandlers')
 logger.setLevel(logging.DEBUG)
 
@@ -32,12 +32,12 @@ def start():
 	global g_handlers
 	g_handlers = []
 	g_handlers.append(ftp.ftpdownloadhandler('dionaea.download.offer'))
-	g_handlers.append(tftp.tftpdownloadhandler('dionaea.download.offer'))
+#	g_handlers.append(tftp.tftpdownloadhandler('dionaea.download.offer'))
 	g_handlers.append(emu.emuprofilehandler('dionaea.module.emu.profile'))
 	g_handlers.append(cmd.cmdshellhandler('dionaea.service.shell.*'))
 	g_handlers.append(store.storehandler('dionaea.download.complete'))
 	g_handlers.append(test.uniquedownloadihandler('dionaea.download.complete.unique'))
-
+#	g_handlers.append(surfids.surfnetidshandler('*'))
 
 def stop():
 	global g_handlers

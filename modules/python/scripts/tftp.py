@@ -663,7 +663,7 @@ class TftpServerHandler(TftpSession):
                 self.filename = os.path.abspath(self.filename)
                 logger.debug("The absolute path is %s" % self.filename)
                 # Security check. Make sure it's prefixed by the tftproot.
-                if self.filename.startswith(self.root):
+                if self.filename.startswith(os.path.abspath(self.root)):
                     logger.debug("The path appears to be safe: %s" %
                             self.filename)
                 else:
@@ -866,10 +866,12 @@ class TftpClient(TftpSession):
         self.connected = False
         self.idlecount = 0
 
-#    def __del__(self):
-#        print('__del__' + str(self))
+    def __del__(self):
+        if self.con != None:
+            self.con.unref()
+            self.con = None
 
-    def download(self, lhost, host, port, filename):
+    def download(self, con, host, port, filename, url):
         logger.info("Connecting to %s to download" % host)
         logger.info("    filename -> %s" % filename)
 
@@ -882,8 +884,11 @@ class TftpClient(TftpSession):
 
         self.filename = filename
         self.port = port
-        if lhost != None:
-            self.bind(lhost, 0)
+        self.con = con
+        self.url = url
+        if con != None:
+            self.bind(con.local.host, 0)
+            self.con.ref()
         self.connect(host,0)
 
     def handle_established(self):
@@ -898,6 +903,11 @@ class TftpClient(TftpSession):
         self.send(self.last_packet)
         self.state.state = 'rrq'
         self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix='tftp-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
+
+#    def handle_disconnect(self):
+#        if self.con:
+#            self.con.unref()
+#        return False
 
     def handle_io_in(self, data):
         logger.debug('Received packet from server %s:%i' % (self.remote.host, self.remote.port))
@@ -944,7 +954,9 @@ class TftpClient(TftpSession):
                     logger.info("end of file detected")
                     self.fileobj.close()
                     icd = incident("dionaea.download.complete")
-                    icd.set('path', self.fileobj.name)
+                    icd.url = self.url
+                    icd.path = self.fileobj.name
+                    icd.con = self.con
                     icd.report()
                     self.close()
                     self.fileobj.unlink(self.fileobj.name)
@@ -987,7 +999,8 @@ class TftpClient(TftpSession):
                     logger.warn("failed to negotiate options")
                     self.senderror(TftpErrors.FailedNegotiation)
                     self.state.state = 'err'
-                    raise TftpException("Failed to negotiate options")
+#                    raise TftpException("Failed to negotiate options")
+                    self.fail()
 
         elif isinstance(recvpkt, TftpPacketACK):
             # Umm, we ACK, the server doesn't.
@@ -995,26 +1008,26 @@ class TftpClient(TftpSession):
 #            self.senderror(TftpErrors.IllegalTftpOp)
             logger.warn("Received ACK from server while in download")
 #            tftpassert(False, "Received ACK from server while in download")
-            self.close()
+            self.fail()
 
         elif isinstance(recvpkt, TftpPacketERR):
             self.state.state = 'err'
 #            self.senderror(TftpErrors.IllegalTftpOp)
             logger.warn("Received ERR from server: " + str(recvpkt))
-            self.close()
+            self.fail()
 
         elif isinstance(recvpkt, TftpPacketWRQ):
             self.state.state = 'err'
 #            self.senderror(TftpErrors.IllegalTftpOp)
 #            tftpassert(False, "Received WRQ from server: " + str(recvpkt))
             logger.warn("Received WRQ from server: " + str(recvpkt))
-            self.close()
+            self.fail()
         else:
             self.state.state = 'err'
 #            self.senderror(TftpErrors.IllegalTftpOp)
 #            tftpassert(False, "Received unknown packet type from server: " + str(recvpkt))
             logger.warn("Received unknown packet type from server: " + str(recvpkt))
-            self.close()
+            self.fail()
     
         return len(data)
 
@@ -1024,12 +1037,18 @@ class TftpClient(TftpSession):
     def handle_timeout_idle(self):
         logger.warn("tftp timeout!")
         if self.idlecount > 10:
-            self.fileobj.close()
-            self.fileobj.unlink(self.fileobj.name)
+            self.fail()
             return False
         self.idlecount+=1
         self.send(self.last_packet)
         return True
+
+    def fail(self):
+        if self.fileobj:
+            self.fileobj.close()
+            self.fileobj.unlink(self.fileobj.name)
+        self.close()
+
 
 from urllib import parse
 
@@ -1045,11 +1064,10 @@ class tftpdownloadhandler(ihandler):
             url = url[1:]
             x = parse.urlsplit(url)
             try:
-                con = icd.get('con')
-                lhost = con.local.host
+                con = icd.con
             except AttributeError:
-                lhost = None
+                con = None
             t=TftpClient()
-            t.download(lhost, x.netloc, 69, x.path[1:])
-            print(x)
+            t.download(con, x.netloc, 69, x.path[1:])
+
 
