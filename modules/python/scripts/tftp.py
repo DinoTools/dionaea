@@ -1068,6 +1068,6 @@ class tftpdownloadhandler(ihandler):
             except AttributeError:
                 con = None
             t=TftpClient()
-            t.download(con, x.netloc, 69, x.path[1:])
+            t.download(con, x.netloc, 69, x.path[1:], url)
 
 

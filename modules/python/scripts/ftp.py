@@ -741,6 +741,7 @@ class ftpctrl(connection):
 		self.send(cmd + '\r\n')
 
 	def handle_error(self, err):
+		self.ftp.fail()
 		return False
 
 	def handle_disconnect(self):
