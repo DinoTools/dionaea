@@ -2841,6 +2841,10 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 		accepted->stats.io_in.throttle.max_bytes_per_second = con->stats.io_in.throttle.max_bytes_per_second;
 		accepted->stats.io_out.throttle.max_bytes_per_second = con->stats.io_out.throttle.max_bytes_per_second;
 
+		// teach new connection about parent
+		if( con->protocol.origin != NULL )
+			con->protocol.origin(accepted, con);
+
 		connection_set_state(accepted, connection_state_handshake);
 		connection_tls_accept_again_cb(EV_A_ &accepted->events.io_in, 0);
 	}
