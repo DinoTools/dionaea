@@ -21,7 +21,7 @@ DT_PROTOCOL_NAME                   = 80
 DT_EMULATION_PROFILE               = 81
 DT_SHELLCODE_ACTION                = 82
 
-class surfnetidshandler(ihandler):
+class surfidshandler(ihandler):
 	def __init__(self, path):
 		logger.debug("%s ready!" % (self.__class__.__name__))
 		ihandler.__init__(self, path)
