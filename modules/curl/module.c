@@ -443,6 +443,7 @@ static void session_download_new(const char *url, struct connection *con)
 	curl_easy_setopt(session->easy, CURLOPT_ERRORBUFFER, session->error);
 	curl_easy_setopt(session->easy, CURLOPT_PRIVATE, session);
 	curl_easy_setopt(session->easy, CURLOPT_NOPROGRESS, 0L);
+	curl_easy_setopt(session->easy, CURLOPT_FOLLOWLOCATION, 10);
 	curl_easy_setopt(session->easy, CURLOPT_PROGRESSFUNCTION, curl_progressfunction_cb);
 	curl_easy_setopt(session->easy, CURLOPT_PROGRESSDATA, session);
 	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_TIME, 3L);
@@ -477,7 +478,7 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 			if( strncasecmp(url->str,  "http", 4) != 0 )
 				return;
 
-			struct connection *con;
+			struct connection *con = NULL;
 			incident_value_ptr_get(i, "con", (uintptr_t *)&con);
 			session_download_new(url->str, con);
 		} else
