@@ -81,13 +81,24 @@ class service:
 
 class httpservice(service):
 	def start(self, addr, iface=None):
-		daemon = http.httpd()
-		daemon.bind(addr, 9999, iface=iface)
+		daemon = http.httpd(proto='tcp')
+		daemon.bind(addr, 80, iface=iface)
 		daemon.chroot(g_dionaea.config()['modules']['python']['http']['root'])
 		daemon.listen()
 		return daemon
 	def stop(self, daemon):
 		daemon.close()
+
+class httpsservice(service):
+	def start(self, addr, iface=None):
+		daemon = http.httpd(proto='tls')
+		daemon.bind(addr, 443, iface=iface)
+		daemon.chroot(g_dionaea.config()['modules']['python']['http']['root'])
+		daemon.listen()
+		return daemon
+	def stop(self, daemon):
+		daemon.close()
+
 
 class ftpservice(service):
 	def start(self, addr,  iface=None):
@@ -166,12 +177,26 @@ def start():
 		g_slave = nlslave()
 
 
-	g_slave.services.append(httpservice)
-	g_slave.services.append(tftpservice)
-	g_slave.services.append(ftpservice)
-	g_slave.services.append(mirrorservice)
-	g_slave.services.append(smbservice)
-	g_slave.services.append(epmapservice)
+	if "http" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(httpservice)
+
+	if "https" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(httpsservice)
+
+	if "tftp" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(tftpservice)
+
+	if "ftp" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(ftpservice)
+
+	if "mirror" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(mirrorservice)
+
+	if "smb" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(smbservice)
+
+	if "epmap" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(epmapservice)
 
 	g_slave.start(addrs)
 

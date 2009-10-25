@@ -103,7 +103,16 @@ modules = {
 			username = "surfids"         // this
 			password = "secret"          // and this
 			dbname = "idsserver"
+		
+
+		ihandlers = {
+			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", "surfids"]
 		}
+
+		services = {
+			serve = ["http", "https", "tftp", "ftp", "mirror", "smb", "epmap"]
+		}
+
 	}
 
 	/* nc is a test module */
