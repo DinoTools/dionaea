@@ -464,12 +464,13 @@ cdef class connection:
 	# so it notices all observing python instances if it gets free'd
 	# and sets their .thisptr to NULL
 	# ... maybe later
-	def __richcmp__(a, b, int t):
-		if not isinstance(b, connection):
-			return False
-
-		if not isinstance(a, connection):
-			return False
+	def __richcmp__(a, b, t):
+		if not isinstance(a, connection) or not isinstance(b, connection):
+			if t == 2: # ==
+				return False
+			if t == 3: # != 
+				return True
+			return NotImplemented
 
 		if t == 0: # <
 			return (<connection>a).thisptr <= (<connection>b).thisptr
