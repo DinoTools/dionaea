@@ -59,6 +59,19 @@ class MS08_067_2(RPCVULN):
 		rpclog.info('got the DCERPC request for NetPathCompare. MS08-067 exploit?')
 		rpclog.debug('DCERPC request: {0}'.format(p.summary()))
 
+
+class MS04_012(RPCVULN):
+	# ISystemActivator
+	uuid = 'a001000000000000c000000000000046'
+	# RemoteCreateInstance
+	opnum = 0x4
+
+	@classmethod
+	def processrequest(cls, p):
+		rpclog.info('got the DCERPC request for RemoteCreateInstance. MS04-012 exploit?')
+		rpclog.debug('DCERPC request: {0}'.format(p.summary()))
+
+
 class MS04_011(RPCVULN):
 	# DSSETUP
 	uuid = '6a2819390cb1d0119ba800c04fd92ef5'
