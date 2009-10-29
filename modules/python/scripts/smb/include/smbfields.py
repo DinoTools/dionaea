@@ -519,7 +519,8 @@ class SMB_NTcreate_AndX_Request(Packet):
 		LEIntField("Impersonation",1),
 		XByteField("SecurityFlags",0),
 		LEShortField("ByteCount",0),
-		FixGapField("FixGap", b'\0'),
+#		FixGapField("FixGap", b'\0'),
+		ConditionalField(StrFixedLenField("Padding", b'\0', 1), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("Filename","\\lsarpc", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE)
 #		UnicodeNullField("Filename","\\lsarpc"),
 	]
