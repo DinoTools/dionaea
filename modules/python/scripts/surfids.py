@@ -6,7 +6,7 @@ import random
 
 import postgresql
 import postgresql.driver as pg_driver
-import ipaddr
+
 logger = logging.getLogger('surfids')
 logger.setLevel(logging.DEBUG)
 
