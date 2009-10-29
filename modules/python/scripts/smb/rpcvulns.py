@@ -52,7 +52,7 @@ class MS08_067_2(RPCVULN):
 	# SRVSVC
 	uuid = 'c84f324b7016d30112785a47bf6ee188'
 	# NetPathCompare
-	opnum = 1
+	opnum = 0x20
 
 	@classmethod
 	def processrequest(cls, p):

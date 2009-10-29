@@ -116,7 +116,7 @@ class smbd(connection):
 
 		if r:
 			smblog.debug('response: {0}'.format(r.summary()))
-			#r.show()
+			r.show()
 			#r.show2()
 			self.send(r.build())
 		else:
@@ -139,7 +139,7 @@ class smbd(connection):
 		r = ''
 		rp = None
 		#if self.state == STATE_START and p.getlayer(SMB_Header).Command == 0x72:
-		if p.getlayer(SMB_Header).Command == 0x72:
+		if p.getlayer(SMB_Header).Command == SMB_COM_NEGOTIATE:
 			# Negociate Protocol -> Send response that supports minimal features in NT LM 0.12 dialect
 			# (could be randomized later to avoid detection - but we need more dialects/options support)
 			r = SMB_Negociate_Protocol_Response()
@@ -155,21 +155,25 @@ class smbd(connection):
 			r.DialectIndex = c
 
 		#elif self.state == STATE_SESSIONSETUP and p.getlayer(SMB_Header).Command == 0x73:
-		elif p.getlayer(SMB_Header).Command == 0x73:
-#			r = None
-#			if p.getlayer(SMB_Sessionsetup_ESEC_AndX_Request).WordCount == 13:
-#				print("\n\nDECODING\n\n")
-#				#try decoding with wordcount 13
-#				p.getlayer(SMB_Header).decode_payload_as(SMB_Sessionsetup_AndX_Request2)
-#				r = SMB_Sessionsetup_AndX_Response2()
-#			else:
+		elif p.getlayer(SMB_Header).Command == SMB_COM_SESSION_SETUP_ANDX:
+			if p.haslayer(SMB_Sessionsetup_ESEC_AndX_Request):
 				r = SMB_Sessionsetup_ESEC_AndX_Response()
+			elif p.haslayer(SMB_Sessionsetup_AndX_Request2):
+				r = SMB_Sessionsetup_AndX_Response2()
+			else:
+				smblog.warn("Unknown Session Setup Type used")
 		elif p.getlayer(SMB_Header).Command == SMB_COM_TREE_CONNECT_ANDX:
 			r = SMB_Treeconnect_AndX_Response()
 		elif p.getlayer(SMB_Header).Command == SMB_COM_TREE_DISCONNECT:
 			r = SMB_Treedisconnect()
+		elif p.getlayer(SMB_Header).Command == SMB_COM_CLOSE:
+			r = SMB_Close()
+		elif p.getlayer(SMB_Header).Command == SMB_COM_LOGOFF_ANDX:
+			r = SMB_Logoff_AndX()
 		elif p.getlayer(SMB_Header).Command == SMB_COM_NT_CREATE_ANDX:
 			r = SMB_NTcreate_AndX_Response()
+		elif p.getlayer(SMB_Header).Command == SMB_COM_ECHO:
+			r = p.getlayer(SMB_Header).payload
 		elif p.getlayer(SMB_Header).Command == SMB_COM_WRITE:
 			r = SMB_Write_AndX_Response()
 			r.CountLow = p.getlayer(SMB_Write_AndX_Request).DataLenLow
@@ -221,8 +225,8 @@ class smbd(connection):
 			r.DataCount = dceplen
 
 			rdata = SMB_Data()
-			rdata.Bytecount = dceplen +1
-			rdata.Bytes = b'\x00' + self.outbuf.build()
+			rdata.Bytecount = dceplen
+			rdata.Bytes = self.outbuf.build()
 			
 			r /= rdata
 		else:
@@ -232,6 +236,7 @@ class smbd(connection):
 		if r:
 			smbh = SMB_Header()
 			smbh.Command = r.smb_cmd
+			smbh.Flags2 = p.getlayer(SMB_Header).Flags2
 			smbh.MID = p.getlayer(SMB_Header).MID
 			smbh.PID = p.getlayer(SMB_Header).PID
 			rp = NBTSession()/smbh/r
@@ -257,6 +262,7 @@ class smbd(connection):
 
 		if dcep.PacketType == 11: #bind
 			outbuf = DCERPC_Header()/DCERPC_Bind_Ack()
+			outbuf.CallID = dcep.CallID
 
 			tmp = dcep.getlayer(DCERPC_CtxItem)
 			c = 0
@@ -264,6 +270,7 @@ class smbd(connection):
 				c += 1
 				ctxitem = DCERPC_Ack_CtxItem()
 				for uuid in registered_calls:
+#					smblog.info("Request to bind %s (%s)" % (tmp.UUID, str(bytes.fromhex(uuid))))
 					if tmp.UUID == bytes.fromhex(uuid):
 						smblog.info('Found a registered UUID (%s). Accepting Bind. (%s)' % (tmp.UUID, str(uuid)))
 						self.state['uuid'] = uuid

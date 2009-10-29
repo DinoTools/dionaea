@@ -534,7 +534,7 @@ class FieldListField(Field):
             c = self.count_from(pkt)
 
         val = []
-        ret=""
+        ret=b""
         if l is not None:
             s,ret = s[:l],s[l:]
             
