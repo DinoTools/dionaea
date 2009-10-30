@@ -217,11 +217,42 @@ class SMBNullField(StrField):
 		smbhdr = pkt
 		while not isinstance(smbhdr, SMB_Header) and smbhdr != None:
 			smbhdr = smbhdr.underlayer
-			
+
 		if smbhdr and smbhdr.Flags2 & 0x8000:
 			return UnicodeNullField.getfield(self, pkt, s)
 		else:
 			return StrNullField.getfield(self, pkt, s)
+
+	def i2m(self, pkt, s):
+		smbhdr = pkt
+		while not isinstance(smbhdr, SMB_Header) and smbhdr != None:
+			smbhdr = smbhdr.underlayer
+
+		if smbhdr and smbhdr.Flags2 & 0x8000:
+			return UnicodeNullField.i2m(self, pkt, s)
+		else:
+			return StrNullField.i2m(self, pkt, s)
+
+	def i2repr(self, pkt, s):
+		smbhdr = pkt
+		while not isinstance(smbhdr, SMB_Header) and smbhdr != None:
+			smbhdr = smbhdr.underlayer
+
+		if smbhdr and smbhdr.Flags2 & 0x8000:
+			return UnicodeNullField.i2repr(self, pkt, s)
+		else:
+			return StrNullField.i2repr(self, pkt, s)
+
+	def size(self, pkt, s):
+		smbhdr = pkt
+		while not isinstance(smbhdr, SMB_Header) and smbhdr != None:
+			smbhdr = smbhdr.underlayer
+
+		if smbhdr and smbhdr.Flags2 & 0x8000:
+			return UnicodeNullField.size(self, pkt, s)
+		else:
+			return StrNullField.size(self, pkt, s)
+
 
 class NBTSession(Packet):
 	name="NBT Session Packet"
@@ -345,10 +376,12 @@ class SMB_Sessionsetup_ESEC_AndX_Request(Packet):
 		FlagsField("Capabilties", 0x8000e3fd, -32, SMB_Negotiate_Capabilities),
 		LEShortField("ByteCount",35),
 		StrLenField("SecurityBlob", "Pass", length_from=lambda x:x.SecurityBlobLength),
-		StrFixedLenField("Padding", "\x00", length_from=lambda x:(x.SecurityBlobLength+1)%2), 
-		UnicodeNullField("NativeOS","Windows"),
-		UnicodeNullField("NativeLanManager","Windows"),
-		UnicodeNullField("PrimaryDomain","WORKGROUP"),
+		ConditionalField(StrFixedLenField("Padding", "\x00", length_from=lambda x:(x.SecurityBlobLength+1)%2), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+#		StrFixedLenField("Padding", "\x00", length_from=lambda x:(x.SecurityBlobLength+1)%2), 
+		SMBNullField("NativeOS","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		SMBNullField("NativeLanManager","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+#		UnicodeNullField("PrimaryDomain","WORKGROUP"),
+		StrFixedLenField("Extrabytes", b'', length_from=lambda x:x.ByteCount - len(x.SecurityBlob) - len(x.Padding) - len(x.NativeOS) - len(x.NativeLanManager))
 	]
 
 class SMB_Sessionsetup_ESEC_AndX_Response(Packet):
@@ -362,50 +395,51 @@ class SMB_Sessionsetup_ESEC_AndX_Response(Packet):
 		XLEShortField("Action",1),
 		FieldLenField("SecurityBlobLength", None, fmt='<H', length_of="SecurityBlob"),
 		StrLenField("SecurityBlob", "", length_from=lambda x:x.SecurityBlobLength),
-		LEShortField("ByteCount",75),
-		StrFixedLenField("Padding", "\x00", length_from=lambda x:(len(x.SecurityBlob)+1)%2), 
-		UnicodeNullField("NativeOS","Windows 5.1"),
-		UnicodeNullField("NativeLanManager","Windows 2000 LAN Manager"),
+		FieldLenField("ByteCount", None, fmt='<H', length_of="NativeOS", adjust=lambda pkt,x: len(pkt.Padding) + len(pkt.NativeOS) +  len(pkt.NativeLanManager)),
+		ConditionalField(StrFixedLenField("Padding", "\x00", length_from=lambda x:(len(x.SecurityBlob)+1)%2), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		SMBNullField("NativeOS","Windows 5.1", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		SMBNullField("NativeLanManager","Windows 2000 LAN Manager", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 	]
 
-
-class SMB_Sessionsetup_AndX_Request(Packet):
-	name="SMB Sessionsetup AndX Request"
-	fields_desc = [
-		ByteField("WordCount",10),
-		ByteEnumField("AndXCommand",0xff,SMB_Commands),
-		ByteField("Reserved1",0),
-		LEShortField("AndXOffset",0),
-		LEShortField("MaxBufferS",2920),
-		LEShortField("MaxMPXCount",50),
-		LEShortField("VCNumber",0),
-		LEIntField("SessionKey",0),
-		FieldLenField("PasswordLength", None, fmt='<H', length_of="Password"),
-		LEIntField("Reserved2",0),
-		LEShortField("ByteCount",35),
-		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
-		SMBNullField("Account", "", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
-		SMBNullField("PrimaryDomain","WORKGROUP", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
-		SMBNullField("NativeOS","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
-		SMBNullField("NativeLanManager","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
-	]
-
-class SMB_Sessionsetup_AndX_Response(Packet):
-	name="SMB Sessionsetup AndX Response"
-	smb_cmd = 0x73
-	fields_desc = [
-		ByteField("WordCount",4),
-		ByteEnumField("AndXCommand",0xff,SMB_Commands),
-		ByteField("Reserved1",0),
-		LEShortField("AndXOffset",0),
-		XLEShortField("Action",1),
-		FieldLenField("BlobLength", None, fmt='<H', length_of="Blob"),
-		LEShortField("ByteCount",55),
-		StrLenField("Blob", b"\xa1\x07\x30\x05\xa0\x03\x0a\x01", length_from=lambda x:x.BlobLength),
-		StrNullField("NativeOS","Windows 5.1"),
-		StrNullField("NativeLanManager","Windows 2000 LAN Manager"),
-		StrNullField("PrimaryDomain","WORKGROUP"),
-	]
+# pre nt lm 0.12
+# not supported
+#class SMB_Sessionsetup_AndX_Request(Packet):
+#	name="SMB Sessionsetup AndX Request"
+#	fields_desc = [
+#		ByteField("WordCount",10),
+#		ByteEnumField("AndXCommand",0xff,SMB_Commands),
+#		ByteField("Reserved1",0),
+#		LEShortField("AndXOffset",0),
+#		LEShortField("MaxBufferS",2920),
+#		LEShortField("MaxMPXCount",50),
+#		LEShortField("VCNumber",0),
+#		LEIntField("SessionKey",0),
+#		FieldLenField("PasswordLength", None, fmt='<H', length_of="Password"),
+#		LEIntField("Reserved2",0),
+#		LEShortField("ByteCount",35),
+#		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
+#		SMBNullField("Account", "", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+#		SMBNullField("PrimaryDomain","WORKGROUP", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+#		SMBNullField("NativeOS","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+#		SMBNullField("NativeLanManager","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+#	]
+#
+#class SMB_Sessionsetup_AndX_Response(Packet):
+#	name="SMB Sessionsetup AndX Response"
+#	smb_cmd = 0x73
+#	fields_desc = [
+#		ByteField("WordCount",4),
+#		ByteEnumField("AndXCommand",0xff,SMB_Commands),
+#		ByteField("Reserved1",0),
+#		LEShortField("AndXOffset",0),
+#		XLEShortField("Action",1),
+#		FieldLenField("BlobLength", None, fmt='<H', length_of="Blob"),
+#		LEShortField("ByteCount",55),
+#		StrLenField("Blob", b"\xa1\x07\x30\x05\xa0\x03\x0a\x01", length_from=lambda x:x.BlobLength),
+#		StrNullField("NativeOS","Windows 5.1"),
+#		StrNullField("NativeLanManager","Windows 2000 LAN Manager"),
+#		StrNullField("PrimaryDomain","WORKGROUP"),
+#	]
 
 
 # CIFS-TR-1p00_FINAL.pdf 665616b44740177c86051c961fdf6768
@@ -436,12 +470,12 @@ class SMB_Sessionsetup_AndX_Request2(Packet):
 		SMBNullField("PrimaryDomain","WORKGROUP", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("NativeOS","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("NativeLanManager","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
-		StrFixedLenField("Padding2", "\x00", length_from=lambda x:(len(x.Account)+len(x.PrimaryDomain)+len(x.NativeOS)+len(x.NativeLanManager)+1)%2), 
+		StrFixedLenField("Extrabytes", b"\x00", length_from=lambda x: x.ByteCount - len(x.Padding) - len(x.Account) - len(x.PrimaryDomain) - len(x.NativeOS) - len(x.NativeLanManager)), 
 	]
 
 
 class SMB_Sessionsetup_AndX_Response2(Packet):
-	name="SMB Sessionsetup AndX Response"
+	name="SMB Sessionsetup AndX Response2"
 	smb_cmd = 0x73
 	fields_desc = [
 		ByteField("WordCount",3),
@@ -449,7 +483,7 @@ class SMB_Sessionsetup_AndX_Response2(Packet):
 		ByteField("Reserved1",0),
 		LEShortField("AndXOffset",0),
 		XLEShortField("Action",1),
-		LEShortField("ByteCount",47),
+		FieldLenField("ByteCount", None, fmt='<H', length_of="NativeOS", adjust=lambda pkt,x: len(pkt.Padding) + len(pkt.NativeOS) +  len(pkt.NativeLanManager) + len(pkt.PrimaryDomain)),
 		ConditionalField(StrFixedLenField("Padding", b'\0', 1), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("NativeOS","Windows 5.1", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("NativeLanManager","Windows 2000 LAN Manager", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
@@ -471,10 +505,23 @@ class SMB_Treeconnect_AndX_Request(Packet):
 		FieldLenField("PasswordLength", None, fmt='<H', length_of="Password"),
 		LEShortField("ByteCount",18),
 		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
-		FixGapField("FixGap", b'\0'),
+		ConditionalField(StrFixedLenField("Padding", b'\0', 1), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE and len(x.Password)%2 == 0),
 		SMBNullField("Path","\\\\WIN2K\\IPC$", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
-		StrNullField("Service","IPC")
+		StrNullField("Service","IPC"),
+#		StrFixedLenField("Extrabytes", b"\x00", length_from=lambda x: x.ByteCount - len(x.Password) - ( hasattr(x, 'Padding') ? len(x.Padding) : 0 ) - len(x.Path) - len(x.Service)), 
+		StrFixedLenField("Extrabytes", b"\x00", length_from=lambda x: x.lengthof_Extrabytes()), 
 	]
+	def lengthof_Extrabytes(self):
+		x = self.ByteCount
+		x -= len(self.Password)
+		if hasattr(self,'Padding') and self.Padding != None:
+			x -= len(self.Padding)
+		x -= len(self.Path)
+		x -= len(self.Service)
+		return x
+
+
+
 
 class SMB_Treedisconnect(Packet):
 	name = "SMB Tree Disconnect"
@@ -656,11 +703,22 @@ class SMB_Trans_Request(Packet):
 		FieldListField("Setup", 0, ShortField("", 0), count_from = lambda pkt: pkt.SetupCount), 
 		LEShortField("ByteCount",0),
 		ConditionalField(StrFixedLenField("Padding", b'\0', 1), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
-		SMBNullField("TransactionName",b"\\PIPE\\"),
-		StrFixedLenField("Pad", b"\x00", length_from=lambda x:x.ParamOffset  + (len(x.TransactionName)+1)*(len(x.Padding)+1) + x.SetupCount - 98),
+		SMBNullField("TransactionName",b"\\PIPE\\", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
 		FieldListField("Param", 0, ByteField("", 0), count_from = lambda pkt: pkt.ParamCount), 
-		StrFixedLenField("Pad1", b"\x00", length_from=lambda x:x.DataOffset - ( x.ParamOffset + x.ParamCount ) ),
+		StrFixedLenField("Pad1", b"", length_from=lambda x:x.DataOffset - ( x.ParamOffset + x.ParamCount ) ),
 	]
+	def lengthfrom_Pad(self):
+		r = self.ParamOffset+1		# little to no idea where I need the +1
+		r -= self.underlayer.size()	# underlayer size removed
+		r -= 5						# 5 byte vars
+		r -= 11*2					# 11 words
+		r -= 4						# 1 int
+		r -= self.SetupCount*2			# SetupCount words
+		if hasattr(self, 'Padding') and self.Padding != None:
+			r -= len(self.Padding)		# optional Padding 
+		r -= len(self.TransactionName)	# TransactionName
+		return r
 
 
 class SMB_Trans_Response(Packet):
@@ -819,7 +877,7 @@ bind_bottom_up(DCERPC_Header, DCERPC_Bind_Ack, PacketType=lambda x: x==12)
 bind_bottom_up(DCERPC_Bind, DCERPC_CtxItem)
 bind_bottom_up(DCERPC_CtxItem, DCERPC_CtxItem)
 
-bind_bottom_up(SMB_Sessionsetup_AndX_Request, SMB_Treeconnect_AndX_Request, AndXCommand=lambda x: x==0x75)
+#bind_bottom_up(SMB_Sessionsetup_AndX_Request, SMB_Treeconnect_AndX_Request, AndXCommand=lambda x: x==0x75)
 bind_bottom_up(SMB_Sessionsetup_AndX_Request2, SMB_Treeconnect_AndX_Request, AndXCommand=lambda x: x==0x75)
 bind_bottom_up(SMB_Negociate_Protocol_Request_Counts, SMB_Negociate_Protocol_Request_Tail)
 bind_bottom_up(SMB_Negociate_Protocol_Request_Tail, SMB_Negociate_Protocol_Request_Tail)
@@ -828,6 +886,7 @@ bind_bottom_up(SMB_Parameters, SMB_Data)
 
 bind_top_down(SMB_Header, SMB_Negociate_Protocol_Response, Command=0x72)
 bind_top_down(SMB_Header, SMB_Sessionsetup_AndX_Response2, Command=0x73)
+bind_top_down(SMB_Header, SMB_Sessionsetup_ESEC_AndX_Response, Command=0x73)
 bind_top_down(SMB_Header, SMB_Treeconnect_AndX_Response, Command=0x75)
 bind_top_down(SMB_Header, SMB_Treedisconnect, Command=0x71)
 bind_top_down(SMB_Header, SMB_NTcreate_AndX_Response, Command=0xa2)

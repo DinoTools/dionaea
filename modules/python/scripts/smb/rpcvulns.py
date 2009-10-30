@@ -37,6 +37,7 @@ class RPCVULN:
 	def processrequest(cls, p):
 		pass
 
+
 class MS08_067(RPCVULN): # also ms06_040
 	# SRVSVC
 	uuid = 'c84f324b7016d30112785a47bf6ee188'
@@ -57,6 +58,15 @@ class MS08_067_2(RPCVULN):
 	@classmethod
 	def processrequest(cls, p):
 		rpclog.info('got the DCERPC request for NetPathCompare. MS08-067 exploit?')
+		rpclog.debug('DCERPC request: {0}'.format(p.summary()))
+
+class MSXX_FOO(RPCVULN):
+	# SVCCTL 2.0
+	uuid = '81bb7a364498f135ad3298f038001003'
+	opnum = 0xff
+	@classmethod
+	def processrequest(cls, p):
+		rpclog.info('got the DCERPC request for XX. MSXX exploit?')
 		rpclog.debug('DCERPC request: {0}'.format(p.summary()))
 
 

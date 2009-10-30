@@ -36,6 +36,10 @@ class Field:
     def register_owner(self, cls):
         self.owners.append(cls)
 
+    def size(self, pkt, x):
+        """Size of this Field"""
+        return self.sz
+
     def i2len(self, pkt, x):
         """Convert internal value to a length usable by a FieldLenField"""
         return self.sz
@@ -146,6 +150,11 @@ class ConditionalField:
     def __getattr__(self, attr):
         return getattr(self.fld,attr)
         
+    def size(self, pkt, s):
+        if self._evalcond(pkt):
+            return self.fld.size(pkt,s)
+        else:
+            return 0
 
 class PadField:
     """Add bytes after the proxified field so that it ends at the specified
@@ -341,6 +350,8 @@ class StrField(Field):
             return "",self.m2i(pkt, s)
         else:
             return s[-self.remain:],self.m2i(pkt, s[:-self.remain])
+    def size(self, pkt, val):
+        return len(self.i2m(pkt, val))
     def randval(self):
         return RandBin(RandNum(0,1200))
 
@@ -450,6 +461,7 @@ class StrFixedLenField(StrField):
         return s[l:], self.m2i(pkt,s[:l])
     def addfield(self, pkt, s, val):
         l = self.length_from(pkt)
+        print(l)
         return s+struct.pack("%is"%l,self.i2m(pkt, val))
     def randval(self):
         try:
@@ -483,17 +495,22 @@ class StrLenField(StrField):
         return s[l:], self.m2i(pkt,s[:l])
 
 class FixGapField(StrField):
-	def getfield(self, pkt, s):
-		l = len(self.default)
-		if s[:l] == self.default:
-			return s[l:], self.m2i(pkt, s[:l])
-		else:
-			return s, self.m2i(pkt, b'')
-	def addfield(self, pkt, s, val):
-		if val == self.default:
-			return s+self.i2m(pkt, val)
-		else:
-			return s
+    def getfield(self, pkt, s):
+        l = len(self.default)
+        if s[:l] == self.default:
+            return s[l:], self.m2i(pkt, s[:l])
+        else:
+            return s, self.m2i(pkt, b'')
+    def addfield(self, pkt, s, val):
+        if val == self.default:
+            return s+self.i2m(pkt, val)
+        else:
+            return s
+    def size(self, pkt, val):
+        l = len(self.default)
+        if pkt[:l] == self.default:
+            return len(self.default)
+        return 0
 
 class FieldListField(Field):
     islist=1
@@ -547,6 +564,17 @@ class FieldListField(Field):
             val.append(v)
         return s+ret, val
 
+    def size(self, pkt, val):
+        c = l = None
+        if self.length_from is not None:
+            l = self.length_from(pkt)
+            return l
+        elif self.count_from is not None:
+            c = self.count_from(pkt)
+            return c * self.field.size(pkt, val)
+        
+
+
 class FieldLenField(Field):
     def __init__(self, name, default,  length_of=None, fmt = "H", count_of=None, adjust=lambda pkt,x:x, fld=None):
         Field.__init__(self, name, default, fmt)
@@ -580,6 +608,7 @@ class StrNullField(StrField):
         return RandTermString(RandNum(0,1200),"\x00")
 
 class UnicodeNullField(StrField):
+    # machine representation is bytes
     def addfield(self, pkt, s, val):
         # CIFS-TR-1p00_FINAL.pdf 665616b44740177c86051c961fdf6768
         # page 35
@@ -587,21 +616,50 @@ class UnicodeNullField(StrField):
         # must be word-aligned with respect to the beginning of the SMB. Should the string not naturally
         # fall on a two-byte boundary, a null byte of padding will be inserted, and the Unicode string will
         # begin at the next address.
-        if isinstance(val, str):
-            return s+val.encode('utf-16')[2:]+b"\0\0"
-        elif isinstance(val, bytes):
-            return s+val
+        return s+self.i2m(pkt, val)+b"\0\0"
+
     def getfield(self, pkt, s):
-        l = s.find(b"\0\0")
-        if l < 0:
-            #XXX \x00 not found
+        eos = 0
+        # unicode ends with \x00 \x00
+        # look for it
+        while eos <= len(s):
+            if s[eos] == 0 and s[eos+1] == 0:
+                break
+            eos+=2
+
+        # did we find the end of the unicode?
+        if s[eos] != 0 and s[eos+1] != 0:
+            eos == -1
+    
+        if eos < 0:
             return "",s
-        #ugly! correct unicode detecting needs to be done here...
-        #return s[l+3:],self.m2i(pkt, s[:l+1])
-        if len(s[:l+1]) > 2:
-            return s[l+3:],s[:l+1].decode('utf-16')
+
+        eos += 2
+
+        if len(s) > eos:
+            return s[eos:],s[:eos]
         else:
-            return s[l+3:],b''
+            return s[eos:],b''
+
+    def i2m(self, pkt, x):
+        if x is None:
+            x = b''
+        elif type(x) is str:
+            x = x.encode('utf-16')[2:]
+        elif type(x) is not bytes:
+            x=str(x).encode('utf-16')[2:]
+        return x
+
+    def i2repr(self, pkt, x):
+        if x is None:
+            x = b''
+        elif type(x) is bytes:
+            x=x.decode('utf-16')[:-1]
+        return x
+
+    def size(self, pkt, x):
+        return len(self.i2m(pkt,x))
+    
     def randval(self):
         return RandTermString(RandNum(0,1200),"\x00")
 
@@ -636,11 +694,11 @@ class BitField(Field):
     def __init__(self, name, default, size):
         Field.__init__(self, name, default)
         self.rev = size < 0 
-        self.size = abs(size)
+        self._size = abs(size)
     def reverse(self, val):
-        if self.size == 16:
+        if self._size == 16:
             val = socket.ntohs(val)
-        elif self.size == 32:
+        elif self._size == 32:
             val = socket.ntohl(val)
         return val
         
@@ -653,9 +711,9 @@ class BitField(Field):
             v = 0
         if self.rev:
             val = self.reverse(val)
-        v <<= self.size
-        v |= val & ((1<<self.size) - 1)
-        bitsdone += self.size
+        v <<= self._size
+        v |= val & ((1<<self._size) - 1)
+        bitsdone += self._size
         while bitsdone >= 8:
             bitsdone -= 8
             s = s+struct.pack("!B", v >> bitsdone)
@@ -670,7 +728,7 @@ class BitField(Field):
         else:
             bn = 0
         # we don't want to process all the string
-        nb_bytes = (self.size+bn-1)//8 + 1
+        nb_bytes = (self._size+bn-1)//8 + 1
         w = s[:nb_bytes]
 
         # split the substring byte by byte
@@ -684,12 +742,12 @@ class BitField(Field):
         b &= (1 << (nb_bytes*8-bn)) - 1
 
         # remove low order bits
-        b = b >> (nb_bytes*8 - self.size - bn)
+        b = b >> (nb_bytes*8 - self._size - bn)
 
         if self.rev:
             b = self.reverse(b)
 
-        bn += self.size
+        bn += self._size
         s = s[bn//8:]
         bn = bn%8
         b = self.m2i(pkt, b)
@@ -698,7 +756,7 @@ class BitField(Field):
         else:
             return s,b
     def randval(self):
-        return RandNum(0,2**self.size-1)
+        return RandNum(0,2**self._size-1)
 
 
 class BitFieldLenField(BitField):
@@ -765,7 +823,7 @@ class BitEnumField(BitField,EnumField):
     def __init__(self, name, default, size, enum):
         EnumField.__init__(self, name, default, enum)
         self.rev = size < 0
-        self.size = abs(size)
+        self._size = abs(size)
     def any2i(self, pkt, x):
         return EnumField.any2i(self, pkt, x)
     def i2repr(self, pkt, x):
@@ -904,3 +962,4 @@ class FixedPointField(BitField):
         return int_part+frac_part
     def i2repr(self, pkt, val):
         return self.i2h(pkt, val)
+

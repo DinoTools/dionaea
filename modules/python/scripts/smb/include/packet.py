@@ -168,6 +168,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
     def post_dissection(self, pkt):
         """DEV: is called after the dissection of the whole packet"""
         pass
+        
 
     def get_field(self, fld):
         """DEV: returns the field instance from the name of the field"""
@@ -620,16 +621,23 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
     def fragment(self, *args, **kargs):
         return self.payload.fragment(*args, **kargs)
     
+    def size(self):
+        x = 0
+        for f in self.fields_desc:
+            x += f.size(self, self.getfieldval(f.name))
+        return x
+
 
     def display(self,*args,**kargs):  # Deprecated. Use show()
         """Deprecated. Use show() method."""
         self.show(*args,**kargs)
     def show(self, indent=3, lvl="", label_lvl=""):
         """Prints a hierarchical view of the packet. "indent" gives the size of indentation for each layer."""
-        logger.debug("%s%s %s %s" % (label_lvl,
+        logger.debug("%s%s %s sizeof(%i) %s " % (label_lvl,
                               "###[",
-                              self.name,
+                              self.name, self.size(),
                               "]###"))
+        off=0
         for f in self.fields_desc:
             if isinstance(f, ConditionalField) and not f._evalcond(self):
                 continue
@@ -640,10 +648,14 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
                 for fvalue in fvalue_gen:
                     fvalue.show(indent=indent, label_lvl=label_lvl+lvl+"   |")
             else:
-                logger.debug("%s  %-10s%s %s" % (label_lvl+lvl,
+                size = f.size(self,fvalue)
+                logger.debug("%s  %-20s%s %-40s sizeof(%3i) off=%3i" % (label_lvl+lvl,
                                           f.name,
                                           "=",
-                                          f.i2repr(self,fvalue)))
+                                          f.i2repr(self,fvalue),
+                                          size,
+                                          off))
+                off += size
         self.payload.show(indent=indent, lvl=lvl+(" "*indent*self.show_indent), label_lvl=label_lvl)
     def show2(self):
         """Prints a hierarchical view of an assembled version of the packet, so that automatic fields are calculated (checksums, etc.)"""

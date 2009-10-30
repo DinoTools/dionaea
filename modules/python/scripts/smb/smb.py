@@ -30,6 +30,7 @@ from dionaea import *
 import traceback
 import logging
 import tempfile
+import binascii
 
 from .include.smbfields import *
 
@@ -117,6 +118,7 @@ class smbd(connection):
 		if r:
 			smblog.debug('response: {0}'.format(r.summary()))
 			r.show()
+#			r.build()
 			#r.show2()
 			self.send(r.build())
 		else:
@@ -270,7 +272,7 @@ class smbd(connection):
 				c += 1
 				ctxitem = DCERPC_Ack_CtxItem()
 				for uuid in registered_calls:
-#					smblog.info("Request to bind %s (%s)" % (tmp.UUID, str(bytes.fromhex(uuid))))
+					smblog.info("Request to bind %s %s %s" % (tmp.UUID, binascii.hexlify(tmp.UUID), str(bytes.fromhex(uuid))))
 					if tmp.UUID == bytes.fromhex(uuid):
 						smblog.info('Found a registered UUID (%s). Accepting Bind. (%s)' % (tmp.UUID, str(uuid)))
 						self.state['uuid'] = uuid
