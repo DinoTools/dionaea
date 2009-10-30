@@ -302,7 +302,7 @@ class ftpd(connection):
 		if self.dtp:
 			self.dtp.close()
 			self.dtp = None
-		addr = list(map(int, address.decode().split(',')))
+		addr = list(map(int, address.split(',')))
 		ip = '%d.%d.%d.%d' % tuple(addr[:4])
 		port = addr[4] << 8 | addr[5]
 		logger.debug("PORT cmd for port %i" % port)
