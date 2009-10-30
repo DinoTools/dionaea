@@ -60,6 +60,22 @@ submit =
 
 listen = 
 {
+	/* basically we have 3 modes
+	   - getifaddrs - auto
+	     will get a list of all ips and bind a service to each ip
+	   - manual - your decision
+	     addrs has to be provided, and should look like this
+		 addrs = { eth0 = ["1.1.1.1", "1.1.1.2"], eth1 = ["2.1.1.1", "2.1.1.2"] }
+		 you get the idea ...
+		 for most cases with more than one address
+		 addrs = { eth0 = ["0.0.0.0"] }
+		 will do the trick
+		 if you want to throw in ipv6 support as well ...
+		 addrs = { eth0 = ["::"] }
+		 note: ipv6 does not work with surfids yet, 
+		 as ipv6 addresses are mapped to ipv4 and surfids fails to retrieve the sensor id for ::ffff:1.2.3.4
+	*/
+	     
 	mode = "getifaddrs"
 	addrs = { eth0 = ["::"] }
 }
@@ -103,7 +119,7 @@ modules = {
 			username = "surfids"         // this
 			password = "secret"          // and this
 			dbname = "idsserver"
-		
+		}
 
 		ihandlers = {
 			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", "surfids"]
