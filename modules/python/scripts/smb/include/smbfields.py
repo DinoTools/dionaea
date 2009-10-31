@@ -819,7 +819,8 @@ class DCERPC_CtxItem(Packet):
 		StrLenField('UUID', '', length_from = lambda x: 16),
 		LEShortField("InterfaceVer",0),
 		LEShortField("InterfaceVerMinor",0),
-		StrLenField('TransItems', '', length_from = lambda pkt: pkt.NumTransItems*20),
+		StrFixedLenField('TransferSyntax', '', 16),
+		LEIntField('TransferSyntaxVersion', 0)
 	]
 
 class DCERPC_Bind_Ack(Packet):
@@ -835,12 +836,13 @@ class DCERPC_Bind_Ack(Packet):
 	]
 
 class DCERPC_Ack_CtxItem(Packet):
-	name = "DCERPC CtxItem"
+	name = "DCERPC Ack CtxItem"
 	fields_desc = [
 		LEShortField("AckResult",2),
 		LEShortField("AckReason",1),
 		#Field("TransferSyntax","\0"*16, fmt="QQ"),
-		StrLenField("TransferSyntax", "\0"*20, length_from=lambda x:20),
+		StrFixedLenField('TransferSyntax', '', 16),
+		LEIntField('TransferSyntaxVersion', 0)
 	]
 
 bind_bottom_up(NBTSession, NBTSession_Request, TYPE = lambda x: x==0x81)

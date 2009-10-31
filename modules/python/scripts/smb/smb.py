@@ -31,6 +31,7 @@ import traceback
 import logging
 import tempfile
 import binascii
+from uuid import UUID
 
 from .include.smbfields import *
 
@@ -44,22 +45,13 @@ STATE_NTCREATE = 3
 STATE_NTWRITE = 4
 STATE_NTREAD = 5
 
-# dict with uuid -> [(checkfn, callback),]
-registered_calls = {}
+registered_services = {}
 
-# if there are several registered calls for a UUID,
-# the smbd will call checkfn on each DCERPC packet and
-# return some error if both callbacks want it.
-# (should not happen anyway)
-
-def register_dcerpc_call(vuln):
-	uuid = vuln.uuid
-
+def register_rpc_service(service):
+	uuid = service.uuid
 	global registered_calls
-	if uuid in registered_calls:
-		registered_calls[uuid].append( vuln )
-	else:
-		registered_calls[uuid] = [ vuln, ]
+	registered_services[uuid] = service
+
 
 class smbd(connection):
 	def __init__ (self):
@@ -271,16 +263,16 @@ class smbd(connection):
 			while isinstance(tmp, DCERPC_CtxItem):
 				c += 1
 				ctxitem = DCERPC_Ack_CtxItem()
-				for uuid in registered_calls:
-					smblog.info("Request to bind %s %s %s" % (tmp.UUID, binascii.hexlify(tmp.UUID), str(bytes.fromhex(uuid))))
-					if tmp.UUID == bytes.fromhex(uuid):
-						smblog.info('Found a registered UUID (%s). Accepting Bind. (%s)' % (tmp.UUID, str(uuid)))
-						self.state['uuid'] = uuid
-						# Copy Transfer Syntax to CtxItem
-						ctxitem.AckResult = 0
-						ctxitem.AckReason = 0
-						ctxitem.TransferSyntax = tmp.TransItems[:20]
-
+				service_uuid = UUID(bytes_le=tmp.UUID)
+				if service_uuid.hex in registered_services:
+					service = registered_services[service_uuid.hex]
+					smblog.info('Found a registered UUID (%s). Accepting Bind for %s' % (service_uuid , service.__class__.__name__))
+					self.state['uuid'] = service_uuid.hex
+					# Copy Transfer Syntax to CtxItem
+					ctxitem.AckResult = 0
+					ctxitem.AckReason = 0
+					ctxitem.TransferSyntax = tmp.TransferSyntax[:16]
+					ctxitem.TransferSyntaxVersion = tmp.TransferSyntaxVersion
 				outbuf /= ctxitem
 				tmp = tmp.payload
 		
@@ -289,20 +281,11 @@ class smbd(connection):
 			smblog.debug("dce reply")
 			outbuf.show()
 		elif dcep.PacketType == 0: #request
-			callbacklist = []
-			if 'uuid' in self.state:
-				reglist = registered_calls[self.state['uuid']]
-				for vuln in reglist:
-					if dcep.OpNum == vuln.opnum:
-						callbacklist.append(vuln.processrequest)
-
 			resp = None
-			if len(callbacklist) == 1:
-				# callback wants this and is only one
-				resp = callbacklist[0](dcep)
-			elif len(callbacklist) > 1:
-				smblog.critical('More than one registered callback wants to have request. Should not happen!')
-			
+			if 'uuid' in self.state:
+				service = registered_services[self.state['uuid']]
+				resp = service.processrequest(dcep.OpNum, dcep)
+
 			if not resp:
 				self.state['stop'] = True
 
@@ -355,11 +338,10 @@ class epmapper(smbd):
 		return len(data)
 
 
-from . import rpcvulns
+from . import rpcservices
 import inspect
-vulns = inspect.getmembers(rpcvulns, inspect.isclass)
-
-for name, vulncls in vulns:
-	if not name == 'RPCVULN' and issubclass(vulncls, rpcvulns.RPCVULN):
-		register_dcerpc_call(vulncls)
+services = inspect.getmembers(rpcservices, inspect.isclass)
+for name, servicecls in services:
+	if not name == 'RPCService' and issubclass(servicecls, rpcservices.RPCService):
+		register_rpc_service(servicecls())
 
