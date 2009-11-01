@@ -126,6 +126,10 @@ void emulate(struct emu_config *conf, struct connection *con, void *data, unsign
 	emu_env_w32_export_hook(env, "WriteFile", user_hook_WriteFile, NULL);
 	emu_env_w32_export_hook(env, "CloseHandle", user_hook_CloseHandle, NULL);
 
+	emu_env_w32_export_hook(env, "_lcreat", user_hook__lcreat, NULL);
+	emu_env_w32_export_hook(env, "_lwrite", user_hook__lwrite, NULL);
+	emu_env_w32_export_hook(env, "_lclose", user_hook__lclose, NULL);
+
 //	emu_env_linux_syscall_hook(env, "exit", user_hook_exit, NULL);
 //	emu_env_linux_syscall_hook(env, "socket", user_hook_socket, NULL);
 //	emu_env_linux_syscall_hook(env, "bind", user_hook_bind, NULL);

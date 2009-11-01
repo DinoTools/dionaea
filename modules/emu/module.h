@@ -130,4 +130,9 @@ uint32_t user_hook_CloseHandle(struct emu_env *env, struct emu_env_hook *hook, .
 int32_t ll_win_hook_recv(struct emu_env *env, struct emu_env_hook *hook);
 int32_t ll_win_hook_accept(struct emu_env *env, struct emu_env_hook *hook);
 
+
+uint32_t user_hook__lcreat(struct emu_env *env, struct emu_env_hook *hook, ...);
+uint32_t user_hook__lwrite(struct emu_env *env, struct emu_env_hook *hook, ...);
+uint32_t user_hook__lclose(struct emu_env *env, struct emu_env_hook *hook, ...);
+
 extern struct processor proc_emu;

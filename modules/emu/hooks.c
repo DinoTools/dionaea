@@ -1357,3 +1357,120 @@ uint32_t user_hook_WSASocket(struct emu_env *env, struct emu_env_hook *hook, ...
 
 	return user_hook_socket(env, hook, domain, type, protocol);
 }
+
+
+
+/**
+ * libemu hook for _lcreat()<p>
+ * Creates a tempfile.
+ * 
+ * @param env
+ * @param hook
+ * 
+ * @return 
+ * @see user_hook__lwrite
+ * @see user_hook__lclose
+ * @see tempdownload_new 
+ */
+uint32_t user_hook__lcreat(struct emu_env *env, struct emu_env_hook *hook, ...)
+{
+	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
+	struct emu_emulate_ctx *ctx = env->userdata;
+	struct emu_config *conf = ctx->config;
+
+	va_list vl;
+	va_start(vl, hook);
+	/*char *lpFileName			=*/(void)va_arg(vl, char *);
+	/*int dwDesiredAccess		=*/(void)va_arg(vl, int);
+	va_end(vl);
+
+	if( g_hash_table_size(ctx->files) > conf->limits.files )
+	{
+		g_warning("Too many open files (%i)", g_hash_table_size(ctx->files));
+		ctx->state = failed;
+		return -1;
+	}
+
+	struct tempfile *tf = tempdownload_new("emu-");
+	g_hash_table_insert(ctx->files, &tf->fd, tf);
+
+	return(uint32_t)tf->fd;
+}
+
+/**
+ * libemu hook for _lwrite()<p>
+ * Writes to the tempfile
+ * 
+ * @param env
+ * @param hook
+ * 
+ * @return 
+ * @see user_hook__lcreat
+ * @see user_hook__lclose
+ */
+uint32_t user_hook__lwrite(struct emu_env *env, struct emu_env_hook *hook, ...)
+{
+	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
+	struct emu_emulate_ctx *ctx = env->userdata;
+	struct emu_config *conf = ctx->config;
+
+	va_list vl;
+	va_start(vl, hook);
+	uint32_t hFile              = va_arg(vl, uint32_t);
+	void *lpBuffer              = va_arg(vl, void *);
+	int   nNumberOfBytesToWrite = va_arg(vl, int);
+	va_end(vl);
+
+	struct tempfile *tf = NULL;
+	if( (tf = g_hash_table_lookup(ctx->files, &hFile)) == NULL )
+	{
+		g_warning("invalid file requested %i", hFile);
+		ctx->state = failed;
+		return 0;
+	}
+
+	if( tf->fd != -1 )
+	{
+		fwrite(lpBuffer, nNumberOfBytesToWrite, 1, tf->fh);
+		long size;
+		if( (size = ftell(tf->fh)) >  conf->limits.filesize )
+		{
+			g_warning("File too large");
+			ctx->state = failed;
+		}
+	}
+	return 1;
+}
+
+
+/**
+ * libemu hook for _lclose<p>
+ * Closes the tempfile
+ * 
+ * @param env
+ * @param hook
+ * 
+ * @return 
+ * @see user_hook__lcreat
+ * @see user_hook__lwrite
+ * @see tempfile_close 
+ */
+uint32_t user_hook__lclose(struct emu_env *env, struct emu_env_hook *hook, ...)
+{
+	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
+	struct emu_emulate_ctx *ctx = env->userdata;
+
+	va_list vl;
+	va_start(vl, hook);
+	uint32_t hObject = va_arg(vl, uint32_t);
+	va_end(vl);
+
+	struct tempfile *tf = NULL;
+	if( (tf = g_hash_table_lookup(ctx->files, &hObject)) != NULL )
+ 	{
+		tempfile_close(tf);
+		return 0;
+	}
+	return 0;
+}
+
