@@ -9,7 +9,7 @@ import cmd
 import emu
 import store
 import test
-import surfids
+
 logger = logging.getLogger('ihandlers')
 logger.setLevel(logging.DEBUG)
 
@@ -52,6 +52,7 @@ def start():
 		g_handlers.append(test.uniquedownloadihandler('dionaea.download.complete.unique'))
 
 	if "surfids" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import surfids
 		g_handlers.append(surfids.surfidshandler('*'))
 
 def stop():
