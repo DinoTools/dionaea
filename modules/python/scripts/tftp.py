@@ -51,7 +51,7 @@ DEF_BLKSIZE = 512
 MAX_BLKSIZE = 65536
 
 logger = logging.getLogger('tftp')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 def tftpassert(condition, msg):
