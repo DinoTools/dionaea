@@ -283,7 +283,7 @@ static void nl_ihandler_cb(struct incident *i, void *ctx)
 {
 	g_debug("%s i %p ctx %p", __PRETTY_FUNCTION__, i, ctx);
 	struct connection *con;
-	incident_value_ptr_get(i, "con", (uintptr_t *)&con);
+	incident_value_con_get(i, "con", &con);
 
 	char *remote = con->remote.ip_string;
 	char *local = con->local.ip_string;
@@ -345,7 +345,7 @@ static void nl_ihandler_cb(struct incident *i, void *ctx)
 
 		struct incident *i = incident_new("dionaea.module.nl.connection.info.mac");
 		incident_value_string_set(i, "mac", g_string_new(buf));
-		incident_value_ptr_set(i, "con", (uintptr_t)con);
+		incident_value_con_set(i, "con", con);
 		incident_report(i);
 		incident_free(i);
 	}
