@@ -371,8 +371,7 @@ class cmdshellhandler(ihandler):
 		i.parent = icd.con
 		i.child = c
 		if icd.origin == "dionaea.service.shell.listen":
-			if c.bind(con.local.host,icd.get('port')) == True:
-				c.listen()
+			if c.bind(con.local.host,icd.get('port')) == True and c.listen() == True:
 				i.report()
 			else:
 				c.close()

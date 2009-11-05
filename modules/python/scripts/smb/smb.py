@@ -323,7 +323,6 @@ class smbd(connection):
 		return outbuf
 
 	def handle_disconnect(self):
-		smblog.warn("ALTE AXT")
 		now = datetime.datetime.now()
 		dirname = "%04i-%02i-%02i" % (now.year, now.month, now.day)
 		dir = os.path.join(g_dionaea.config()['bistreams']['python']['dir'], dirname)

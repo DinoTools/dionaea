@@ -310,9 +310,8 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 		break;
 
 	case connection_transport_tcp:
-		break;
-
 	case connection_transport_tls:
+		return true;
 		break;
 	}
 
