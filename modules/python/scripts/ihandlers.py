@@ -55,9 +55,18 @@ def start():
 		import surfids
 		g_handlers.append(surfids.surfidshandler('*'))
 
+	if "logsql" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import logsql
+		g_handlers.append(logsql.logsqlhandler("*"))
+
+	if "p0f" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import p0f
+		g_handlers.append(p0f.p0fhandler("un:///tmp/p0f.sock"))
+
 def stop():
 	global g_handlers
 	for i in g_handlers:
+		print("deleting %s" % str(i))
 		del i
 	del g_handlers
 

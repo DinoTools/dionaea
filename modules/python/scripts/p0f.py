@@ -82,7 +82,7 @@ class p0fconnection(connection):
 	def handle_error(self, err):
 		self.con.unref()
 
-class p0fHandler(ihandler):
+class p0fhandler(ihandler):
 	def __init__(self, p0fpath):
 		logger.debug("p0fHandler")
 		ihandler.__init__(self, 'dionaea.connection.*.accept')
@@ -97,4 +97,4 @@ class p0fHandler(ihandler):
 
 
 
-p0f = p0fHandler('un:///tmp/p0f.sock')
+# p0f = p0fHandler('un:///tmp/p0f.sock')

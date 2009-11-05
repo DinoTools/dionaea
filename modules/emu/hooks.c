@@ -1269,7 +1269,7 @@ uint32_t user_hook_CreateProcess(struct emu_env *env, struct emu_env_hook *hook,
 		}
 
 		struct incident *ix = incident_new("dionaea.module.emu.mkshell");
-		incident_value_ptr_set(ix, "con", (uintptr_t)con);
+		incident_value_con_set(ix, "con", con);
 		connection_ref(con);
 		GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
 		g_async_queue_push(aq, async_cmd_new(async_incident_report, ix));

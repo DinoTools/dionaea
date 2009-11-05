@@ -56,6 +56,8 @@ enum opaque_data_type
 	opaque_type_ptr,
 };
 
+struct connection;
+
 struct opaque_data
 {
 	enum opaque_data_type type;
@@ -65,6 +67,7 @@ struct opaque_data
 		GString     *string;
 		long int    integer;
 		uintptr_t   ptr;
+		struct connection *con;
 	}opaque;
 };
 
@@ -74,12 +77,14 @@ struct incident
 	GHashTable  *data;
 };
 
+
+
 struct incident *incident_new(const char *origin);
 void incident_free(struct incident *e);
 bool incident_value_int_set(struct incident *e, const char *name, long int val);
 bool incident_value_int_get(struct incident *e, const char *name, long int *val);
-bool incident_value_ptr_set(struct incident *e, const char *name, uintptr_t val);
-bool incident_value_ptr_get(struct incident *e, const char *name, uintptr_t *val);
+bool incident_value_con_set(struct incident *e, const char *name, struct connection *val);
+bool incident_value_con_get(struct incident *e, const char *name, struct connection **val);
 bool incident_value_string_set(struct incident *e, const char *name, GString *str);
 bool incident_value_string_get(struct incident *e, const char *name, GString **str);
 
@@ -91,7 +96,7 @@ void incident_report(struct incident *i);
 	struct incident *e = incident_new("test");
 	incident_value_int_set(e, "int_test", 4711);
 	incident_value_string_set(e, "string_test", g_string_new("4711"));
-	incident_value_ptr_set(e, "ptr_test", 0x4711);
+	incident_value_con_set(e, "ptr_test", 0x4711);
 	incident_dump(e);
 	incident_report(e);
 	incident_free(e)

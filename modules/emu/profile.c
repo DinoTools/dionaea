@@ -353,7 +353,7 @@ void profile(struct emu_config *conf, struct connection *con, void *data, unsign
 		printf("%s", str->str);
 		struct incident *i = incident_new("dionaea.module.emu.profile");
 		incident_value_string_set(i, "profile", str);
-		incident_value_ptr_set(i, "con", (uintptr_t)con);
+		incident_value_con_set(i, "con", con);
 		connection_ref(con);
 		GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
 		g_async_queue_push(aq, async_cmd_new(async_incident_report, i));

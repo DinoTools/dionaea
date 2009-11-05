@@ -123,7 +123,7 @@ void async_incident_report(void *data)
 	struct incident *i = data;
 	incident_report(i);
 	struct connection *con;
-	if( incident_value_ptr_get(i, "con", (uintptr_t *)&con ) )
+	if( incident_value_con_get(i, "con", &con ) )
 		connection_unref(con);
 	incident_free(i);
 }

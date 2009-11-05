@@ -186,7 +186,7 @@ static void check_run_count(void)
 						incident_value_string_set(i, "path", g_string_new(session->action.download.file->path));
 						incident_value_string_set(i, "url", g_string_new(session->url));
 						if( session->action.download.ctxcon )
-							incident_value_ptr_set(i, "con", (uintptr_t)session->action.download.ctxcon);
+							incident_value_con_set(i, "con", session->action.download.ctxcon);
 
 						incident_report(i);
 						incident_free(i);
@@ -479,7 +479,7 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 				return;
 
 			struct connection *con = NULL;
-			incident_value_ptr_get(i, "con", (uintptr_t *)&con);
+			incident_value_con_get(i, "con", &con);
 			session_download_new(url->str, con);
 		} else
 			g_critical("download without url?");

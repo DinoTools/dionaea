@@ -96,6 +96,7 @@ cdef extern from "../../include/connection.h":
 		char *ip_string
 		char *port_string
 		int port
+		char *hostname
 
 
 
@@ -189,6 +190,16 @@ cdef class node_info:
 		"""the nodes address as string"""
 		def __get__(self): 
 			return bytes.decode(self.thisptr.ip_string)
+
+	property hostname:
+		"""the nodes hostname as string"""
+		def __get__(self):
+			if self.thisptr.hostname != NULL:
+				return bytes.decode(self.thisptr.hostname)
+			else:
+				return u''
+
+
 
 	property port:
 		"""the nodes port as integer in host byte order"""
@@ -814,8 +825,8 @@ cdef extern from "../../include/incident.h":
 
 	c_bool c_incident_value_int_set "incident_value_int_set" (c_incident *,  char *, long int)
 	c_bool c_incident_value_int_get "incident_value_int_get" (c_incident *e, char *name, long int *val)
-	c_bool c_incident_value_ptr_set "incident_value_ptr_set" (c_incident *e, char *name, c_uintptr_t val)
-	c_bool c_incident_value_ptr_get "incident_value_ptr_get" (c_incident *e, char *name, c_uintptr_t *val)
+	c_bool c_incident_value_con_set "incident_value_con_set" (c_incident *e, char *name, c_connection *val)
+	c_bool c_incident_value_con_get "incident_value_con_get" (c_incident *e, char *name, c_connection **val)
 	c_bool c_incident_value_string_set "incident_value_string_set" (c_incident *e, char *name, c_GString *str)
 	c_bool c_incident_value_string_get "incident_value_string_get" (c_incident *e, char *name, c_GString **str)
 	void c_incident_dump "incident_dump" (c_incident *)
@@ -850,28 +861,31 @@ cdef class incident:
 		cdef connection con
 		if isinstance(key, unicode):
 			key = key.encode()
-		if key == b'con':
+		
+		if isinstance(value, connection) :
 			con = <connection>value
-			c_incident_value_ptr_set(self.thisptr, key, <c_uintptr_t>con.thisptr)
+			c_incident_value_con_set(self.thisptr, key, con.thisptr)
 		elif isinstance(value, int) :
 			c_incident_value_int_set(self.thisptr, key, value)
-		else:
-			if isinstance(value, unicode):
-				value = value.encode()
+		elif isinstance(value, unicode):
+			value = value.encode()
 			c_incident_value_string_set(self.thisptr, key, c_g_string_new(value))
+		elif isinstance(value, bytes):
+			c_incident_value_string_set(self.thisptr, key, c_g_string_new(value))
+
+
 
 	def __getattr__(self, key):
 		cdef c_uintptr_t x
 		cdef connection c
+		cdef c_connection *cc
 		cdef c_GString *s
 		cdef long int i
 		if isinstance(key, unicode):
 			key = key.encode()
-		if key == b'con':
-			if c_incident_value_ptr_get(self.thisptr, key, &x) == False:
-				raise AttributeError(u"%s does not exist" % key.decode())
+		if c_incident_value_con_get(self.thisptr, key, &cc) == True:
 			c = NEW_C_CONNECTION_CLASS(connection)
-			c.thisptr = <c_connection *>x
+			c.thisptr = <c_connection *>cc
 			INIT_C_CONNECTION_CLASS(c, c)
 			return c
 		elif c_incident_value_string_get(self.thisptr, key, &s) == True:

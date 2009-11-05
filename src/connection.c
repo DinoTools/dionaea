@@ -307,7 +307,11 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 		break;
 
 	case connection_transport_io:
+		break;
+
 	case connection_transport_tcp:
+		break;
+
 	case connection_transport_tls:
 		break;
 	}
@@ -339,6 +343,11 @@ bool connection_listen(struct connection *con, int len)
 		ev_io_init(&con->events.io_in, connection_tcp_accept_cb, con->socket, EV_READ);
 		ev_set_priority(&con->events.io_in, EV_MAXPRI);
 		ev_io_start(CL, &con->events.io_in);
+
+		struct incident *i = incident_new("dionaea.connection.tcp.listen");
+		incident_value_con_set(i, "con", con);
+		incident_report(i);
+		incident_free(i);
 		break;
 
 	case connection_transport_tls:
@@ -578,7 +587,7 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 	ev_timer_stop(EV_A_ w);
 
 	struct incident *i = incident_new("dionaea.connection.free");
-	incident_value_ptr_set(i, "con", (uintptr_t)con);
+	incident_value_con_set(i, "con", con);
 	incident_report(i);
 	incident_free(i);
 
@@ -893,6 +902,13 @@ void connection_connect(struct connection* con, const char* addr, uint16_t port,
 	{
 		node_info_add_addr(&con->remote, addr);
 		connection_connect_next_addr(con);
+	}
+	if( socket_domain != PF_UNIX )
+	{
+		struct incident *i = incident_new("dionaea.connection.tcp.connect");
+		incident_value_con_set(i, "con", con);
+		incident_report(i);
+		incident_free(i);
 	}
 }
 
@@ -1669,13 +1685,15 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 		accepted->stats.io_out.throttle.max_bytes_per_second = con->stats.io_out.throttle.max_bytes_per_second;
 		connection_established(accepted);
 
-		struct incident *i = incident_new("dionaea.connection.tcp.accept");
-		incident_value_ptr_set(i, "con", (uintptr_t)accepted);
-/*		incident_dump(i);
-		uintptr_t v;
-		if ( incident_value_ptr_get(i, "con", &v) == false)
-			g_error("this breaks");
-*/
+		struct incident *i;
+		i = incident_new("dionaea.connection.tcp.accept");
+		incident_value_con_set(i, "con", accepted);
+		incident_report(i);
+		incident_free(i);
+
+		i = incident_new("dionaea.connection.link");
+		incident_value_con_set(i, "parent", con);
+		incident_value_con_set(i, "child", accepted);
 		incident_report(i);
 		incident_free(i);
 	}

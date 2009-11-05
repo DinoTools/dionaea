@@ -27,10 +27,12 @@
 
 from dionaea import *
 
+import datetime
 import traceback
 import logging
 import tempfile
 import binascii
+import os
 from uuid import UUID
 
 from .include.smbfields import *
@@ -106,10 +108,22 @@ class smbd(connection):
 			smblog.warning('p.haslayer(Raw): {0}'.format(p.getlayer(Raw).build()))
 			p.show()
 
+#		i = incident("dionaea.module.python.smb.info")
+#		i.con = self
+#		i.direction = 'in'
+#		i.data = p.summary()
+#		i.report()
 
 		if r:
 			smblog.debug('response: {0}'.format(r.summary()))
 			r.show()
+
+#			i = incident("dionaea.module.python.smb.info")
+#			i.con = self
+#			i.direction = 'out'
+#			i.data = r.summary()
+#			i.report()
+
 #			r.build()
 			#r.show2()
 			self.send(r.build())
@@ -172,6 +186,7 @@ class smbd(connection):
 			r = SMB_Write_AndX_Response()
 			r.CountLow = p.getlayer(SMB_Write_AndX_Request).DataLenLow
 			self.buf += p.getlayer(SMB_Write_AndX_Request).Data
+			self.process_dcerpc_packet(p.getlayer(SMB_Write_AndX_Request).Data)
 		elif p.getlayer(SMB_Header).Command == SMB_COM_READ:
 			r = SMB_Read_AndX_Response()
 			if self.state['lastcmd'] == 'SMB_COM_WRITE':
@@ -243,6 +258,7 @@ class smbd(connection):
 
 	def process_dcerpc_packet(self, buf):
 		if not isinstance(buf, DCERPC_Header):
+			smblog.debug("got buf, make DCERPC_Header")
 			dcep = DCERPC_Header(buf)
 		else:
 			dcep = buf
@@ -264,6 +280,7 @@ class smbd(connection):
 				c += 1
 				ctxitem = DCERPC_Ack_CtxItem()
 				service_uuid = UUID(bytes_le=tmp.UUID)
+				
 				if service_uuid.hex in registered_services:
 					service = registered_services[service_uuid.hex]
 					smblog.info('Found a registered UUID (%s). Accepting Bind for %s' % (service_uuid , service.__class__.__name__))
@@ -273,6 +290,8 @@ class smbd(connection):
 					ctxitem.AckReason = 0
 					ctxitem.TransferSyntax = tmp.TransferSyntax[:16]
 					ctxitem.TransferSyntaxVersion = tmp.TransferSyntaxVersion
+				else:
+					smblog.warn("Attempt to register %s failed, UUID does not exist or is not implemented" % service_uuid)
 				outbuf /= ctxitem
 				tmp = tmp.payload
 		
@@ -284,8 +303,14 @@ class smbd(connection):
 			resp = None
 			if 'uuid' in self.state:
 				service = registered_services[self.state['uuid']]
-				resp = service.processrequest(dcep.OpNum, dcep)
-
+				resp = service.processrequest(service, self, dcep.OpNum, dcep)
+				i = incident("dionaea.modules.python.smb.dcerpc.request")
+				i.con = self
+				i.uuid = str(UUID(bytes_le=bytes.fromhex(self.state['uuid'])))
+				i.opnum = dcep.OpNum
+				i.report()
+			else:
+				smblog.info("DCERPC Request without pending action")
 			if not resp:
 				self.state['stop'] = True
 
@@ -298,7 +323,13 @@ class smbd(connection):
 		return outbuf
 
 	def handle_disconnect(self):
-		self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix="smb-" + self.remote.host + ":" + str(self.remote.port) + "-", suffix=".py", dir=g_dionaea.config()['bistreams']['python']['dir'])
+		smblog.warn("ALTE AXT")
+		now = datetime.datetime.now()
+		dirname = "%04i-%02i-%02i" % (now.year, now.month, now.day)
+		dir = os.path.join(g_dionaea.config()['bistreams']['python']['dir'], dirname)
+		if not os.path.exists(dir):
+			os.makedirs(dir)
+		self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix="smb-" + self.remote.host + ":" + str(self.remote.port) + "-", suffix=".py", dir=dir)
 		self.fileobj.write(b"stream = ")
 		self.fileobj.write(str(self.bistream).encode())
 		self.fileobj.close()

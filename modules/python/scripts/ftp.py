@@ -826,6 +826,12 @@ class ftp:
 		self.dataconn = None
 		self.datalistener = None
 
+		if con:
+			i=incident("dionaea.connection.link")
+			i.parent = con
+			i.child = self.ctrl
+			i.report()
+
 	def makeport(self):
 		self.datalistener = ftpdata(ftp=self)
 		ports = list(filter(lambda port: ((port >> 4) & 0xf) != 0, range(62001, 63000))) # NAT, use a port range which is forwarded to your honeypot
@@ -837,6 +843,10 @@ class ftp:
 			if self.datalistener.listen() == True:
 				host = self.datalistener.local.host # NAT, replace this with something like host = socket.gethostbyname('honeypot.dyndns.org')
 				port = self.datalistener.local.port
+				i=incident("dionaea.connection.link")
+				i.parent = self.ctrl
+				i.child = self.datalistener
+				i.report()
 				break
 		hbytes = host.split('.')
 		pbytes = [repr(port//256), repr(port%256)]

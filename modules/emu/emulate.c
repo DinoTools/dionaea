@@ -171,12 +171,13 @@ void emulate_ctx_free(void *data)
 			struct incident *i = incident_new("dionaea.download.complete");
 			incident_value_string_set(i, "path", g_string_new(tf->path));
 			if( ctx->ctxcon )
-				incident_value_ptr_set(i, "con", (uintptr_t)ctx->ctxcon);
+				incident_value_con_set(i, "con", ctx->ctxcon);
 			incident_value_string_set(i, "url", g_string_new("emulate://"));
 			incident_report(i);
 			incident_free(i);
 		}else
 			tempfile_close(tf);
+		tempfile_unlink(tf);
 		tempfile_free(tf);
 	}
 	g_hash_table_destroy(ctx->files);

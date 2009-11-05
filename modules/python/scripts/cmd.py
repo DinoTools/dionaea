@@ -157,7 +157,9 @@ class cmdexe:
 					elif len(args) == 2:
 						dfile = args[1]
 						i = incident("dionaea.download.offer")
-						if hasattr(self, 'con'):
+						if isinstance(self, connection):
+							i.con = self
+						elif hasattr(self, 'con') and isinstance(self.con, connection):
 							i.con = self.con
 						i.url = "ftp://%s:%s@%s:%i/%s" % (user,passwd,host,port,dfile)
 						i.report()
@@ -197,7 +199,9 @@ class cmdexe:
 					dfile = args[0]
 					state = 'NEXT_IS_SOMETHING'
 					i = incident("dionaea.download.offer")
-					if hasattr(self, 'con'):
+					if isinstance(self, connection):
+						i.con = self
+					elif hasattr(self, 'con') and isinstance(self.con, connection):
 						i.con = self.con
 					i.url = "ftp://%s:%s@%s:%i/%s" % (user,passwd,host,port,dfile)
 					i.report()
@@ -222,7 +226,9 @@ class cmdexe:
 			i = incident("dionaea.download.offer")
 			url = 'tftp://' + host + '/' + file
 			i.url = url
-			if hasattr(self, 'con'):
+			if isinstance(self, connection):
+				i.con = self
+			elif hasattr(self, 'con') and isinstance(self.con, connection):
 				i.con = self.con
 			i.report()
 			return "downloading",None
@@ -325,21 +331,15 @@ class remoteshell(cmdexe,connection):
 		self.timeouts.idle = 1
 		self.timeouts.sustain = 15
 		self._in.accounting.limit = 1024
-		self.con = con
-		if con:
-			con.ref()
 
 	def handle_established(self):
 		self.send("Microsoft Windows 2000 [Version 5.00.2195]\n(C) Copyright 1985-2000 Microsoft Corp.\n\nC:\\WINDOWS\\System32>")
 
 	def handle_disconnect(self):
-		if self.con:
-			self.con.unref()
 		return False
 
 	def handle_error(self, err):
-		if self.con:
-			self.con.unref()
+		pass
 
 	def handle_timeout_idle (self):
 		self.send("\n")
@@ -354,8 +354,7 @@ class remoteshell(cmdexe,connection):
 		return False
 
 	def handle_origin(self, parent):
-		self.con = parent.con
-		parent.con = None
+		pass
 
 
 class cmdshellhandler(ihandler):
@@ -367,13 +366,21 @@ class cmdshellhandler(ihandler):
 	def handle_incident(self, icd):
 		logger.warn("do shell")
 		con = icd.con
-		c = remoteshell(con)
+		c = remoteshell()
+		i = incident("dionaea.connection.link")
+		i.parent = icd.con
+		i.child = c
 		if icd.origin == "dionaea.service.shell.listen":
-			c.bind(con.local.host,icd.get('port'))
-			c.listen()
+			if c.bind(con.local.host,icd.get('port')) == True:
+				c.listen()
+				i.report()
+			else:
+				c.close()
 		elif icd.origin == "dionaea.service.shell.connect":
 			c.bind(con.local.host,0)
 			c.connect(icd.get('host'), icd.get('port'))
+			i.report()
 		else:
 			c.close()
+		
 

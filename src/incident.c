@@ -118,22 +118,22 @@ bool incident_value_int_get(struct incident *e, const char *name, long int *val)
 }
 
 
-bool incident_value_ptr_set(struct incident *e, const char *name, uintptr_t val)
+bool incident_value_con_set(struct incident *e, const char *name, struct connection *con)
 {
 	struct opaque_data *d = opaque_data_new();
 	d->type = opaque_type_ptr;
-	d->opaque.ptr = val;
+	d->opaque.con = con;
 	d->name = g_strdup(name);
 	g_hash_table_insert(e->data, d->name, d);
 	return true;
 }
 
-bool incident_value_ptr_get(struct incident *e, const char *name, uintptr_t *val)
+bool incident_value_con_get(struct incident *e, const char *name, struct connection **con)
 {
 	struct opaque_data *d = incident_value_get(e, name, opaque_type_ptr);
 	if( d == NULL )
 		return false;
-	*val = d->opaque.ptr;
+	*con = d->opaque.con;
 	return true;
 }
 
@@ -188,6 +188,7 @@ void incident_dump(struct incident *e)
 void incident_report(struct incident *i)
 {
 	g_debug("reporting %p", i);
+	incident_dump(i);
 	for( GList *it=g_dionaea->ihandlers->handlers; it != NULL; it = g_list_next(it) )
 	{
 		struct ihandler *ih = it->data;

@@ -130,7 +130,7 @@ static void python_mkshell_ihandler_cb(struct incident *i, void *ctx)
 {
 	g_debug("%s i %p ctx %p", __PRETTY_FUNCTION__, i, ctx);
 	struct connection *con;
-	if( incident_value_ptr_get(i, "con", (uintptr_t *)&con) )
+	if( incident_value_con_get(i, "con", &con) )
 	{
 		g_debug("mkshell for %p", con);
 		const char *name = "cmd";
@@ -253,9 +253,32 @@ static bool freepy(void)
 {
 	g_debug("%s %s", __PRETTY_FUNCTION__, __FILE__);
 	ev_io_stop(g_dionaea->loop, &runtime.python_cli_io_in);
-	Py_Finalize();
 	if( isatty(STDOUT_FILENO) )
 		tcsetattr(0, TCSADRAIN, &runtime.read_termios);
+
+	GHashTableIter iter;
+	gpointer key, value;
+	g_hash_table_iter_init (&iter, runtime.imports);
+	while( g_hash_table_iter_next (&iter, &key, &value) )
+	{
+		char *name = key;
+		struct import *imp = value;
+		PyObject *module = imp->module;
+		g_info("stop %s %p %p", name, imp, imp->module);
+
+		PyObject *func = PyObject_GetAttrString(module, "stop");
+		if( func != NULL )
+		{
+			PyObject *arglist = Py_BuildValue("()");
+			PyObject *r = PyEval_CallObject(func, arglist);
+			Py_DECREF(arglist);
+			Py_XDECREF(r);
+			Py_DECREF(func);
+		} else
+			PyErr_Clear();
+		traceback();
+	}
+	Py_Finalize();
 	return true;
 }
 
@@ -698,12 +721,14 @@ void traceable_error_cb(struct connection *con, enum connection_error error)
 {
 	g_debug("%s con %p error %i",__PRETTY_FUNCTION__, con, error);
 	runtime.traceables.proto.error(con, error);
+	traceback();
 }
 
 bool traceable_disconnect_cb(struct connection *con, void *context)
 {
 	g_debug("%s con %p ctx %p ",__PRETTY_FUNCTION__, con, context);
 	bool ret = runtime.traceables.proto.disconnect(con, context);
+	traceback();
 	return ret;
 }
 

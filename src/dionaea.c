@@ -575,7 +575,7 @@ int main (int argc, char *argv[])
 				g_message("libev backend is %s", backend[i]);
 	}
 	ev_set_syserr_cb(log_ev_fatal_error);
-
+	g_message("libev default loop %p\n", d->loop);
 
 	// ssl
 	SSL_load_error_strings();

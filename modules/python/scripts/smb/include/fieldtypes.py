@@ -461,7 +461,7 @@ class StrFixedLenField(StrField):
         return s[l:], self.m2i(pkt,s[:l])
     def addfield(self, pkt, s, val):
         l = self.length_from(pkt)
-        print(l)
+#        print(l)
         return s+struct.pack("%is"%l,self.i2m(pkt, val))
     def randval(self):
         try:

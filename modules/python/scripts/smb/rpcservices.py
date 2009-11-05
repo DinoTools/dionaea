@@ -39,19 +39,19 @@ class RPCService:
 	vulns = {}
 
 	@classmethod
-	def processrequest(cls, opnum, p):
+	def processrequest(cls, service, con, opnum, p):
 		if opnum in cls.ops:
 			opname = cls.ops[opnum]
 			method = getattr(cls, "handle_" + opname, None)
 			if method != None:
 				if opnum in cls.vulns:
 					vulnname = cls.vulns[opnum]
-					rpclog.info("Calling %s %s (%x) maybe %s exploit?" % ( cls,  opname, opnum, vulnname ) )
+					rpclog.info("Calling %s %s (%x) maybe %s exploit?" % ( service.__class__.__name__,  opname, opnum, vulnname ) )
 				else:
-					rpclog.info("Calling %s %s (%x)" % ( cls,  opname, opnum ) )
+					rpclog.info("Calling %s %s (%x)" % ( service.__class__.__name__,  opname, opnum ) )
 				method(p)
 		else:
-			print("Unknown RPC Call to %s %i" % ( cls,  opnum) )
+			rpclog.info("Unknown RPC Call to %s %i" % ( service.__class__.__name__,  opnum) )
 
 class ATSVC(RPCService):
 	uuid = UUID('1ff70682-0a51-30e8-076d-740be8cee98b').hex

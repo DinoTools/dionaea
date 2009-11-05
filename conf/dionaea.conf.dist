@@ -122,7 +122,11 @@ modules = {
 		}
 
 		ihandlers = {
-			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", "surfids"]
+			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", 
+			"logsql",
+//			"p0f",
+//			"surfids"
+			]
 		}
 
 		services = {
