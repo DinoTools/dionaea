@@ -68,8 +68,8 @@ class p0fconnection(connection):
 				if s.find(b'\x00'):
 					s = s[:s.find(b'\x00')]
 				icd.set(names[i], s)
-			elif type(values[i]) == int:
-				icd.set(names[i], s)
+			elif type(s) == int:
+				icd.set(names[i], str(s))
 		icd.set('con',self.con)
 		icd.report()
 		self.close()
