@@ -306,7 +306,7 @@ class smbd(connection):
 				resp = service.processrequest(service, self, dcep.OpNum, dcep)
 				i = incident("dionaea.modules.python.smb.dcerpc.request")
 				i.con = self
-				i.uuid = str(UUID(bytes_le=bytes.fromhex(self.state['uuid'])))
+				i.uuid = str(UUID(bytes=bytes.fromhex(self.state['uuid'])))
 				i.opnum = dcep.OpNum
 				i.report()
 			else:
