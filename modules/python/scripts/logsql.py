@@ -92,7 +92,7 @@ class logsqlhandler(ihandler):
 				-- CONSTRAINT offers_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
 			)""")
 
-		self.cursor.execute("""CREATE INDEX IF NOT EXISTS offers_url_idx ON offers (offer_url)""" % (idx, idx))
+		self.cursor.execute("""CREATE INDEX IF NOT EXISTS offers_url_idx ON offers (offer_url)""")
 
 
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
