@@ -25,13 +25,14 @@
  *
  *******************************************************************************/
 
+#include <Python.h>
 #include <glib.h>
 #include <stdio.h>
 #include <ev.h>
 #include <stdint.h>
 #include <unistd.h>
 #include <dirent.h>
-#include <Python.h>
+
 
 // set terminal to char mode
 #include <termios.h>
