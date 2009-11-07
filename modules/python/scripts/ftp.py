@@ -685,6 +685,7 @@ class ftpctrl(connection):
 		connection.__init__(self, 'tcp')
 		self.ftp = ftp
 		self.state = 'USER'
+		self.timeouts.sustain = 60
 
 	def handle_established(self):
 		logger.debug("FTP CTRL connection established")

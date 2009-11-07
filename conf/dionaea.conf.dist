@@ -120,6 +120,12 @@ modules = {
 			password = "secret"          // and this
 			dbname = "idsserver"
 		}
+		logsql = {
+			mode = "sqlite" // so far there is only sqlite
+			sqlite = {
+				file = "var/dionaea/logsql.sqlite"
+			}
+		}
 
 		ihandlers = {
 			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", 

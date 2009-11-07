@@ -18,7 +18,8 @@ class logsqlhandler(ihandler):
 		# mapping socket -> attackid
 		self.attacks = {}
 #		self.dbh = sqlite3.connect(user = g_dionaea.config()['modules']['python']['logsql']['file'])
-		self.dbh = sqlite3.connect('/tmp/test.sqlite')
+		file = g_dionaea.config()['modules']['python']['logsql']['sqlite']['file']
+		self.dbh = sqlite3.connect(file)
 		self.cursor = self.dbh.cursor()
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 			connections	(
@@ -27,7 +28,7 @@ class logsqlhandler(ihandler):
 				connection_transport TEXT, 
 				connection_protocol TEXT, 
 				connection_timestamp INTEGER,
-				connection_tree INTEGER,
+				connection_root INTEGER,
 				connection_parent INTEGER,
 				local_host TEXT, 
 				local_port INTEGER, 
@@ -36,7 +37,16 @@ class logsqlhandler(ihandler):
 				remote_port INTEGER
 			)""")
 
-		for idx in ["type","timestamp","tree","parent"]:
+		self.cursor.execute("""CREATE TRIGGER IF NOT EXISTS	connections_INSERT_update_connection_root_trg
+			AFTER INSERT ON connections 
+			FOR EACH ROW 
+			WHEN 
+				new.connection_root IS NULL 
+			BEGIN
+				UPDATE connections SET connection_root = connection WHERE connection = new.connection AND new.connection_root IS NULL;
+			END""")
+
+		for idx in ["type","timestamp","root","parent"]:
 			self.cursor.execute("""CREATE INDEX IF NOT EXISTS connections_%s_idx
 			ON connections (connection_%s)""" % (idx, idx))
 
@@ -109,14 +119,14 @@ class logsqlhandler(ihandler):
 			ON downloads (download_%s)""" % (idx, idx))
 
 
-#		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
-#			resolves (
-#				resolve INTEGER PRIMARY KEY,
-#				connection INTEGER,
-#				resolve_hostname TEXT,
-#				resolve_type TEXT,
-#				resolve_result TEXT
-#			)""")
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
+			resolves (
+				resolve INTEGER PRIMARY KEY,
+				connection INTEGER,
+				resolve_hostname TEXT,
+				resolve_type TEXT,
+				resolve_result TEXT
+			)""")
 
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 			p0fs (
@@ -165,6 +175,8 @@ class logsqlhandler(ihandler):
 
 	def handle_incident_dionaea_connection_tcp_connect(self, icd):
 		con=icd.con
+		if con in self.attacks:
+			return
 		r = self.cursor.execute("INSERT INTO connections (connection_timestamp, connection_type, connection_transport, connection_protocol, local_host, local_port, remote_hostname, remote_port) VALUES (?,'connect',?,?,?,?,?,?)",
 			(time.time(), con.transport, con.protocol, con.local.hostname, con.local.port, con.remote.hostname, con.remote.port) )
 		attackid = self.cursor.lastrowid
@@ -187,16 +199,18 @@ class logsqlhandler(ihandler):
 	def handle_incident_dionaea_connection_link(self, icd):
 		if icd.parent in self.attacks:
 			logger.warn("parent ids %s" % str(self.attacks[icd.parent]))
-			parenttree, parentid = self.attacks[icd.parent]
+			parentroot, parentid = self.attacks[icd.parent]
 			if icd.child in self.attacks:
 				logger.warn("child had ids %s" % str(self.attacks[icd.child]))
-				childtree, childid = self.attacks[icd.child]
+				childroot, childid = self.attacks[icd.child]
 			else:
 				childid = parentid
-			self.attacks[icd.child] = (parenttree, childid)
+			self.attacks[icd.child] = (parentroot, childid)
 			logger.warn("child has ids %s" % str(self.attacks[icd.child]))
-			r = self.cursor.execute("UPDATE connections SET connection_tree = ?, connection_parent = ? WHERE connection = ?",
-				(parenttree, parentid, childid) )
+			logger.warn("child %i parent %i root %i" % (childid, parentid, parentroot) )
+			r = self.cursor.execute("UPDATE connections SET connection_root = ?, connection_parent = ? WHERE connection = ?",
+				(parentroot, parentid, childid) )
+#			print(r.fetchall())
 #			r = self.cursor.execute("INSERT INTO connection_links (connection_parent, connection_child) VALUES(?,?)",
 #				(parentid, childid) )
 			self.dbh.commit()

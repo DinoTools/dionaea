@@ -889,7 +889,14 @@ class TftpClient(TftpSession):
         if con != None:
             self.bind(con.local.host, 0)
             self.con.ref()
+
         self.connect(host,0)
+        if con != None:
+            i = incident("dionaea.connection.link")
+            i.parent = con
+            i.child = self
+            i.report()
+
 
     def handle_established(self):
         logger.info("connection to %s established" % self.remote.host)
@@ -1061,13 +1068,11 @@ class tftpdownloadhandler(ihandler):
         url = icd.get("url")
         if url.startswith('tftp://'):
             # python fails parsing tftp://, ftp:// works, so ...
-            url = url[1:]
-            x = parse.urlsplit(url)
+            x = parse.urlsplit(url[1:])
             try:
                 con = icd.con
             except AttributeError:
                 con = None
             t=TftpClient()
             t.download(con, x.netloc, 69, x.path[1:], url)
-
 
