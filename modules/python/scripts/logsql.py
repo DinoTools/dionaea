@@ -77,6 +77,62 @@ class logsqlhandler(ihandler):
 			self.cursor.execute("""CREATE INDEX IF NOT EXISTS dcerpcs_%s_idx 
 			ON dcerpcs (dcerpc_%s)""" % (idx, idx))
 
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
+			dcerpcservices (
+				dcerpcservice INTEGER PRIMARY KEY,
+				dcerpcservice_uuid TEXT,
+				dcerpcservice_name TEXT,
+				CONSTRAINT dcerpcservice_uuid_uniq UNIQUE (dcerpcservice_uuid)
+			)""")
+
+		from uuid import UUID
+		from smb import rpcservices
+		import inspect
+		services = inspect.getmembers(rpcservices, inspect.isclass)
+		for name, servicecls in services:
+			if not name == 'RPCService' and issubclass(servicecls, rpcservices.RPCService):
+				try:
+					self.cursor.execute("INSERT INTO dcerpcservices (dcerpcservice_name, dcerpcservice_uuid) VALUES (?,?)",
+						(name, str(UUID(hex=servicecls.uuid))) )
+				except Exception as e:
+					print("dcerpcservice %s existed %s " % (servicecls.uuid, e) )
+
+
+		print("GETTING SERVICES")
+		r = self.cursor.execute("SELECT * FROM dcerpcservices")
+		print(r)
+		names = [r.description[x][0] for x in range(len(r.description))]
+		r = [ dict(zip(names, i)) for i in r]
+		print(r)
+		r = dict([(UUID(i['dcerpcservice_uuid']).hex,i['dcerpcservice']) for i in r])
+		print(r)
+
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
+			dcerpcserviceops (
+				dcerpcserviceop INTEGER PRIMARY KEY,
+				dcerpcservice INTEGER,
+				dcerpcserviceop_opnum INTEGER,
+				dcerpcserviceop_name TEXT,
+				dcerpcserviceop_vuln TEXT,
+				CONSTRAINT dcerpcop_service_opnum_uniq UNIQUE (dcerpcservice, dcerpcserviceop_opnum)
+			)""")
+
+		print("SETTING SERVICEOPS")
+		for name, servicecls in services:
+			if not name == 'RPCService' and issubclass(servicecls, rpcservices.RPCService):
+				for opnum in servicecls.ops:
+					op = servicecls.ops[opnum]
+					uuid = servicecls.uuid
+					vuln = ''
+					dcerpcservice = r[uuid]
+					if opnum in servicecls.vulns:
+						vuln = servicecls.vulns[opnum]
+					try:
+						self.cursor.execute("INSERT INTO dcerpcserviceops (dcerpcservice, dcerpcserviceop_opnum, dcerpcserviceop_name, dcerpcserviceop_vuln) VALUES (?,?,?,?)", 
+							(dcerpcservice, opnum, op, vuln))
+					except:
+						print("%s %s %s %s %s existed" % (dcerpcservice, uuid, name, op, vuln))
 
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 			emu_profiles (
