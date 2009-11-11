@@ -45,8 +45,17 @@ AC_CHECK_FUNCS([strndup inet_ntoa  memmove memset strdup strerror])
 dnl **************************************************
 dnl * bind() ipv4 mapped address?                    *
 dnl **************************************************
+
+AC_ARG_ENABLE(ev, [  --enable-ipv4-mapped      map ipv4 addresses to ipv6 f.e. ::fff:0.0.0.0],
+			[enable_ipv4_mapped="$enableval"],[enable_ipv4_mapped="no"])
+
 AZ_FUNC_BIND_MAPPED_IPV4_LOCALHOST()
 
+if test x$enable_ipv4_mapped == "xyes"; then
+	if test x$ac_cv_have_bind_ipv4_mapped_localhost == "xyes"; then
+	  AC_DEFINE(BIND_IPV4_MAPPED_LOCALHOST, 1, "your bind can bind mapped ipv4 localhost to an ipv6 socket")
+	fi
+fi
 
 dnl **************************************************
 dnl * libev                                          *
@@ -769,13 +778,32 @@ else
 fi
 AC_MSG_RESULT($enable_debug)
 
+
+dnl **************************************************
+dnl * Werror                                         *
+dnl **************************************************
+
+AC_MSG_CHECKING(whether you want Werror)
+AC_ARG_ENABLE([werror],
+		[AS_HELP_STRING(--enable-werror, compiler warnings are errors [[default=yes]])],
+		[enable_werror=${enableval}], [enable_werror="yes"])
+if test x"$enable_werror" = "xyes"; then
+	CFLAGS_DEFAULT="-Werror"
+else
+	CFLAGS_DEFAULT=""
+fi
+AC_MSG_RESULT($enable_werror)
+
+
+
 dnl **************************************************
 dnl * default cflags                                 *
 dnl **************************************************
 
 AC_SUBST([CFLAGS_DEFAULT])
 CFLAGS_LFS=`getconf LFS_CFLAGS`
-CFLAGS_DEFAULT="-Wall -Werror"
+
+CFLAGS_DEFAULT="-Wall ${CFLAGS_DEFAULT}"
 
 CFLAGS="${CFLAGS} -D _GNU_SOURCE ${LIB_EV_CFLAGS} ${LIB_GLIB_CFLAGS} ${LIB_LCFG_CFLAGS} ${CFLAGS_DEFAULT} -Wstrict-prototypes ${CFLAGS_DEBUG} ${CFLAGS_LFS}"
 
@@ -821,6 +849,8 @@ echo
 echo "*** dionaea configuration ***"
 echo ""
 echo "debug                              : $enable_debug"
+echo "werror                             : $enable_werror"
+echo "ipv4 mapped                        : $enable_ipv4_mapped"
 echo ""
 echo "ev                                 : $enable_ev"
 echo " - cflags                          : $LIB_EV_CFLAGS"

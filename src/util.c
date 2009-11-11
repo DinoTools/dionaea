@@ -43,7 +43,7 @@
 #include <lcfgx/lcfgx_tree.h>
 
 
-
+#include "config.h"
 #include "dionaea.h"
 #include "util.h"
 #include "log.h"
@@ -128,7 +128,7 @@ bool parse_addr(char const * const addr, char const * const iface, uint16_t cons
 		si->sin_family = PF_INET;
 		si->sin_port = htons(port);
 
-#ifdef BIND_IPV4_MAPPED_LOCALHOST_IPV6
+#ifdef BIND_IPV4_MAPPED_LOCALHOST
 		ipv6_v4_map_v6(si, si6);
 		*sizeof_sa = sizeof(struct sockaddr_in6);
 		*socket_domain = PF_INET6;
