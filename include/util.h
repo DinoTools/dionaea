@@ -28,6 +28,7 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+bool sockaddr_storage_from(struct sockaddr_storage *ss, int family, void *host, uint16_t port);
 bool parse_addr(char const * const addr, char const * const iface, uint16_t const port, struct sockaddr_storage * const sa, int * const socket_domain, socklen_t * const sizeof_sa);
 
 int ipv6_addr_linklocal(struct in6_addr const * const a);

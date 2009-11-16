@@ -91,6 +91,26 @@ void ipv6_v4_map_v6(struct sockaddr_in *from, struct sockaddr_in6 *to)
 	to->sin6_addr.s6_addr32[0] = 0;
 }
 
+bool sockaddr_storage_from(struct sockaddr_storage *ss, int family, void *host, uint16_t port)
+{
+	ss->ss_family = family;
+	if( family == PF_INET )
+	{
+		struct sockaddr_in *in4 = (void *)ss;
+		in4->sin_port = htons(port);
+		memcpy(&in4->sin_addr, host, sizeof(struct in_addr));
+		return true;
+	}else
+	if( family == PF_INET6 )
+	{
+		struct sockaddr_in6 *in6 = (void *)ss;
+		in6->sin6_port = htons(port);
+		memcpy(&in6->sin6_addr, host, sizeof(struct in6_addr));
+		return true;
+	}
+	return false;
+}
+
 bool parse_addr(char const * const addr, char const * const iface, uint16_t const port, struct sockaddr_storage * const sa, int * const socket_domain, socklen_t * const sizeof_sa)
 {
 	struct sockaddr_in6 *si6;
