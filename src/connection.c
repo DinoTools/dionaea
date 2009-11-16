@@ -277,7 +277,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 	case connection_transport_udp:
 		con->type = connection_type_bind;
 		if( con->socket == -1 )
-			con->socket = socket(socket_domain, SOCK_DGRAM, 0);
+			con->socket = socket(socket_domain, SOCK_DGRAM, IPPROTO_UDP);
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)); 
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)); 
 		if( bind_local(con) != true )
@@ -904,7 +904,18 @@ void connection_connect(struct connection* con, const char* addr, uint16_t port,
 	}
 	if( socket_domain != PF_UNIX )
 	{
-		struct incident *i = incident_new("dionaea.connection.tcp.connect");
+		struct incident *i;
+		if( con->trans == connection_transport_udp )
+			i = incident_new("dionaea.connection.udp.connect");
+		else if( con->trans == connection_transport_tcp )
+			i = incident_new("dionaea.connection.tcp.connect");
+		else if( con->trans == connection_transport_tls )
+			i = incident_new("dionaea.connection.tls.connect");
+		else
+		{
+			g_warning("unexpected ... ");
+			return;
+		}
 		incident_value_con_set(i, "con", con);
 		incident_report(i);
 		incident_free(i);
@@ -3195,6 +3206,11 @@ void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 		con->protocol.io_in(con, con->protocol.ctx, buf, ret);
 		memset(buf, 0, 64*1024);
 	}
+/*	if( ret == -1 )
+	{
+		g_debug("error %s", strerror(errno));
+ 	}
+*/ 
 }
 
 void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
