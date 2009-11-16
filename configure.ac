@@ -757,6 +757,7 @@ AM_CONDITIONAL([BUILD_LOUDMOUTH_MODULE], [ test x$enable_loudmouth = "xyes" ])
 AM_CONDITIONAL([BUILD_PYTHON_MODULE], [ test x$enable_python = "xyes" && test x$enable_cython = "xyes" ])
 AM_CONDITIONAL([BUILD_CURL_MODULE], [ test x$enable_curl = "xyes" ])
 AM_CONDITIONAL([BUILD_NL_MODULE], [ test x$enable_nl = "xyes" ])
+AM_CONDITIONAL([BUILD_PCAP_MODULE], [ test x$enable_pcap = "xyes" ])
 
 
 dnl **************************************************
@@ -840,7 +841,8 @@ AC_CONFIG_FILES([Makefile
 				modules/python/scripts/Makefile
 				modules/emu/Makefile
 				modules/curl/Makefile
-				modules/nl/Makefile])
+				modules/nl/Makefile
+				modules/pcap/Makefile])
 
                  
 AC_OUTPUT

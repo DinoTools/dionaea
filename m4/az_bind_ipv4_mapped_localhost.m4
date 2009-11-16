@@ -26,6 +26,4 @@ int main(int argc, char **argv)
 	return r;
 }], ac_cv_have_bind_ipv4_mapped_localhost=yes, ac_cv_have_bind_ipv4_mapped_localhost=no, ac_cv_have_bind_ipv4_mapped_localhost=cross)])
 AC_MSG_RESULT([$ac_cv_have_bind_ipv4_mapped_localhost])
-if test x$ac_cv_have_bind_ipv4_mapped_localhost == "xyes"; then
-  AC_DEFINE(BIND_IPV4_MAPPED_LOCALHOST, 1, "your bind can bind mapped ipv4 localhost to an ipv6 socket")
-fi])
+])

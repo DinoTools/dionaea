@@ -18,6 +18,9 @@ if BUILD_NL_MODULE
 nl_dir = nl
 endif
 
+if BUILD_PCAP_MODULE
+pcap_dir = pcap
+endif
 
-SUBDIRS = nc $(python_dir) $(emu_dir) $(curl_dir) $(nl_dir)
-DIST_SUBDIRS = nc python emu curl nl
+SUBDIRS = nc $(python_dir) $(emu_dir) $(curl_dir) $(nl_dir) $(pcap_dir)
+DIST_SUBDIRS = nc python emu curl nl pcap
