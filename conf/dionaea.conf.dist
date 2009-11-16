@@ -92,6 +92,32 @@ modules = {
 		profile = "1"
 	}
 
+	pcap = 
+	{
+		/** 
+       	 * libpcap 1.0.0 
+       	 *  
+       	 * "Arithmetic expression against transport layer headers, like 
+       	 * tcp[0], does not work  against  IPv6  packets. It  only looks 
+       	 * at IPv4 packets."
+       	 * 
+       	 * As a consequence, the default filter can not match 
+       	 * ipv6 tcp rst packets.
+       	 * 
+       	 * If you want to go for rejected ipv6, remove the tcp matching part of the filter
+       	 * The code is capable to checking the tcp-rst flag and seq number itself, but 
+       	 * matching every packet in userspace is expensive.
+       	 * Therefore you'll have to hack the code if you want to track ipv6 rejected connections
+       	 * 
+		 * Format is IFACE = { addrs = MODE }
+		 * currently mode is ignored
+       	 */
+
+		any = {
+			addrs = "auto"
+		}
+	}
+
 	python = {
 		// default expands to PREFIX/lib/dionaea/python/
 		// ordering is granted
