@@ -85,14 +85,15 @@ class p0fconnection(connection):
 class p0fhandler(ihandler):
 	def __init__(self, p0fpath):
 		logger.debug("p0fHandler")
-		ihandler.__init__(self, 'dionaea.connection.*.accept')
+		ihandler.__init__(self, 'dionaea.connection.*')
 		self.p0fpath = p0fpath
 
-	def handle_incident(self, i):
-		logger.warn("p0f action")
-		i.dump()
-		con = i.get('con')
-		p = p0fconnection(self.p0fpath, con)
+	def handle_incident(self, icd):
+		if icd.origin == 'dionaea.connection.tcp.accept' or icd.origin == 'dionaea.connection.tls.accept' or icd.origin == 'dionaea.connection.tcp.reject':
+			logger.warn("p0f action")
+			icd.dump()
+			con = icd.get('con')
+			p = p0fconnection(self.p0fpath, con)
 
 
 

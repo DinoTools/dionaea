@@ -219,38 +219,65 @@ class logsqlhandler(ihandler):
 #		print("unknown")
 		pass
 
-	def handle_incident_dionaea_connection_tcp_listen(self, icd):
+	def connection_insert(self, icd, connection_type):
 		con=icd.con
-		r = self.cursor.execute("INSERT INTO connections (connection_timestamp, connection_type, connection_transport, connection_protocol, local_host, local_port, remote_host, remote_port) VALUES (?,'listen',?,?,?,?,?,?)",
-			(time.time(), con.transport, con.protocol, con.local.host, con.local.port, con.remote.host, con.remote.port) )
+		r = self.cursor.execute("INSERT INTO connections (connection_timestamp, connection_type, connection_transport, connection_protocol, local_host, local_port, remote_host, remote_port) VALUES (?,?,?,?,?,?,?,?)",
+			(time.time(), connection_type, con.transport, con.protocol, con.local.host, con.local.port, con.remote.host, con.remote.port) )
 		attackid = self.cursor.lastrowid
 		self.attacks[con] = (attackid, attackid)
-		logger.info("listen connection from %s:%i to %s:%i (id=%i)" % 
-			(con.remote.host, con.remote.port, con.local.host, con.local.port, attackid))
 		self.dbh.commit()
+		return attackid
+
+
+	def handle_incident_dionaea_connection_tcp_listen(self, icd):
+		attackid = self.connection_insert( icd, 'listen')
+		con=icd.con
+		logger.info("listen connection on %s:%i (id=%i)" % 
+			(con.remote.host, con.remote.port, attackid))
+
+	def handle_incident_dionaea_connection_tls_listen(self, icd):
+		attackid = self.connection_insert( icd, 'listen')
+		con=icd.con
+		logger.info("listen connection on %s:%i (id=%i)" % 
+			(con.remote.host, con.remote.port, attackid))
 
 	def handle_incident_dionaea_connection_tcp_connect(self, icd):
+		attackid = self.connection_insert( icd, 'connect')
 		con=icd.con
-		if con in self.attacks:
-			return
-		r = self.cursor.execute("INSERT INTO connections (connection_timestamp, connection_type, connection_transport, connection_protocol, local_host, local_port, remote_hostname, remote_port) VALUES (?,'connect',?,?,?,?,?,?)",
-			(time.time(), con.transport, con.protocol, con.local.hostname, con.local.port, con.remote.hostname, con.remote.port) )
-		attackid = self.cursor.lastrowid
-		self.attacks[con] = (attackid, attackid)
 		logger.info("connect connection to %s:%i from %s:%i (id=%i)" % 
 			(con.remote.host, con.remote.port, con.local.host, con.local.port, attackid))
-		self.dbh.commit()
 
+	def handle_incident_dionaea_connection_tls_connect(self, icd):
+		attackid = self.connection_insert( icd, 'connect')
+		con=icd.con
+		logger.info("connect connection to %s:%i from %s:%i (id=%i)" % 
+			(con.remote.host, con.remote.port, con.local.host, con.local.port, attackid))
+
+	def handle_incident_dionaea_connection_udp_connect(self, icd):
+		attackid = self.connection_insert( icd, 'connect')
+		con=icd.con
+		logger.info("connect connection to %s:%i from %s:%i (id=%i)" % 
+			(con.remote.host, con.remote.port, con.local.host, con.local.port, attackid))
 
 	def handle_incident_dionaea_connection_tcp_accept(self, icd):
+		attackid = self.connection_insert( icd, 'accept')
 		con=icd.con
-		r = self.cursor.execute("INSERT INTO connections (connection_timestamp, connection_type, connection_transport, connection_protocol, local_host, local_port, remote_host, remote_port) VALUES (?,'accept',?,?,?,?,?,?)",
-			(time.time(), con.transport, con.protocol, con.local.host, con.local.port, con.remote.host, con.remote.port) )
-		attackid = self.cursor.lastrowid
-		self.attacks[con] = (attackid, attackid)
 		logger.info("accepted connection from %s:%i to %s:%i (id=%i)" % 
 			(con.remote.host, con.remote.port, con.local.host, con.local.port, attackid))
-		self.dbh.commit()
+
+	def handle_incident_dionaea_connection_tls_accept(self, icd):
+		attackid = self.connection_insert( icd, 'accept')
+		con=icd.con
+		logger.info("accepted connection from %s:%i to %s:%i (id=%i)" % 
+			(con.remote.host, con.remote.port, con.local.host, con.local.port, attackid))
+
+
+	def handle_incident_dionaea_connection_tcp_reject(self, icd):
+		attackid = self.connection_insert(icd, 'reject')
+		con=icd.con
+		logger.info("reject connection from %s:%i to %s:%i (id=%i)" % 
+			(con.remote.host, con.remote.port, con.local.host, con.local.port, attackid))
+
 
 	def handle_incident_dionaea_connection_link(self, icd):
 		if icd.parent in self.attacks:
@@ -270,9 +297,8 @@ class logsqlhandler(ihandler):
 #			r = self.cursor.execute("INSERT INTO connection_links (connection_parent, connection_child) VALUES(?,?)",
 #				(parentid, childid) )
 			self.dbh.commit()
-
-
 			
+						
 	def handle_incident_dionaea_connection_free(self, icd):
 		con=icd.con
 		if con in self.attacks:
