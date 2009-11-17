@@ -57,6 +57,15 @@
 #define D_LOG_DOMAIN "pcap"
 
 
+/**
+ * I hate compatibility defines, but defining ETHERTYPE_IPV6 
+ * seems optional, and we really need it.
+ */
+#ifndef ETHERTYPE_IPV6
+#define	ETHERTYPE_IPV6		0x86dd		/* IP protocol version 6 */
+#endif
+
+
 struct pcap_device 
 {
 	pcap_t *pcap;
@@ -127,6 +136,10 @@ static void pcap_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents)
 			family = PF_INET6;
 		else
 			return;
+	}else
+	{
+		g_warning("unknown linktype on %s %i", dev->name, dev->linktype);
+		return;
 	}
 
 	const u_char *ipdata = pkt_data + offset;
@@ -157,6 +170,10 @@ static void pcap_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents)
 			return;
 
 		tcp = (struct tcphdr *) ((u_char *)ipdata+sizeof(struct ip6_hdr));
+	}else
+	{
+		g_warning("unknown familiy %i", family);
+		return;
 	}
 
 #ifndef HAVE_PCAP_IPV6_TCP
