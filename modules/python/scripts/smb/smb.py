@@ -280,19 +280,28 @@ class smbd(connection):
 				c += 1
 				ctxitem = DCERPC_Ack_CtxItem()
 				service_uuid = UUID(bytes_le=tmp.UUID)
-				
-				if service_uuid.hex in registered_services:
-					service = registered_services[service_uuid.hex]
-					smblog.info('Found a registered UUID (%s). Accepting Bind for %s' % (service_uuid , service.__class__.__name__))
-					self.state['uuid'] = service_uuid.hex
-					# Copy Transfer Syntax to CtxItem
-					ctxitem.AckResult = 0
-					ctxitem.AckReason = 0
-					ctxitem.TransferSyntax = tmp.TransferSyntax[:16]
-					ctxitem.TransferSyntaxVersion = tmp.TransferSyntaxVersion
+				transfersyntax_uuid = UUID(bytes_le=tmp.TransferSyntax)
+				if str(transfersyntax_uuid) == '8a885d04-1ceb-11c9-9fe8-08002b104860':
+					if service_uuid.hex in registered_services:
+						service = registered_services[service_uuid.hex]
+						smblog.info('Found a registered UUID (%s). Accepting Bind for %s' % (service_uuid , service.__class__.__name__))
+						self.state['uuid'] = service_uuid.hex
+						# Copy Transfer Syntax to CtxItem
+						ctxitem.AckResult = 0
+						ctxitem.AckReason = 0
+						ctxitem.TransferSyntax = tmp.TransferSyntax[:16]
+						ctxitem.TransferSyntaxVersion = tmp.TransferSyntaxVersion
+					else:
+						smblog.warn("Attempt to register %s failed, UUID does not exist or is not implemented" % service_uuid)
 				else:
-					smblog.warn("Attempt to register %s failed, UUID does not exist or is not implemented" % service_uuid)
+					smblog.warn("Attempt to register %s failed, TransferSyntax %s is unknown" % (service_uuid, transfersyntax_uuid) )
+
 				outbuf /= ctxitem
+				i = incident("dionaea.modules.python.smb.dcerpc.bind")
+				i.con = self
+				i.uuid = str(service_uuid)
+				i.transfersyntax = str(transfersyntax_uuid)
+				i.report()
 				tmp = tmp.payload
 		
 			outbuf.NumCtxItems = c

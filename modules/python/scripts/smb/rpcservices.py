@@ -156,6 +156,10 @@ class ISystemActivator(RPCService):
 		# MS04-012
 		pass
 
+class IOXIDResolver(RPCService):
+	uuid = UUID('99fcfec4-5260-101b-bbcb-00aa0021347a').hex
+
+
 class llsrpc(RPCService):
 	uuid = UUID('342cfd40-3c6c-11ce-a893-08002b2e9c6d').hex
 

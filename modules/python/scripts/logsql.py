@@ -21,6 +21,7 @@ class logsqlhandler(ihandler):
 		file = g_dionaea.config()['modules']['python']['logsql']['sqlite']['file']
 		self.dbh = sqlite3.connect(file)
 		self.cursor = self.dbh.cursor()
+
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 			connections	(
 				connection INTEGER PRIMARY KEY,
@@ -54,6 +55,14 @@ class logsqlhandler(ihandler):
 			self.cursor.execute("""CREATE INDEX IF NOT EXISTS connections_%s_idx
 			ON connections (%s)""" % (idx, idx))
 
+
+# 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
+#			bistreams (
+#				bistream INTEGER PRIMARY KEY,
+#				connection INTEGER,
+#				bistream_data TEXT
+#			)""")
+#
 #		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 #			smbs (
 #				smb INTEGER PRIMARY KEY,
@@ -64,18 +73,31 @@ class logsqlhandler(ihandler):
 #			)""")
 
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
-			dcerpcs (
-				dcerpc INTEGER PRIMARY KEY,
+			dcerpcbinds (
+				dcerpcbind INTEGER PRIMARY KEY,
 				connection INTEGER,
-				dcerpc_type TEXT,
-				dcerpc_uuid TEXT,
-				dcerpc_opnum INTEGER
+				dcerpcbind_uuid TEXT,
+				dcerpcbind_transfersyntax TEXT
 				-- CONSTRAINT dcerpcs_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
 			)""")
 
-		for idx in ["type","uuid","opnum"]:
-			self.cursor.execute("""CREATE INDEX IF NOT EXISTS dcerpcs_%s_idx 
-			ON dcerpcs (dcerpc_%s)""" % (idx, idx))
+		for idx in ["uuid","transfersyntax"]:
+			self.cursor.execute("""CREATE INDEX IF NOT EXISTS dcerpcbinds_%s_idx 
+			ON dcerpcbinds (dcerpcbind_%s)""" % (idx, idx))
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
+			dcerpcrequests (
+				dcerpcrequest INTEGER PRIMARY KEY,
+				connection INTEGER,
+				dcerpcrequest_uuid TEXT,
+				dcerpcrequest_opnum INTEGER
+				-- CONSTRAINT dcerpcs_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
+			)""")
+
+		for idx in ["uuid","opnum"]:
+			self.cursor.execute("""CREATE INDEX IF NOT EXISTS dcerpcrequests_%s_idx 
+			ON dcerpcrequests (dcerpcrequest_%s)""" % (idx, idx))
+
 
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 			dcerpcservices (
@@ -204,11 +226,32 @@ class logsqlhandler(ihandler):
 			ON p0fs (p0f_%s)""" % (idx, idx))
 
 		# connection index for all 
-		for idx in ["dcerpcs", "emu_profiles", "emu_services", "offers", "downloads", "p0fs"]:
+		for idx in ["dcerpcbinds", "dcerpcrequests", "emu_profiles", "emu_services", "offers", "downloads", "p0fs"]:
 			self.cursor.execute("""CREATE INDEX IF NOT EXISTS %s_connection_idx	ON %s (connection)""" % (idx, idx))
 
 
 		self.dbh.commit()
+
+
+		# updates, database schema corrections for old versions
+
+		# svn rev 2143 removed the table dcerpcs 
+		# and created the table dcerpcrequests
+		# 
+		# copy the data to the new table dcerpcrequests
+		# drop the old table
+		try:
+			self.cursor.execute("""INSERT INTO 
+									dcerpcrequests (connection, dcerpcrequest_uuid, dcerpcrequest_opnum) 
+								SELECT 
+									connection, dcerpc_uuid, dcerpc_opnum 
+								FROM 
+									dcerpcs""")
+			self.cursor.execute("""DROP TABLE dcerpcs""")
+
+		except Exception as e:
+			print(e)
+
 
 	def __del__(self):
 		logger.info("Closing sqlite handle")
@@ -364,14 +407,20 @@ class logsqlhandler(ihandler):
 				( attackid, icd.genre, icd.link, icd.detail, icd.uptime, icd.tos, icd.dist, icd.nat, icd.fw))
 			self.dbh.commit()
 
-
 	def handle_incident_dionaea_modules_python_smb_dcerpc_request(self, icd):
 		con=icd.con
 		if con in self.attacks:
 			attackid = self.attacks[con][1]
-			self.cursor.execute("INSERT INTO dcerpcs (connection, dcerpc_type, dcerpc_uuid, dcerpc_opnum) VALUES (?,'request',?,?)",
+			self.cursor.execute("INSERT INTO dcerpcrequests (connection, dcerpcrequest_uuid, dcerpcrequest_opnum) VALUES (?,?,?)",
 				(attackid, icd.uuid, icd.opnum))
 			self.dbh.commit()
 
+	def handle_incident_dionaea_modules_python_smb_dcerpc_bind(self, icd):
+		con=icd.con
+		if con in self.attacks:
+			attackid = self.attacks[con][1]
+			self.cursor.execute("INSERT INTO dcerpcbinds (connection, dcerpcbind_uuid, dcerpcbind_transfersyntax) VALUES (?,?,?)",
+				(attackid, icd.uuid, icd.transfersyntax))
+			self.dbh.commit()
 
 
