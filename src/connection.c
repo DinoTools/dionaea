@@ -160,6 +160,23 @@ bool connection_node_set_remote(struct connection *con)
 	return node_info_set(&con->remote, &con->remote.addr);
 }
 
+bool connection_socket(struct connection *con, int family, int type, int protocol)
+{
+	if( con->socket != -1 )
+		close(con->socket);
+
+	if ((con->socket = socket(family, type, protocol)) == -1 )
+	{
+		g_warning("socket() failed for con %p %i (%s)", con, errno, strerror(errno));
+		con->protocol.error(con, ECONMANY);
+		connection_free(con);
+		return false;
+	}
+
+	return true;
+}
+
+
 /**
  * used to bind the connection to an address/port
  * 
@@ -277,7 +294,8 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 	case connection_transport_udp:
 		con->type = connection_type_bind;
 		if( con->socket == -1 )
-			con->socket = socket(socket_domain, SOCK_DGRAM, IPPROTO_UDP);
+			if( connection_socket(con,  socket_domain, SOCK_DGRAM, IPPROTO_UDP) == false )
+				return false;
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)); 
 //		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)); 
 		if( bind_local(con) != true )
@@ -327,7 +345,8 @@ bool connection_listen(struct connection *con, int len)
 	case connection_transport_tcp:
 		con->type = connection_type_listen;
 		if( con->socket == -1 )
-			con->socket = socket(con->local.domain, SOCK_STREAM, 0);
+			if( connection_socket(con, con->local.domain, SOCK_STREAM, 0) == false )
+				return false;
 
 		if( bind_local(con) != true )
 			return false;
@@ -352,7 +371,8 @@ bool connection_listen(struct connection *con, int len)
 	case connection_transport_tls:
 		con->type = connection_type_listen;
 		if( con->socket == -1 )
-			con->socket = socket(con->local.domain, SOCK_STREAM, 0);
+			if( connection_socket(con, con->local.domain, SOCK_STREAM, 0) == false )
+				return false;
 
 		if( bind_local(con) != true )
 			return false;
@@ -725,7 +745,8 @@ void connection_connect_next_addr(struct connection *con)
 			g_debug("tcp");
 
 			if( con->socket == -1 )
-				con->socket = socket(socket_domain, SOCK_STREAM, 0);
+				if( connection_socket(con, socket_domain, SOCK_STREAM, 0) == false )
+					return;
 
 			if( bind_local(con) != true )
 				continue;
@@ -777,7 +798,9 @@ void connection_connect_next_addr(struct connection *con)
 
 			g_debug("ssl");
 			if( con->socket == -1 )
-				con->socket = socket(socket_domain, SOCK_STREAM, 0);
+				if( connection_socket(con, socket_domain, SOCK_STREAM, 0) == false )
+					return;
+
 			connection_set_nonblocking(con);
 
 			if( bind_local(con) != true )
@@ -824,7 +847,8 @@ void connection_connect_next_addr(struct connection *con)
 
 			g_debug("udp");
 			if( con->socket == -1 )
-				con->socket = socket(socket_domain, SOCK_DGRAM, 0);
+				if( connection_socket(con, socket_domain, SOCK_DGRAM, 0) == false )
+					return;
 
 //			if ( bind_local(con) != true )
 //				continue;

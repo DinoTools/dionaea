@@ -40,7 +40,8 @@ enum connection_error
 	ECONDNSTIMEOUT     = 0,
 	ECONUNREACH        = 1,
 	ECONNOSUCHDOMAIN   = 2,
-	ECONMAX            = 3
+	ECONMANY		   = 4,
+	ECONMAX            = 5
 };
 
 typedef void (*protocol_handler_established)(struct connection *con);
