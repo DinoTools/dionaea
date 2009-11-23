@@ -49,7 +49,8 @@ class httpd(connection):
 
 	def handle_established(self):
 #		self.processors()
-		pass
+		self.timeouts.idle = 10
+#		pass
 
 	def chroot(self, path):
 		self.root = path
@@ -211,6 +212,9 @@ class httpd(connection):
 		self.send("\r\n")
 
 	def handle_disconnect(self):
+		return False
+
+	def handle_timeout_idle(self):
 		return False
 
 	responses = {
