@@ -207,7 +207,7 @@ class SMBNullField(StrField):
 		if utf16:
 			UnicodeNullField.__init__(self, name, default, fmt, remain)
 		else:
-			StrField.__init__(self, name, default, fmt, remain)
+			StrNullField.__init__(self, name, default, fmt, remain)
 	def addfield(self, pkt, s, val):
 		if pkt.firstlayer().getlayer(SMB_Header).Flags2 & SMB_FLAGS2_UNICODE:
 			return UnicodeNullField.addfield(self, pkt, s, val)
@@ -395,11 +395,14 @@ class SMB_Sessionsetup_ESEC_AndX_Response(Packet):
 		XLEShortField("Action",1),
 		FieldLenField("SecurityBlobLength", None, fmt='<H', length_of="SecurityBlob"),
 		StrLenField("SecurityBlob", "", length_from=lambda x:x.SecurityBlobLength),
-		FieldLenField("ByteCount", None, fmt='<H', length_of="NativeOS", adjust=lambda pkt,x: len(pkt.Padding) + len(pkt.NativeOS) +  len(pkt.NativeLanManager)),
+		MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Padding","NativeOS", "NativeLanManager", "PrimaryDomain")),
 		ConditionalField(StrFixedLenField("Padding", "\x00", length_from=lambda x:(len(x.SecurityBlob)+1)%2), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("NativeOS","Windows 5.1", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("NativeLanManager","Windows 2000 LAN Manager", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		SMBNullField("PrimaryDomain","WORKGROUP", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 	]
+#    def post_build(self, p, pay):
+#		p.
 
 # pre nt lm 0.12
 # not supported

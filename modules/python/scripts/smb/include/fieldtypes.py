@@ -573,6 +573,20 @@ class FieldListField(Field):
             c = self.count_from(pkt)
             return c * self.field.size(pkt, val)
         
+class MultiFieldLenField(Field):
+    def __init__(self, name, default,  length_of=None, fmt = "H", count_of=None, adjust=lambda pkt,x:x):
+        Field.__init__(self, name, default, fmt)
+        self.length_of=length_of
+        self.count_of=count_of
+        self.adjust=adjust
+    def i2m(self, pkt, x):
+        if x is None:
+            l = 0
+            for fieldname in self.length_of:
+                fld,fval = pkt.getfield_and_val(fieldname)
+                f = fld.i2len(pkt, fval)
+                l += self.adjust(pkt,f)
+        return l
 
 
 class FieldLenField(Field):
