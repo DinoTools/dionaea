@@ -712,7 +712,7 @@ class SMB_Trans_Request(Packet):
 		StrFixedLenField("Pad1", b"", length_from=lambda x:x.DataOffset - ( x.ParamOffset + x.ParamCount ) ),
 	]
 	def lengthfrom_Pad(self):
-		r = self.ParamOffset+1		# little to no idea where I need the +1
+		r = self.ParamOffset		# ...
 		r -= self.underlayer.size()	# underlayer size removed
 		r -= 5						# 5 byte vars
 		r -= 11*2					# 11 words
