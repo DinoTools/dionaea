@@ -347,6 +347,9 @@ int run(struct emu *e, struct emu_env *env)
 
 		if( hook != NULL )
 		{
+			if( strcmp(hook->hook.win->fnname,"ExitThread") == 0 )
+				break;
+
 			if( hook->hook.win->fnhook == NULL )
 			{
 				g_critical("unhooked call to %s", hook->hook.win->fnname);
