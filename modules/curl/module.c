@@ -365,40 +365,89 @@ static int curl_debugfunction_cb(CURL *easy, curl_infotype type, char *data, siz
 	return 0;
 }
 
-void session_upload_new(const char *url, const char *email, const char *file)
+void session_upload_new(struct incident *i)
 {
-	g_debug("%s url %s email %s file %s", __PRETTY_FUNCTION__, url, email, file);
+	GHashTableIter iter;
+	gpointer key, value;
+	GString *gstemp;
+	char *url;
+
 	struct session *session = session_new();
 	CURLMcode rc;
 
 	session->type = session_type_upload;
+			
+	if (incident_value_string_get(i, "url", &gstemp) == false )
+	{
+		g_debug("dionaea.upload.request got no url in incident!");
+		return;
+	}
+	url = gstemp->str;
+
 	session->url = g_strdup(url);
 
-//	char *name = "foobar";
+	g_hash_table_iter_init (&iter, i->data);
 
-	curl_formadd(&session->action.upload.formpost,
-				 &session->action.upload.last,
-				 CURLFORM_COPYNAME, "MAX_FILE_SIZE",
-				 CURLFORM_COPYCONTENTS, "1500000",
-				 CURLFORM_END);
-	curl_formadd(&session->action.upload.formpost,
-				 &session->action.upload.last,
-				 CURLFORM_COPYNAME, "email",
-				 CURLFORM_CONTENTTYPE, "form-data",
-				 CURLFORM_COPYCONTENTS, email,
-				 CURLFORM_END);
+	while( g_hash_table_iter_next (&iter, &key, &value) )
+	{
+		char *name = key;
+		struct opaque_data *d = value;
 
-	curl_formadd(&session->action.upload.formpost,
-				 &session->action.upload.last,
-				 CURLFORM_COPYNAME, "upfile",
-				 CURLFORM_FILE, file,
-				 CURLFORM_END);
+		char name_and_param[1025];
 
-	curl_formadd(&session->action.upload.formpost,
-				 &session->action.upload.last,
-				 CURLFORM_COPYNAME, "submit",
-				 CURLFORM_COPYCONTENTS, "Submit for analysis",
-				 CURLFORM_END);
+		if( d->type == opaque_type_int )
+		{
+			g_warning("incident key %s has integer value. all post fields must be string values.", name);
+		} else
+			if( d->type == opaque_type_string)
+		{
+			if( strstr(name, "_filefield") != NULL || 
+				strstr(name, "_noct") != NULL ||
+				strcmp(name, "url") == 0)
+				continue;
+
+			if( strcmp(name, "file") == 0 )
+			{
+				strcpy(name_and_param, name);
+	 			strcat(name_and_param, "_filefield");
+				if ( incident_value_string_get(i, name_and_param, &gstemp) == true)
+				{
+					curl_formadd(&session->action.upload.formpost,
+								 &session->action.upload.last,
+								 CURLFORM_COPYNAME, gstemp->str,
+								 CURLFORM_FILE, d->opaque.string->str,
+								 CURLFORM_END);
+				} else
+				{
+					curl_formadd(&session->action.upload.formpost,
+								 &session->action.upload.last,
+								 CURLFORM_COPYNAME, "upfile",
+								 CURLFORM_FILE, d->opaque.string->str,
+								 CURLFORM_END);
+				}
+			} else
+			{
+				strcpy(name_and_param, name);
+	 			strcat(name_and_param, "_noct");
+				if ( incident_value_string_get(i, name_and_param, &gstemp) == true)
+				{
+					curl_formadd(&session->action.upload.formpost,
+								 &session->action.upload.last,
+								 CURLFORM_COPYNAME, name,
+								 CURLFORM_COPYCONTENTS, d->opaque.string->str,
+								 CURLFORM_END);
+				} else
+				{
+					curl_formadd(&session->action.upload.formpost,
+								 &session->action.upload.last,
+								 CURLFORM_COPYNAME, name,
+								 CURLFORM_CONTENTTYPE, "form-data",
+								 CURLFORM_COPYCONTENTS, d->opaque.string->str,
+								 CURLFORM_END);
+				}
+			}
+		}
+	}
 
 	char buf[] = "Expect:";
 	session->action.upload.headers = curl_slist_append(session->action.upload.headers, buf);
@@ -486,16 +535,7 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 	} else
 		if( strcmp(i->origin, "dionaea.upload.request") == 0 )
 	{
-		GString *url;
-		GString *email;
-		GString *file;
-
-		if( incident_value_string_get(i, "file", &file) == true && 
-			incident_value_string_get(i, "email", &email) == true &&
-			incident_value_string_get(i, "url", &url) == true )
-		{
-			session_upload_new(url->str, email->str, file->str);
-		}
+		session_upload_new(i);
 	}
 }
 

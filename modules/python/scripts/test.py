@@ -23,7 +23,12 @@ class uniquedownloadihandler(ihandler):
 
 		for url in urls:
 			i = incident("dionaea.upload.request")
+			i.set('MAX_FILE_SIZE', '1500000')
+			i.set('MAX_FILE_SIZE_noct', 'noct')
 			i.set('email', email)
 			i.set('url', url)
 			i.set('file',file)
+			i.set('submit', 'Submit for analysis')
+			i.set('submit_noct', 'noct')
 			i.report()
+
