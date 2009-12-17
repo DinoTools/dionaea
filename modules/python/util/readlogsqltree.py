@@ -41,7 +41,7 @@ def print_dcerpcbinds(cursor, connection, indent):
 	r = cursor.execute("SELECT * from dcerpcbinds WHERE connection = ?", (connection, ))
 	dcerpcbinds = resolve_result(r)
 	for dcerpcbind in dcerpcbinds:
-		print("%*s dcerpc bind: uuid '%s' opnum %i" % ( indent, " ", dcerpcbind['dcerpcbind_uuid'], dcerpcbind['dcerpcbind_transfersyntax']) )
+		print("%*s dcerpc bind: uuid '%s' transfersyntax %s" % ( indent, " ", dcerpcbind['dcerpcbind_uuid'], dcerpcbind['dcerpcbind_transfersyntax']) )
 
 
 def print_dcerpcrequests(cursor, connection, indent):
