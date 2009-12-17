@@ -1,5 +1,6 @@
 import sqlite3
 import json
+import sys
 
 def resolve_result(resultcursor):
 	names = [resultcursor.description[x][0] for x in range(len(resultcursor.description))]
@@ -36,12 +37,18 @@ def print_p0fs(cursor, connection, indent):
 	for p0f in p0fs:
 		print("%*s p0f: genre:'%s' detail:'%s' uptime:'%i' tos:'%s' dist:'%i' nat:'%i' fw:'%i'" % ( indent, " ", p0f['p0f_genre'], p0f['p0f_detail'], p0f['p0f_uptime'], p0f['p0f_tos'], p0f['p0f_dist'], p0f['p0f_nat'], p0f['p0f_fw']) ) 
 
-def print_dcerpcs(cursor, connection, indent):
-	r = cursor.execute("SELECT * from dcerpcs WHERE connection = ?", (connection, ))
-	dcerpcs = resolve_result(r)
-	for dcerpc in dcerpcs:
-		if dcerpc['dcerpc_type'] == 'request':
-			print("%*s dcerpc request: uuid '%s' opnum %i" % ( indent, " ", dcerpc['dcerpc_uuid'], dcerpc['dcerpc_opnum']) )
+def print_dcerpcbinds(cursor, connection, indent):
+	r = cursor.execute("SELECT * from dcerpcbinds WHERE connection = ?", (connection, ))
+	dcerpcbinds = resolve_result(r)
+	for dcerpcbind in dcerpcbinds:
+		print("%*s dcerpc bind: uuid '%s' opnum %i" % ( indent, " ", dcerpcbind['dcerpcbind_uuid'], dcerpcbind['dcerpcbind_transfersyntax']) )
+
+
+def print_dcerpcrequests(cursor, connection, indent):
+	r = cursor.execute("SELECT * from dcerpcrequests WHERE connection = ?", (connection, ))
+	dcerpcrequests = resolve_result(r)
+	for dcerpcrequest in dcerpcrequests:
+		print("%*s dcerpc request: uuid '%s' opnum %i" % ( indent, " ", dcerpcrequest['dcerpcrequest_uuid'], dcerpcrequest['dcerpcrequest_opnum']) )
 
 
 def print_connection(c, indent):
@@ -72,13 +79,14 @@ def print_db(file):
 	dbh = sqlite3.connect(file)
 	cursor = dbh.cursor()
 
-	result = cursor.execute("SELECT * from connections WHERE connection_root = connection OR connection_root IS NULL ")
+	result = cursor.execute("SELECT * from connections WHERE(connection_root = connection OR connection_root IS NULL) AND remote_host = ?", (sys.argv[2],))
 	connections = resolve_result(result)
 
 	for c in connections:
 		connection = c['connection']
 		print_connection(c, 1)
-		print_dcerpcs(cursor, c['connection'], 2)
+		print_dcerpcrequests(cursor, c['connection'], 2)
+		print_dcerpcbinds(cursor, c['connection'], 2)
 		print_p0fs(cursor, c['connection'], 2)
 		print_offers(cursor, c['connection'], 2)
 		print_downloads(cursor, c['connection'], 2)
@@ -87,4 +95,4 @@ def print_db(file):
 		recursive_print(cursor, c['connection'], 2)
 
 #print_db("/opt/dionaea/var/dionaea/logsql.sqlite")
-print_db("/tmp/avignon.sqlite")
+print_db(sys.argv[1])
