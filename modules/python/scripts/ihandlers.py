@@ -66,7 +66,7 @@ def start():
 def stop():
 	global g_handlers
 	for i in g_handlers:
-		print("deleting %s" % str(i))
+		logger.debug("deleting %s" % str(i))
 		del i
 	del g_handlers
 

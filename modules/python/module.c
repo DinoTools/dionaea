@@ -189,12 +189,15 @@ static bool hupy(struct lcfgx_tree_node *node)
 				{
 					PyObject *arglist = Py_BuildValue("()");
 					PyObject *r = PyEval_CallObject(func, arglist);
-					PyErr_Print();
+					traceback();
+//					PyErr_Print();
 					Py_DECREF(arglist);
 					Py_XDECREF(r);
 					Py_DECREF(func);
 				} else
-					PyErr_Clear();
+				{
+					traceback();
+				}
 
 				PyObject *module = PyImport_ReloadModule(i->module);
 				if( module == NULL )
@@ -212,11 +215,14 @@ static bool hupy(struct lcfgx_tree_node *node)
 				{
 					PyObject *arglist = Py_BuildValue("()");
 					PyObject *r = PyEval_CallObject(func, arglist);
+					traceback();
 					Py_DECREF(arglist);
 					Py_XDECREF(r);
 					Py_DECREF(func);
 				} else
-					PyErr_Clear();
+				{
+					traceback();
+				}
 
 			} else
 			{

@@ -53,6 +53,7 @@ struct ihandler *ihandler_new(char *pattern, ihandler_cb cb, void *ctx)
 {
 	g_debug("%s pattern %s cb %p ctx %p", __PRETTY_FUNCTION__, pattern, cb, ctx);
 	struct ihandler *i = g_malloc0(sizeof(struct ihandler));
+	g_debug("ihandler %p pattern %s cb %p ctx %p", i, pattern, cb, ctx);
 	i->path = g_strdup(pattern);
 	i->match = g_pattern_spec_new(pattern);
 	i->cb = cb;
