@@ -19,7 +19,8 @@ class storehandler(ihandler):
 		i = incident("dionaea.download.complete.hash")
 		i.file = n
 		i.url = icd.url
-		i.con = icd.con
+		if hasattr(i, 'con'):
+			i.con = icd.con
 		i.md5hash = md5
 		i.report()
 
@@ -32,7 +33,8 @@ class storehandler(ihandler):
 			os.link(p, n)
 			i = incident("dionaea.download.complete.unique")
 		i.file = n
-		i.con = icd.con
+		if hasattr(i, 'con'):
+			i.con = icd.con
 		i.report()
 
 		
