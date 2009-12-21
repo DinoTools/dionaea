@@ -86,6 +86,8 @@ struct session
 			struct curl_httppost    *formpost;
 			struct curl_httppost    *last;
 			struct curl_slist       *headers;
+			char 					*username;
+			char 					*password;
 		}upload;
 	}action;
 };
@@ -128,6 +130,11 @@ static void session_free(struct session *session)
 	case session_type_upload:
 		curl_formfree(session->action.upload.formpost);
 		curl_slist_free_all(session->action.upload.headers);
+		if( session->action.upload.username != NULL )
+			g_free(session->action.upload.username);
+		if( session->action.upload.password != NULL )
+			g_free(session->action.upload.password);
+
 		break;
 	}
 	g_free(session);
@@ -386,62 +393,68 @@ void session_upload_new(struct incident *i)
 
 	session->url = g_strdup(url);
 
+
 	g_hash_table_iter_init (&iter, i->data);
 
 	while( g_hash_table_iter_next (&iter, &key, &value) )
 	{
 		char *name = key;
 		struct opaque_data *d = value;
-
-		char name_and_param[1025];
-
+		char name_and_param[1024];
 		if( d->type == opaque_type_int )
 		{
 			g_warning("incident key %s has integer value. all post fields must be string values.", name);
 		} else
-			if( d->type == opaque_type_string)
+		if( d->type == opaque_type_string)
 		{
-			if( strstr(name, "_filefield") != NULL || 
-				strstr(name, "_noct") != NULL ||
-				strcmp(name, "url") == 0)
+			/* ignore help field values */
+			if( strstr(name, "_fieldname") != NULL || 
+				strstr(name, "_ct") != NULL )
 				continue;
 
+			if( strcmp(name, "user") == 0 )
+			{ /* http auth user */
+				session->action.upload.username = g_strdup(d->opaque.string->str);
+				curl_easy_setopt(session->easy, CURLOPT_USERNAME, session->action.upload.username);
+			}else
+			if( strcmp(name, "pass") == 0 )
+			{ /* http auth password */
+				session->action.upload.password = g_strdup(d->opaque.string->str);
+				curl_easy_setopt(session->easy, CURLOPT_PASSWORD, session->action.upload.password);
+			}else
 			if( strcmp(name, "file") == 0 )
-			{
-				strcpy(name_and_param, name);
-	 			strcat(name_and_param, "_filefield");
-				if ( incident_value_string_get(i, name_and_param, &gstemp) == true)
-				{
+			{ /* we upload this file */
+				if ( incident_value_string_get(i, "file_fieldname", &gstemp) == true)
+				{ /* file upload with special fieldname */
 					curl_formadd(&session->action.upload.formpost,
 								 &session->action.upload.last,
 								 CURLFORM_COPYNAME, gstemp->str,
 								 CURLFORM_FILE, d->opaque.string->str,
 								 CURLFORM_END);
 				} else
-				{
+				{ /* default fieldname is upfile */
 					curl_formadd(&session->action.upload.formpost,
 								 &session->action.upload.last,
 								 CURLFORM_COPYNAME, "upfile",
 								 CURLFORM_FILE, d->opaque.string->str,
 								 CURLFORM_END);
 				}
-			} else
-			{
-				strcpy(name_and_param, name);
-	 			strcat(name_and_param, "_noct");
+			}else
+			{ /* all other values */
+				snprintf(name_and_param, 1024, "%s_ct", name);
 				if ( incident_value_string_get(i, name_and_param, &gstemp) == true)
-				{
+				{ /* with content type */
 					curl_formadd(&session->action.upload.formpost,
 								 &session->action.upload.last,
 								 CURLFORM_COPYNAME, name,
+								 CURLFORM_CONTENTTYPE, gstemp->str,
 								 CURLFORM_COPYCONTENTS, d->opaque.string->str,
 								 CURLFORM_END);
 				} else
-				{
+				{ /* without content type */
 					curl_formadd(&session->action.upload.formpost,
 								 &session->action.upload.last,
 								 CURLFORM_COPYNAME, name,
-								 CURLFORM_CONTENTTYPE, "form-data",
 								 CURLFORM_COPYCONTENTS, d->opaque.string->str,
 								 CURLFORM_END);
 				}
@@ -468,6 +481,8 @@ void session_upload_new(struct incident *i)
 	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_TIME, 3L);
 	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_LIMIT, 10L);
 	curl_easy_setopt(session->easy, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
+	curl_easy_setopt(session->easy, CURLOPT_SSL_VERIFYPEER, 0);
+	curl_easy_setopt(session->easy, CURLOPT_SSL_VERIFYHOST, 0);
 
 	g_debug("Adding easy %p to multi %p (%s)", session->easy, curl_runtime.multi, url);
 	rc = curl_multi_add_handle(curl_runtime.multi, session->easy);

@@ -15,20 +15,21 @@ class uniquedownloadihandler(ihandler):
 	def handle_incident(self, icd):
 		logger.debug("submitting file")
 		try:
-			file = icd.get('file')
-			email = g_dionaea.config()['submit']['email']
-			urls = g_dionaea.config()['submit']['urls']
+			tos = g_dionaea.config()['submit']
 		except:
 			return
 
-		for url in urls:
-			i = incident("dionaea.upload.request")
-			i.set('MAX_FILE_SIZE', '1500000')
-			i.set('MAX_FILE_SIZE_noct', 'noct')
-			i.set('email', email)
-			i.set('url', url)
-			i.set('file',file)
-			i.set('submit', 'Submit for analysis')
-			i.set('submit_noct', 'noct')
-			i.report()
-
+		for to in tos:
+			if 'urls' not in g_dionaea.config()['submit'][to]:
+				logger.warn("your configuration lacks urls to submit to %s" % to)
+				continue
+			for url in g_dionaea.config()['submit'][to]['urls']:
+				i = incident("dionaea.upload.request")
+				i.url = url
+				i.file = icd.file
+				# copy all values for this url
+				for key in g_dionaea.config()['submit'][to]:
+					if key == 'urls':
+						continue
+					i.set(key, g_dionaea.config()['submit'][to][key])
+				i.report()
