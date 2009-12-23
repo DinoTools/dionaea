@@ -61,7 +61,7 @@ def start():
 
 	if "p0f" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
 		import p0f
-		g_handlers.append(p0f.p0fhandler(g_handlers.append(p0f.p0fhandler(g_dionaea.config()['modules']['python']['p0f']['path']))))
+		g_handlers.append(p0f.p0fhandler(g_dionaea.config()['modules']['python']['p0f']['path']))
 
 def stop():
 	global g_handlers

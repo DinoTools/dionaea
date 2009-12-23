@@ -938,6 +938,11 @@ void traceback(void)
 
 	Py_XDECREF(res);
 	Py_XDECREF(args);
+
+	Py_XDECREF(type);
+	Py_XDECREF(value);
+	Py_XDECREF(traceback);
+
 }
 
 struct module_api *module_init(struct dionaea *dionaea)
