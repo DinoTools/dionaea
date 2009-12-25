@@ -33,7 +33,8 @@
 #include <lcfg/lcfg.h>
 #include <lcfgx/lcfgx_tree.h>
 
-//#include <netlink-local.h>
+struct nlattr;
+
 #include <netlink/netlink.h>
 #include <netlink/utils.h>
 #include <netlink/addr.h>

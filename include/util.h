@@ -25,8 +25,20 @@
  *
  *******************************************************************************/
 
+#ifndef HAVE_UTIL_H
+#define HAVE_UTIL_H
+
 #include <stdbool.h>
 #include <stdint.h>
+
+
+#define ADDROFFSET(x) \
+	((((struct sockaddr *)(x))->sa_family == AF_INET) ?  \
+		((void *)(x) + offsetof(struct sockaddr_in, sin_addr)) :  \
+		(((struct sockaddr *)(x))->sa_family == AF_INET6) ? \
+			((void *)(x) + offsetof(struct sockaddr_in6, sin6_addr)) : \
+			NULL)
+
 
 bool sockaddr_storage_from(struct sockaddr_storage *ss, int family, void *host, uint16_t port);
 bool parse_addr(char const * const addr, char const * const iface, uint16_t const port, struct sockaddr_storage * const sa, int * const socket_domain, socklen_t * const sizeof_sa);
@@ -46,3 +58,5 @@ struct tempfile *tempdownload_new(char *prefix);
 void tempfile_close(struct tempfile *tf);
 void tempfile_unlink(struct tempfile *tf);
 void tempfile_free(struct tempfile *tf);
+
+#endif

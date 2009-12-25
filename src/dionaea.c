@@ -494,37 +494,47 @@ int main (int argc, char *argv[])
 		d->logging->loggers = g_list_append(d->logging->loggers, l);
 	}
 
-	// log to file - if specified in config
-	struct lcfgx_tree_node *f;
-	if( lcfgx_get_string(g_dionaea->config.root, &f, "logging.file") == LCFGX_PATH_FOUND_TYPE_OK )
+	// log to file(s) - if specified in config
+	struct lcfgx_tree_node *n;
+	if( lcfgx_get_map(g_dionaea->config.root, &n, "logging") == LCFGX_PATH_FOUND_TYPE_OK )
 	{
-		char *file = f->value.string.data;
-		char *domains = NULL;
-		char *levels = NULL;
-
-		if( lcfgx_get_string(g_dionaea->config.root, &f, "logging.domains") == LCFGX_PATH_FOUND_TYPE_OK )
-			domains = f->value.string.data;
-
-		if( lcfgx_get_string(g_dionaea->config.root, &f, "logging.levels") == LCFGX_PATH_FOUND_TYPE_OK )
-			levels = f->value.string.data;
-
-		g_debug("Logfile %s %s %s", file, domains, levels);
-		struct log_filter *lf = log_filter_new(domains, levels);
-		if( lf == NULL )
-			return -1;
-
-		struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
-		if( *file != '/' )
+		struct lcfgx_tree_node *it;
+		for( it = n->value.elements; it != NULL; it = it->next )
 		{
-			fd->file = g_malloc0(PATH_MAX+1);
-			g_snprintf(fd->file, PATH_MAX, "%s/log/dionaea.log", LOCALESTATEDIR);
-		} else
-			fd->file = g_strdup(file);
+			char *alias = it->key;
+			char *file = NULL;
+			char *domains = NULL;
+			char *levels = NULL;
 
-		fd->filter = lf;
+			struct lcfgx_tree_node *f;
 
-		struct logger *l = logger_new(logger_file_log, logger_file_open, logger_file_hup, logger_file_close, fd);
-		d->logging->loggers = g_list_append(d->logging->loggers, l);
+			if( lcfgx_get_string(it, &f, "file") == LCFGX_PATH_FOUND_TYPE_OK )
+				file = f->value.string.data;
+
+			if( lcfgx_get_string(it, &f, "domains") == LCFGX_PATH_FOUND_TYPE_OK )
+				domains = f->value.string.data;
+
+			if( lcfgx_get_string(it, &f, "levels") == LCFGX_PATH_FOUND_TYPE_OK )
+				levels = f->value.string.data;
+
+			g_debug("Logfile (handle %s) %s %s %s", alias, file, domains, levels);
+			struct log_filter *lf = log_filter_new(domains, levels);
+			if( lf == NULL )
+				return -1;
+
+			struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
+			if( *file != '/' )
+			{
+				fd->file = g_malloc0(PATH_MAX+1);
+				g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
+			} else
+				fd->file = g_strdup(file);
+
+			fd->filter = lf;
+
+			struct logger *l = logger_new(logger_file_log, logger_file_open, logger_file_hup, logger_file_close, fd);
+			d->logging->loggers = g_list_append(d->logging->loggers, l);
+		}
 	}
 
 	for( GList *it = d->logging->loggers; it != NULL; it = it->next )
@@ -615,7 +625,7 @@ int main (int argc, char *argv[])
 
 	// modules
 	d->modules = g_malloc0(sizeof(struct modules));
-	struct lcfgx_tree_node *n;
+//	struct lcfgx_tree_node *n;
 	if( lcfgx_get_map(g_dionaea->config.root, &n, "modules") == LCFGX_PATH_FOUND_TYPE_OK )
 		modules_load(n);
 	else
@@ -689,8 +699,10 @@ int main (int argc, char *argv[])
 	d->signals = g_malloc0(sizeof(struct signals));
 	ev_signal_init(&d->signals->sigint,  sigint_cb, SIGINT);
 	ev_signal_start(d->loop, &d->signals->sigint);
+
 	ev_signal_init(&d->signals->sighup,  sighup_cb, SIGHUP);
 	ev_signal_start(d->loop, &d->signals->sighup);
+
 //	ev_signal_init(&d->signals->sigsegv,  sigsegv_cb, SIGSEGV);
 //	ev_signal_start(d->loop, &d->signals->sigsegv);
 //	signal(SIGSEGV, (sighandler_t) segv_handler);

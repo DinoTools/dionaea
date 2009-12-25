@@ -53,6 +53,7 @@
 #include "incident.h"
 #include "util.h"
 #include "log.h"
+#include "util.h"
 
 #define D_LOG_DOMAIN "pcap"
 
@@ -75,14 +76,6 @@ struct pcap_device
 };
 
 #define PDEVOFF_IO_IN(x)  					((struct pcap_device *)(((void *)x) - offsetof (struct pcap_device, io_in)))
-
-#define ADDROFFSET(x) \
-	((((struct sockaddr *)(x))->sa_family == AF_INET) ?  \
-		((void *)(x) + offsetof(struct sockaddr_in, sin_addr)) :  \
-		(((struct sockaddr *)(x))->sa_family == AF_INET6) ? \
-			((void *)(x) + offsetof(struct sockaddr_in6, sin6_addr)) : \
-			NULL)
-
 
 static struct 
 {
@@ -276,7 +269,7 @@ static bool pcap_prepare(void)
 
 				default:
 					break;
-//					g_debug("\t\tAF_ not supported %i",addr->addr->sa_family);
+					g_debug("\t\tAF_ not supported %i",addr->addr->sa_family);
 
 				}
 				g_debug(" ");

@@ -3399,17 +3399,8 @@ static int cmp_ip_address_stringp(const void *p1, const void *p2)
 
 	if( domain1 == domain2 )
 	{
-#define ADDROFFSET(x) \
-	((((struct sockaddr *)(x))->sa_family == AF_INET) ?  \
-		((void *)(x) + offsetof(struct sockaddr_in, sin_addr)) :  \
-		(((struct sockaddr *)(x))->sa_family == AF_INET6) ? \
-			((void *)(x) + offsetof(struct sockaddr_in6, sin6_addr)) : \
-			NULL)
-
 		void *a = ADDROFFSET(&sa1);
 		void *b = ADDROFFSET(&sa2);
-
-#undef ADDROFFSET
 
 		if( domain1 == PF_INET6 )
 		{
@@ -3630,14 +3621,14 @@ void connection_set_state(struct connection *con, enum connection_state state)
 
 int connection_ref(struct connection *con)
 {
-	g_warning("%s con %p", __PRETTY_FUNCTION__, con);
+	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 	refcount_inc(&con->refcount);
 	return con->refcount.refs;
 }
 
 int connection_unref(struct connection *con)
 {
-	g_warning("%s con %p", __PRETTY_FUNCTION__, con);
+	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 	refcount_dec(&con->refcount);
 	return con->refcount.refs;
 }

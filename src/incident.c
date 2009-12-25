@@ -64,7 +64,7 @@ struct ihandler *ihandler_new(char *pattern, ihandler_cb cb, void *ctx)
 
 void ihandler_free(struct ihandler *i)
 {
-	g_warning("%s i %p", __PRETTY_FUNCTION__, i);
+	g_debug("%s i %p", __PRETTY_FUNCTION__, i);
 	g_dionaea->ihandlers->handlers = g_list_remove(g_dionaea->ihandlers->handlers, i);
 	g_free(i);
 }
@@ -91,7 +91,7 @@ struct opaque_data *incident_value_get(struct incident *e, const char *name, enu
 	struct opaque_data *d;
 	if( ( d = g_hash_table_lookup(e->data, name)) == NULL )
 	{
-		g_warning("could not find key '%s'", name);
+		g_debug("could not find key '%s'", name);
 		return NULL;
 	}
 	if( d->type != t )

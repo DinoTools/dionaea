@@ -450,16 +450,6 @@ static int cmp_ifaddrs_by_ifa_name(const void *p1, const void *p2)
 
 PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 {
-#define ADDROFFSET(x) \
-(x) ? \
-	((((struct sockaddr *)(x))->sa_family == AF_INET) ?  \
-		((void *)(x) + offsetof(struct sockaddr_in, sin_addr)) :  \
-		(((struct sockaddr *)(x))->sa_family == AF_INET6) ? \
-			((void *)(x) + offsetof(struct sockaddr_in6, sin6_addr)) : \
-			NULL) : \
-	NULL
-
-
 	struct ifaddrs *iface, *head;
 	PyObject *result;
 

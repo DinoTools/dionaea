@@ -1,8 +1,17 @@
 logging = {
-	// file not starting with / is taken relative to LOCALESTATEDIR (e.g. /opt/dionaea/var)
-	file = "log/dionaea.log"
-	levels = "all"
-	domains = "*"
+	default = {
+		// file not starting with / is taken relative to LOCALESTATEDIR (e.g. /opt/dionaea/var)
+		file = "log/dionaea.log"
+		levels = "all"
+		domains = "*"
+    }
+
+	errors = {
+		// file not starting with / is taken relative to LOCALESTATEDIR (e.g. /opt/dionaea/var)
+		file = "log/dionaea-errors.log"
+		levels = "warning,error"
+		domains = "*"
+	}
 }
 
 processors = 
