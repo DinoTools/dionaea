@@ -650,7 +650,7 @@ class UnicodeNullField(StrField):
 
         eos += 2
 
-        if len(s) > eos:
+        if len(s) >= eos:
             return s[eos:],s[:eos]
         else:
             return s[eos:],b''
