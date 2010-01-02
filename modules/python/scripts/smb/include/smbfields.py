@@ -202,6 +202,165 @@ DCERPC_PacketTypes = {
 	0:"Request",
 }
 
+# NT Create AndX Flags 
+# page 76
+
+SMB_CF_REQ_OPLOCK       = 0x02 # Request an oplock
+SMB_CF_REQ_BATCH_OPLOCK = 0x04 # Request a batch oplock
+SMB_CF_TARGET_DIRECTORY = 0x08 # Target of open must be directory
+
+SMB_CreateFlags = [
+	"none",
+	"OPLOCK",       
+	"BATCH_OPLOCK",
+	"DIRECTORY", 
+]
+
+# File Attribute Encoding
+SMB_FA_READONLY   = 0x0001 # Read only file
+SMB_FA_HIDDEN     = 0x0002 # Hidden file
+SMB_FA_SYSTEM     = 0x0004 # System file
+SMB_FA_VOLUME     = 0x0008 # Volume
+
+SMB_FA_DIRECTORY  = 0x0010 # Directory
+SMB_FA_ARCHIVE    = 0x0020 # Archive file
+SMB_FA_DEVICE     = 0x0040 # Device 
+SMB_FA_NORMAL     = 0x0080 # Normal
+
+SMB_FA_TEMP       = 0x0100 # Temporary
+SMB_FA_SPARSE     = 0x0200 # Sparse
+SMB_FA_REPARSE    = 0x0400 # Reparse
+SMB_FA_COMPRESS   = 0x0800 # Compressed
+
+SMB_FA_OFFLINE    = 0x1000 # Offline
+SMB_FA_INDEX      = 0x2000 # Indexed
+SMB_FA_ENCRYPTED  = 0x4000 # Encrypted
+
+SMB_FileAttributes = [
+	"READONLY",
+	"HIDDEN",
+	"SYSTEM",
+	"VOLUME",
+
+	"DIRECTORY",
+	"ARCHIVE",
+	"DEVICE",
+	"NORMAL",
+
+	"TEMP",
+	"SPARSE",
+	"REPARSE",
+	"COMPRESS",
+
+	"OFFLINE",
+	"INDEX",
+	"ENCRYPTED",
+]
+
+# Share Access
+SMB_FILE_NO_SHARE    = 0x00000000 # Prevents the file from being shared.
+SMB_FILE_SHARE_READ  = 0x00000001 # Other open operations can be performed on the file for read access.
+SMB_FILE_SHARE_WRITE = 0x00000002 # Other open operations can be performed on the file for write access.
+SMB_FILE_SHARE_DELET = 0x00000004 # Other open operations can be performed on the file for delete access.
+
+
+SMB_ShareAccess = [
+	"READ",
+	"WRITE",
+	"DELETE"
+]
+
+# CreateOptions
+SMB_CreateOptions = [
+	"DIRECTORY",
+	"WRITETHROUGH",
+	"SEQONLY",
+	"INTERMBUF",
+
+	"SYNCIOALERT",
+	"SYNCIONOALERT",
+	"NONDIRECTORY",
+	"CREATETREECONN",
+
+	"COMPLETEIFOPLOCK",
+	"NOEAKNOWLEDGE",
+	"LONG_FILENAMES",
+	"RANDOMACCESS",
+
+	"DELETE_ON_CLOSE",
+	"OPEN_BY_ID",
+	"BACKUP_INTENT",
+	"NOCOMPRESSION",
+
+	"none",
+	"none",
+	"none",
+	"none",
+
+	"RESERVE_OPFILTER",
+	"OPEN_REPARSE_POINT",
+	"OPEN_NO_RECALL",
+	"OPEN_FOR_SPACE_QUERY",
+]
+
+# CreateFlags
+SMB_CreateFlags = [
+	"none",
+	"EXCL_OPLOCK",
+	"BATCH_OPLOCK",
+	"CREATE_DIRECTORY",
+	"EXT_RESP",
+]
+
+# Access Mask
+SMB_AccessMask = [
+	"READ",
+	"WRITE",
+	"APPEND",
+	"READ_EA",
+
+	"WRITE_EA",
+	"EXECUTE",
+	"DELETE_CHILD",
+	"READ_ATTR",
+
+	"WRITE_ATTR",
+	"none",
+	"none",
+	"none",
+	
+	"none",
+	"none",
+	"none",
+	"none",
+		
+	"DELETE",
+	"READ_CTRL",
+	"WRITE_DAC",
+	"WRITE_OWNER",
+
+	"SYNC",
+	"none",
+	"none",
+	"none",
+
+	"MAX_SEC",
+	"MAX_ALLOWED",
+	"none",
+	"none",
+
+	"GENERIC_ALL",
+	"GENERIC_EXECUTE",
+	"GENERIC_WRITE",
+	"GENERIC_READ",
+]
+
+# Security Flags
+SMB_SecurityFlags = [
+	"CTX_TRACKING",
+	"EFFECTIVE_ONLY",
+]
+
 class SMBNullField(StrField):
 	def __init__(self, name, default, fmt="H", remain=0, utf16=True):
 		if utf16:
@@ -558,16 +717,20 @@ class SMB_NTcreate_AndX_Request(Packet):
 		LEShortField("AndXOffset",0),
 		ByteField("Reserved2",0),
 		LEShortField("FilenameLen",0x2),
-		XLEIntField("CreateFlags",0),
+		FlagsField("CreateFlags", 0, -32, SMB_CreateFlags),
+#		XLEIntField("CreateFlags",0),
 		XLEIntField("RootFID",0),
-		XLEIntField("AccessMask",0),
+		FlagsField("AccessMask", 0, -32, SMB_AccessMask),
+#		XLEIntField("AccessMask",0),
 		LELongField("AllocationSize",0),
-		XLEIntField("FileAttributes",0),
-		XLEIntField("ShareAccess",3),
+		FlagsField("FileAttributes", 0, -32, SMB_FileAttributes),
+		FlagsField("ShareAccess", 3, -32, SMB_ShareAccess),
 		LEIntField("Disposition",1),
-		XLEIntField("CreateOptions",0),
+		FlagsField("CreateOptions", 0, -32, SMB_CreateOptions),
+#		XLEIntField("CreateOptions",0),
 		LEIntField("Impersonation",1),
-		XByteField("SecurityFlags",0),
+		FlagsField("SecurityFlags", 0, -8, SMB_SecurityFlags),
+#		XByteField("SecurityFlags",0),
 		LEShortField("ByteCount",0),
 #		FixGapField("FixGap", b'\0'),
 		ConditionalField(StrFixedLenField("Padding", b'\0', 1), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
@@ -594,7 +757,7 @@ class SMB_NTcreate_AndX_Response(Packet):
 		NTTimeField("LastAccess",0),
 		NTTimeField("LastModified",0),
 		NTTimeField("Change",0),
-		XLEIntField("FileAttributes",0x80),
+		FlagsField("FileAttributes", 0x80, -32, SMB_FileAttributes),
 		LELongField("AllocationSize",4096),
 		LELongField("EndOfFile",0),
 		LEShortField("FileType",2),
