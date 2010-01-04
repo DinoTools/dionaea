@@ -631,8 +631,9 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
     def display(self,*args,**kargs):  # Deprecated. Use show()
         """Deprecated. Use show() method."""
         self.show(*args,**kargs)
-    def show(self, indent=3, lvl="", label_lvl=""):
+    def show(self, indent=3, lvl="", label_lvl="", goff=0):
         """Prints a hierarchical view of the packet. "indent" gives the size of indentation for each layer."""
+#        return
         logger.debug("%s%s %s sizeof(%i) %s " % (label_lvl,
                               "###[",
                               self.name, self.size(),
@@ -649,14 +650,16 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
                     fvalue.show(indent=indent, label_lvl=label_lvl+lvl+"   |")
             else:
                 size = f.size(self,fvalue)
-                logger.debug("%s  %-20s%s %-40s sizeof(%3i) off=%3i" % (label_lvl+lvl,
+                logger.debug("%s  %-20s%s %-15s sizeof(%3i) off=%3i goff=%3i" % (label_lvl+lvl,
                                           f.name,
                                           "=",
                                           f.i2repr(self,fvalue),
                                           size,
-                                          off))
+                                          off,
+                                          goff))
                 off += size
-        self.payload.show(indent=indent, lvl=lvl+(" "*indent*self.show_indent), label_lvl=label_lvl)
+                goff +=size
+        self.payload.show(indent=indent, lvl=lvl+(" "*indent*self.show_indent), label_lvl=label_lvl, goff=goff)
     def show2(self):
         """Prints a hierarchical view of an assembled version of the packet, so that automatic fields are calculated (checksums, etc.)"""
         self.__class__(self.build()).show()
@@ -887,7 +890,7 @@ class NoPayload(Packet):
         return None
     def fragment(self, *args, **kargs):
         raise Exception("cannot fragment this packet")        
-    def show(self, indent=3, lvl="", label_lvl=""):
+    def show(self, indent=3, lvl="", label_lvl="", goff=0):
         pass
     def sprintf(self, fmt, relax):
         if relax:

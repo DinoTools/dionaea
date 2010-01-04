@@ -461,8 +461,15 @@ class StrFixedLenField(StrField):
         return s[l:], self.m2i(pkt,s[:l])
     def addfield(self, pkt, s, val):
         l = self.length_from(pkt)
+        # if we use more of less complex expressions to calc the length
+        # length_from can be negative
+        if l < 0:
+            l = len(val)
 #        print(l)
+#        print(val)
         return s+struct.pack("%is"%l,self.i2m(pkt, val))
+    def size(self, pkt, val):
+        return self.length_from(pkt)
     def randval(self):
         try:
             l = self.length_from(None)
@@ -493,6 +500,8 @@ class StrLenField(StrField):
     def getfield(self, pkt, s):
         l = self.length_from(pkt)
         return s[l:], self.m2i(pkt,s[:l])
+#    def size(self, pkt, val):
+#        return self.length_from(pkt)
 
 class FixGapField(StrField):
     def getfield(self, pkt, s):
@@ -584,7 +593,7 @@ class MultiFieldLenField(Field):
             l = 0
             for fieldname in self.length_of:
                 fld,fval = pkt.getfield_and_val(fieldname)
-                f = fld.i2len(pkt, fval)
+                f = fld.size(pkt, fval)
                 l += self.adjust(pkt,f)
         return l
 
@@ -610,19 +619,36 @@ class FieldLenField(Field):
         return x
 
 class StrNullField(StrField):
+    def __init__(self, name, default, fmt="H", remain=0):
+        if type(default) is bytes:
+            default = default+b'\0'
+            default = default.decode('ascii')
+        elif type(default) is str:
+            default = default+'\0'
+        StrField.__init__(self,name,default,fmt, remain=remain)
     def addfield(self, pkt, s, val):
-        return s+self.i2m(pkt, val)+b"\x00"
+        return s+self.i2m(pkt, val)
     def getfield(self, pkt, s):
         l = s.find(b"\x00")
         if l < 0:
             #XXX \x00 not found
             return "",s
-        return s[l+1:],self.m2i(pkt, s[:l])
+#        return s[l+1:],self.m2i(pkt, s[:l])
+        return s[l+1:],s[:l+1]
     def randval(self):
         return RandTermString(RandNum(0,1200),"\x00")
+    def size(self, pkt, val):
+        return len(self.i2m(pkt,val))
 
 class UnicodeNullField(StrField):
     # machine representation is bytes
+    def __init__(self, name, default, fmt="H", remain=0):
+        if type(default) is bytes:
+            default = default+b'\0'
+            default = default.decode('ascii')
+        elif type(default) is str:
+            default = default+'\0'
+        StrField.__init__(self,name,default,fmt, remain=remain)
     def addfield(self, pkt, s, val):
         # CIFS-TR-1p00_FINAL.pdf 665616b44740177c86051c961fdf6768
         # page 35
@@ -630,7 +656,9 @@ class UnicodeNullField(StrField):
         # must be word-aligned with respect to the beginning of the SMB. Should the string not naturally
         # fall on a two-byte boundary, a null byte of padding will be inserted, and the Unicode string will
         # begin at the next address.
-        return s+self.i2m(pkt, val)+b"\0\0"
+#        print("addfield")
+#        print(type(s))
+        return s+self.i2m(pkt, val)
 
     def getfield(self, pkt, s):
         eos = 0
@@ -656,19 +684,22 @@ class UnicodeNullField(StrField):
             return s[eos:],b''
 
     def i2m(self, pkt, x):
+#        print(type(x))
+#        print(x)
         if x is None:
-            x = b''
+            x = b"\0\0"
         elif type(x) is str:
             x = x.encode('utf-16')[2:]
         elif type(x) is not bytes:
             x=str(x).encode('utf-16')[2:]
+#        print(x)
         return x
 
     def i2repr(self, pkt, x):
         if x is None:
             x = b''
         elif type(x) is bytes:
-            x=x.decode('utf-16')[:-1]
+            x=x.decode('utf-16')
         return x
 
     def size(self, pkt, x):
@@ -736,6 +767,10 @@ class BitField(Field):
             return s,bitsdone,v
         else:
             return s
+
+    def size(self, pkt, s):
+        return int(round(self._size/8))
+
     def getfield(self, pkt, s):
         if type(s) is tuple:
             s,bn = s

@@ -375,6 +375,7 @@ class cmdshellhandler(ihandler):
 				i.report()
 			else:
 				c.close()
+				con.unref()
 		elif icd.origin == "dionaea.service.shell.connect":
 			c.bind(con.local.host,0)
 			c.connect(icd.get('host'), icd.get('port'))

@@ -65,11 +65,12 @@ class smbd(connection):
 		}
 		self.buf = b''
 		self.outbuf = None
+		self.files = {}
 
 	def handle_established(self):
-		self.timeouts.sustain = 60
-		self._in.accounting.limit  = 100*1024
-		self._out.accounting.limit = 100*1024
+		self.timeouts.sustain = 120
+#		self._in.accounting.limit  = 2000*1024
+#		self._out.accounting.limit = 2000*1024
 		self.processors()
 
 	def handle_io_in(self,data):
@@ -100,6 +101,13 @@ class smbd(connection):
 			return len(data)
 
 		p.show()
+
+		r = None
+
+		# this is one of the things you have to love, it violates the spec, but has to work ...
+		if p.haslayer(SMB_Sessionsetup_ESEC_AndX_Request) and p.getlayer(SMB_Sessionsetup_ESEC_AndX_Request).WordCount == 13: 
+			smblog.debug("recoding session setup request!")
+			p.getlayer(SMB_Header).decode_payload_as(SMB_Sessionsetup_AndX_Request2) 
 
 		r = self.process(p)
 		smblog.debug('packet: {0}'.format(p.summary()))
@@ -180,13 +188,28 @@ class smbd(connection):
 			r = SMB_Logoff_AndX()
 		elif p.getlayer(SMB_Header).Command == SMB_COM_NT_CREATE_ANDX:
 			r = SMB_NTcreate_AndX_Response()
+#			# if a normal file is requested, provide a file
+			h = p.getlayer(SMB_NTcreate_AndX_Request)
+			if h.FileAttributes & SMB_FA_NORMAL:
+				smblog.warn("OPEN FILE!")
+				r.FID = 0x4000
+				self.files[0x4000] = tempfile.NamedTemporaryFile(delete=False, prefix="smb-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
+		elif p.getlayer(SMB_Header).Command == SMB_COM_OPEN_ANDX:
+			r = SMB_Open_AndX_Response()
+			r.FID = 0x9000
+			self.files[0x9000] = tempfile.NamedTemporaryFile(delete=False, prefix="smb-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
 		elif p.getlayer(SMB_Header).Command == SMB_COM_ECHO:
 			r = p.getlayer(SMB_Header).payload
 		elif p.getlayer(SMB_Header).Command == SMB_COM_WRITE:
 			r = SMB_Write_AndX_Response()
-			r.CountLow = p.getlayer(SMB_Write_AndX_Request).DataLenLow
-			self.buf += p.getlayer(SMB_Write_AndX_Request).Data
-			self.process_dcerpc_packet(p.getlayer(SMB_Write_AndX_Request).Data)
+			h = p.getlayer(SMB_Write_AndX_Request)
+			r.CountLow = h.DataLenLow
+			if h.FID in self.files:
+				smblog.warn("WRITE FILE!")
+				self.files[h.FID].write(h.Data)
+			else:
+				self.buf += h.Data
+				self.process_dcerpc_packet(p.getlayer(SMB_Write_AndX_Request).Data)
 		elif p.getlayer(SMB_Header).Command == SMB_COM_READ:
 			r = SMB_Read_AndX_Response()
 			if self.state['lastcmd'] == 'SMB_COM_WRITE':
@@ -238,6 +261,8 @@ class smbd(connection):
 			rdata.Bytes = self.outbuf.build()
 			
 			r /= rdata
+		elif p.getlayer(SMB_Header).Command == SMB_COM_TRANS2:
+			r = SMB_Trans2_Response()
 		else:
 			smblog.critical('...unknown SMB Command. bailing out.')
 			p.show()

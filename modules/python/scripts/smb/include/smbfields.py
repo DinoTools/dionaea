@@ -170,13 +170,16 @@ SMB_Header_Flags2 = [
 SMB_COM_CLOSE              = 0x04
 SMB_COM_TRANS              = 0x25
 SMB_COM_ECHO               = 0x2B
+SMB_COM_OPEN_ANDX          = 0x2d
 SMB_COM_READ               = 0x2E
 SMB_COM_WRITE              = 0x2F
+SMB_COM_TRANS2             = 0x32
 SMB_COM_TREE_DISCONNECT    = 0x71
 SMB_COM_NEGOTIATE          = 0x72
 SMB_COM_SESSION_SETUP_ANDX = 0x73
 SMB_COM_LOGOFF_ANDX        = 0x74
 SMB_COM_TREE_CONNECT_ANDX  = 0x75
+SMB_COM_QUERY_INFORMATION_DISK = 0x80
 SMB_COM_NT_CREATE_ANDX     = 0xA2
 SMB_COM_NONE               = 0xFF
 
@@ -184,7 +187,9 @@ SMB_COM_NONE               = 0xFF
 SMB_Commands = {
  SMB_COM_CLOSE				:"SMB_COM_CLOSE",
  SMB_COM_TRANS              :"SMB_COM_TRANS",
+ SMB_COM_TRANS2             :"SMB_COM_TRANS2",
  SMB_COM_ECHO               :"SMB_COM_ECHO",
+ SMB_COM_OPEN_ANDX          :"SMB_COM_OPEN_ANDX",
  SMB_COM_READ               :"SMB_COM_READ",
  SMB_COM_WRITE              :"SMB_COM_WRITE",
  SMB_COM_TREE_DISCONNECT    :"SMB_COM_TREE_DISCONNECT",
@@ -192,6 +197,7 @@ SMB_Commands = {
  SMB_COM_SESSION_SETUP_ANDX :"SMB_COM_SESSION_SETUP_ANDX",
  SMB_COM_LOGOFF_ANDX        :"SMB_COM_LOGOFF_ANDX",
  SMB_COM_TREE_CONNECT_ANDX  :"SMB_COM_TREE_CONNECT_ANDX",
+ SMB_COM_QUERY_INFORMATION_DISK :"SMB_COM_QUERY_INFORMATION_DISK",
  SMB_COM_NT_CREATE_ANDX     :"SMB_COM_NT_CREATE_ANDX",
  SMB_COM_NONE               :"SMB_COM_NONE",
 }
@@ -361,6 +367,22 @@ SMB_SecurityFlags = [
 	"EFFECTIVE_ONLY",
 ]
 
+
+
+# Write Mode
+
+SMB_WM_WRITETHROUGH		= 0x001
+SMB_WM_RETURNREMAINING	= 0x002
+SMB_WM_WRITERAW			= 0x004
+SMB_WM_MSGSTART			= 0x008
+
+SMB_WriteMode = [
+	"WRITETHROUGH",
+	"RETURNREMAINING",
+	"WRITERAW",
+	"MSGSTART",
+]
+
 class SMBNullField(StrField):
 	def __init__(self, name, default, fmt="H", remain=0, utf16=True):
 		if utf16:
@@ -514,8 +536,8 @@ class SMB_Negociate_Protocol_Response(Packet):
 		ConditionalField(StrNullField("EncryptionKey", b'test'), lambda x: not x.Capabilities & CAP_EXTENDED_SECURITY),
 		ConditionalField(StrNullField("OemDomainName", b'WORKGROUP'), lambda x: not x.Capabilities & CAP_EXTENDED_SECURITY),
 		# with CAP_EXTENDED_SECURITY
-		ConditionalField(StrLenField("ServerGUID", b'\x0B\xFF\x65\x38\x54\x7E\x6C\x42\xA4\x3E\x12\xD2\x11\x97\x16\x44', 16), lambda x: x.Capabilities & CAP_EXTENDED_SECURITY),
-		ConditionalField(StrLenField("SecurityBlob", b'', 0), lambda x: x.Capabilities & CAP_EXTENDED_SECURITY),
+		ConditionalField(StrLenField("ServerGUID", b'\x0B\xFF\x65\x38\x54\x7E\x6C\x42\xA4\x3E\x12\xD2\x11\x97\x16\x44', length_from=lambda x: 16), lambda x: x.Capabilities & CAP_EXTENDED_SECURITY),
+		ConditionalField(StrLenField("SecurityBlob", b'', length_from=lambda x: 0), lambda x: x.Capabilities & CAP_EXTENDED_SECURITY),
 	]
 
 class SMB_Sessionsetup_ESEC_AndX_Request(Packet):
@@ -764,7 +786,7 @@ class SMB_NTcreate_AndX_Response(Packet):
 		XLEShortField("IPCstate",0x5ff),
 		ByteField("IsDirectory",0),
 		LEShortField("ByteCount",0),
-		StrLenField("FixStrangeness", strange_packet_tail, length_from=lambda x:len(strange_packet_tail)),
+		StrLenField("FixStrangeness", strange_packet_tail, length_from=lambda x:len(x.strange_packet_tail)),
 	]
 
 # page 83
@@ -788,9 +810,20 @@ class SMB_Write_AndX_Request(Packet):
 		LEShortField("DataOffset",0),
 		ConditionalField(IntField("HighOffset",0), lambda x:x.WordCount==14),
 		XLEShortField("ByteCount",  0),
-		StrLenField("Padding", None, length_from=lambda x:x.ByteCount-x.Remaining),
-		StrLenField("Data", b"", length_from=lambda x:x.Remaining),
+		ConditionalField(XLEShortField("PipeWriteLen", 0), lambda x:x.WriteMode & SMB_WM_MSGSTART and x.WriteMode & SMB_WM_WRITERAW),
+		StrLenField("Padding", None, length_from=lambda x:x.ByteCount-((x.DataLenHigh<<16)|x.DataLenLow)),
+		StrLenField("Data", b"", length_from=lambda x:((x.DataLenHigh<<16)|x.DataLenLow)),
 	]
+
+	def lengthfrom_Pad(self):
+		x = 3 * 1
+		x += 8 * 2
+		x += 2 * 4
+		if hasattr(self,'HighOffset'):
+			x += 4
+		if hasattr(self,'PipeWriteLen'):
+			x += 2
+		return self.ByteCount - x
 
 class SMB_Write_AndX_Response(Packet):
 	name = "SMB Write AndX Response"
@@ -864,7 +897,7 @@ class SMB_Trans_Request(Packet):
 		LEShortField("ParamOffset",0),
 		LEShortField("DataCount",0),
 		LEShortField("DataOffset",0),
-		FieldLenField("SetupCount", 0, fmt='B', count_of="Setup"), 
+		FieldLenField("SetupCount", 0, fmt='B', count_of="Setup"),
 		ByteField("Reserved3",0),
 		FieldListField("Setup", 0, ShortField("", 0), count_from = lambda pkt: pkt.SetupCount), 
 		LEShortField("ByteCount",0),
@@ -873,9 +906,24 @@ class SMB_Trans_Request(Packet):
 		StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
 		FieldListField("Param", 0, ByteField("", 0), count_from = lambda pkt: pkt.ParamCount), 
 		StrFixedLenField("Pad1", b"", length_from=lambda x:x.DataOffset - ( x.ParamOffset + x.ParamCount ) ),
+#		StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1() ),
 	]
 	def lengthfrom_Pad(self):
 		r = self.ParamOffset		# ...
+		r = self.underlayer.size()	# underlayer size removed
+		r += 5						# 5 byte vars
+		r += 11*2					# 11 words
+		r += 4						# 1 int
+		r += self.SetupCount*2			# SetupCount words
+		if hasattr(self, 'Padding') and self.Padding != None:
+			r += len(self.Padding)		# optional Padding 
+		r += len(self.TransactionName)	# TransactionName
+		print("r %i usize %i txn %i" % ( r, self.underlayer.size(), len(self.TransactionName)))
+		r = self.ParamOffset - r
+		return r
+
+	def lengthfrom_Pad1(self):
+		r = self.DataOffset		# ...
 		r -= self.underlayer.size()	# underlayer size removed
 		r -= 5						# 5 byte vars
 		r -= 11*2					# 11 words
@@ -884,6 +932,9 @@ class SMB_Trans_Request(Packet):
 		if hasattr(self, 'Padding') and self.Padding != None:
 			r -= len(self.Padding)		# optional Padding 
 		r -= len(self.TransactionName)	# TransactionName
+		r -= len(self.Pad)
+
+		print("r1 %i usize %i" % ( r, self.underlayer.size()))
 		return r
 
 
@@ -903,6 +954,98 @@ class SMB_Trans_Response(Packet):
 		LEShortField("DataDisplacement",0),
 		ByteField("SetupCount",0),
 		ByteField("Reserved2",0),
+	]
+
+# page 45
+class SMB_Trans2_Request(Packet):
+	name = "SMB Trans2 Request"
+	smb_cmd = 0x32
+	fields_desc = [
+		ByteField("WordCount",14),
+		LEShortField("TotalParamCount",0),
+		LEShortField("TotalDataCount",0),
+		LEShortField("MaxParamCount",0),
+		LEShortField("MaxDataCount",0),
+		ByteField("MaxSetupCount",0),
+		ByteField("Reserved",0),
+		XLEShortField("Flags",0),
+		LEIntField("Timeout",0),
+		ShortField("Reserved2",0),
+		FieldLenField("ParamCount", 0, fmt='<H', count_of="Params"), 
+		LEShortField("ParamOffset",0),
+		LEShortField("DataCount",0),
+		LEShortField("DataOffset",0),
+		FieldLenField("SetupCount", 0, fmt='B', count_of="Setup"), 
+		ByteField("Reserved3",0),
+		FieldListField("Setup", 0, ShortField("", 0), count_from = lambda pkt: pkt.SetupCount), 
+		LEShortField("ByteCount",0),
+		StrNullField("Name", b""),
+		StrFixedLenField("Pad", b'\0', length_from=lambda x:x.lengthfrom_Pad()),
+		FieldListField("Param", 0, ByteField("", 0), count_from = lambda pkt: pkt.ParamCount), 
+		StrFixedLenField("Pad1", b"", length_from=lambda x:x.DataOffset - ( x.ParamOffset + x.ParamCount ) ),
+		StrFixedLenField("Data", b"", length_from=lambda pkt: pkt.DataCount), 
+	]
+	def lengthfrom_Pad(self):
+		r = self.underlayer.size()	# underlayer size removed
+		r += 5						# 5 byte vars
+		r += 11*2					# 11 words
+		r += 4						# 1 int
+		r += self.SetupCount*2			# SetupCount words
+		if r % 2 == 0:
+			return r % 4
+		else:
+			return r % 2
+
+class SMB_Trans2_Response(Packet):
+	name = "SMB Trans2 Response"
+	smb_cmd = 0x32
+	fields_desc = [
+		ByteField("WordCount",0),
+		LEShortField("ByteCount",0),
+	]
+
+# http://www.microsoft.com/about/legal/protocols/BSTD/CIFS/draft-leach-cifs-v1-spec-02.txt
+# 5.8  OPEN_ANDX:  Open File
+
+class SMB_Open_AndX_Request(Packet):
+	name = "SMB Open AndX Request"
+	fields_desc = [
+		ByteField("WordCount",14),
+		ByteField("AndXCommand",0),
+		ByteField("AndXReserved",0),
+		LEShortField("AndXOffset",0),
+		LEShortField("Flags",0), # FlagsField("CreateFlags", 0, -16, SMB_CreateFlags),
+		LEShortField("DesiredAcess",0),
+		LEShortField("SearchAttributes",0),
+		LEShortField("FileAttributes",0),
+#		NTTimeField("CreationTime",datetime.datetime.now()),
+		LEIntField("CreationTime", 0),
+		LEShortField("OpenFunction",0),
+		LEIntField("AllocationSize",0),
+		StrFixedLenField("Reserved", b"", length=8),
+		LEShortField("ByteCount",0),
+		ByteField("BufferFormat",0),
+		SMBNullField("FileName",""),
+	]
+
+class SMB_Open_AndX_Response(Packet):
+	name = "SMB Open AndX Response"
+	smb_cmd = 0x2d
+	fields_desc = [
+		ByteField("WordCount",15),
+		ByteField("AndXCommand",0xff),
+		ByteField("AndXReserved",0),
+		LEShortField("AndXOffset",0),
+		LEShortField("FID",0),
+		LEShortField("FileAttributes",0),
+		NTTimeField("LastWriteTime",datetime.datetime.now()),
+		LEIntField("DataSize",0),
+		LEShortField("GrantedAccess",0),
+		LEShortField("FileType",0),
+		LEShortField("DeviceState",0),
+		LEIntField("ServerFID",0),
+		LEShortField("Reserved",0),
+		LEShortField("ByteCount",0),
 	]
 
 
@@ -1025,11 +1168,14 @@ bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Response, Command=lambda x: x==0
 bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Request, Command=lambda x: x==0xa2, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Response, Command=lambda x: x==0xa2, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Trans_Request, Command=lambda x: x==0x25, Flags=lambda x: not x&0x80)
+bind_bottom_up(SMB_Header, SMB_Trans2_Request, Command=lambda x: x==0x32, Flags=lambda x: not x&0x80)
 
 bind_bottom_up(SMB_Header, SMB_Write_AndX_Request, Command=lambda x: x==0x2f, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Write_AndX_Response, Command=lambda x: x==0x2f, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Read_AndX_Request, Command=lambda x: x==0x2e, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Read_AndX_Response, Command=lambda x: x==0x2e, Flags=lambda x: x&0x80)
+
+bind_bottom_up(SMB_Header, SMB_Open_AndX_Request, Command=lambda x: x==0x2d, Flags=lambda x: not x&0x80)
 
 bind_bottom_up(SMB_Header, SMB_Close, Command=lambda x: x==SMB_COM_CLOSE)
 bind_bottom_up(SMB_Header, SMB_Logoff_AndX, Command=lambda x: x==SMB_COM_LOGOFF_ANDX)
@@ -1061,6 +1207,8 @@ bind_top_down(SMB_Header, SMB_NTcreate_AndX_Response, Command=0xa2)
 bind_top_down(SMB_Header, SMB_Write_AndX_Response, Command=0x2f)
 bind_top_down(SMB_Header, SMB_Read_AndX_Response, Command=0x2e)
 bind_top_down(SMB_Header, SMB_Trans_Request, Command=0x25)
+bind_top_down(SMB_Header, SMB_Trans2_Request, Command=0x32)
+bind_top_down(SMB_Header, SMB_Open_AndX_Request, Command=0x2d)
 bind_top_down(SMB_Read_AndX_Response, SMB_Data)
 
 bind_top_down(DCERPC_Header, DCERPC_Request, PacketType=0)
