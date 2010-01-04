@@ -50,6 +50,22 @@
 
 #define D_LOG_DOMAIN "util"
 
+void *ADDROFFSET(void *x)
+{
+	if( x == NULL )
+		return NULL;
+
+	if( ((struct sockaddr *)(x))->sa_family == AF_INET )
+	{
+		return ((void *)(x) + offsetof(struct sockaddr_in, sin_addr));
+	}else
+	if( ((struct sockaddr *)(x))->sa_family == AF_INET6 )
+	{
+		return ((void *)(x) + offsetof(struct sockaddr_in6, sin6_addr));
+	}
+
+	return NULL;
+}
 
 int ipv6_addr_any(struct in6_addr const * const a)
 {
