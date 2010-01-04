@@ -501,6 +501,9 @@ int main (int argc, char *argv[])
 		struct lcfgx_tree_node *it;
 		for( it = n->value.elements; it != NULL; it = it->next )
 		{
+			if( it->type != lcfgx_map )
+				continue;
+
 			char *alias = it->key;
 			char *file = NULL;
 			char *domains = NULL;
@@ -518,6 +521,10 @@ int main (int argc, char *argv[])
 				levels = f->value.string.data;
 
 			g_debug("Logfile (handle %s) %s %s %s", alias, file, domains, levels);
+
+			if( file == NULL )
+				continue;
+
 			struct log_filter *lf = log_filter_new(domains, levels);
 			if( lf == NULL )
 				return -1;
@@ -680,6 +687,28 @@ int main (int argc, char *argv[])
 	{
 		g_error("Could not chroot(\"%s\") (%s)", opt->root, strerror(errno));
 	}
+
+	// umask
+	mode_t newu = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+	mode_t oldu = umask(newu);
+
+#define print_umask(str, x)\
+	g_debug("%s -%s%s%s%s%s%s%s%s%s", str, \
+				   x & S_IRUSR ? "r" : "-",\
+				   x & S_IWUSR ? "w" : "-",\
+				   x & S_IXUSR ? "x" : "-",\
+				   x & S_IRGRP ? "r" : "-",\
+				   x & S_IWGRP ? "w" : "-",\
+				   x & S_IXGRP ? "x" : "-",\
+				   x & S_IROTH ? "r" : "-",\
+				   x & S_IWOTH ? "w" : "-",\
+				   x & S_IXOTH ? "x" : "-")
+	   
+	print_umask("old umask", oldu);
+	print_umask("new umask", newu);
+#undef print_umask
+
+
 
 	// drop
 	if( opt->group.name != NULL && 
