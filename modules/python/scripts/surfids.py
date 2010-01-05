@@ -30,9 +30,9 @@ class surfidshandler(ihandler):
 		self.attacks = {}
 		print("foo")
 #		print(g_dionaea.config()['modules']['python']['surfids'])
-		self.dbh = pg_driver.connect(user = g_dionaea.config()['modules']['python']['surfids']['user'],
+		self.dbh = pg_driver.connect(user = g_dionaea.config()['modules']['python']['surfids']['username'],
 			password = g_dionaea.config()['modules']['python']['surfids']['password'],
-			database = g_dionaea.config()['modules']['python']['surfids']['database'],
+			database = g_dionaea.config()['modules']['python']['surfids']['dbname'],
 			host = g_dionaea.config()['modules']['python']['surfids']['host'],
 			port = g_dionaea.config()['modules']['python']['surfids']['port'])
 
