@@ -562,8 +562,17 @@ class SMB_Sessionsetup_ESEC_AndX_Request(Packet):
 		SMBNullField("NativeOS","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("NativeLanManager","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 #		UnicodeNullField("PrimaryDomain","WORKGROUP"),
-		StrFixedLenField("Extrabytes", b'', length_from=lambda x:x.ByteCount - len(x.SecurityBlob) - len(x.Padding) - len(x.NativeOS) - len(x.NativeLanManager))
+		StrFixedLenField("Extrabytes", b'', length_from=lambda x:x.lengthfrom_Extrabytes())
 	]
+	def lengthfrom_Extrabytes(self):
+		x = self.ByteCount 
+		x -= len(self.SecurityBlob) 
+		if hasattr(self,'Padding') and self.Padding != None:
+			x -= len(self.Padding) 
+		x -= len(self.NativeOS) 
+		x -= len(self.NativeLanManager)
+		return x
+
 
 class SMB_Sessionsetup_ESEC_AndX_Response(Packet):
 	name="SMB Sessionsetup ESEC AndX Response"

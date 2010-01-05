@@ -45,14 +45,26 @@ class p0fconnection(connection):
 		self.connect(p0fpath, 0)
 
 	def handle_established(self):
-		data = pack("III4s4sHH", 
-			0x0defaced, 					# p0f magic
-			1, 								# type 
-			0xffffffff,						# id
-			inet_aton(self.con.remote.host),# remote host
-			inet_aton(self.con.local.host), # local host
-			self.con.remote.port,			# remote port
-			self.con.local.port)			# local port
+		if True:
+			# p0f >= 2.0.8
+			data = pack("III4s4sHH", 
+				0x0defaced,                     # p0f magic
+				1,                              # type 
+				0xffffffff,                     # id
+				inet_aton(self.con.remote.host),# remote host
+				inet_aton(self.con.local.host), # local host
+				self.con.remote.port,           # remote port
+				self.con.local.port)            # local port
+		else:
+			# p0f < 2.0.8
+			data = pack("=II4s4sHH",			
+				0x0defaced,                     # p0f magic   
+				0xffffffff,                     # type        
+				inet_aton(self.con.remote.host),# remote host
+				inet_aton(self.con.local.host), # local host
+				self.con.remote.port,           # remote port
+				self.con.local.port)            # local port
+	
 		self.send(data)
 
 	def handle_io_in(self, data):
