@@ -42,13 +42,13 @@ def print_p0fs(cursor, connection, indent):
 
 def print_dcerpcbinds(cursor, connection, indent):
 	r = cursor.execute("""
-		SELECT 
+		SELECT DISTINCT
 			dcerpcbind_uuid,
 			dcerpcservice_name,
 			dcerpcbind_transfersyntax
 		FROM
 			dcerpcbinds 
-			JOIN dcerpcservices ON (dcerpcbind_uuid = dcerpcservice_uuid)
+			LEFT OUTER JOIN dcerpcservices ON (dcerpcbind_uuid = dcerpcservice_uuid)
 		WHERE 
 			connection = ?""", (connection, ))
 	dcerpcbinds = resolve_result(r)
@@ -70,8 +70,8 @@ def print_dcerpcrequests(cursor, connection, indent):
 			dcerpcserviceop_vuln
 		FROM 
 			dcerpcrequests 
-			JOIN dcerpcservices ON (dcerpcrequest_uuid = dcerpcservice_uuid) 
-			JOIN dcerpcserviceops ON (dcerpcservices.dcerpcservice = dcerpcserviceops.dcerpcservice AND dcerpcrequest_opnum = dcerpcserviceop_opnum)
+			LEFT OUTER JOIN dcerpcservices ON (dcerpcrequest_uuid = dcerpcservice_uuid) 
+			LEFT OUTER JOIN dcerpcserviceops ON (dcerpcservices.dcerpcservice = dcerpcserviceops.dcerpcservice AND dcerpcrequest_opnum = dcerpcserviceop_opnum)
 		WHERE 
 			connection = ?""", (connection, ))
 	dcerpcrequests = resolve_result(r)
@@ -85,7 +85,7 @@ def print_dcerpcrequests(cursor, connection, indent):
 			dcerpcrequest['dcerpcserviceop_vuln']) )
 
 def print_connection(c, indent):
-	if c['connection_type'] == 'accept':
+	if c['connection_type'] in ['accept', 'reject']:
 		print("%*s connection %i %s %s %s %s:%i <- %s:%i" % ( indent, " ", c['connection'], c['connection_protocol'], c['connection_transport'], c['connection_type'], c['local_host'], c['local_port'], c['remote_host'], c['remote_port']) )
 	elif c['connection_type'] == 'connect':
 		print("%*s connection %i %s %s %s %s:%i -> %s/%s:%i" % ( indent, " ", c['connection'], c['connection_protocol'], c['connection_transport'], c['connection_type'], c['local_host'], c['local_port'], c['remote_hostname'], c['remote_host'], c['remote_port']) )
@@ -110,12 +110,16 @@ def print_db(opts, args):
 	dbh = sqlite3.connect(args[0])
 	cursor = dbh.cursor()
 
+	offset = 0
+	limit = 1000
+
 	query = """
-SELECT 
+SELECT DISTINCT 
 	c.connection,
 	connection_type,
 	connection_protocol,
 	connection_transport,
+    datetime(connection_timestamp, 'unixepoch') AS connection_timestamp,
 	local_host,
 	local_port,
 	remote_host,
@@ -125,6 +129,8 @@ FROM
 	connections AS c
 	LEFT OUTER JOIN offers ON (offers.connection = c.connection)
 	LEFT OUTER JOIN downloads ON (downloads.connection = c.connection)
+	LEFT OUTER JOIN dcerpcbinds ON (dcerpcbinds.connection = c.connection)
+	LEFT OUTER JOIN dcerpcrequests ON (dcerpcrequests.connection = c.connection)
 WHERE
 	(c.connection_root = c.connection OR c.connection_root IS NULL)
 """
@@ -147,24 +153,40 @@ WHERE
 	if options.time_to:
 		query = query + "\tAND connection_timestamp < %s \n" % options.time_to
 
-	print(query)
+	if options.uuid:
+		query = query + "\tAND dcerpcbind_uuid = '%s' \n" % options.uuid
+
+	if options.opnum:
+		query = query + "\tAND dcerpcrequest_opnum = %s \n" % options.opnum
+			
+	if options.md5sum:
+		query = query + "\tAND download_md5_hash = '%s' \n" % options.md5sum
+	
 	if options.query:
+		print(query)
 		return
+			
+	while True:
+		lquery = query + "\t LIMIT %i OFFSET %i \n" % ( limit, offset )
+		result = cursor.execute(lquery)
+		connections = resolve_result(result)
+	
+		for c in connections:
+			connection = c['connection']
+			print("%s" % (c['connection_timestamp'],))
+			print_connection(c, 1)
+			print_p0fs(cursor, c['connection'], 2)
+			print_dcerpcbinds(cursor, c['connection'], 2)
+			print_dcerpcrequests(cursor, c['connection'], 2)
+			print_profiles(cursor, c['connection'], 2)
+			print_offers(cursor, c['connection'], 2)
+			print_downloads(cursor, c['connection'], 2)
+			print_services(cursor, c['connection'], 2)
+			recursive_print(cursor, c['connection'], 2)
 
-	result = cursor.execute(query)
-	connections = resolve_result(result)
-
-	for c in connections:
-		connection = c['connection']
-		print_connection(c, 1)
-		print_p0fs(cursor, c['connection'], 2)
-		print_dcerpcbinds(cursor, c['connection'], 2)
-		print_dcerpcrequests(cursor, c['connection'], 2)
-		print_profiles(cursor, c['connection'], 2)
-		print_offers(cursor, c['connection'], 2)
-		print_downloads(cursor, c['connection'], 2)
-		print_services(cursor, c['connection'], 2)
-		recursive_print(cursor, c['connection'], 2)
+		offset += limit
+		if len(connections) != limit:
+			break
 
 if __name__ == "__main__":
 		parser = OptionParser()
@@ -175,5 +197,9 @@ if __name__ == "__main__":
 		parser.add_option("-q", "--query-only", action="store_true", dest="query", default=False)
 		parser.add_option("-t", "--time-from", action="store", type="string", dest="time_from")
 		parser.add_option("-T", "--time-to", action="store", type="string", dest="time_to")
+		parser.add_option("-u", "--dcerpcbind-uuid", action="store", type="string", dest="uuid")
+		parser.add_option("-p", "--dcerpcrequest-opnum", action="store", type="string", dest="opnum")
+		parser.add_option("-m", "--downloads-md5sum", action="store", type="string", dest="md5sum")
 		(options, args) = parser.parse_args()
 		print_db(options, args)
+
