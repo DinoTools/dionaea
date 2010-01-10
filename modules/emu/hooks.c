@@ -569,6 +569,7 @@ uint32_t user_hook_bind(struct emu_env *env, struct emu_env_hook *hook, ...)
 
 struct async_connect_helper
 {
+	struct connection *parent;
 	struct connection *con;
 	char *hostname;
 	int port;
@@ -587,8 +588,20 @@ void async_connection_connect(void *data)
 	struct async_connect_helper *help = data;
 	struct connection *con = help->con;
 	con->protocol.established = proto_emu_connect_established;
+
+	// bind to parent address
+	connection_bind(help->con, help->parent->local.ip_string, 0, NULL);
+	
+
 	connection_connect(con, help->hostname, help->port, NULL);
 //	connection_connect(con, "127.0.0.1", 4444, NULL);
+
+	struct incident *i = incident_new("dionaea.connection.link");
+	incident_value_con_set(i, "parent", help->parent);
+	incident_value_con_set(i, "child", help->con);
+	incident_report(i);
+	incident_free(i);
+
 	g_free(help->hostname);
 	g_free(help);
 }
@@ -640,6 +653,7 @@ uint32_t user_hook_connect(struct emu_env *env, struct emu_env_hook *hook, ...)
 	int port = ntohs(si->sin_port);
 
 	struct async_connect_helper *help = g_malloc0(sizeof(struct async_connect_helper));
+	help->parent = ctx->ctxcon;
 	help->con = con;
 	help->hostname = g_strdup(addrstr);
 	help->port = port;
@@ -694,6 +708,31 @@ uint32_t user_hook_close(struct emu_env *env, struct emu_env_hook *hook, ...)
 	}
 	
 	return 0;
+}
+
+struct async_listen_helper
+{
+	struct connection *parent;
+	struct connection *con;
+};
+
+
+void async_connection_listen(void *a)
+{
+	struct async_listen_helper *help = a;
+	struct incident *i = incident_new("dionaea.connection.tcp.listen");
+	incident_value_con_set(i, "con", help->con);
+	incident_report(i);
+	incident_free(i);
+
+	i = incident_new("dionaea.connection.link");
+	incident_value_con_set(i, "parent", help->parent);
+	incident_value_con_set(i, "child", help->con);
+	incident_report(i);
+	incident_free(i);
+
+	connection_unref(help->con);
+	g_free(help);
 }
 
 /**
@@ -755,6 +794,16 @@ uint32_t user_hook_listen(struct emu_env *env, struct emu_env_hook *hook, ...)
 			return 0;
 		}
 		connection_set_nonblocking(con);
+
+		struct async_listen_helper *help = g_malloc0(sizeof(struct async_listen_helper));
+		help->parent = ctx->ctxcon;
+		help->con = con;
+		connection_ref(con);
+		GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
+		g_async_queue_push(aq, async_cmd_new(async_connection_listen, help));
+		g_async_queue_unref(aq);
+		ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
+
 		break;
 
 	case connection_transport_tls:
