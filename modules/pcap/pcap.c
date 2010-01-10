@@ -251,6 +251,9 @@ static bool pcap_prepare(void)
 
 			for( pcap_addr_t *addr = alldev->addresses; addr != NULL; addr = addr->next )
 			{
+				if( addr->addr == NULL )
+					continue;
+
 				switch( addr->addr->sa_family )
 				{
 				case PF_INET:
