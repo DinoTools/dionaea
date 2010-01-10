@@ -922,6 +922,11 @@ class TftpClient(TftpSession):
         if self.connected == False:
             self.connect(self.remote.host, self.remote.port)
             self.connected = True
+            if self.con != None:
+                i = incident("dionaea.connection.link")
+                i.parent = self.con
+                i.child = self
+                i.report()
 
 
         recvpkt = self.packet.parse(data)
