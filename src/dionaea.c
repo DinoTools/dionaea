@@ -689,7 +689,7 @@ int main (int argc, char *argv[])
 	}
 
 	// umask
-	mode_t newu = S_IRUSR | S_IWUSR | S_IRGRP | S_IROTH;
+	mode_t newu = S_IWGRP | S_IWOTH;
 	mode_t oldu = umask(newu);
 
 #define print_umask(str, x)\
