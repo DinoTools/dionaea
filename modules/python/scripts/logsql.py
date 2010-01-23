@@ -21,6 +21,7 @@ class logsqlhandler(ihandler):
 		file = g_dionaea.config()['modules']['python']['logsql']['sqlite']['file']
 		self.dbh = sqlite3.connect(file)
 		self.cursor = self.dbh.cursor()
+		update = False
 
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 			connections	(
@@ -117,17 +118,18 @@ class logsqlhandler(ihandler):
 					self.cursor.execute("INSERT INTO dcerpcservices (dcerpcservice_name, dcerpcservice_uuid) VALUES (?,?)",
 						(name, str(UUID(hex=servicecls.uuid))) )
 				except Exception as e:
-					print("dcerpcservice %s existed %s " % (servicecls.uuid, e) )
+#					print("dcerpcservice %s existed %s " % (servicecls.uuid, e) )
+					pass
 
 
-		print("GETTING SERVICES")
+		logger.info("Getting RPC Services")
 		r = self.cursor.execute("SELECT * FROM dcerpcservices")
-		print(r)
+#		print(r)
 		names = [r.description[x][0] for x in range(len(r.description))]
 		r = [ dict(zip(names, i)) for i in r]
-		print(r)
+#		print(r)
 		r = dict([(UUID(i['dcerpcservice_uuid']).hex,i['dcerpcservice']) for i in r])
-		print(r)
+#		print(r)
 
 
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
@@ -140,7 +142,7 @@ class logsqlhandler(ihandler):
 				CONSTRAINT dcerpcop_service_opnum_uniq UNIQUE (dcerpcservice, dcerpcserviceop_opnum)
 			)""")
 
-		print("SETTING SERVICEOPS")
+		logger.info("Setting RPC ServiceOps")
 		for name, servicecls in services:
 			if not name == 'RPCService' and issubclass(servicecls, rpcservices.RPCService):
 				for opnum in servicecls.ops:
@@ -154,7 +156,21 @@ class logsqlhandler(ihandler):
 						self.cursor.execute("INSERT INTO dcerpcserviceops (dcerpcservice, dcerpcserviceop_opnum, dcerpcserviceop_name, dcerpcserviceop_vuln) VALUES (?,?,?,?)", 
 							(dcerpcservice, opnum, op, vuln))
 					except:
-						print("%s %s %s %s %s existed" % (dcerpcservice, uuid, name, op, vuln))
+#						print("%s %s %s %s %s existed" % (dcerpcservice, uuid, name, op, vuln))
+						pass
+
+		# NetPathCompare was called NetCompare in dcerpcserviceops
+		try:
+			logger.debug("Trying to update table: dcerpcserviceops")
+			x = self.cursor.execute("""SELECT * FROM dcerpcserviceops WHERE dcerpcserviceop_name = 'NetCompare'""").fetchall()
+			if len(x) > 0:
+				self.cursor.execute("""UPDATE dcerpcserviceops SET dcerpcserviceop_name = 'NetPathCompare' WHERE dcerpcserviceop_name = 'NetCompare'""")
+				logger.debug("... done")
+			else:
+				logger.info("... not required")
+		except Exception as e:
+			print(e)
+			logger.info("... not required")
 
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 			emu_profiles (
@@ -164,6 +180,19 @@ class logsqlhandler(ihandler):
 				-- CONSTRAINT emu_profiles_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
 			)""")
 
+
+		# fix a typo on emu_services table definition
+		# emu_services.emu_serive is wrong, should be emu_services.emu_service
+		# 1) rename table, create the proper table
+		try:
+			logger.debug("Trying to update table: emu_services")
+			self.cursor.execute("""SELECT emu_serivce FROM emu_services LIMIT 1""")
+			self.cursor.execute("""ALTER TABLE emu_services RENAME TO emu_services_old""")
+			update = True
+		except Exception as e:
+			logger.debug("... not required")
+			update = False
+
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 			emu_services (
 				emu_serivce INTEGER PRIMARY KEY,
@@ -171,6 +200,21 @@ class logsqlhandler(ihandler):
 				emu_service_url TEXT
 				-- CONSTRAINT emu_services_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
 			)""")
+
+		# 2) copy all values to proper table, drop old table
+		try:
+			if update == True:
+				self.cursor.execute("""
+					INSERT INTO
+						emu_services (emu_service, connection, emu_service_url)
+					SELECT 
+						emu_serivce, connection, emu_service_url
+					FROM emu_services_old""")
+				self.cursor.execute("""DROP TABLE emu_services_old""")
+				logger.debug("... done")
+		except Exception as e:
+			logger.debug("Updating emu_services failed, copying old table failed (%s)" % e)
+
 
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 			offers (
@@ -182,15 +226,41 @@ class logsqlhandler(ihandler):
 
 		self.cursor.execute("""CREATE INDEX IF NOT EXISTS offers_url_idx ON offers (offer_url)""")
 
+		# fix a type on downloads table definition
+		# downloads.downloads is wrong, should be downloads.download
+		# 1) rename table, create the proper table
+		try:
+			logger.debug("Trying to update table: downloads")
+			self.cursor.execute("""SELECT downloads FROM downloads LIMIT 1""")
+			self.cursor.execute("""ALTER TABLE downloads RENAME TO downloads_old""")
+			update = True
+		except Exception as e:
+#			print(e)
+			logger.debug("... not required")
+			update = False
 
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 			downloads (
-				downloads INTEGER PRIMARY KEY,
+				download INTEGER PRIMARY KEY,
 				connection INTEGER,
 				download_url TEXT,
 				download_md5_hash TEXT
 				-- CONSTRAINT downloads_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
 			)""")
+		
+		# 2) copy all values to proper table, drop old table
+		try:
+			if update == True:
+				self.cursor.execute("""
+					INSERT INTO
+						downloads (download, connection, download_url, download_md5_hash)
+					SELECT 
+						downloads, connection, download_url, download_md5_hash
+					FROM downloads_old""")
+				self.cursor.execute("""DROP TABLE downloads_old""")
+				logger.debug("... done")
+		except Exeption as e:
+			logger.debug("Updating downloads failed, copying old table failed (%s)" % e)
 
 		for idx in ["url", "md5_hash"]:
 			self.cursor.execute("""CREATE INDEX IF NOT EXISTS downloads_%s_idx 
@@ -241,6 +311,7 @@ class logsqlhandler(ihandler):
 		# copy the data to the new table dcerpcrequests
 		# drop the old table
 		try:
+			logger.debug("Updating Table dcerpcs")
 			self.cursor.execute("""INSERT INTO 
 									dcerpcrequests (connection, dcerpcrequest_uuid, dcerpcrequest_opnum) 
 								SELECT 
@@ -248,10 +319,11 @@ class logsqlhandler(ihandler):
 								FROM 
 									dcerpcs""")
 			self.cursor.execute("""DROP TABLE dcerpcs""")
-
+			logger.debug("... done")
 		except Exception as e:
-			print(e)
-
+#			print(e)
+			logger.debug("... not required")
+			
 
 	def __del__(self):
 		logger.info("Closing sqlite handle")
