@@ -26,6 +26,7 @@ PYSCRIPTS += ihandlers.py
 PYSCRIPTS += util.py
 PYSCRIPTS += store.py
 PYSCRIPTS += surfids.py
+PYSCRIPTS += ndrlib.py
 
 all: $(PYSCRIPTS)
 	
