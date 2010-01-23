@@ -700,7 +700,8 @@ class UnicodeNullField(StrField):
             x = b''
         elif type(x) is bytes:
             x=x.decode('utf-16')
-        return x
+        eos = x.find('\0')
+        return x[:eos]
 
     def size(self, pkt, x):
         return len(self.i2m(pkt,x))
