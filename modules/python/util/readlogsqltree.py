@@ -162,6 +162,9 @@ WHERE
 	if options.md5sum:
 		query = query + "\tAND download_md5_hash = '%s' \n" % options.md5sum
 	
+	if options.type:
+		query = query + "\tAND connection_type = '%s' \n" % options.type
+
 	if options.query:
 		print(query)
 		return
@@ -200,6 +203,7 @@ if __name__ == "__main__":
 		parser.add_option("-u", "--dcerpcbind-uuid", action="store", type="string", dest="uuid")
 		parser.add_option("-p", "--dcerpcrequest-opnum", action="store", type="string", dest="opnum")
 		parser.add_option("-m", "--downloads-md5sum", action="store", type="string", dest="md5sum")
+		parser.add_option("-y", "--connection-type", action="store", type="string", dest="type")
 		(options, args) = parser.parse_args()
 		print_db(options, args)
 
