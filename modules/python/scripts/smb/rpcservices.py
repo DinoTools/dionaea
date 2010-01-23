@@ -28,6 +28,10 @@
 import logging
 from uuid import UUID
 
+
+import ndrlib
+from .include.smbfields import DCERPC_Header, DCERPC_Response
+
 rpclog = logging.getLogger('rpcservices')
 
 class RPCService:
@@ -49,7 +53,17 @@ class RPCService:
 					rpclog.info("Calling %s %s (%x) maybe %s exploit?" % ( service.__class__.__name__,  opname, opnum, vulnname ) )
 				else:
 					rpclog.info("Calling %s %s (%x)" % ( service.__class__.__name__,  opname, opnum ) )
-				method(p)
+				
+				r = DCERPC_Header() / DCERPC_Response()
+				data = method(p)
+				if data is None:
+					data = b''
+				r.StubData = data
+				r.CallID = p.CallID
+				r.FragLen = 24 + len(data)
+				print(data)
+#				print(r.show())
+				return r
 		else:
 			rpclog.info("Unknown RPC Call to %s %i" % ( service.__class__.__name__,  opnum) )
 
@@ -158,6 +172,80 @@ class ISystemActivator(RPCService):
 
 class IOXIDResolver(RPCService):
 	uuid = UUID('99fcfec4-5260-101b-bbcb-00aa0021347a').hex
+	ops = {
+		0x5: "ServerAlive2"
+	}
+
+	@classmethod
+	def handle_ServerAlive2(cls, dce):
+
+		# http://msdn.microsoft.com/en-us/library/cc226953%28PROT.10%29.aspx
+		#
+		#	[idempotent] error_status_t ServerAlive2(
+		#	  [in] handle_t hRpc,
+		#	  [out, ref] COMVERSION* pComVersion,
+		#	  [out, ref] DUALSTRINGARRAY** ppdsaOrBindings,
+		#	  [out, ref] DWORD* pReserved
+		#	);
+		p = ndrlib.Packer()
+
+		# 3.2.2.5.1.6 COMVERSION
+		# http://msdn.microsoft.com/en-us/library/cc226880%28PROT.10%29.aspx
+		p.pack_short(5)
+		p.pack_short(7)
+		
+
+		# ref
+		p.pack_pointer(0x200008)
+
+		# number of elements in array
+		p.pack_long(11)
+
+		# 2.2.1.19.2 DUALSTRINGARRAY
+		# http://msdn.microsoft.com/en-us/library/cc226841%28PROT.10%29.aspx
+		# typedef struct tagDUALSTRINGARRAY {
+		#   unsigned short wNumEntries;
+		#   unsigned short wSecurityOffset;
+		#   [size_is(wNumEntries)] unsigned short aStringArray[];
+		# } DUALSTRINGARRAY;
+
+		# wNumEntries
+		p.pack_short(11)
+		
+		# wSecurityOffset
+		p.pack_short(10)
+
+		# 1 2.2.1.19.3 STRINGBINDING
+		# http://msdn.microsoft.com/en-us/library/cc226838%28PROT.10%29.aspx
+		
+		# wTowerId
+		# http://www.opengroup.org/onlinepubs/9692999399/apdxi.htm#tagcjh_28
+		p.pack_short(0x09) # DOD IP 
+
+		# aNetworkAddr
+		p.pack_raw('127.0.0.1\0\0'.encode('utf16')[2:]) # len = 20
+		
+		# 2.2.1.19.4 SECURITYBINDING
+		# http://msdn.microsoft.com/en-us/library/cc226839%28PROT.10%29.aspx
+
+		# wAuthnSvc
+		# http://msdn.microsoft.com/en-us/library/cc243578%28PROT.10%29.aspx 
+#		p.pack_short(0x00) # RPC_C_AUTHN_NONE
+		p.pack_short(0x0A) # RPC_C_AUTHN_WINNT
+
+		# reserved
+		p.pack_short(0xffff)
+
+		# aPrincName
+		p.pack_raw('MUTTER\0\0'.encode('utf16')[2:])
+
+
+		# reserved
+		p.pack_pointer(0)
+		p.pack_long(0)
+		
+		print(p.get_buffer())
+		return p.get_buffer()
 
 
 class llsrpc(RPCService):
@@ -266,6 +354,43 @@ class RemoteAccess(RPCService):
 class samr(RPCService):
 	uuid = UUID('12345778-1234-abcd-ef00-0123456789ac').hex
 
+	ops = {
+		62: "Connect4",
+		64: "Connect5"
+	}
+
+	@classmethod
+	def handle_Connect4(cls, p):
+		# 3.1.5.1.2 SamrConnect4 (Opnum 62)
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc245746%28PROT.10%29.aspx
+		# 
+		# long SamrConnect4(
+		#   [in, unique, string] PSAMPR_SERVER_NAME ServerName,
+		#   [out] SAMPR_HANDLE* ServerHandle,
+		#   [in] unsigned long ClientRevision,
+		#   [in] unsigned long DesiredAccess
+		# );
+		pass
+
+	@classmethod
+	def handle_Connect5(cls, p):
+		# 3.1.5.1.1 SamrConnect5 (Opnum 64)
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc245745%28PROT.10%29.aspx
+		# 
+		# long SamrConnect5(
+		#   [in, unique, string] PSAMPR_SERVER_NAME ServerName,
+		#   [in] unsigned long DesiredAccess,
+		#   [in] unsigned long InVersion,
+		#   [in, switch_is(InVersion)] SAMPR_REVISION_INFO* InRevisionInfo,
+		#   [out] unsigned long* OutVersion,
+		#   [out, switch_is(*OutVersion)] SAMPR_REVISION_INFO* OutRevisionInfo,
+		#   [out] SAMPR_HANDLE* ServerHandle
+		# );
+
+		pass
+
 
 class SceSvc(RPCService):
 	uuid = UUID('93149ca2-973b-11d1-8c39-00c04fb984f9').hex
@@ -285,9 +410,9 @@ class SRVSVC(RPCService):
 	version_minor = 0
 
 	ops = {
-		0x0f: "NetShareEnumAll",
+		0x0f: "NetShareEnum",
 		0x1f: "NetPathCanonicalize",
-		0x20: "NetCompare",
+		0x20: "NetPathCompare",
 	}
 	vulns  = { 
 		0x1f: "MS08-67",
@@ -295,18 +420,195 @@ class SRVSVC(RPCService):
 	}
 
 	@classmethod
-	def handle_NetShareEnumAll(cls, p):
-		pass
+	def handle_NetShareEnum(cls, p):
+
+		x = ndrlib.Unpacker(p.StubData)
+
+		# 3.1.4.8 NetrShareEnum (Opnum 15)
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc247276%28PROT.10%29.aspx
+		#
+		#	NET_API_STATUS NetrShareEnum(
+		#	  [in, string, unique] SRVSVC_HANDLE ServerName,
+		#	  [in, out] LPSHARE_ENUM_STRUCT InfoStruct,
+		#	  [in] DWORD PreferedMaximumLength,
+		#	  [out] DWORD* TotalEntries,
+		#	  [in, out, unique] DWORD* ResumeHandle
+		#	);
+
+		# 2.2.1.1 SRVSVC_HANDLE
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc247105%28PROT.10%29.aspx
+		# 
+		# 	typedef [handle, string] WCHAR* SRVSVC_HANDLE; 
+
+		srvsvc_handle_ref = x.unpack_pointer()
+		srvsvc_handle = x.unpack_string()
+
+		# 2.2.4.38 SHARE_ENUM_STRUCT
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc247161%28PROT.10%29.aspx
+		# 
+		#	typedef struct _SHARE_ENUM_STRUCT {
+		#	  DWORD Level;
+		#	  [switch_is(Level)] SHARE_ENUM_UNION ShareInfo;
+		#	} SHARE_ENUM_STRUCT, 
+		#	 *PSHARE_ENUM_STRUCT, 
+		#	 *LPSHARE_ENUM_STRUCT;
+
+		infostruct_level = x.unpack_long()
+		infostruct_share = x.unpack_long()
+		
+		# typedef 
+		# [switch_type(DWORD)] 
+		#   union _SHARE_ENUM_UNION {
+		#   [case(0)] 
+		# 	SHARE_INFO_0_CONTAINER* Level0;
+		#   [case(1)] 
+		# 	SHARE_INFO_1_CONTAINER* Level1;
+		#   [case(2)] 
+		# 	SHARE_INFO_2_CONTAINER* Level2;
+		#   [case(501)] 
+		# 	SHARE_INFO_501_CONTAINER* Level501;
+		#   [case(502)] 
+		# 	SHARE_INFO_502_CONTAINER* Level502;
+		#   [case(503)] 
+		# 	SHARE_INFO_503_CONTAINER* Level503;
+		# } SHARE_ENUM_UNION;
+
+
+		if infostruct_share == 1:
+			# 2.2.4.33 SHARE_INFO_1_CONTAINER
+ 			# 
+			# http://msdn.microsoft.com/en-us/library/cc247157%28PROT.10%29.aspx
+ 			# 
+			# typedef struct _SHARE_INFO_1_CONTAINER {
+			#   DWORD EntriesRead;
+			#   [size_is(EntriesRead)] LPSHARE_INFO_1 Buffer;
+			# } SHARE_INFO_1_CONTAINER;
+			ptr = x.unpack_pointer()
+			count = x.unpack_long()
+			buffer = x.unpack_pointer()
+		
+		preferdmaxlen = x.unpack_long()
+		
+		# ResumeHandle
+		resumehandleptr = x.unpack_pointer()
+		resumehandle = x.unpack_long()
+		
+		print("srvsvc_handle_ref %x srvsvc_handle %s infostruct_level %i count %i buffer %x preferdmaxlen %i  resumehandleptr %x resumehandle %i" % (
+			srvsvc_handle_ref,
+			srvsvc_handle,
+			infostruct_level,
+			count,
+			buffer,
+			preferdmaxlen,
+			resumehandleptr,
+			resumehandle) )
+
+
+		# compile reply
+		r = ndrlib.Packer()
+		r.pack_long(infostruct_level)
+
+		# 2.2.4.33 SHARE_INFO_1_CONTAINER
+
+		# EntriesRead
+		r.pack_long(1)
+		r.pack_pointer(0x23456)
+		
+		# 2.2.4.23 SHARE_INFO_1
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc247147%28PROT.10%29.aspx
+		# 
+		# typedef struct _SHARE_INFO_1 {
+		#   [string] wchar_t* shi1_netname;
+		#   DWORD shi1_type;
+		#   [string] wchar_t* shi1_remark;
+		# } SHARE_INFO_1, 
+		#  *PSHARE_INFO_1, 
+		#  *LPSHARE_INFO_1;
+		
+		# http://msdn.microsoft.com/en-us/library/cc247150%28PROT.10%29.aspx
+
+		# Count
+		r.pack_long(2)
+
+		# pointer 
+		r.pack_pointer(0x99999)
+
+		# Max Count
+		r.pack_long(2)
+
+		# Buffer[0]
+		r.pack_pointer(0x34567)
+		r.pack_long(0x00000000) # STYPE_DISKTREE
+		r.pack_pointer(0x45678)
+		
+		# Buffer[0]
+		r.pack_pointer(0x343567)
+		r.pack_long(0x00000000) # STYPE_DISKTREE
+		r.pack_pointer(0x45678)
+
+		r.pack_string('test\0'.encode('utf16')[2:])
+		r.pack_string('es geht test\0'.encode('utf16')[2:])
+
+		r.pack_string('test2\0'.encode('utf16')[2:])
+		r.pack_string('es geht test\0'.encode('utf16')[2:])
+				
+		# total entries
+		r.pack_long(2)
+
+		# resume handle
+		r.pack_pointer(0x47123123)		
+		r.pack_long(0x47123123)
+
+		r.pack_long(0)
+		return r.get_buffer()
+
+
 
 	@classmethod
 	def handle_NetPathCanonicalize(cls, p):
 		# MS08-067
-		pass
+		#	WERROR srvsvc_NetPathCanonicalize(
+		#		[in,unique]   [string,charset(UTF16)] uint16 *server_unc,
+		#		[in]   [string,charset(UTF16)] uint16 path[],
+		#		[out]  [size_is(maxbuf)] uint8 can_path[],
+		#		[in]   uint32 maxbuf,
+		#		[in]   [string,charset(UTF16)] uint16 prefix[],
+		#		[in,out,ref] uint32 *pathtype,
+		#		[in]    uint32 pathflags
+		#		);
+		x = ndrlib.Unpacker(p.StubData)
+		ref        = x.unpack_pointer()
+		server_unc = x.unpack_string()
+		path       = x.unpack_string()
+		maxbuf     = x.unpack_long()
+		prefix     = x.unpack_string()
+		pathtype   = x.unpack_long()
+		pathflags  = x.unpack_long()
+		print("ref 0x%x server_unc %s path %s maxbuf %s prefix %s pathtype %i pathflags %i" % (ref, server_unc, path, maxbuf, prefix, pathtype, pathflags))
 
 	@classmethod
 	def handle_NetPathCompare(cls, p):
 		# MS08-067
-		pass
+		#	WERROR srvsvc_NetPathCompare(
+		#		[in,unique]   [string,charset(UTF16)] uint16 *server_unc,
+		#		[in]   [string,charset(UTF16)] uint16 path1[],
+		#		[in]   [string,charset(UTF16)] uint16 path2[],
+		#		[in]    uint32 pathtype,
+		#		[in]    uint32 pathflags
+		#		);
+		p = ndrlib.Unpacker(p.StubData)
+		ref        = p.unpack_pointer()
+		server_unc = p.unpack_string()
+		path1       = p.unpack_string()
+		path2     = p.unpack_long()
+		pathtype   = p.unpack_long()
+		pathflags  = p.unpack_long()
+		print("ref 0x%x server_unc %s path1 %s path2 %s pathtype %i pathflags %i" % (ref, server_unc, path1, path2, pathtype, pathflags))
+		
 
 
 class ssdpsrv(RPCService):

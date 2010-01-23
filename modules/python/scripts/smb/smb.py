@@ -170,6 +170,8 @@ class smbd(connection):
 
 			r.DialectIndex = c
 
+#			r.Capabilities = r.Capabilities & ~CAP_EXTENDED_SECURITY
+
 		#elif self.state == STATE_SESSIONSETUP and p.getlayer(SMB_Header).Command == 0x73:
 		elif p.getlayer(SMB_Header).Command == SMB_COM_SESSION_SETUP_ANDX:
 			if p.haslayer(SMB_Sessionsetup_ESEC_AndX_Request):
@@ -183,7 +185,7 @@ class smbd(connection):
 		elif p.getlayer(SMB_Header).Command == SMB_COM_TREE_DISCONNECT:
 			r = SMB_Treedisconnect()
 		elif p.getlayer(SMB_Header).Command == SMB_COM_CLOSE:
-			r = SMB_Close()
+			r = p.getlayer(SMB_Close)
 		elif p.getlayer(SMB_Header).Command == SMB_COM_LOGOFF_ANDX:
 			r = SMB_Logoff_AndX()
 		elif p.getlayer(SMB_Header).Command == SMB_COM_NT_CREATE_ANDX:
@@ -271,6 +273,7 @@ class smbd(connection):
 			smbh = SMB_Header()
 			smbh.Command = r.smb_cmd
 			smbh.Flags2 = p.getlayer(SMB_Header).Flags2
+#			smbh.Flags2 = p.getlayer(SMB_Header).Flags2 & ~SMB_FLAGS2_EXT_SEC
 			smbh.MID = p.getlayer(SMB_Header).MID
 			smbh.PID = p.getlayer(SMB_Header).PID
 			rp = NBTSession()/smbh/r
@@ -385,7 +388,7 @@ class epmapper(smbd):
 
 		r = self.process_dcerpc_packet(p)
 
-		if not r:
+		if not r or r is None:
 			if self.state['stop']:
 				smblog.debug('drop dead!')
 			else:

@@ -123,6 +123,10 @@ void proc_emu_ctx_free(void *ctx)
 	g_free(ctx);
 }
 
+#include <emu/emu_log.h>
+#include <emu/emu_cpu.h>
+#include <emu/emu_cpu_data.h>
+
 void proc_emu_on_io_in(struct connection *con, struct processor_data *pd)
 {
 	g_debug("%s con %p pd %p", __PRETTY_FUNCTION__, con, pd);
@@ -135,6 +139,8 @@ void proc_emu_on_io_in(struct connection *con, struct processor_data *pd)
 	if( size != -1 )
 	{
 		struct emu *e = emu_new();
+		emu_cpu_debugflag_set(emu_cpu_get(e), instruction_string);
+		emu_log_level_set(emu_logging_get(e),EMU_LOG_DEBUG);
 		ret = emu_shellcode_test(e, streamdata, size);
 		emu_free(e);
 		ctx->offset += size;

@@ -63,12 +63,34 @@ bistreams =
 submit = 
 {
 	defaults = {
-		urls = ["http://onlineanalyzer.norman.com/nepenthes_upload.php", "http://luigi.informatik.uni-mannheim.de/submit.php?action=verify"]
+		urls = ["http://anubis.iseclab.org/nepenthes_action.php",
+				"http://onlineanalyzer.norman.com/nepenthes_upload.php", 
+				"http://luigi.informatik.uni-mannheim.de/submit.php?action=verify"]
 		email = "nepenthesdev@gmail.com"
 		file_fieldname = "upfile"
 		MAX_FILE_SIZE = "1500000"
 		submit        = "Submit for analysis"
 	}
+
+	/**
+	 * joebox is special, due to the TOS you can lookup here
+	 * http://www.joebox.org/resources/service%20terms.txt
+	 * therefore untested and disabled by default
+	 */
+/*
+	joebox = {
+		urls = ["http://analysis.joebox.org/submit"]
+		email = "nepenthesdev@gmail.com"
+		file_fieldname = "upfile"
+		MAX_FILE_SIZE = "1500000"
+		submit        = "Submit for analysis"
+		service       = "agree"
+		xp            = "1"
+		vista         = "1"
+		w7            = "1"
+		pcap          = "1"
+	}
+*/
 
 /*
 	yoursection = 
