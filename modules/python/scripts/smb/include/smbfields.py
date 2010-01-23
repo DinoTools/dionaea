@@ -676,7 +676,7 @@ class SMB_Sessionsetup_AndX_Response2(Packet):
 		ByteField("Reserved1",0),
 		LEShortField("AndXOffset",0),
 		XLEShortField("Action",1),
-		FieldLenField("ByteCount", None, fmt='<H', length_of="NativeOS", adjust=lambda pkt,x: len(pkt.Padding) + len(pkt.NativeOS) +  len(pkt.NativeLanManager) + len(pkt.PrimaryDomain)),
+		MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Padding","NativeOS", "NativeLanManager", "PrimaryDomain")),
 		ConditionalField(StrFixedLenField("Padding", b'\0', 1), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("NativeOS","Windows 5.1", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("NativeLanManager","Windows 2000 LAN Manager", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
@@ -765,10 +765,15 @@ class SMB_NTcreate_AndX_Request(Packet):
 		LEShortField("ByteCount",0),
 #		FixGapField("FixGap", b'\0'),
 		ConditionalField(StrFixedLenField("Padding", b'\0', 1), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
-		SMBNullField("Filename","\\lsarpc", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE)
-#		UnicodeNullField("Filename","\\lsarpc"),
+		SMBNullField("Filename","\\lsarpc", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		StrFixedLenField("Extrabytes", b'', length_from=lambda x:x.lengthfrom_Extrabytes())
 	]
-
+	def lengthfrom_Extrabytes(self):
+		x = self.ByteCount 
+		if hasattr(self,'Padding') and self.Padding != None:
+			x -= len(self.Padding) 
+		x -= len(self.Filename)
+		return x
 
 # page 77
 
@@ -1118,6 +1123,17 @@ class DCERPC_Request(Packet):
 		StrLenField("StubData", "", length_from=lambda x:x.AllocHint),
 	]
 
+class DCERPC_Response(Packet):
+	name = "DCERPC Response"
+	fields_desc = [
+		FieldLenField("AllocHint", 0, fmt='<I', length_of="StubData"),
+		LEShortField("ContextID",0),
+		ByteField("CancelCount",0),
+		StrLenField("Pad", "\0"),
+		StrLenField("StubData", ""),
+	]
+
+
 class DCERPC_Bind(Packet):
 	name = "DCERPC Bind"
 	fields_desc = [
@@ -1221,6 +1237,7 @@ bind_top_down(SMB_Header, SMB_Open_AndX_Request, Command=0x2d)
 bind_top_down(SMB_Read_AndX_Response, SMB_Data)
 
 bind_top_down(DCERPC_Header, DCERPC_Request, PacketType=0)
+bind_top_down(DCERPC_Header, DCERPC_Response, PacketType=2)
 bind_top_down(DCERPC_Header, DCERPC_Bind, PacketType=11)
 bind_top_down(DCERPC_Header, DCERPC_Bind_Ack, PacketType=12)
 
