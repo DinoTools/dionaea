@@ -60,7 +60,7 @@ void traceable_origin_cb(struct connection *origin, struct connection *con);
 void traceable_established_cb(struct connection *con);
 uint32_t traceable_io_in_cb(struct connection *con, void *context, unsigned char *data, uint32_t size);
 void traceable_io_out_cb(struct connection *con, void *context);
-void traceable_error_cb(struct connection *con, enum connection_error error);
+bool traceable_error_cb(struct connection *con, enum connection_error error);
 bool traceable_disconnect_cb(struct connection *con, void *context);
 bool traceable_idle_timeout_cb(struct connection *con, void *context);
 bool traceable_listen_timeout_cb(struct connection *con, void *context);

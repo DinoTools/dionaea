@@ -714,11 +714,12 @@ void traceable_io_out_cb(struct connection *con, void *context)
 	traceback();
 }
 
-void traceable_error_cb(struct connection *con, enum connection_error error)
+bool traceable_error_cb(struct connection *con, enum connection_error error)
 {
 	g_debug("%s con %p error %i",__PRETTY_FUNCTION__, con, error);
-	runtime.traceables.proto.error(con, error);
+	bool ret = runtime.traceables.proto.error(con, error);
 	traceback();
+	return ret;
 }
 
 bool traceable_disconnect_cb(struct connection *con, void *context)

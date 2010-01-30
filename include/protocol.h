@@ -45,7 +45,7 @@ enum connection_error
 };
 
 typedef void (*protocol_handler_established)(struct connection *con);
-typedef void (*protocol_handler_error)(struct connection *con, enum connection_error error);
+typedef bool (*protocol_handler_error)(struct connection *con, enum connection_error error);
 typedef void (*protocol_handler_origin)(struct connection *con, struct connection *origin);
 typedef unsigned int (*protocol_handler_io_in)(struct connection *con, void *context, unsigned char *data, uint32_t size);
 typedef void (*protocol_handler_io_out)(struct connection *con, void *context);

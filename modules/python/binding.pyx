@@ -72,7 +72,7 @@ cdef extern from "../../include/connection.h":
 	ctypedef void (*protocol_handler_ctx_free)(void *data)
 	ctypedef void (*protocol_handler_origin)(c_connection_ *origin, c_connection_ *con)
 	ctypedef void (*protocol_handler_established)(c_connection_ *con)
-	ctypedef void (*protocol_handler_error)(c_connection_ *con, c_connection_error error)
+	ctypedef c_bool (*protocol_handler_error)(c_connection_ *con, c_connection_error error)
 	ctypedef c_bool (*protocol_handler_timeout)(c_connection_ *con, void *context)
 	ctypedef unsigned int (*protocol_handler_io_in)(c_connection_ *con, void *context, c_unsigned_char *data, c_uint32_t size)
 	ctypedef void (*protocol_handler_io_out)(c_connection_ *con, void *context)
@@ -398,7 +398,7 @@ cdef extern from "modules.h":
 	void c_traceable_established_cb "traceable_established_cb" (c_connection *con)
 	unsigned int c_traceable_io_in_cb "traceable_io_in_cb" (c_connection_ *con, void *context, c_unsigned_char *data, c_uint32_t size)
 	void c_traceable_io_out_cb "traceable_io_out_cb"(c_connection *con, void *context)
-	void c_traceable_error_cb "traceable_error_cb" (c_connection *con, c_connection_error error)
+	c_bool c_traceable_error_cb "traceable_error_cb" (c_connection *con, c_connection_error error)
 	c_bool c_traceable_disconnect_cb "traceable_disconnect_cb" (c_connection *con, void *context)
 	c_bool c_traceable_idle_timeout_cb "traceable_idle_timeout_cb"(c_connection *con, void *context)
 	c_bool c_traceable_listen_timeout_cb "traceable_listen_timeout_cb" (c_connection *con, void *context)
@@ -745,13 +745,14 @@ cdef c_bool handle_disconnect_cb(c_connection *con, void *context) except *:
 	r = instance.handle_disconnect()
 	if r == 0:
 		instance.thisptr = NULL
-	return r
+	return <bint>r
 
-cdef void handle_error_cb(c_connection *con, c_connection_error err) except *:
+cdef c_bool handle_error_cb(c_connection *con, c_connection_error err) except *:
 #	print "connect_error_cb"
 	cdef connection instance
 	instance = <connection>c_connection_protocol_ctx_get(con)
-	instance.handle_error(err)
+	r = instance.handle_error(err)
+	return <bint>r
 
 cdef c_bool handle_timeout_sustain_cb(c_connection *con, void *ctx) except *:
 #	print "timeout_sustain_cb"

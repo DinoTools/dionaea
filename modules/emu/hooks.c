@@ -194,7 +194,7 @@ void proto_emu_connect_established(struct connection *con)
  * @see user_hook_connect 
  * @see async_connection_connect 
  */ 
-void proto_emu_error(struct connection *con, enum connection_error error)
+bool proto_emu_error(struct connection *con, enum connection_error error)
 {
 	g_debug("%s con %p error %i",__PRETTY_FUNCTION__, con, error);
 	struct emu_emulate_ctx *ctx = con->data;
@@ -203,6 +203,7 @@ void proto_emu_error(struct connection *con, enum connection_error error)
 	ctx->state = failed;
 
 	CONTINUE_EMULATION(ctx);
+	return false;
 }
 
 /**

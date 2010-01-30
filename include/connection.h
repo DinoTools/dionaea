@@ -245,6 +245,7 @@ void connection_connect_next_addr(struct connection *con);
 void connection_close(struct connection *con);
 void connection_close_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
+void connection_reconnect(struct connection *con);
 void connection_established(struct connection *con);
 
 double connection_stats_speed_get(struct connection_stats *throttle_info);

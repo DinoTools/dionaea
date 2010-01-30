@@ -605,10 +605,14 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 
 	ev_timer_stop(EV_A_ w);
 
-	struct incident *i = incident_new("dionaea.connection.free");
-	incident_value_con_set(i, "con", con);
-	incident_report(i);
-	incident_free(i);
+	if( con->local.domain != AF_UNIX && con->remote.domain != AF_UNIX)
+	{
+		g_warning("AF %i %i con->local.domain", con->local.domain, con->remote.domain);
+		struct incident *i = incident_new("dionaea.connection.free");
+		incident_value_con_set(i, "con", con);
+		incident_report(i);
+		incident_free(i);
+	}
 
 	switch( con->trans )
 	{
@@ -717,6 +721,7 @@ void connection_connect_next_addr(struct connection *con)
 			g_debug("could not parse addr");
 			continue;
 		}
+		con->remote.domain = socket_domain;
 
 		if( con->local.hostname != NULL )
 		{
@@ -882,8 +887,10 @@ void connection_connect_next_addr(struct connection *con)
 
 	if( addr == NULL )
 	{
-		con->protocol.error(con, ECONUNREACH);
-		connection_close(con);
+		if( con->protocol.error(con, ECONUNREACH) == false )
+			connection_close(con);
+		else
+			connection_reconnect(con);
 	}
 }
 
@@ -991,6 +998,11 @@ void connection_reconnect(struct connection *con)
 	}
 
 	connection_set_state(con, connection_state_reconnect);
+
+	// reset local port
+	if( con->local.hostname == NULL )
+		con->local.port = 0;
+
 	if( con->events.reconnect_timeout.repeat > 0. )
 	{
 		ev_timer_again(CL, &con->events.reconnect_timeout);
@@ -1019,7 +1031,10 @@ void connection_reconnect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	{ /* domain */
 		if( con->remote.dns.resolved_address_count == con->remote.dns.current_address )
 		{ /* tried all resolved ips already */
+			char *host = con->remote.hostname;
+			con->remote.hostname = NULL;
 			node_info_addr_clear(&con->remote);
+			con->remote.hostname = host;
 			connection_connect_resolve(con);
 		} else
 		{ /* try next */
@@ -3353,8 +3368,10 @@ void connection_dns_resolve_timeout_cb(EV_P_ struct ev_timer *w, int revent)
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	connection_dns_resolve_cancel(con);
 
-	con->protocol.error(con, ECONDNSTIMEOUT);
-	connection_close(con);
+	if( con->protocol.error(con, ECONDNSTIMEOUT) == false )
+		connection_close(con);
+	else
+		connection_reconnect(con);
 
 }
 
@@ -3446,8 +3463,10 @@ void connection_connect_resolve_action(struct connection *con)
 
 		if( con->remote.dns.resolved_address_count == 0 )
 		{
-			con->protocol.error(con, ECONNOSUCHDOMAIN);
-			connection_close(con);
+			if( con->protocol.error(con, ECONNOSUCHDOMAIN) == false )
+				connection_close(con);
+			else
+				connection_reconnect(con);
 			return;
 		}
 
