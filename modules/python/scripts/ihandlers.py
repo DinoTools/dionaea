@@ -63,6 +63,20 @@ def start():
 		import p0f
 		g_handlers.append(p0f.p0fhandler(g_dionaea.config()['modules']['python']['p0f']['path']))
 
+	if "logxmpp" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import logxmpp
+		from random import choice
+		import string
+		for client in g_dionaea.config()['modules']['python']['logxmpp']:
+			conf = g_dionaea.config()['modules']['python']['logxmpp'][client]
+			if 'resource' in conf:
+				resource = conf['resource']
+			else:
+				resource = ''.join([choice(string.ascii_letters) for i in range(8)])
+			print("client %s \n\tserver %s:%s username %s password %s resource %s muc %s\n\t%s" % (client, conf['server'], conf['port'], conf['username'], conf['password'], resource, conf['muc'], conf['config']))
+			x = logxmpp.logxmpp(conf['server'], int(conf['port']), conf['username'], conf['password'], resource, conf['muc'], conf['config'])
+			g_handlers.append(x)
+
 def stop():
 	global g_handlers
 	for i in g_handlers:

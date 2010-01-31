@@ -35,6 +35,7 @@ class storehandler(ihandler):
 		i.file = n
 		if hasattr(icd, 'con'):
 			i.con = icd.con
+		i.md5hash = md5
 		i.report()
 
 		

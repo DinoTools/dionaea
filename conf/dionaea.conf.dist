@@ -197,7 +197,62 @@ modules = {
 				file = "var/dionaea/logsql.sqlite"
 			}
 		}
+		logxmpp = {
+			/**
+			 * this section defines a single xmpp logging target
+			 * you can have multiple
+			 */
+			carnviore = {
+				server = "sensors.carnivore.it"
 
+				/**
+				 * as dionaea does not support starttls (xmpp on port 5223), 
+				 * we rely on 'legacy ssl' for the xmpp connection (port 5222)
+				 */
+				port = "5223"
+				muc = "dionaea.sensors.carnivore.it"
+
+				/**
+				 * if the server exists, this is a valid account
+				 */
+				username = "anonymous@sensors.carnivore.it"
+				password = "anonymous"
+
+				/**
+				 * setting a resource is possible, but you should not do it
+				 * the default resource is a random string of 8 chars
+				 */
+				// resource = "theresource"
+				config = 
+				{
+					/**
+					 * this defines a muc channel
+					 */
+					anon-events = 
+					{
+						/**
+						 * incidents matching these events will get relayed to the channel
+						 */ 
+						events = ["^dionaea\x5c.connection\x5c..*",
+									"^dionaea\x5c.modules\x5c.python\x5c.smb.dcerpc\x5c.*",
+									"^dionaea\x5c.download\x5c.offer$",
+									"^dionaea\x5c.download\x5c.complete\x5c.hash$",
+									"^dionaea\x5c.module\x5c.emu\x5c.profile$"]
+
+						/**
+						 * anonymous removes the local host information from all connection messages
+						 * so you can report without getting identified
+						 */
+						anonymous = "yes"
+					}
+
+					anon-files =
+					{ 
+						events = ["^dionaea\x5c.download\x5c.complete\x5c.unique"]
+					}
+				}
+			}
+		}
 		p0f = {
 			/**
 			 * start p0f with 
