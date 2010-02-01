@@ -264,6 +264,7 @@ modules = {
 		ihandlers = {
 			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", 
 			"logsql",
+//			"logxmpp",
 //			"p0f",
 //			"surfids"
 			]

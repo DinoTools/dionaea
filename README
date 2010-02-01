@@ -283,10 +283,12 @@ and file bugs or submit patches <http://svn.carnivore.it/>.
           o readline <#install_readline> >=3 cnswww.cns.cwru.edu
             <http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html>
     * cython <#install_cython> >=0.11, cython.org <http://www.cython.org>
+    * lxml <#install_lxml> >=2.2.4, codespeak.net
+      <http://codespeak.net/lxml/>
     * libudns <#install_udns>, corpit.ru
       <http://www.corpit.ru/mjt/udns.html>
-    * libcurl <#install_curl>>=7.18, curl.haxx.se <http://curl.haxx.se>
-    * libpcap <#install_pcap>>=1.0, tcpdump.org <http://www.tcpdump.org>
+    * libcurl <#install_curl> >=7.18, curl.haxx.se <http://curl.haxx.se>
+    * libpcap <#install_pcap> >=1.0, tcpdump.org <http://www.tcpdump.org>
     * libnl <#install_nl> from git, infradead.org
       <http://www.infradead.org/~tgr/libnl/> (optional)
     * libgc >=6.8, hp.com <http://linux.maruhn.com/sec/libgc.html>
@@ -360,9 +362,9 @@ cd ..
 
         libev (all)
 
-wget http://dist.schmorp.de/libev/libev-3.8.tar.gz
-tar xfz libev-3.8.tar.gz
-cd libev-3.8
+wget http://dist.schmorp.de/libev/libev-3.9.tar.gz
+tar xfz libev-3.9.tar.gz
+cd libev-3.9
 ./configure --prefix=/opt/dionaea
 make install
 cd ..
@@ -410,6 +412,36 @@ cd Python-3.1.1/
       --enable-ipv6 LDFLAGS="-Wl,-rpath=/opt/dionaea/lib/"
 make
 make install
+
+
+        lxml (recommended)
+
+Once you have python installed properly, you can install lxml, lxml is a
+libxslt and libxml2 binding for python. It is likely your distribution
+will ship lxml, but it is unlikely it will ship lxml for python3, which
+we need. Therefore we will compile it from source. As lxml relies on
+libxslt and libxml2, we will resolve the dependencies before.
+
+
+          libxml2
+
+aptitude install libxml2-dev
+
+
+          libxslt
+
+aptitude install libxslt1-dev
+
+
+          lxml
+
+Compiling lxml takes some time, better get a coffee.
+
+wget http://codespeak.net/lxml/lxml-2.2.4.tgz
+tar xfz lxml-2.2.4.tgz
+cd lxml-2.2.4
+/opt/dionaea/bin/python3 setup.py build
+/opt/dionaea/bin/python3 setup.py install
 
 
         udns (!ubuntu)
@@ -630,6 +662,12 @@ allows controlling some scripts dionaea uses
 This section controls the logging to the sqlite database.
 
 
+          logxmpp
+
+This section controls the logging to xmpp services. If you want to use
+logxmpp, make sure to install lxml <#install_lxml>.
+
+
           p0f
 
 Not enabled by default, but recommend: the p0f service, enable by
@@ -683,7 +721,7 @@ You can trigger downloads for all major protocols.
 
 from ftp import ftp
 f = ftp()
-f.download(None, 'anonymous','guest','ftp.kernel.org',21, 'welcome.msg', 'binary')
+f.download(None, 'anonymous','guest','ftp.kernel.org',21, 'welcome.msg', 'binary','ftp://ftp.kernel.org/welcome.msg')
 
 
         tftp
