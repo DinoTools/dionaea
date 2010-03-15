@@ -987,7 +987,7 @@ struct async_send_helper
 
 /**
  * Helper function for connection_send
- * calls connection_send within the maion loop
+ * calls connection_send within the main loop
  * 
  * @param data   async_send_helper 
  * @see user_hook_send 
@@ -1007,10 +1007,10 @@ void async_connection_send(void *data)
  * send the data, enqueue in async_cmd, send from main loop, as 
  * sending may change the events of the connection 
  *  
- * FIXME, in fact we should discard emulation and wait for 
- * protocol.io_out to make sure the queue is flushed before 
- * proceeding, as a more calls to the connection may call 
- * connection_stop, preventing it from sending data. 
+ * Discards emulation and waits for	protocol.io_out to make sure 
+ * the queue is flushed before proceeding, as more calls to the
+ * connection may call connection_stop, preventing it from 
+ * sending data. 
  *  
  * @param env
  * @param hook
