@@ -3079,6 +3079,7 @@ void connection_tls_connecting_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	struct connection *con = CONOFF_CONNECTING_TIMEOUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	ev_io_stop(EV_A_ &con->events.io_out);
+	ev_timer_stop(EV_A_ &con->events.connecting_timeout);
 	close(con->socket);
 	con->socket = -1;
 	connection_connect_next_addr(con);
@@ -3108,13 +3109,7 @@ void connection_tls_connect_again_cb(EV_P_ struct ev_io *w, int revents)
 
 		switch( action )
 		{
-//		default:
-		
-
 		case SSL_ERROR_NONE:
-			g_debug("%s:%i", __FILE__,  __LINE__);
-			break;
-
 		case SSL_ERROR_ZERO_RETURN:
 			g_debug("%s:%i", __FILE__,  __LINE__);
 			break;
@@ -3132,19 +3127,13 @@ void connection_tls_connect_again_cb(EV_P_ struct ev_io *w, int revents)
 			break;
 
 		case SSL_ERROR_WANT_ACCEPT:
-			g_debug("SSL_ERROR_WANT_ACCEPT%s:%i", __FILE__,  __LINE__);
-			break;
-
 		case SSL_ERROR_WANT_X509_LOOKUP:
-			g_debug("SSL_ERROR_WANT_X509_LOOKUP %s:%i", __FILE__,  __LINE__);
+			g_debug("SSL_ERROR_WANT_* %i %s:%i", action, __FILE__,  __LINE__);
 			break;
 
 		case SSL_ERROR_SYSCALL:
-			g_debug("SSL_ERROR_SYSCALL %s:%i", __FILE__,  __LINE__);
-			break;
-
 		case SSL_ERROR_SSL:
-			g_debug("SSL_ERROR_SSL %s:%i", __FILE__,  __LINE__);
+			g_debug("SSL_ERROR_* %i %s:%i", action, __FILE__,  __LINE__);
 			break;
 
 		}   
@@ -3508,7 +3497,8 @@ void connection_connect_resolve_a_cb(struct dns_ctx *ctx, void *result, void *da
 
 void connection_connect_resolve_aaaa_cb(struct dns_ctx *ctx, void *result, void *data)
 {
-	g_debug("%s ctx %p result %p con %p",__PRETTY_FUNCTION__, ctx, result, data);       struct connection *con = data;
+	g_debug("%s ctx %p result %p con %p",__PRETTY_FUNCTION__, ctx, result, data);       
+	struct connection *con = data;
 
 	struct dns_rr_a6 *a6 = result;
 
