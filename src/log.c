@@ -36,7 +36,7 @@
 
 #define D_LOG_DOMAIN "log"
 
-struct logger *logger_new(GLogFunc xlog, log_util_fn xopen, log_util_fn xhup, log_util_fn xclose, void *data)
+struct logger *logger_new(GLogFunc xlog, log_util_fn xopen, log_util_fn xhup, log_util_fn xclose, log_util_fn xflush, void *data)
 {
 	struct logger *l = g_malloc0(sizeof(struct logger));
 	l->open = xopen;
@@ -44,6 +44,7 @@ struct logger *logger_new(GLogFunc xlog, log_util_fn xopen, log_util_fn xhup, lo
 	l->data = data;
 	l->hup = xhup;
 	l->close = xclose;
+	l->flush = xflush;
 	return l;
 }
 
@@ -243,7 +244,7 @@ void logger_stdout_log(const gchar *log_domain,
 #endif
 }
 
-bool logger_file_open(void *data)
+bool logger_file_open(struct logger *l, void *data)
 {
 	struct logger_file_data *d = data;
 	if( (d->f = fopen(d->file, "a+")) == NULL )
@@ -252,10 +253,11 @@ bool logger_file_open(void *data)
 		return false;
 	}
 	g_debug("LOG OPEN");
+	l->fd = fileno(d->f);
 	return true;
 }
 
-bool logger_file_close(void *data)
+bool logger_file_close(struct logger *l, void *data)
 {
 	g_debug("LOG CLOSE");
 	struct logger_file_data *d = data;
@@ -264,14 +266,25 @@ bool logger_file_close(void *data)
 		fclose(d->f);
 		d->f = NULL;
 	}
+	l->fd = -1;
 	return true;    
 }
 
-bool logger_file_hup(void *data)
+bool logger_file_flush(struct logger *l, void *data)
+{
+	struct logger_file_data *d = data;
+	if( d == NULL )
+		return false;
+
+	fflush(d->f);
+	return true;
+}
+
+bool logger_file_hup(struct logger *l, void *data)
 {
 	g_debug("LOG HUP");
-	logger_file_close(data);
-	logger_file_open(data);
+	logger_file_close(l, data);
+	logger_file_open(l, data);
 	return true;
 }
 
@@ -322,4 +335,10 @@ void logger_file_log(const gchar *log_domain,
 			t.tm_mday, t.tm_mon + 1, t.tm_year + 1900, t.tm_hour, t.tm_min, t.tm_sec, 
 			log_domain, level, message);
 //	fflush(data->f);
+}
+
+bool logger_stdout_open(struct logger *l, void *data)
+{
+	l->fd = fileno(stdin);
+	return true;
 }

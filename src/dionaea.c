@@ -490,7 +490,8 @@ int main (int argc, char *argv[])
 	// no daemon logs to stdout by default
 	if( opt->daemon == false )
 	{
-		struct logger *l = logger_new(logger_stdout_log, NULL, NULL, NULL, opt->stdout.filter);
+		struct logger *l = logger_new(logger_stdout_log, NULL, NULL, NULL, NULL, opt->stdout.filter);
+		logger_stdout_open(l, NULL);
 		d->logging->loggers = g_list_append(d->logging->loggers, l);
 	}
 
@@ -539,7 +540,7 @@ int main (int argc, char *argv[])
 
 			fd->filter = lf;
 
-			struct logger *l = logger_new(logger_file_log, logger_file_open, logger_file_hup, logger_file_close, fd);
+			struct logger *l = logger_new(logger_file_log, logger_file_open, logger_file_hup, logger_file_close, logger_file_flush, fd);
 			d->logging->loggers = g_list_append(d->logging->loggers, l);
 		}
 	}
@@ -548,7 +549,7 @@ int main (int argc, char *argv[])
 	{
 		struct logger *l = it->data;
 		if( l->open != NULL )
-			l->open(l->data);
+			l->open(l, l->data);
 	}
 
 	// daemon
@@ -731,7 +732,7 @@ int main (int argc, char *argv[])
 
 	ev_signal_init(&d->signals->sighup,  sighup_cb, SIGHUP);
 	ev_signal_start(d->loop, &d->signals->sighup);
-
+	signal(SIGSEGV, sigsegv_backtrace_cb);
 //	ev_signal_init(&d->signals->sigsegv,  sigsegv_cb, SIGSEGV);
 //	ev_signal_start(d->loop, &d->signals->sigsegv);
 //	signal(SIGSEGV, (sighandler_t) segv_handler);
@@ -782,7 +783,7 @@ int main (int argc, char *argv[])
 	{
 		struct logger *l = it->data;
 		if( l->close != NULL )
-			l->close(l->data);
+			l->close(l, l->data);
 	}
 
 	return 0;

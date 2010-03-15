@@ -74,17 +74,20 @@ struct log_filter *log_filter_new(const char *domains, const char *levels);
 bool log_filter_match(struct log_filter *filter, const char *log_domain, int log_level);
 
 extern struct log_level_map log_level_mapping[];
-typedef bool (*log_util_fn)(void *data);
+
+struct logger;
+typedef bool (*log_util_fn)(struct logger *, void *data);
 struct logger
 {
 	log_util_fn open;
 	log_util_fn close;
 	log_util_fn hup;
+	log_util_fn flush;
 	GLogFunc log;
-
+	int fd;
 	void *data;
 };
-struct logger *logger_new(GLogFunc log, log_util_fn xopen, log_util_fn hup, log_util_fn xclose, void *data);
+struct logger *logger_new(GLogFunc log, log_util_fn xopen, log_util_fn hup, log_util_fn xclose, log_util_fn xflush, void *data);
 
 
 void log_multiplexer(const gchar *log_domain, 
@@ -104,14 +107,15 @@ void logger_file_log(const gchar *log_domain,
 					 GLogLevelFlags log_level,
 					 const gchar *message,
 					 gpointer user_data);
-bool logger_file_open(void *data);
-bool logger_file_close(void *data);
-bool logger_file_hup(void *data);
+bool logger_file_open(struct logger *l, void *data);
+bool logger_file_close(struct logger *l, void *data);
+bool logger_file_hup(struct logger *l, void *data);
 
 
+bool logger_stdout_open(struct logger *l, void *data);
 void logger_stdout_log(const gchar *log_domain, 
 					   GLogLevelFlags log_level,
 					   const gchar *message,
 					   gpointer user_data);
-
+bool logger_file_flush(struct logger *l, void *data);
 

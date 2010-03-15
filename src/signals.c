@@ -29,6 +29,7 @@
 #include <unistd.h>
 #include <ev.h>
 #include <glib.h>
+#include <execinfo.h>
 
 #include "config.h"
 #include "dionaea.h"
@@ -71,7 +72,7 @@ void sighup_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 		struct logger *l = it->data;
 		g_message("Logger %p hup %p", l, l->log);
 		if( l->hup != NULL )
-			l->hup(l->data);
+			l->hup(l, l->data);
 	}
 }
 
@@ -98,4 +99,38 @@ void sigsegv_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 	system(cmd);
 	signal(SIGSEGV, SIG_DFL);
 //	return 0;
+}
+
+void sigsegv_backtrace_cb(int sig)
+{
+#define BACKTRACE_SIZE 32
+	void *back[BACKTRACE_SIZE];
+	size_t size;
+
+	size = backtrace( back, BACKTRACE_SIZE );
+
+	g_mutex_lock(g_dionaea->logging->lock);
+	for( GList *it = g_dionaea->logging->loggers; it != NULL; it = it->next )
+	{
+		struct logger *l = it->data;
+
+		if( l->fd == -1 )
+			continue;
+
+		if( l->flush != NULL )
+			l->flush(l, l->data);
+		const char *msg =
+			"\n" 
+			"This is the end.\n"
+			"This software just had a segmentation fault.\n"
+			"The bug you encountered may even be exploitable.\n"
+			"If you want to assist in fixing the bug, please send the backtrace below to nepenthesdev@gmail.com.\n"
+			"You can create better backtraces with gdb, for more information visit http://dionaea.carnivore.it/#segfault\n"
+			"Once you read this message, your tty may be broken, simply type reset, so it will come to life again\n"
+			"\n";
+		write(l->fd, msg, strlen(msg));
+		backtrace_symbols_fd(back, size, l->fd);
+	}
+//	g_mutex_unlock(g_dionaea->logging->lock);
+	exit(-1);
 }
