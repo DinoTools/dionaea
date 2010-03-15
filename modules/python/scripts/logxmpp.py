@@ -348,7 +348,11 @@ class logxmpp(ihandler):
 	def report_connection(self, i, to, connection_type, anon=False):
 		c = i.con
 		if anon == True:
-			local_host = "127.0.0.1"
+			if c.remote.hostname == c.local.host:
+				remote_host = local_host = "127.0.0.1"
+			else:
+				remote_host = c.remote.host
+				local_host = "127.0.0.1"
 		else:
 			local_host = c.local.host
 		n = etree.Element('connection', attrib={
@@ -357,7 +361,7 @@ class logxmpp(ihandler):
 			'protocol' : c.protocol,
 			'local_host' : local_host,
 			'local_port' : str(c.local.port),
-			'remote_host' : c.remote.host,
+			'remote_host' : remote_host,
 			'remote_hostname' : c.remote.hostname,
 			'remote_port' : str(c.remote.port),
 			'ref' : str(c.__hash__())})
@@ -417,9 +421,6 @@ class logxmpp(ihandler):
 			'ref' : str(c.__hash__())})
 		n.text = p
 		self.broadcast(i, n)
-
-
-		pass
 
 	def handle_incident_dionaea_download_offer(self, i):
 		c = i.con
