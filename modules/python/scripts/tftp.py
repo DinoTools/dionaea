@@ -1046,10 +1046,10 @@ class TftpClient(TftpSession):
     def handle_error(self, err):
         pass
 
-	def handle_timeout_sustain(self):
-		logger.debug("tftp sustain timeout!")
-		self.fail()
-		return False
+    def handle_timeout_sustain(self):
+        logger.debug("tftp sustain timeout!")
+        self.fail()
+        return False
 
     def handle_timeout_idle(self):
         logger.debug("tftp idle timeout!")
