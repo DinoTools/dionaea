@@ -1,0 +1,33 @@
+# intermediate object files
+*.o
+*.lo
+*.la
+
+# automake 
+Makefile
+Makefile.in
+.deps
+.libs
+config.*
+aclocal.m4
+autom4te.cache/
+configure
+depcomp
+install-sh
+libtool
+ltmain.sh
+missing
+stamp-h1
+
+# slickedit
+*.vpj
+*.vpw
+*.vpwhistu
+*.vtg
+
+# project specific
+src/dionaea
+modules/python/binding.c
+modules/python/build/
+modules/python/setup.py
+
