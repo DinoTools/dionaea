@@ -176,6 +176,20 @@ modules = {
 					"ihandlers"]
 		ftp = {
 			root = "var/dionaea/wwwroot"
+
+			/* ftp client section
+			 */
+
+			/* ports for active ftp
+			 * string indicating a range 
+			 */
+			active-ports = "63001-64000"
+
+			/* host for active ftp via NAT
+			 * 0.0.0.0 - the initiating connection ip is used for active ftp
+			 * not 0.0.0.0 - gets resolved as hostname and used
+			 */
+			active-host = "0.0.0.0"
 		}
 		tftp = {
 			root = "var/dionaea/wwwroot"
@@ -455,10 +469,8 @@ modules = {
 					reconnect = "1"
 					connect = "1"
 				}
-
 			}
 		]
-
 	}
  */
 }

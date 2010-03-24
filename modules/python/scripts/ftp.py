@@ -835,14 +835,34 @@ class ftp:
 
 	def makeport(self):
 		self.datalistener = ftpdata(ftp=self)
-		ports = list(filter(lambda port: ((port >> 4) & 0xf) != 0, range(62001, 63000))) # NAT, use a port range which is forwarded to your honeypot
+		try:
+			portrange = g_dionaea.config()['modules']['python']['ftp']['active-ports']
+			(minport, maxport) = portrange.split('-')
+			minport = int(minport)
+			maxport = int(maxport)
+		except:
+			minport = 62001
+			maxport = 63000
+
+		try:
+			# for NAT setups
+			host = g_dionaea.config()['modules']['python']['ftp']['active-host']
+			if host == b'0.0.0.0':
+				host = self.datalistener.local.host
+			else:
+				import socket
+				host = socket.gethostbyname(host)
+				logger.info("resolved host %s" % host)
+		except:
+			host = self.datalistener.local.host
+
+
+		ports = list(filter(lambda port: ((port >> 4) & 0xf) != 0, range(minport, maxport))) # NAT, use a port range which is forwarded to your honeypot
 		random.shuffle(ports)
-		host = None
 		port = None
 		for port in ports:
 			self.datalistener.bind(self.ctrl.local.host, port)
 			if self.datalistener.listen() == True:
-				host = self.datalistener.local.host # NAT, replace this with something like host = socket.gethostbyname('honeypot.dyndns.org')
 				port = self.datalistener.local.port
 				i=incident("dionaea.connection.link")
 				i.parent = self.ctrl
