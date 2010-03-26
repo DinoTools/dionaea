@@ -801,7 +801,6 @@ class ftpdata(connection):
 
 	def handle_timeout_listen(self):
 		self.ftp.fail()
-		self.fileobj.unlink(self.fileobj.name)
 		return False
 
 class ftp:
