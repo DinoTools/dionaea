@@ -355,6 +355,8 @@ class logxmpp(ihandler):
 				local_host = "127.0.0.1"
 		else:
 			local_host = c.local.host
+			remote_host = c.remote.host
+
 		n = etree.Element('connection', attrib={
 			'type' : connection_type, 
 			'transport' : c.transport,
