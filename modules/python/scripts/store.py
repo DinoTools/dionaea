@@ -1,5 +1,5 @@
-from dionaea import ihandler, incident, g_dionaea
-from util import md5file
+from dionaea.core import ihandler, incident, g_dionaea
+from dionaea.util import md5file
 
 import os
 import logging

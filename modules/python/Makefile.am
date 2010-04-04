@@ -6,11 +6,13 @@ SUBDIRS = scripts
 
 all: binding.c
 
-binding.c: binding.pyx module.c module.h ../../config.h ../../include/protocol.h ../../include/dionaea.h
+binding.c: setup.py setup.py.in binding.pyx module.c module.h ../../config.h ../../include/protocol.h ../../include/dionaea.h
 	python setup.py build
 
 install-exec-am: all
-	cp build/*/python.so @libdir@/dionaea/python.so
+	cp build/*/dionaea/*.so @libdir@/dionaea/python.so
+	rm -rf @libdir@/dionaea/python/dionaea/core.so
+	ln -s @libdir@/dionaea/python.so @libdir@/dionaea/python/dionaea/core.so
 
 clean:
 	python setup.py clean

@@ -1,4 +1,4 @@
-from dionaea import connection
+from dionaea.core import connection
 import struct
 import logging
 import os

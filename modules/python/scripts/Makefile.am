@@ -34,7 +34,7 @@ all: $(PYSCRIPTS)
 
 install-data-am: all
 	for i in $(PYSCRIPTS); do \
-		location="@libdir@/dionaea/python/$$i"; \
+		location="@libdir@/dionaea/python/dionaea/$$i"; \
 		scriptdir=`dirname "$$location"`; \
 		if [ ! -d $$scriptdir ]; then \
 			$(mkinstalldirs) $$scriptdir; \

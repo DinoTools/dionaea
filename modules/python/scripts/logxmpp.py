@@ -1,4 +1,4 @@
-from dionaea import connection, ihandler
+from dionaea.core import connection, ihandler
 from lxml import etree as etree
 from xml.etree import ElementTree
 from lxml.etree import XMLParser
@@ -347,15 +347,17 @@ class logxmpp(ihandler):
 
 	def report_connection(self, i, to, connection_type, anon=False):
 		c = i.con
+		print("HOSTS %s %s " % (c.remote.hostname, c.local.host) )
+
+		local_host = c.local.host
+		remote_host = c.remote.host
+		remote_hostname = c.remote.hostname
+
 		if anon == True:
 			if c.remote.hostname == c.local.host:
-				remote_host = local_host = "127.0.0.1"
+				remote_host = remote_hostname = local_host = "127.0.0.1"
 			else:
-				remote_host = c.remote.host
 				local_host = "127.0.0.1"
-		else:
-			local_host = c.local.host
-			remote_host = c.remote.host
 
 		n = etree.Element('connection', attrib={
 			'type' : connection_type, 
@@ -364,7 +366,7 @@ class logxmpp(ihandler):
 			'local_host' : local_host,
 			'local_port' : str(c.local.port),
 			'remote_host' : remote_host,
-			'remote_hostname' : c.remote.hostname,
+			'remote_hostname' : remote_hostname,
 			'remote_port' : str(c.remote.port),
 			'ref' : str(c.__hash__())})
 		self.report(i, to, n)

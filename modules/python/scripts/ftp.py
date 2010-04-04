@@ -56,7 +56,7 @@
 
 
 # ftp server 
-from dionaea import connection, ihandler, g_dionaea, incident
+from dionaea.core import connection, ihandler, g_dionaea, incident
 import struct
 import logging
 import os

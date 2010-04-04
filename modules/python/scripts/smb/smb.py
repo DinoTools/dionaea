@@ -25,7 +25,7 @@
 #*
 #*******************************************************************************/
 
-from dionaea import *
+from dionaea.core import *
 
 import datetime
 import traceback
