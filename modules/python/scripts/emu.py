@@ -1,6 +1,6 @@
-from dionaea import ihandler, incident
-from dionaea import connection
-from cmd import cmdexe
+from dionaea.core import ihandler, incident
+from dionaea.core import connection
+from dionaea.cmd import cmdexe
 import logging
 import json
 

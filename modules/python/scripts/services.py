@@ -2,20 +2,20 @@ import imp
 import sys
 import traceback
 
-from dionaea import *
+from dionaea.core import g_dionaea, ihandler
 import tempfile
 
 # service imports
-import http
-import tftp
-import ftp
-import mirror
-from smb import smb
+import dionaea.http
+import dionaea.tftp
+import dionaea.ftp
+import dionaea.mirror
+from dionaea.smb import smb
 
 # reload service imports
-imp.reload(http)
-imp.reload(tftp)
-imp.reload(smb)
+#imp.reload(dionaea.http)
+#imp.reload(dionaea.tftp)
+#imp.reload(dionaea.smb)
 
 # global slave
 # keeps track of running services (daemons)
@@ -43,7 +43,7 @@ class slave():
 						daemon = service.start(service, addr, iface=iface)
 						self.daemons[addr][service].append(daemon)
 		except Exception as e:
-			print(e)
+			raise e
 		print(self.daemons)
 
 # for netlink, 
@@ -81,7 +81,7 @@ class service:
 
 class httpservice(service):
 	def start(self, addr, iface=None):
-		daemon = http.httpd(proto='tcp')
+		daemon = dionaea.http.httpd(proto='tcp')
 		daemon.bind(addr, 80, iface=iface)
 		daemon.chroot(g_dionaea.config()['modules']['python']['http']['root'])
 		daemon.listen()
@@ -91,7 +91,7 @@ class httpservice(service):
 
 class httpsservice(service):
 	def start(self, addr, iface=None):
-		daemon = http.httpd(proto='tls')
+		daemon = dionaea.http.httpd(proto='tls')
 		daemon.bind(addr, 443, iface=iface)
 		daemon.chroot(g_dionaea.config()['modules']['python']['http']['root'])
 		daemon.listen()
@@ -102,7 +102,7 @@ class httpsservice(service):
 
 class ftpservice(service):
 	def start(self, addr,  iface=None):
-		daemon = ftp.ftpd()
+		daemon = dionaea.ftp.ftpd()
 		daemon.chroot(g_dionaea.config()['modules']['python']['ftp']['root'])
 		daemon.bind(addr, 21, iface=iface)
 		daemon.listen()
@@ -113,7 +113,7 @@ class ftpservice(service):
 
 class tftpservice(service):
 	def start(self, addr,  iface=None):
-		daemon = tftp.TftpServer()
+		daemon = dionaea.tftp.TftpServer()
 		daemon.chroot(g_dionaea.config()['modules']['python']['tftp']['root'])
 		daemon.bind(addr, 69, iface=iface)
 		return daemon
@@ -122,7 +122,7 @@ class tftpservice(service):
 
 class mirrorservice(service):
 	def start(self, addr, iface=None):
-		daemon = mirror.mirrord('tcp', addr, 42, iface)
+		daemon = dionaea.mirror.mirrord('tcp', addr, 42, iface)
 		return daemon
 	def stop(self, daemon):
 		daemon.close()

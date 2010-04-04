@@ -37,7 +37,7 @@
 # gave us a non exclusive permission to use his code in 
 # our gpl project
 
-from dionaea import connection, ihandler, g_dionaea, incident
+from dionaea.core import connection, ihandler, g_dionaea, incident
 
 import tempfile
 import struct

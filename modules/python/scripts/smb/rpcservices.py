@@ -29,7 +29,7 @@ import logging
 from uuid import UUID
 
 
-import ndrlib
+import dionaea.ndrlib
 from .include.smbfields import DCERPC_Header, DCERPC_Response
 
 rpclog = logging.getLogger('rpcservices')

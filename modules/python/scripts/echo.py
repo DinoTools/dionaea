@@ -1,4 +1,4 @@
-from dionaea import connection
+from dionaea.core import connection
 class echo(connection):
 	def __init__ (self, proto=None):
 		print("echo init")

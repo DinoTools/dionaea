@@ -69,7 +69,7 @@
 #include "module.h"
 
 #define D_LOG_DOMAIN "python"
-PyObject *PyInit_python(void);
+PyObject *PyInit_core(void);
 
 struct protocol *trace_proto;
 
@@ -292,7 +292,8 @@ static bool freepy(void)
 static bool new(struct dionaea *dionaea)
 {
 	g_debug("%s %s %p", __PRETTY_FUNCTION__, __FILE__, g_dionaea);
-	PyImport_AppendInittab("dionaea", &PyInit_python);
+//	int v = PyImport_AppendInittab("dionaea.core", &PyInit_core);
+//	g_warning("PyImport_AppendInittab %i", v);
 
 	g_debug("Python Interpreter %s", PYTHON_PATH);
 	size_t pybinsize = mbstowcs(NULL, PYTHON_PATH, 0);
@@ -310,10 +311,6 @@ static bool new(struct dionaea *dionaea)
 	runtime.traceback.export_tb = PyObject_GetAttrString(runtime.traceback.module, "extract_tb");
 
 	PyRun_SimpleString("import sys");
-
-	PyRun_SimpleString("from dionaea import *");
-	PyRun_SimpleString("init_traceables()");
-
 	char relpath[1024];
 	int i=0;
 	struct lcfgx_tree_node *paths;
@@ -335,6 +332,8 @@ static bool new(struct dionaea *dionaea)
 			i++;
 		}
 	}
+	PyRun_SimpleString("from dionaea.core import init_traceables");
+	PyRun_SimpleString("init_traceables()");
 
 	runtime.imports = g_hash_table_new(g_str_hash, g_str_equal);
 	struct lcfgx_tree_node *files;
@@ -343,7 +342,10 @@ static bool new(struct dionaea *dionaea)
 		struct lcfgx_tree_node *file;
 		for( file = files->value.elements; file != NULL; file = file->next )
 		{
-			char *name = file->value.string.data;
+			char *name;
+			if( asprintf(&name, "dionaea.%s", (char *)file->value.string.data) == 0)
+				continue;
+
 			PyObject *module = PyImport_ImportModule(name);
 			if( module == NULL )
 			{
@@ -366,6 +368,7 @@ static bool new(struct dionaea *dionaea)
 			} else
 				PyErr_Clear();
 			traceback();
+			free(name);
 		}
 	}
 
@@ -694,6 +697,7 @@ void traceable_origin_cb(struct connection *con, struct connection *origin)
 void traceable_established_cb(struct connection *con)
 {
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+	g_warning("established cb %p", runtime.traceables.proto.established);
 	runtime.traceables.proto.established(con);
 	traceback();
 }

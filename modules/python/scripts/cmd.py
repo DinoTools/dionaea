@@ -1,5 +1,5 @@
-from dionaea import ihandler, incident
-from dionaea import connection
+from dionaea.core import ihandler, incident
+from dionaea.core import connection
 import logging
 
 logger = logging.getLogger('cmd')

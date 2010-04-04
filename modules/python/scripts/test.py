@@ -1,5 +1,5 @@
-from dionaea import ihandler, incident, g_dionaea
-from dionaea import connection
+from dionaea.core import ihandler, incident, g_dionaea
+from dionaea.core import connection
 import logging
 import json
 global p

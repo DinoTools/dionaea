@@ -1,4 +1,4 @@
-from dionaea import ihandler, incident, g_dionaea
+from dionaea.core import ihandler, incident, g_dionaea
 
 import os
 import logging

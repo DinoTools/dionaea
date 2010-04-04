@@ -1,4 +1,4 @@
-from dionaea import ihandler, incident, g_dionaea
+from dionaea.core import ihandler, incident, g_dionaea
 
 import os
 import logging
@@ -109,7 +109,7 @@ class logsqlhandler(ihandler):
 			)""")
 
 		from uuid import UUID
-		from smb import rpcservices
+		from dionaea.smb import rpcservices
 		import inspect
 		services = inspect.getmembers(rpcservices, inspect.isclass)
 		for name, servicecls in services:

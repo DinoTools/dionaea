@@ -1,4 +1,4 @@
-from dionaea import connection, ihandler
+from dionaea.core import connection, ihandler
 from lxml import etree as etree
 from xml.etree import ElementTree
 from lxml.etree import XMLParser
