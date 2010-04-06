@@ -28,6 +28,7 @@ PYSCRIPTS += store.py
 PYSCRIPTS += surfids.py
 PYSCRIPTS += ndrlib.py
 PYSCRIPTS += logxmpp.py
+PYSCRIPTS += __init__.py
 
 all: $(PYSCRIPTS)
 	
