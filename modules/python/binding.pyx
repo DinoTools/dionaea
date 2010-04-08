@@ -27,6 +27,10 @@
 
 import weakref 
 
+cdef extern from *:
+	ctypedef char* const_char_ptr "const char*"
+
+
 cdef extern from "module.h":
 	cdef object bytesfrom "PyBytes_FromStringAndSize"(char *v, int len)
 	cdef object stringfrom "PyUnicode_FromStringAndSize"(char *v, int len)
@@ -139,8 +143,8 @@ cdef extern from "../../include/connection.h":
 		c_processor_data *processor_data
 
 	bint c_connection_transport_from_string "connection_transport_from_string" (char *, c_connection_transport *)
-	char *c_connection_transport_to_string "connection_transport_to_string"(c_connection_transport)
-	char *c_connection_state_to_string "connection_state_to_string"(c_connection_state)
+	const_char_ptr c_connection_transport_to_string "connection_transport_to_string"(c_connection_transport)
+	const_char_ptr c_connection_state_to_string "connection_state_to_string"(c_connection_state)
 	c_connection *c_connection_new "connection_new" (c_connection_transport)
 	void c_connection_free "connection_free"(c_connection *)
 	int c_connection_bind "connection_bind" (c_connection *, char *, int, char *)
@@ -189,13 +193,13 @@ cdef class node_info:
 	property host:
 		"""the nodes address as string"""
 		def __get__(self): 
-			return bytes.decode(self.thisptr.ip_string)
+			return bytes.decode(self.thisptr.ip_string, u'UTF-8')
 
 	property hostname:
 		"""the nodes hostname as string"""
 		def __get__(self):
 			if self.thisptr.hostname != NULL:
-				return bytes.decode(self.thisptr.hostname)
+				return bytes.decode(self.thisptr.hostname, u'UTF-8')
 			else:
 				return u''
 
@@ -442,7 +446,7 @@ cdef class connection:
 			self.thisptr = c_connection_new(enum_type)
 #			print(u"XXXXXXXXXXXXX" + self.__class__.__name__)
 			protoname = self.__class__.__name__
-			protoname = protoname.encode()
+			protoname = protoname.encode(u'ascii')
 			self.thisptr.protocol.name = c_g_strdup(protoname)
 			self.thisptr.protocol.ctx_new = <protocol_handler_ctx_new>c_traceable_ctx_new_cb
 			self.thisptr.protocol.ctx_free = <protocol_handler_ctx_free>c_traceable_ctx_free_cb
@@ -597,7 +601,7 @@ cdef class connection:
 		if self.thisptr == NULL:
 			raise ReferenceError(u'the object requested does not exist')
 		if isinstance(data, unicode):
-			data_bytes = data.encode()
+			data_bytes = data.encode(u'UTF-8')
 		elif isinstance(data, bytes):
 			data_bytes = data
 		else:
@@ -648,20 +652,20 @@ cdef class connection:
 		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
-			return c_connection_transport_to_string(self.thisptr.trans).decode()
+			return c_connection_transport_to_string(self.thisptr.trans).decode(u'UTF-8')
 
 	property protocol:
 		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
-			return self.thisptr.protocol.name.decode()
+			return self.thisptr.protocol.name.decode(u'UTF-8')
 
 	property status:
 		"""the connection status, resolving, connecting ...."""
 		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
-			return c_connection_state_to_string(self.thisptr.state).decode()
+			return c_connection_state_to_string(self.thisptr.state).decode(u'UTF-8')
 
 	property _in:
 		"""access the connection_stats for the ingress part of the connection"""
@@ -800,11 +804,11 @@ cdef void process_io_out(c_connection *con, c_processor_data *pd, void *data, in
 
 def dlhfn(name, number, path, line, msg):
 	if isinstance(name, unicode):
-		name = name.encode()
+		name = name.encode(u'UTF-8')
 	if isinstance(path, unicode):
-		path = path.encode()
+		path = path.encode(u'UTF-8')
 	if isinstance(msg, unicode):
-		msg = msg.encode()
+		msg = msg.encode(u'UTF-8')
 	c_log_wrap(name, number, path, line, msg)
 	
 cdef extern from "../../include/incident.h":
@@ -838,7 +842,7 @@ cdef class incident:
 
 	def __init__(self, origin=None):
 		if origin != None and self.thisptr == NULL:
-			origin = origin.encode()
+			origin = origin.encode(u'UTF-8')
 			self.thisptr = c_incident_new(origin)
 			self.free_on_dealloc = 1
 		else:
@@ -861,7 +865,7 @@ cdef class incident:
 	def __setattr__(self, key, value):
 		cdef connection con
 		if isinstance(key, unicode):
-			key = key.encode()
+			key = key.encode(u'UTF-8')
 		
 		if isinstance(value, connection) :
 			con = <connection>value
@@ -869,7 +873,7 @@ cdef class incident:
 		elif isinstance(value, int) :
 			c_incident_value_int_set(self.thisptr, key, value)
 		elif isinstance(value, unicode):
-			value = value.encode()
+			value = value.encode(u'UTF-8')
 			c_incident_value_string_set(self.thisptr, key, c_g_string_new(value))
 		elif isinstance(value, bytes):
 			c_incident_value_string_set(self.thisptr, key, c_g_string_new(value))
@@ -883,7 +887,7 @@ cdef class incident:
 		cdef c_GString *s
 		cdef long int i
 		if isinstance(key, unicode):
-			key = key.encode()
+			key = key.encode(u'UTF-8')
 		if c_incident_value_con_get(self.thisptr, key, &cc) == True:
 			c = NEW_C_CONNECTION_CLASS(connection)
 			c.thisptr = <c_connection *>cc
@@ -894,7 +898,7 @@ cdef class incident:
 		elif c_incident_value_int_get(self.thisptr, key, &i) == True:
 			return i
 		else:
-			raise AttributeError(u"%s does not exist" % key.decode())
+			raise AttributeError(u"%s does not exist" % key.decode(u'UTF-8'))
 
 	def report(self):
 		c_incident_report(self.thisptr)
@@ -947,7 +951,7 @@ cdef void c_python_ihandler_cb (c_incident *i, void *ctx) except *:
 cdef class ihandler:
 	cdef c_ihandler *thisptr
 	def __init__(self, pattern):
-		pattern = pattern.encode()
+		pattern = pattern.encode(u'UTF-8')
 		self.thisptr = c_ihandler_new(pattern, <c_ihandler_cb> c_traceable_ihandler_cb, <void *>self)
 
 	def __dealloc__(self):
