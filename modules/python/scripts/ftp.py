@@ -846,7 +846,7 @@ class ftp:
 		try:
 			# for NAT setups
 			host = g_dionaea.config()['modules']['python']['ftp']['active-host']
-			if host == b'0.0.0.0':
+			if host == '0.0.0.0':
 				host = self.datalistener.local.host
 			else:
 				import socket
