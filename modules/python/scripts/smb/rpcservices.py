@@ -29,7 +29,7 @@ import logging
 from uuid import UUID
 
 
-import dionaea.ndrlib
+from dionaea import ndrlib
 from .include.smbfields import DCERPC_Header, DCERPC_Response
 
 rpclog = logging.getLogger('rpcservices')
@@ -355,6 +355,7 @@ class samr(RPCService):
 	uuid = UUID('12345778-1234-abcd-ef00-0123456789ac').hex
 
 	ops = {
+		7: "OpenDomain",
 		62: "Connect4",
 		64: "Connect5"
 	}
@@ -388,8 +389,87 @@ class samr(RPCService):
 		#   [out, switch_is(*OutVersion)] SAMPR_REVISION_INFO* OutRevisionInfo,
 		#   [out] SAMPR_HANDLE* ServerHandle
 		# );
+		x = ndrlib.Unpacker(p.StubData)
+		PServerName = x.unpack_pointer()
+		ServerName = x.unpack_string()
 
-		pass
+		print("ServerName %s" % ServerName)
+		DesiredAccess = x.unpack_long()
+
+		print("DesiredAccess %i" % DesiredAccess)
+		InVersion = x.unpack_long()
+		print("InVersion %i" % InVersion)
+
+		PInRevisionInfo = x.unpack_pointer()
+
+		# 2.2.3.15 SAMPR_REVISION_INFO_V1
+		# http://msdn.microsoft.com/en-us/library/cc245541%28v=PROT.10%29.aspx
+		Revision = x.unpack_long()
+		SupportedFeatures = x.unpack_long()
+
+		print("Revision %i SupportedFeatures %i" % (Revision, SupportedFeatures))
+
+		r = ndrlib.Packer()
+
+		r.pack_pointer(0x1)
+		r.pack_long(InVersion)
+
+		r.pack_long(Revision)
+		r.pack_long(SupportedFeatures)
+
+		# ServerHandle
+		r.pack_raw(b'01234567890123456789')
+
+		# return 
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_OpenDomain(cls, p):
+		# 3.1.5.1.5 SamrOpenDomain (Opnum 7)
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc245748%28v=PROT.10%29.aspx
+		#
+		# long SamrOpenDomain(
+		#   [in] SAMPR_HANDLE ServerHandle,
+		#   [in] unsigned long DesiredAccess,
+		#   [in] PRPC_SID DomainId,
+		#   [out] SAMPR_HANDLE* DomainHandle
+		# );
+		x = ndrlib.Unpacker(p.StubData)
+		ServerHandle = x.unpack_raw(20)
+		print("ServerHandle %s" % ServerHandle)
+
+		DesiredAccess = x.unpack_long()
+		print("DesiredAccess %i" % DesiredAccess)
+
+		# 2.4.2.1 RPC_SID
+		#
+		# typedef struct _RPC_SID {
+		#  unsigned char Revision;
+		#  unsigned char SubAuthorityCount;
+		#  RPC_SID_IDENTIFIER_AUTHORITY IdentifierAuthority;
+		#  [size_is(SubAuthorityCount)] 
+		#    unsigned long SubAuthority[];
+		#} RPC_SID, 
+		# *PRPC_SID;
+		# http://msdn.microsoft.com/en-us/library/cc230364%28v=PROT.10%29.aspx
+
+		Count = x.unpack_long()
+		for i in range(Count):
+			print(i)
+			Revision = x.unpack_small()
+			SubAuthorityCount = x.unpack_small()
+			IdentifierAuthority = x.unpack_raw(6)
+			SubAuthority = x.unpack_long()
+			print("Revision %i SubAuthorityCount %i IdentifierAuthority %s SubAuthority %i" % (Revision, SubAuthorityCount, IdentifierAuthority, SubAuthority))
+
+
+
+
+
+
 
 
 class SceSvc(RPCService):
@@ -494,7 +574,10 @@ class SRVSVC(RPCService):
 		
 		# ResumeHandle
 		resumehandleptr = x.unpack_pointer()
-		resumehandle = x.unpack_long()
+		resumehandle = 0
+		if resumehandleptr != 0:
+			resumehandle = x.unpack_long()
+
 		
 		print("srvsvc_handle_ref %x srvsvc_handle %s infostruct_level %i count %i buffer %x preferdmaxlen %i  resumehandleptr %x resumehandle %i" % (
 			srvsvc_handle_ref,
