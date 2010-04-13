@@ -157,6 +157,25 @@ bool incident_value_string_get(struct incident *e, const char *name, GString **v
 	return true;
 }
 
+bool incident_keys_get(struct incident *e, char ***keys)
+{
+	int c= g_hash_table_size(e->data);
+	char **kexs = g_malloc0((c+5)*sizeof(char **));
+	int i=0;
+	GHashTableIter iter;
+	gpointer key, value;
+	g_hash_table_iter_init (&iter, e->data);
+	while( g_hash_table_iter_next (&iter, &key, &value) )
+	{
+		kexs[i] = (char *)g_strdup(key);
+		i++;
+ 	};
+	kexs[i] = NULL;
+
+	*keys = kexs;
+	return true;
+}
+
 void incident_dump(struct incident *e)
 {
 	GHashTableIter iter;

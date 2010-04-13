@@ -90,6 +90,7 @@ bool incident_value_string_get(struct incident *e, const char *name, GString **s
 
 void incident_dump(struct incident *e);
 
+bool incident_keys_get(struct incident *e, char ***keys);
 void incident_report(struct incident *i);
 
 /*

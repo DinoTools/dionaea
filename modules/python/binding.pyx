@@ -834,6 +834,7 @@ cdef extern from "../../include/incident.h":
 	c_bool c_incident_value_con_get "incident_value_con_get" (c_incident *e, char *name, c_connection **val)
 	c_bool c_incident_value_string_set "incident_value_string_set" (c_incident *e, char *name, c_GString *str)
 	c_bool c_incident_value_string_get "incident_value_string_get" (c_incident *e, char *name, c_GString **str)
+	c_bool c_incident_keys_get "incident_keys_get" (c_incident *e, char ***keys)
 	void c_incident_dump "incident_dump" (c_incident *)
 
 cdef class incident:
@@ -855,6 +856,17 @@ cdef class incident:
 
 	def dump(self):
 		c_incident_dump(self.thisptr)
+
+	def keys(self):
+		cdef char **x
+		cdef int i = 0
+		c_incident_keys_get(self.thisptr, &x)
+		r = []
+		while x[i] is not NULL:
+			r.append(x[i])
+			i = i+1
+		return r
+
 
 	def set(self, key, value):
 		self.__setattr__(key, value)
