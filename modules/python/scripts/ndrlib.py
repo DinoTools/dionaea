@@ -100,6 +100,11 @@ class Unpacker:
 			raise EOFError
 		return data
 
+	def unpack_raw(self, l):
+		data = self.__buf[self.__pos:self.__pos+l]
+		self.__pos = self.__pos + l
+		return data
+
 
 class Packer:
 	"""Pack various data representations into a buffer."""
