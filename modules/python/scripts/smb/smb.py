@@ -202,7 +202,7 @@ class smbd(connection):
 			self.files[0x9000] = tempfile.NamedTemporaryFile(delete=False, prefix="smb-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
 		elif p.getlayer(SMB_Header).Command == SMB_COM_ECHO:
 			r = p.getlayer(SMB_Header).payload
-		elif p.getlayer(SMB_Header).Command == SMB_COM_WRITE:
+		elif p.getlayer(SMB_Header).Command == SMB_COM_WRITE_ANDX:
 			r = SMB_Write_AndX_Response()
 			h = p.getlayer(SMB_Write_AndX_Request)
 			r.CountLow = h.DataLenLow
@@ -212,9 +212,9 @@ class smbd(connection):
 			else:
 				self.buf += h.Data
 				self.process_dcerpc_packet(p.getlayer(SMB_Write_AndX_Request).Data)
-		elif p.getlayer(SMB_Header).Command == SMB_COM_READ:
+		elif p.getlayer(SMB_Header).Command == SMB_COM_READ_ANDX:
 			r = SMB_Read_AndX_Response()
-			if self.state['lastcmd'] == 'SMB_COM_WRITE':
+			if self.state['lastcmd'] == 'SMB_COM_WRITE_ANDX':
 				# lastcmd was WRITE
 				# - self.buf should contain a DCERPC packet now
 				# - build response packet and store in self.outbuf
@@ -243,7 +243,7 @@ class smbd(connection):
 			r.DataLenLow = len(rdata.Bytes)
 			r /= rdata
 
-		elif p.getlayer(SMB_Header).Command == SMB_COM_TRANS:
+		elif p.getlayer(SMB_Header).Command == SMB_COM_TRANSACTION:
 			self.outbuf = self.process_dcerpc_packet(p.getlayer(DCERPC_Header))
 
 			if not self.outbuf:
@@ -263,7 +263,7 @@ class smbd(connection):
 			rdata.Bytes = self.outbuf.build()
 			
 			r /= rdata
-		elif p.getlayer(SMB_Header).Command == SMB_COM_TRANS2:
+		elif p.getlayer(SMB_Header).Command == SMB_COM_TRANSACTION2:
 			r = SMB_Trans2_Response()
 		else:
 			smblog.critical('...unknown SMB Command. bailing out.')

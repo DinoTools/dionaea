@@ -35,7 +35,7 @@ from .fieldtypes import *
 #
 
 # Capabilities
-CAP_RAW_MODE           = 0x0001 # The server supports SMB_COM_READ_RAW and SMB_COM_WRITE_RAW (obsolescent)
+CAP_RAW_MODE           = 0x0001 # The server supports SMB_COM_READ_ANDX_RAW and SMB_COM_WRITE_RAW (obsolescent)
 CAP_MPX_MODE           = 0x0002 # The server supports	SMB_COM_READ_MPX and SMB_COM_WRITE_MPX (obsolescent)
 CAP_UNICODE            = 0x0004 # The server supports UNICODE strings
 CAP_LARGE_FILES        = 0x0008 # The server supports large files with 64 bit offsets
@@ -166,40 +166,190 @@ SMB_Header_Flags2 = [
 ]
 
 # SMB_Header.Command
-
-SMB_COM_CLOSE              = 0x04
-SMB_COM_TRANS              = 0x25
-SMB_COM_ECHO               = 0x2B
-SMB_COM_OPEN_ANDX          = 0x2d
-SMB_COM_READ               = 0x2E
-SMB_COM_WRITE              = 0x2F
-SMB_COM_TRANS2             = 0x32
-SMB_COM_TREE_DISCONNECT    = 0x71
-SMB_COM_NEGOTIATE          = 0x72
-SMB_COM_SESSION_SETUP_ANDX = 0x73
-SMB_COM_LOGOFF_ANDX        = 0x74
-SMB_COM_TREE_CONNECT_ANDX  = 0x75
+SMB_COM_CREATE_DIRECTORY       = 0x00
+SMB_COM_DELETE_DIRECTORY       = 0x01
+SMB_COM_OPEN                   = 0x02
+SMB_COM_CREATE                 = 0x03
+SMB_COM_CLOSE                  = 0x04
+SMB_COM_FLUSH                  = 0x05
+SMB_COM_DELETE                 = 0x06
+SMB_COM_RENAME                 = 0x07
+SMB_COM_QUERY_INFORMATION      = 0x08
+SMB_COM_SET_INFORMATION        = 0x09
+SMB_COM_READ                   = 0x0A
+SMB_COM_WRITE                  = 0x0B
+SMB_COM_LOCK_BYTE_RANGE        = 0x0C
+SMB_COM_UNLOCK_BYTE_RANGE      = 0x0D
+SMB_COM_CREATE_TEMPORARY       = 0x0E
+SMB_COM_CREATE_NEW             = 0x0F
+SMB_COM_CHECK_DIRECTORY        = 0x10
+SMB_COM_PROCESS_EXIT           = 0x11
+SMB_COM_SEEK                   = 0x12
+SMB_COM_LOCK_AND_READ          = 0x13
+SMB_COM_WRITE_AND_UNLOCK       = 0x14
+SMB_COM_READ_RAW               = 0x1A
+SMB_COM_READ_MPX               = 0x1B
+SMB_COM_READ_MPX_SECONDARY     = 0x1C
+SMB_COM_WRITE_RAW              = 0x1D
+SMB_COM_WRITE_MPX              = 0x1E
+SMB_COM_WRITE_MPX_SECONDARY    = 0x1F
+SMB_COM_WRITE_COMPLETE         = 0x20
+SMB_COM_QUERY_SERVER           = 0x21
+SMB_COM_SET_INFORMATION2       = 0x22
+SMB_COM_QUERY_INFORMATION2     = 0x23
+SMB_COM_LOCKING_ANDX           = 0x24
+SMB_COM_TRANSACTION            = 0x25
+SMB_COM_TRANSACTION_SECONDARY  = 0x26
+SMB_COM_IOCTL                  = 0x27
+SMB_COM_IOCTL_SECONDARY        = 0x28
+SMB_COM_COPY                   = 0x29
+SMB_COM_MOVE                   = 0x2A
+SMB_COM_ECHO                   = 0x2B
+SMB_COM_WRITE_AND_CLOSE        = 0x2C
+SMB_COM_OPEN_ANDX              = 0x2D
+SMB_COM_READ_ANDX              = 0x2E
+SMB_COM_WRITE_ANDX             = 0x2F
+SMB_COM_NEW_FILE_SIZE          = 0x30
+SMB_COM_CLOSE_AND_TREE_DISC    = 0x31
+SMB_COM_TRANSACTION2           = 0x32
+SMB_COM_TRANSACTION2_SECONDARY = 0x33
+SMB_COM_FIND_CLOSE2            = 0x34
+SMB_COM_FIND_NOTIFY_CLOSE      = 0x35
+SMB_COM_TREE_CONNECT           = 0x70
+SMB_COM_TREE_DISCONNECT        = 0x71
+SMB_COM_NEGOTIATE              = 0x72
+SMB_COM_SESSION_SETUP_ANDX     = 0x73
+SMB_COM_LOGOFF_ANDX            = 0x74
+SMB_COM_TREE_CONNECT_ANDX      = 0x75
 SMB_COM_QUERY_INFORMATION_DISK = 0x80
-SMB_COM_NT_CREATE_ANDX     = 0xA2
-SMB_COM_NONE               = 0xFF
-
+SMB_COM_SEARCH                 = 0x81
+SMB_COM_FIND                   = 0x82
+SMB_COM_FIND_UNIQUE            = 0x83
+SMB_COM_FIND_CLOSE             = 0x84
+SMB_COM_NT_TRANSACT            = 0xA0
+SMB_COM_NT_TRANSACT_SECONDARY  = 0xA1
+SMB_COM_NT_CREATE_ANDX         = 0xA2
+SMB_COM_NT_CANCEL              = 0xA4
+SMB_COM_NT_RENAME              = 0xA5
+SMB_COM_OPEN_PRINT_FILE        = 0xC0
+SMB_COM_WRITE_PRINT_FILE       = 0xC1
+SMB_COM_CLOSE_PRINT_FILE       = 0xC2
+SMB_COM_GET_PRINT_QUEUE        = 0xC3
+SMB_COM_READ_BULK              = 0xD8
+SMB_COM_WRITE_BULK             = 0xD9
+SMB_COM_WRITE_BULK_DATA        = 0xDA
+SMB_COM_NONE                   = 0xFF
 
 SMB_Commands = {
- SMB_COM_CLOSE				:"SMB_COM_CLOSE",
- SMB_COM_TRANS              :"SMB_COM_TRANS",
- SMB_COM_TRANS2             :"SMB_COM_TRANS2",
- SMB_COM_ECHO               :"SMB_COM_ECHO",
- SMB_COM_OPEN_ANDX          :"SMB_COM_OPEN_ANDX",
- SMB_COM_READ               :"SMB_COM_READ",
- SMB_COM_WRITE              :"SMB_COM_WRITE",
- SMB_COM_TREE_DISCONNECT    :"SMB_COM_TREE_DISCONNECT",
- SMB_COM_NEGOTIATE          :"SMB_COM_NEGOTIATE",
- SMB_COM_SESSION_SETUP_ANDX :"SMB_COM_SESSION_SETUP_ANDX",
- SMB_COM_LOGOFF_ANDX        :"SMB_COM_LOGOFF_ANDX",
- SMB_COM_TREE_CONNECT_ANDX  :"SMB_COM_TREE_CONNECT_ANDX",
- SMB_COM_QUERY_INFORMATION_DISK :"SMB_COM_QUERY_INFORMATION_DISK",
- SMB_COM_NT_CREATE_ANDX     :"SMB_COM_NT_CREATE_ANDX",
- SMB_COM_NONE               :"SMB_COM_NONE",
+	SMB_COM_CREATE_DIRECTORY       :"SMB_COM_CREATE_DIRECTORY",
+	SMB_COM_DELETE_DIRECTORY       :"SMB_COM_DELETE_DIRECTORY",
+	SMB_COM_OPEN                   :"SMB_COM_OPEN",
+	SMB_COM_CREATE                 :"SMB_COM_CREATE",
+	SMB_COM_CLOSE                  :"SMB_COM_CLOSE",
+	SMB_COM_FLUSH                  :"SMB_COM_FLUSH",
+	SMB_COM_DELETE                 :"SMB_COM_DELETE",
+	SMB_COM_RENAME                 :"SMB_COM_RENAME",
+	SMB_COM_QUERY_INFORMATION      :"SMB_COM_QUERY_INFORMATION",
+	SMB_COM_SET_INFORMATION        :"SMB_COM_SET_INFORMATION",
+	SMB_COM_READ                   :"SMB_COM_READ",
+	SMB_COM_WRITE                  :"SMB_COM_WRITE",
+	SMB_COM_LOCK_BYTE_RANGE        :"SMB_COM_LOCK_BYTE_RANGE",
+	SMB_COM_UNLOCK_BYTE_RANGE      :"SMB_COM_UNLOCK_BYTE_RANGE",
+	SMB_COM_CREATE_TEMPORARY       :"SMB_COM_CREATE_TEMPORARY",
+	SMB_COM_CREATE_NEW             :"SMB_COM_CREATE_NEW",
+	SMB_COM_CHECK_DIRECTORY        :"SMB_COM_CHECK_DIRECTORY",
+	SMB_COM_PROCESS_EXIT           :"SMB_COM_PROCESS_EXIT",
+	SMB_COM_SEEK                   :"SMB_COM_SEEK",
+	SMB_COM_LOCK_AND_READ          :"SMB_COM_LOCK_AND_READ",
+	SMB_COM_WRITE_AND_UNLOCK       :"SMB_COM_WRITE_AND_UNLOCK",
+	SMB_COM_READ_RAW               :"SMB_COM_READ_RAW",
+	SMB_COM_READ_MPX               :"SMB_COM_READ_MPX",
+	SMB_COM_READ_MPX_SECONDARY     :"SMB_COM_READ_MPX_SECONDARY",
+	SMB_COM_WRITE_RAW              :"SMB_COM_WRITE_RAW",
+	SMB_COM_WRITE_MPX              :"SMB_COM_WRITE_MPX",
+	SMB_COM_WRITE_MPX_SECONDARY    :"SMB_COM_WRITE_MPX_SECONDARY",
+	SMB_COM_WRITE_COMPLETE         :"SMB_COM_WRITE_COMPLETE",
+	SMB_COM_QUERY_SERVER           :"SMB_COM_QUERY_SERVER",
+	SMB_COM_SET_INFORMATION2       :"SMB_COM_SET_INFORMATION2",
+	SMB_COM_QUERY_INFORMATION2     :"SMB_COM_QUERY_INFORMATION2",
+	SMB_COM_LOCKING_ANDX           :"SMB_COM_LOCKING_ANDX",
+	SMB_COM_TRANSACTION            :"SMB_COM_TRANSACTION",
+	SMB_COM_TRANSACTION_SECONDARY  :"SMB_COM_TRANSACTION_SECONDARY",
+	SMB_COM_IOCTL                  :"SMB_COM_IOCTL",
+	SMB_COM_IOCTL_SECONDARY        :"SMB_COM_IOCTL_SECONDARY",
+	SMB_COM_COPY                   :"SMB_COM_COPY",
+	SMB_COM_MOVE                   :"SMB_COM_MOVE",
+	SMB_COM_ECHO                   :"SMB_COM_ECHO",
+	SMB_COM_WRITE_AND_CLOSE        :"SMB_COM_WRITE_AND_CLOSE",
+	SMB_COM_OPEN_ANDX              :"SMB_COM_OPEN_ANDX",
+	SMB_COM_READ_ANDX              :"SMB_COM_READ_ANDX",
+	SMB_COM_WRITE_ANDX             :"SMB_COM_WRITE_ANDX",
+	SMB_COM_NEW_FILE_SIZE          :"SMB_COM_NEW_FILE_SIZE",
+	SMB_COM_CLOSE_AND_TREE_DISC    :"SMB_COM_CLOSE_AND_TREE_DISC",
+	SMB_COM_TRANSACTION2           :"SMB_COM_TRANSACTION2",
+	SMB_COM_TRANSACTION2_SECONDARY :"SMB_COM_TRANSACTION2_SECONDARY",
+	SMB_COM_FIND_CLOSE2            :"SMB_COM_FIND_CLOSE2",
+	SMB_COM_FIND_NOTIFY_CLOSE      :"SMB_COM_FIND_NOTIFY_CLOSE",
+	SMB_COM_TREE_CONNECT           :"SMB_COM_TREE_CONNECT",
+	SMB_COM_TREE_DISCONNECT        :"SMB_COM_TREE_DISCONNECT",
+	SMB_COM_NEGOTIATE              :"SMB_COM_NEGOTIATE",
+	SMB_COM_SESSION_SETUP_ANDX     :"SMB_COM_SESSION_SETUP_ANDX",
+	SMB_COM_LOGOFF_ANDX            :"SMB_COM_LOGOFF_ANDX",
+	SMB_COM_TREE_CONNECT_ANDX      :"SMB_COM_TREE_CONNECT_ANDX",
+	SMB_COM_QUERY_INFORMATION_DISK :"SMB_COM_QUERY_INFORMATION_DISK",
+	SMB_COM_SEARCH                 :"SMB_COM_SEARCH",
+	SMB_COM_FIND                   :"SMB_COM_FIND",
+	SMB_COM_FIND_UNIQUE            :"SMB_COM_FIND_UNIQUE",
+	SMB_COM_FIND_CLOSE             :"SMB_COM_FIND_CLOSE",
+	SMB_COM_NT_TRANSACT            :"SMB_COM_NT_TRANSACT",
+	SMB_COM_NT_TRANSACT_SECONDARY  :"SMB_COM_NT_TRANSACT_SECONDARY",
+	SMB_COM_NT_CREATE_ANDX         :"SMB_COM_NT_CREATE_ANDX",
+	SMB_COM_NT_CANCEL              :"SMB_COM_NT_CANCEL",
+	SMB_COM_NT_RENAME              :"SMB_COM_NT_RENAME",
+	SMB_COM_OPEN_PRINT_FILE        :"SMB_COM_OPEN_PRINT_FILE",
+	SMB_COM_WRITE_PRINT_FILE       :"SMB_COM_WRITE_PRINT_FILE",
+	SMB_COM_CLOSE_PRINT_FILE       :"SMB_COM_CLOSE_PRINT_FILE",
+	SMB_COM_GET_PRINT_QUEUE        :"SMB_COM_GET_PRINT_QUEUE",
+	SMB_COM_READ_BULK              :"SMB_COM_READ_BULK",
+	SMB_COM_WRITE_BULK             :"SMB_COM_WRITE_BULK",
+	SMB_COM_WRITE_BULK_DATA        :"SMB_COM_WRITE_BULK_DATA",
+	SMB_COM_NONE                   :"SMB_COM_NONE",
+}
+
+
+SMB_TRANS2_OPEN2                    = 0x00 # Create file with extended attributes
+SMB_TRANS2_FIND_FIRST2              = 0x01 # Begin search for files
+SMB_TRANS2_FIND_NEXT2               = 0x02 # Resume search for files
+SMB_TRANS2_QUERY_FS_INFORMATION     = 0x03 # Get file system information
+SMB_TRANS_SET_FS_INFORMATION        = 0x04 # Reserved (?)
+SMB_TRANS2_QUERY_PATH_INFORMATION   = 0x05 # Get information about a named file or directory
+SMB_TRANS2_SET_PATH_INFORMATION     = 0x06 # Set information about a named file or directory
+SMB_TRANS2_QUERY_FILE_INFORMATION   = 0x07 # Get information about a handle
+SMB_TRANS2_SET_FILE_INFORMATION     = 0x08 # Set information by handle
+SMB_TRANS2_FSCTL                    = 0x09 # Not implemented by NT server
+SMB_TRANS2_IOCTL2                   = 0x0A # Not implemented by NT server
+SMB_TRANS2_FIND_NOTIFY_FIRST        = 0x0B # Not implemented by NT server
+SMB_TRANS2_FIND_NOTIFY_NEXT         = 0x0C # Not implemented by NT server
+SMB_TRANS2_CREATE_DIRECTORY         = 0x0D # Create directory with extended attributes
+SMB_TRANS2_SESSION_SETUP            = 0x0E # Session setup with extended security information
+
+
+SMB_Trans2_Commands = {
+	SMB_TRANS2_OPEN2                    :"TRANS2_OPEN2",
+	SMB_TRANS2_FIND_FIRST2              :"TRANS2_FIND_FIRST2",
+	SMB_TRANS2_FIND_NEXT2               :"TRANS2_FIND_NEXT2",
+	SMB_TRANS2_QUERY_FS_INFORMATION     :"TRANS2_QUERY_FS_INFORMATION",
+	SMB_TRANS_SET_FS_INFORMATION        :"TRANS2_SET_FS_INFORMATION",
+	SMB_TRANS2_QUERY_PATH_INFORMATION   :"TRANS2_QUERY_PATH_INFORMATION",
+	SMB_TRANS2_SET_PATH_INFORMATION     :"TRANS2_SET_PATH_INFORMATION",
+	SMB_TRANS2_QUERY_FILE_INFORMATION   :"TRANS2_QUERY_FILE_INFORMATION",
+	SMB_TRANS2_SET_FILE_INFORMATION     :"TRANS2_SET_FILE_INFORMATION",
+	SMB_TRANS2_FSCTL                    :"TRANS2_FSCTL",
+	SMB_TRANS2_IOCTL2                   :"TRANS2_IOCTL2",
+	SMB_TRANS2_FIND_NOTIFY_FIRST        :"TRANS2_FIND_NOTIFY_FIRST",
+	SMB_TRANS2_FIND_NOTIFY_NEXT         :"TRANS2_FIND_NOTIFY_NEXT",
+	SMB_TRANS2_CREATE_DIRECTORY         :"TRANS2_CREATE_DIRECTORY",
+	SMB_TRANS2_SESSION_SETUP            :"TRANS2_SESSION_SETUP",
 }
 
 DCERPC_PacketTypes = {
@@ -517,7 +667,7 @@ class SMB_Negociate_Protocol_Request_Tail(Packet):
 # but it is not required atm, and scapy does not support combined fieldlens
 class SMB_Negociate_Protocol_Response(Packet):
 	name="SMB Negociate Response"
-	smb_cmd = 0x72
+	smb_cmd = SMB_COM_NEGOTIATE #0x72
 	fields_desc = [
 		ByteField("WordCount",17),
 		LEShortField("DialectIndex",0),
@@ -576,7 +726,7 @@ class SMB_Sessionsetup_ESEC_AndX_Request(Packet):
 
 class SMB_Sessionsetup_ESEC_AndX_Response(Packet):
 	name="SMB Sessionsetup ESEC AndX Response"
-	smb_cmd = 0x73
+	smb_cmd = SMB_COM_SESSION_SETUP_ANDX # 0x73
 	fields_desc = [
 		ByteField("WordCount",4),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
@@ -669,7 +819,7 @@ class SMB_Sessionsetup_AndX_Request2(Packet):
 
 class SMB_Sessionsetup_AndX_Response2(Packet):
 	name="SMB Sessionsetup AndX Response2"
-	smb_cmd = 0x73
+	smb_cmd = SMB_COM_SESSION_SETUP_ANDX #0x73
 	fields_desc = [
 		ByteField("WordCount",3),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
@@ -718,7 +868,7 @@ class SMB_Treeconnect_AndX_Request(Packet):
 
 class SMB_Treedisconnect(Packet):
 	name = "SMB Tree Disconnect"
-	smb_cmd = 0x71
+	smb_cmd = SMB_COM_TREE_DISCONNECT # 0x71
 	fields_desc = [
 		ByteField("WordCount",0),
 		LEShortField("ByteCount",0),
@@ -726,7 +876,7 @@ class SMB_Treedisconnect(Packet):
 
 class SMB_Treeconnect_AndX_Response(Packet):
 	name="SMB Treeconnect AndX Response"
-	smb_cmd = 0x75
+	smb_cmd = SMB_COM_TREE_CONNECT_ANDX #0x75
 	fields_desc = [
 		ByteField("WordCount",3),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
@@ -779,7 +929,7 @@ class SMB_NTcreate_AndX_Request(Packet):
 
 class SMB_NTcreate_AndX_Response(Packet):
 	name="SMB NTcreate AndX Response"
-	smb_cmd = 0xa2
+	smb_cmd = SMB_COM_NT_CREATE_ANDX #0xa2
 	strange_packet_tail = bytes.fromhex('000000000000000000000000000000000000000000009b0112009b0112000000')
 	fields_desc = [
 		ByteField("WordCount",42),
@@ -841,7 +991,7 @@ class SMB_Write_AndX_Request(Packet):
 
 class SMB_Write_AndX_Response(Packet):
 	name = "SMB Write AndX Response"
-	smb_cmd = 0x2f
+	smb_cmd = SMB_COM_WRITE_ANDX #0x2f
 	fields_desc = [
 		ByteField("WordCount",6),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
@@ -876,7 +1026,7 @@ class SMB_Read_AndX_Request(Packet):
 
 class SMB_Read_AndX_Response(Packet):
 	name = "SMB Read AndX Response"
-	smb_cmd = 0x2e
+	smb_cmd = SMB_COM_READ_ANDX #0x2e
 	fields_desc = [
 		ByteField("WordCount",12),
 		ByteEnumField("AndXCommand",0xff,SMB_Commands),
@@ -954,7 +1104,7 @@ class SMB_Trans_Request(Packet):
 
 class SMB_Trans_Response(Packet):
 	name = "SMB Trans Response"
-	smb_cmd = 0x25
+	smb_cmd = SMB_COM_TRANSACTION #0x25
 	fields_desc = [
 		ByteField("WordCount",10),
 		LEShortField("TotalParamCount",0),
@@ -973,7 +1123,7 @@ class SMB_Trans_Response(Packet):
 # page 45
 class SMB_Trans2_Request(Packet):
 	name = "SMB Trans2 Request"
-	smb_cmd = 0x32
+	smb_cmd = SMB_COM_TRANSACTION2 # 0x32
 	fields_desc = [
 		ByteField("WordCount",14),
 		LEShortField("TotalParamCount",0),
@@ -990,13 +1140,14 @@ class SMB_Trans2_Request(Packet):
 		LEShortField("DataCount",0),
 		LEShortField("DataOffset",0),
 		FieldLenField("SetupCount", 0, fmt='B', count_of="Setup"), 
-		ByteField("Reserved3",0),
-		FieldListField("Setup", 0, ShortField("", 0), count_from = lambda pkt: pkt.SetupCount), 
+		ByteField("Reserved23",0),
+#		FieldListField("Setup", 0, ShortField("", 0), count_from = lambda pkt: pkt.SetupCount), 
+		FieldListField("Setup", 0, LEShortEnumField("",0,SMB_Trans2_Commands), count_from = lambda pkt: pkt.SetupCount), 
 		LEShortField("ByteCount",0),
-		StrNullField("Name", b""),
+#		StrNullField("Name", b""),
 		StrFixedLenField("Pad", b'\0', length_from=lambda x:x.lengthfrom_Pad()),
-		FieldListField("Param", 0, ByteField("", 0), count_from = lambda pkt: pkt.ParamCount), 
-		StrFixedLenField("Pad1", b"", length_from=lambda x:x.DataOffset - ( x.ParamOffset + x.ParamCount ) ),
+		FieldListField("Param", 0, XByteField("", 0), count_from = lambda pkt: pkt.ParamCount), 
+		StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
 		StrFixedLenField("Data", b"", length_from=lambda pkt: pkt.DataCount), 
 	]
 	def lengthfrom_Pad(self):
@@ -1005,14 +1156,22 @@ class SMB_Trans2_Request(Packet):
 		r += 11*2					# 11 words
 		r += 4						# 1 int
 		r += self.SetupCount*2			# SetupCount words
-		if r % 2 == 0:
-			return r % 4
+		return self.ParamOffset - r
+
+	def lengthfrom_Pad1(self):
+		if self.DataOffset == 0:
+			return 0
 		else:
-			return r % 2
+			return self.DataOffset - ( self.ParamOffset + self.ParamCount )
+
+#		if r % 2 == 0:
+#			return r % 4
+#		else:
+#			return r % 2
 
 class SMB_Trans2_Response(Packet):
 	name = "SMB Trans2 Response"
-	smb_cmd = 0x32
+	smb_cmd = SMB_COM_TRANSACTION2 #0x32
 	fields_desc = [
 		ByteField("WordCount",0),
 		LEShortField("ByteCount",0),
@@ -1044,7 +1203,7 @@ class SMB_Open_AndX_Request(Packet):
 
 class SMB_Open_AndX_Response(Packet):
 	name = "SMB Open AndX Response"
-	smb_cmd = 0x2d
+	smb_cmd = SMB_COM_OPEN_ANDX #0x2d
 	fields_desc = [
 		ByteField("WordCount",15),
 		ByteField("AndXCommand",0xff),
