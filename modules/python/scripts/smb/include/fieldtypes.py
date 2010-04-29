@@ -542,6 +542,11 @@ class FieldListField(Field):
         if val is None:
             val = []
         return val
+    def i2repr(self, pkt, val):
+        x = ""
+        for v in val:
+           x += self.field.i2repr(pkt, v) + ","
+        return "[" + x[0:len(x)-1] + "]"
     def any2i(self, pkt, x):
         if type(x) is not list:
             return [x]
