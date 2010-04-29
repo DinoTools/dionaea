@@ -346,8 +346,8 @@ class remoteshell(cmdexe,connection):
 		return True
 
 	def handle_timeout_listen (self):
-		if hasattr(self,'con') and self.con:
-			self.con.unref()
+#		if hasattr(self,'con') and self.con:
+#			self.con.unref()
 		return False
 
 	def handle_timeout_sustain(self):
@@ -375,7 +375,7 @@ class cmdshellhandler(ihandler):
 				i.report()
 			else:
 				c.close()
-				con.unref()
+#				con.unref()
 		elif icd.origin == "dionaea.service.shell.connect":
 			c.bind(con.local.host,0)
 			c.connect(icd.get('host'), icd.get('port'))
