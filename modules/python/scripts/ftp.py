@@ -765,7 +765,7 @@ class ftpdata(connection):
 
 	def handle_established(self):
 		logger.debug("FTP DATA established")
-		self.timeouts.idle = 10
+		self.timeouts.idle = 30
 		self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix='ftp-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
 
 	def handle_origin(self, parent):
@@ -847,13 +847,15 @@ class ftp:
 			# for NAT setups
 			host = g_dionaea.config()['modules']['python']['ftp']['active-host']
 			if host == '0.0.0.0':
-				host = self.datalistener.local.host
+				host = self.ctrl.local.host
+				logger.info("datalisten host %s" % host)
 			else:
 				import socket
 				host = socket.gethostbyname(host)
 				logger.info("resolved host %s" % host)
 		except:
-			host = self.datalistener.local.host
+			host = self.ctrl.local.host
+			logger.info("except datalisten host %s" % self.ctrl.local.host)
 
 
 		ports = list(filter(lambda port: ((port >> 4) & 0xf) != 0, range(minport, maxport))) # NAT, use a port range which is forwarded to your honeypot
