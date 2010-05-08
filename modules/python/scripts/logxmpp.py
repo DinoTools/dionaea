@@ -299,6 +299,14 @@ class logxmpp(ihandler):
 		self.client = xmppclient(server=server, port=port, username=username, password=password, resource=resource, muc=muc, channels=list(self.config.keys()))
 		ihandler.__init__(self, '*')
 
+	def __del__(self):
+		self.muc = None
+		self.config = None
+		self.resource = None
+		self.username = None
+		self.client.close()
+		self.client = None
+
 	def broadcast(self, i, n):
 		for to in self.config:
 			for r in self.config[to]['pcre']:
