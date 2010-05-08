@@ -14,7 +14,7 @@ class emuprofilehandler(ihandler):
 		ihandler.__init__(self, path)
 
 	def handle_incident(self, icd):
-		logger.warn("profiling")
+		logger.debug("profiling")
 		p = icd.get("profile")
 		try:
 			con = icd.get("con")

@@ -1074,11 +1074,14 @@ class tftpdownloadhandler(ihandler):
         logger.debug("%s ready!" % (self.__class__.__name__))
         ihandler.__init__(self, path)
     def handle_incident(self, icd):
-        logger.warn("do download")
         url = icd.get("url")
         if url.startswith('tftp://'):
             # python fails parsing tftp://, ftp:// works, so ...
+            logger.info("do download")      
             x = parse.urlsplit(url[1:])
+            if x.netloc == '0.0.0.0':
+                logger.info("Discarding download from INADDR_ANY")
+                return
             try:
                 con = icd.con
             except AttributeError:

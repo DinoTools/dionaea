@@ -350,6 +350,8 @@ class pmapapi(RPCService):
 class RemoteAccess(RPCService):
 	uuid = UUID('8f09f000-b7ed-11ce-bbd2-00001a181cad').hex
 
+class MGMT(RPCService):
+	uuid = UUID('afa8bd80-7d8a-11c9-bef4-08002b102989').hex
 
 class samr(RPCService):
 	uuid = UUID('12345778-1234-abcd-ef00-0123456789ac').hex

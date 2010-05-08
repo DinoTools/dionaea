@@ -81,7 +81,7 @@ enum connection_state
 	connection_state_resolve,
 	connection_state_connecting,
 	connection_state_handshake,
-	connection_state_connected,
+	connection_state_established,
 	connection_state_shutdown,
 	connection_state_close,
 	connection_state_reconnect,

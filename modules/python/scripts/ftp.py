@@ -780,12 +780,13 @@ class ftpdata(connection):
 
 	def handle_timeout_idle(self):
 		self.fileobj.unlink(self.fileobj.name)
+		self.fileobj = None
 		self.ftp.fail()
 		return False
 
 	def handle_disconnect(self):
 		logger.debug("received %i bytes" %(self._in.accounting.bytes))
-		if hasattr(self, 'fileobj'):
+		if hasattr(self, 'fileobj')and self.fileobj != None:
 	#		print(type(self.file))
 	#		print(self.file)
 			self.fileobj.close()
@@ -913,11 +914,11 @@ class ftpdownloadhandler(ihandler):
 		logger.debug("%s ready!" % (self.__class__.__name__))
 		ihandler.__init__(self, path)
 	def handle_incident(self, icd):
-		logger.warn("do download")
 		url = icd.url
 		p = urllib.parse.urlsplit(url)
 		print(p)
 		if p.scheme == 'ftp':
+			logger.info("do download")
 			try:
 				con = icd.con
 			except AttributeError:

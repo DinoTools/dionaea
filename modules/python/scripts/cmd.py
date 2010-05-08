@@ -364,7 +364,7 @@ class cmdshellhandler(ihandler):
 		ihandler.__init__(self, path)
 
 	def handle_incident(self, icd):
-		logger.warn("do shell")
+		logger.debug("do shell")
 		con = icd.con
 		c = remoteshell()
 		i = incident("dionaea.connection.link")

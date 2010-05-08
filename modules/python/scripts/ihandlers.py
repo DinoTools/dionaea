@@ -54,7 +54,7 @@ def start():
 		g_handlers.append(dionaea.test.uniquedownloadihandler('dionaea.download.complete.unique'))
 
 	if "surfids" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
-		import surfids
+		import dionaea.surfids
 		g_handlers.append(dionaea.surfids.surfidshandler('*'))
 
 	if "logsql" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:

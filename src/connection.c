@@ -430,7 +430,7 @@ void connection_close(struct connection *con)
 			connection_tcp_disconnect(con);
 		} else
 			if( (con->type == connection_type_connect || con->type == connection_type_accept) &&
-				con->state == connection_state_connected )
+				con->state == connection_state_established )
 		{
 			if( !ev_is_active(&con->events.close_timeout) )
 			{
@@ -490,7 +490,7 @@ void connection_close(struct connection *con)
 				connection_dns_resolve_cancel(con);
 				connection_tls_disconnect(con);
 			} else
-				if( con->state == connection_state_connected )
+				if( con->state == connection_state_established )
 			{
 				if( !ev_is_active(&con->events.close_timeout) )
 				{
@@ -607,7 +607,7 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 
 	if( con->local.domain != AF_UNIX && con->remote.domain != AF_UNIX)
 	{
-		g_warning("AF %i %i con->local.domain", con->local.domain, con->remote.domain);
+		g_debug("AF %i %i con->local.domain", con->local.domain, con->remote.domain);
 		struct incident *i = incident_new("dionaea.connection.free");
 		incident_value_con_set(i, "con", con);
 		incident_report(i);
@@ -871,7 +871,7 @@ void connection_connect_next_addr(struct connection *con)
 			node_info_set(&con->remote, &con->remote.addr);
 			g_debug("connected %s -> %s", con->local.node_string,  con->remote.node_string);
 
-			if( con->state == connection_state_connected )
+			if( con->state == connection_state_established )
 				return;
 
 			connection_established(con);
@@ -1130,14 +1130,14 @@ void connection_send(struct connection *con, const void *data, uint32_t size)
 		// flush as much as possible
 		// revents=0 indicates send() might return 0
 		// in this case we do not close & free the connection
-		if( con->state == connection_state_connected && !connection_flag_isset(con, connection_busy_sending) )
+		if( con->state == connection_state_established && !connection_flag_isset(con, connection_busy_sending) )
 			connection_tcp_io_out_cb(g_dionaea->loop, &con->events.io_out, 0);
 		break;
 
 	case connection_transport_tls:
 		g_string_append_len(con->transport.tls.io_out, (gchar *)data, size);
 		// flush as much as possible
-		if( con->state == connection_state_connected && !connection_flag_isset(con, connection_busy_sending) )
+		if( con->state == connection_state_established && !connection_flag_isset(con, connection_busy_sending) )
 			connection_tls_io_out_cb(g_dionaea->loop, &con->events.io_out, 0);
 		break;
 
@@ -1206,7 +1206,7 @@ void connection_idle_timeout_set(struct connection *con, double timeout_interval
 		break;
 	}
 
-	if( con->state == connection_state_connected && timeout_interval_ms >= 0. )
+	if( con->state == connection_state_established && timeout_interval_ms >= 0. )
 		ev_timer_again(CL, &con->events.idle_timeout);
 }
 
@@ -1258,7 +1258,7 @@ void connection_sustain_timeout_set(struct connection *con, double timeout_inter
 		break;
 	}
 
-	if( con->state == connection_state_connected && timeout_interval_ms >= 0. )
+	if( con->state == connection_state_established && timeout_interval_ms >= 0. )
 		ev_timer_again(CL, &con->events.sustain_timeout);
 }
 
@@ -1431,7 +1431,7 @@ void connection_established(struct connection *con)
 	connection_node_set_remote(con);
 
 
-	connection_set_state(con, connection_state_connected);
+	connection_set_state(con, connection_state_established);
 
 	switch( con->trans )
 	{
@@ -1815,7 +1815,7 @@ void connection_tcp_connecting_cb(EV_P_ struct ev_io *w, int revents)
 		return;
 	}
 
-	connection_set_state(con, connection_state_connected);
+	connection_set_state(con, connection_state_established);
 
 	connection_node_set_local(con);
 	connection_node_set_remote(con);
@@ -3606,7 +3606,7 @@ const char *connection_state_to_string(enum connection_state state)
 		"resolve",
 		"connecting",
 		"handshake",
-		"connected",
+		"established",
 		"shutdown",
 		"close",
 		"reconnect"
@@ -3649,7 +3649,7 @@ void connection_process(struct connection *con)
 
 const char *connection_strerror(enum connection_error error)
 {
-	static char *myerrormsgs[] = 
+	static const char *myerrormsgs[] = 
 	{
 		"timeout resolving the domain" , /* ECONDNSTIMEOUT   */ 
 		"could not connect host(s)" ,/* ECONUNREACH       */  

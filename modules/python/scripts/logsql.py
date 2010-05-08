@@ -295,6 +295,20 @@ class logsqlhandler(ihandler):
 			self.cursor.execute("""CREATE INDEX IF NOT EXISTS p0fs_%s_idx 
 			ON p0fs (p0f_%s)""" % (idx, idx))
 
+#		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
+#			httpheaders (
+#				httpheader INTEGER PRIMARY KEY,
+#				connection INTEGER,
+#				http_headerkey TEXT,
+#				http_headervalue TEXT,
+#				-- CONSTRAINT httpheaders_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
+#			)""")
+#
+#		for idx in ["headerkey","headervalue"]:
+#			self.cursor.execute("""CREATE INDEX IF NOT EXISTS httpheaders_%s_idx 
+#			ON httpheaders (httpheader_%s)""" % (idx, idx))
+
+
 		# connection index for all 
 		for idx in ["dcerpcbinds", "dcerpcrequests", "emu_profiles", "emu_services", "offers", "downloads", "p0fs"]:
 			self.cursor.execute("""CREATE INDEX IF NOT EXISTS %s_connection_idx	ON %s (connection)""" % (idx, idx))
@@ -396,16 +410,16 @@ class logsqlhandler(ihandler):
 
 	def handle_incident_dionaea_connection_link(self, icd):
 		if icd.parent in self.attacks:
-			logger.warn("parent ids %s" % str(self.attacks[icd.parent]))
+			logger.info("parent ids %s" % str(self.attacks[icd.parent]))
 			parentroot, parentid = self.attacks[icd.parent]
 			if icd.child in self.attacks:
-				logger.warn("child had ids %s" % str(self.attacks[icd.child]))
+				logger.info("child had ids %s" % str(self.attacks[icd.child]))
 				childroot, childid = self.attacks[icd.child]
 			else:
 				childid = parentid
 			self.attacks[icd.child] = (parentroot, childid)
-			logger.warn("child has ids %s" % str(self.attacks[icd.child]))
-			logger.warn("child %i parent %i root %i" % (childid, parentid, parentroot) )
+			logger.info("child has ids %s" % str(self.attacks[icd.child]))
+			logger.info("child %i parent %i root %i" % (childid, parentid, parentroot) )
 			r = self.cursor.execute("UPDATE connections SET connection_root = ?, connection_parent = ? WHERE connection = ?",
 				(parentroot, parentid, childid) )
 #			print(r.fetchall())
