@@ -178,7 +178,11 @@ static bool hupy(struct lcfgx_tree_node *node)
 		struct lcfgx_tree_node *file;
 		for( file = files->value.elements; file != NULL; file = file->next )
 		{
-			char *name = file->value.string.data;
+//			char *name = file->value.string.data;
+			char *name;
+			if( asprintf(&name, "dionaea.%s", (char *)file->value.string.data) == 0)
+				continue;
+
 			struct import *i;
 			if( (i = g_hash_table_lookup(runtime.imports, name)) != NULL )
 			{
@@ -228,12 +232,13 @@ static bool hupy(struct lcfgx_tree_node *node)
 			{
 				g_message("New Import %s", name);
 				PyObject *module = PyImport_ImportModule(name);
-				Py_DECREF(module); 
 				if( module == NULL )
 				{
 					g_critical("Could not import module %s", name);
+					free(name);
 					continue;
 				}
+				Py_DECREF(module); 
 				i = g_malloc0(sizeof(struct import));
 				i->name = g_strdup(name);
 				i->module = module;
@@ -251,6 +256,7 @@ static bool hupy(struct lcfgx_tree_node *node)
 					PyErr_Clear();
 
 			}
+			free(name);
 		}
 	}
 	return true;
