@@ -275,11 +275,19 @@ class xmppclient(connection):
 
 
 	def handle_disconnect(self):
-		self.reset_parser()
-		return True
+		if self.state != 'quit':
+			self.reset_parser()
+			return True
+		return False
 
 	def handle_error(self, err):
-		return True
+		if self.state != 'quit':
+			return True
+		return False
+
+	def quit(self):
+		self.state = 'quit'
+		self.close()
 
 
 class logxmpp(ihandler):
@@ -304,7 +312,7 @@ class logxmpp(ihandler):
 		self.config = None
 		self.resource = None
 		self.username = None
-		self.client.close()
+		self.client.quit()
 		self.client = None
 
 	def broadcast(self, i, n):
