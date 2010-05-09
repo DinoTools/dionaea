@@ -488,7 +488,7 @@ cdef class connection:
 			return NotImplemented
 
 		if t == 0: # <
-			return (<connection>a).thisptr <= (<connection>b).thisptr
+			return (<connection>a).thisptr < (<connection>b).thisptr
 
 		if t == 1: # <=
 			return (<connection>a).thisptr <= (<connection>b).thisptr

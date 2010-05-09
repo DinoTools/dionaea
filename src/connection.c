@@ -2504,10 +2504,12 @@ void connection_tls_io_out_cb(EV_P_ struct ev_io *w, int revents)
 
 		case SSL_ERROR_SYSCALL:
 			g_debug("SSL_ERROR_SYSCALL %s:%i", __FILE__,  __LINE__);
+			connection_tls_disconnect(con);
 			break;
 
 		case SSL_ERROR_SSL:
 			g_debug("SSL_ERROR_SSL %s:%i", __FILE__,  __LINE__);
+			connection_tls_disconnect(con);
 			break;
 
 		case SSL_ERROR_NONE:
@@ -2674,7 +2676,8 @@ void connection_tls_shutdown_cb(EV_P_ struct ev_io *w, int revents)
 				 *  
 				 */
 				connection_tls_disconnect(con);
-			}
+			}else
+				connection_tls_disconnect(con);
 
 			break;
 
@@ -2804,6 +2807,7 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 		case SSL_ERROR_SSL:
 			g_debug("SSL_ERROR_SSL %s:%i", __FILE__,  __LINE__);
+			connection_tls_disconnect(con);
 			break;
 		}
 	} else
@@ -2987,6 +2991,7 @@ void connection_tls_accept_again_cb (EV_P_ struct ev_io *w, int revents)
 
 		case SSL_ERROR_SSL:
 			g_debug("SSL_ERROR_SSL %s:%i", __FILE__,  __LINE__);
+			connection_tls_disconnect(con);
 			break;
 
 		}
@@ -3134,6 +3139,7 @@ void connection_tls_connect_again_cb(EV_P_ struct ev_io *w, int revents)
 		case SSL_ERROR_SYSCALL:
 		case SSL_ERROR_SSL:
 			g_debug("SSL_ERROR_* %i %s:%i", action, __FILE__,  __LINE__);
+			connection_tls_disconnect(con);
 			break;
 
 		}   
