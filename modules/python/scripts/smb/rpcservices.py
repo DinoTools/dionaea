@@ -357,6 +357,7 @@ class samr(RPCService):
 	uuid = UUID('12345778-1234-abcd-ef00-0123456789ac').hex
 
 	ops = {
+		6: "EnumDomains",
 		7: "OpenDomain",
 		62: "Connect4",
 		64: "Connect5"
@@ -426,7 +427,96 @@ class samr(RPCService):
 		r.pack_long(0)
 
 		return r.get_buffer()
+	
+	@classmethod
+	def handle_EnumDomains(cls,p):
+		#3.1.5.2.1 SamrEnumerateDomainsInSamServer (Opnum 6)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245755%28v=PROT.10%29.aspx
+		#
+		#long SamrEnumerateDomainsInSamServer(
+  		#   [in] SAMPR_HANDLE ServerHandle,
+  		#   [in, out] unsigned long* EnumerationContext,
+  		#   [out] PSAMPR_ENUMERATION_BUFFER* Buffer,
+  		#   [in] unsigned long PreferedMaximumLength,
+  		#   [out] unsigned long* CountReturned
+		#);
+		x = ndrlib.Unpacker(p.StubData)
+		ServerHandle1 = x.unpack_raw(20)
+		print("ServerHandle1 %s" % ServerHandle1)
 
+		EnumerationContext = x.unpack_long()
+		print("EnumerationContext %i" % EnumerationContext)
+		
+		PreferedMaximumLength = x.unpack_long()
+		print("PreferedMaximumLength %i" % PreferedMaximumLength)
+		
+		r = ndrlib.Packer()
+		r.pack_pointer(EnumerationContext)
+		
+		#2.2.3.10 SAMPR_ENUMERATION_BUFFER
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245561%28v=PROT.10%29.aspx
+		#
+		#typedef struct _SAMPR_ENUMERATION_BUFFER {
+ 		#    unsigned long EntriesRead;
+                #    [size_is(EntriesRead)] PSAMPR_RID_ENUMERATION Buffer;
+		#} SAMPR_ENUMERATION_BUFFER, 
+ 		#*PSAMPR_ENUMERATION_BUFFER;
+		
+		r.pack_pointer(0x0da260)
+		
+		# EntriesRead
+		r.pack_long(2)
+	
+		# PSAMPR_RID_ENUMERATION Buffer
+		# http://msdn.microsoft.com/en-us/library/cc245560%28PROT.10%29.aspx
+
+		r.pack_pointer(0x0c40e0)
+		
+		# maxcount
+		r.pack_long(2)
+
+		# entry 1
+		# RelativeId;
+		r.pack_long(0)
+		
+		# RPC_UNICODE_STRING
+		#http://msdn.microsoft.com/en-us/library/cc230365%28PROT.10%29.aspx
+
+		r.pack_short(30)
+		r.pack_short(32)
+		
+		# WCHAR* Buffer
+		r.pack_pointer(0x1)
+
+		# entry 2
+		# RelativeId;
+		r.pack_long(0)
+		
+		# RPC_UNICODE_STRING
+		r.pack_short(14)
+		r.pack_short(16)
+
+		# WCHAR* Buffer
+		r.pack_pointer(0x11)
+		r.pack_long(16)
+		r.pack_long(0)
+		r.pack_long(15)
+		
+		r.pack_raw('HOMEUSER-3AF6FE'.encode('utf16')[2:])
+		
+		r.pack_long(8)
+		r.pack_long(0)
+		r.pack_long(7)
+		r.pack_raw('Builtin'.encode('utf16')[2:])
+
+		# long* CountReturned
+		r.pack_pointer(0x02)
+		r.pack_long(0)
+
+		return r.get_buffer()
+	
 	@classmethod
 	def handle_OpenDomain(cls, p):
 		# 3.1.5.1.5 SamrOpenDomain (Opnum 7)
