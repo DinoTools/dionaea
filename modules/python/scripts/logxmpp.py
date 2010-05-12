@@ -1,4 +1,4 @@
-from dionaea.core import connection, ihandler
+from dionaea.core import connection, ihandler, g_dionaea, incident
 from lxml import etree as etree
 from xml.etree import ElementTree
 from lxml.etree import XMLParser
@@ -9,6 +9,8 @@ import re
 import random
 import mmap
 import json
+import hashlib
+import tempfile
 
 #from xml.sax import saxutils
 
@@ -25,7 +27,9 @@ __nsmap__ = {
 	'sasl': 'urn:ietf:params:xml:ns:xmpp-sasl',
 	'bind' : 'urn:ietf:params:xml:ns:xmpp-bind',
 	'session': 'urn:ietf:params:xml:ns:xmpp-session',
-	'iq': 'http://jabber.org/features/iq-register'}
+	'iq': 'http://jabber.org/features/iq-register',
+	'dionaea' : 'http://dionaea.carnivore.it'
+}
 
 class xmppparser:
 	def __init__(self, client):
@@ -115,7 +119,7 @@ class xmppclient(connection):
 			print("ROOT IS EMPTY")
 			return len(data)
 
-		print("%s" % (etree.tostring(self.xmlroot, pretty_print=True).decode('ascii'), ))
+#		print("%s" % (etree.tostring(self.xmlroot, pretty_print=True).decode('ascii'), ))
 		
 		d = "NONE"
 		print("STATE %s" % self.state)
@@ -266,6 +270,26 @@ class xmppclient(connection):
 			self.state = "online"
 
 		if self.state == "online":
+
+			# we received a file via xmpp
+			files = self.xmlroot.xpath('/stream:stream/jabber:message/jabber:body/dionaea:dionaea/dionaea:file', namespaces=self.__nsmap__)
+			for i in files:
+				xmlobj = i
+				md5_hash = xmlobj.attrib['md5_hash']
+				f = base64.b64decode(xmlobj.text.encode('ascii'))
+				my_hash = hashlib.md5(f).hexdigest()
+				print("file %s <-> %s" % (md5_hash, my_hash))
+				if md5_hash == my_hash:
+					fileobj = tempfile.NamedTemporaryFile(delete=False, prefix='xmpp-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
+					fileobj.write(f)
+					fileobj.close()
+					icd = incident("dionaea.download.complete")
+					icd.path = fileobj.name
+					icd.con = self
+					icd.url = "logxmpp://" + md5_hash
+					icd.report()
+					fileobj.unlink(fileobj.name)
+
 			for i in self.xmlroot:
 				print("removing %s" % i)
 				self.xmlroot.remove(i)
@@ -454,6 +478,11 @@ class logxmpp(ihandler):
 	def handle_incident_dionaea_download_complete_hash(self, i):
 		if not hasattr(i, 'con'):
 			return
+
+		# do not announce files gatherd via xmpp
+		if i.con == self.client:
+			return
+
 		c = i.con
 		url = i.url
 		md5hash = i.md5hash
@@ -465,6 +494,10 @@ class logxmpp(ihandler):
 
 
 	def handle_incident_dionaea_download_complete_unique(self, i):
+		# do not broadcast files gatherd via xmpp
+		if hasattr(i, 'con') and i.con == self.client:
+			return
+
 		md5hash = i.md5hash
 		n = etree.Element('file', attrib={
 			'md5_hash' : md5hash
