@@ -1559,10 +1559,11 @@ void connection_throttle_io_out_set(struct connection *con, uint32_t max_bytes_p
 
 int connection_throttle(struct connection *con, struct connection_throttle *thr)
 {
-	g_debug("%s con %p thr %p", __PRETTY_FUNCTION__, con, thr);
 
 	if( thr->max_bytes_per_second == 0 )
 		return 64*1024;
+
+	g_debug("%s con %p thr %p", __PRETTY_FUNCTION__, con, thr);
 
 	double delta = 0.; // time in ms for this session 
 	double expect = 0.;	// expected time frame for the sended bytes
@@ -2734,10 +2735,12 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 
 	int recv_throttle = connection_throttle(con, &con->stats.io_in.throttle);
-	g_debug("recv throttle %i\n", recv_throttle);
 	if( recv_throttle == 0 )
+	{
+		g_debug("recv throttle %i", recv_throttle);
 		return;
-
+	}
+	
 	unsigned char buf[recv_throttle];
 
 	int err=0;
@@ -3595,10 +3598,10 @@ void connection_set_type(struct connection *con, enum connection_type type)
 	enum connection_type old_type;
 	old_type = con->type;
 	con->type = type;
-	g_message("connection %p type %s -> %s %s->%s", 
+	g_message("connection %p %s/%s type: %s->%s", 
 			  con, 
-			  con->local.node_string, 
-			  con->remote.node_string, 
+			  connection_type_to_string(old_type),
+			  connection_transport_to_string(con->trans),
 			  connection_type_to_string(old_type), 
 			  connection_type_to_string(type));
 }
@@ -3625,9 +3628,11 @@ void connection_set_state(struct connection *con, enum connection_state state)
 	enum connection_state old_state;
 	old_state = con->state;
 	con->state = state;
-	g_message("connection %p state %s %s -> %s %s->%s", 
+	g_message("connection %p %s/%s/%s [%s->%s] state: %s->%s", 
 			  con, 
-			  connection_type_to_string(con->type), 
+			  connection_type_to_string(con->type),
+			  connection_transport_to_string(con->trans),
+			  connection_state_to_string(old_state),
 			  con->local.node_string, 
 			  con->remote.node_string, 
 			  connection_state_to_string(old_state), 
