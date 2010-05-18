@@ -96,7 +96,8 @@ void sigsegv_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 
 	snprintf(cmd, sizeof(cmd), "%s/bin/dionaea-backtrace %d > /tmp/segv_%s.%d.out 2>&1", 
 			 PREFIX, (int)getpid(), p+1, (int)getpid());
-	system(cmd);
+	if( system(cmd) )
+		return;
 	signal(SIGSEGV, SIG_DFL);
 //	return 0;
 }
@@ -128,7 +129,8 @@ void sigsegv_backtrace_cb(int sig)
 			"You can create better backtraces with gdb, for more information visit http://dionaea.carnivore.it/#segfault\n"
 			"Once you read this message, your tty may be broken, simply type reset, so it will come to life again\n"
 			"\n";
-		write(l->fd, msg, strlen(msg));
+		if( write(l->fd, msg, strlen(msg)) != strlen(msg))
+			continue;
 		backtrace_symbols_fd(back, size, l->fd);
 	}
 //	g_mutex_unlock(g_dionaea->logging->lock);

@@ -179,7 +179,7 @@ static void check_run_count(void)
 				curl_runtime.queued--;
 
 				easy=msg->easy_handle;
-				curl_easy_getinfo(easy, CURLINFO_PRIVATE, &session);
+				curl_easy_getinfo(easy, CURLINFO_PRIVATE, (char **)&session );
 				curl_easy_getinfo(easy, CURLINFO_EFFECTIVE_URL, &eff_url);
 
 				switch( session->type )
@@ -324,7 +324,8 @@ static size_t curl_writefunction_cb(void *ptr, size_t size, size_t nmemb, void *
 	struct session *session = (struct session *) data;
 	g_debug("session %p file %i", session, session->action.download.file->fd);
 	if( session->type == session_type_download )
-		write(session->action.download.file->fd, ptr, size*nmemb);
+		if( write(session->action.download.file->fd, ptr, size*nmemb) != size*nmemb)
+			return -1;
 
 	return size * nmemb;
 }
@@ -344,8 +345,8 @@ static int curl_progressfunction_cb (void *p, double dltotal, double dlnow, doub
 static int curl_debugfunction_cb(CURL *easy, curl_infotype type, char *data, size_t size, void *userp)
 {
 
-	struct session *session;
-	curl_easy_getinfo(easy, CURLINFO_PRIVATE, &session);
+	struct session *session = NULL;
+	curl_easy_getinfo(easy, CURLINFO_PRIVATE, (char **)&session);
 	switch( type )
 	{
 	case CURLINFO_TEXT:

@@ -1,0 +1,14 @@
+Source: dionaea
+Section: misc
+Priority: optional
+Maintainer: SURFids team (http://ids.surfnet.nl) <ids@surfnet.nl>
+Standards-Version: 3.7.2
+Build-Depends: debhelper (>= 5), pkg-config (>=0.22), libglib2.0-dev (>= 2.22.2), libcurl4-openssl-dev (>= 7.19.5), python3.1-dev (>= 3.1.1), cython (>= 0.11.2), libudns-dev (>= 0.0.9), libssl-dev (>= 0.9.8g), liblcfg (>= 0.2.0), libemu (>= 0.2.0), libev-dev (>= 3.9)
+
+Package: dionaea
+Architecture: i386 amd64
+Priority: optional
+Description: dionaea
+    Dionaea is meant to be a Nepenthes successor, embedding Python 
+    as scripting language, using libemu to detect 
+    shellcodes, supporting IPv6 and TLS.
