@@ -323,7 +323,7 @@ print(strLinkSpec)
 AC_DEFUN([AZ_PYTHON_PATH],
 [
     AC_ARG_VAR( [PYTHON], [Python Executable Path] )
-    AC_PATH_PROG( PYTHON, python, [], $1 )
+    AC_PATH_PROG( PYTHON, python3.1, [], $1 )
     if test -z "$PYTHON"
     then
         AC_MSG_ERROR([Python Executable not found])

@@ -703,7 +703,6 @@ void traceable_origin_cb(struct connection *con, struct connection *origin)
 void traceable_established_cb(struct connection *con)
 {
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-	g_warning("established cb %p", runtime.traceables.proto.established);
 	runtime.traceables.proto.established(con);
 	traceback();
 }

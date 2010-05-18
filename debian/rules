@@ -20,24 +20,12 @@ clean:
 
 config.h: clean
 	dh_testdir
-	./configure --prefix=/usr --with-lcfg-include=/usr/include/ \
-      --with-lcfg-lib=/usr/lib/liblcfg/ \
-      --with-python=/usr/bin/python3.1 \
-      --with-cython-dir=/usr/bin \
-      --with-udns-include=/usr/include/ \
-      --with-udns-lib=/usr/lib/ \
-      --with-emu-include=/usr/include/ \
-      --with-emu-lib=/usr/lib/libemu/ \
-      --with-gc-include=/usr/include/gc \
-      --with-curl-config=/usr/bin/ \
-      --with-pcap-include=/usr/bin/include \
-      --with-pcap-lib=/usr/lib/ \
-      --with-glib=/usr
+	dh_auto_configure
 
 build: build-stamp
 
 build-stamp: config.h
-	$(MAKE) CC="$(CC)" 1>&2
+	dh_auto_build
 	touch $@
 
 
@@ -45,7 +33,7 @@ install: build
 	dh_testdir
 	dh_testroot
 	dh_installdirs
-	$(MAKE) prefix=$(CURDIR)/debian/dionaea/usr install
+	dh_auto_install
 	rm $(CURDIR)/debian/dionaea/usr/lib/dionaea/python/dionaea/core.so
 	dh_link usr/lib/dionaea/python.so usr/lib/dionaea/python/dionaea/core.so
 

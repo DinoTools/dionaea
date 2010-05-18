@@ -209,7 +209,7 @@ bool options_parse(struct options* options, int argc, char* argv[])
 	}
 
 	if( options->config == NULL )
-		options->config = strdup(PREFIX"/etc/dionaea/dionaea.conf");
+		options->config = strdup(SYSCONFDIR"/dionaea/dionaea.conf");
 
 	if( options->workingdir == NULL )
 		options->workingdir = g_strdup(PREFIX);
