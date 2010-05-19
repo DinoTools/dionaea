@@ -12,6 +12,8 @@ import json
 import hashlib
 import tempfile
 import logging
+from random import choice
+import string
 
 logger = logging.getLogger('logxmpp')
 logger.setLevel(logging.DEBUG)
@@ -122,6 +124,9 @@ class xmppclient(connection):
 		self.channels = channels
 		self.resource = resource
 		self.joined = 0
+		self.me = '%s@%s/%s' % (self.username, self.server, self.resource)
+		self.timeouts.idle = 10 * 60 # default to 10 minutes idle timeout
+		self.ids = {}
 		logger.info("I am %s" % username + '/' + resource)
 
 	def reset_parser(self):
@@ -377,16 +382,47 @@ class xmppclient(connection):
 #				logger.debug("proper del %s" % presence)
 				self.xmlroot.remove(presence)
 
+			iqs = self.xmlroot.xpath('/stream:stream/jabber:iq', namespaces=self.__nsmap__)
+			for iq in iqs:
+				if 'id' in iq.attrib:
+					id = iq.attrib['id']
+					if id in self.ids:
+						if self.ids[id] == 'ping':
+							logger.info("ping-pong keepalive")
+						# remove iqs which are replies to our requests, like ping
+						del self.ids[id]
+						self.xmlroot.remove(iq)
+
 		if self.xmlroot is not None:
 			for i in self.xmlroot:
 				logger.debug("unknown/unhandled xml element: removing %s\n%s\n" % (i, etree.tostring(i, pretty_print=True).decode('ascii')) )
 				self.xmlroot.remove(i)
 	
 		return len(data)
+	
+	def handle_timeout_idle(self):
+		# XEP-0199: XMPP Ping
+		# 4.2 Client-To-Server Pings
+		# http://xmpp.org/extensions/xep-0199.html#c2s
+		xid = ''.join([choice(string.ascii_letters) for i in range(4)])
+		n = etree.Element('iq', attrib={
+			'from' :self.me,
+			'to' : self.server,
+			'type': 'get',
+			'id' : xid})
+		ping = etree.Element('ping', attrib={
+			'xmlns' : 'urn:xmpp:ping'
+			})
+		n.append(ping)
+		d = etree.tostring(n)
+		self.send(d)
+		self.ids[xid] = 'ping'
+		return True
 
 	def handle_disconnect(self):
 		if self.state != 'quit':
 			self.reset_parser()
+			self.joined = 0
 			return True
 		return False
 
