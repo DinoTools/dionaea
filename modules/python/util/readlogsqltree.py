@@ -115,7 +115,7 @@ def print_db(opts, args):
 
 	query = """
 SELECT DISTINCT 
-	c.connection,
+	c.connection AS connection,
 	connection_type,
 	connection_protocol,
 	connection_transport,
@@ -173,7 +173,7 @@ WHERE
 		lquery = query + "\t LIMIT %i OFFSET %i \n" % ( limit, offset )
 		result = cursor.execute(lquery)
 		connections = resolve_result(result)
-	
+#		print(connections)	
 		for c in connections:
 			connection = c['connection']
 			print("%s" % (c['connection_timestamp'],))
