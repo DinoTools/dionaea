@@ -480,6 +480,9 @@ void connection_close(struct connection *con)
 		} else
 			if( con->type == connection_type_connect && con->transport.tls.ssl == NULL )
 		{
+			if( con->state == connection_state_resolve )
+				connection_dns_resolve_cancel(con);
+
 			connection_set_state(con, connection_state_close);
 			connection_tls_disconnect(con);
 		} else
@@ -3356,7 +3359,8 @@ void connection_dns_resolve_cancel(struct connection *con)
 		dns_cancel(g_dionaea->dns->dns, con->remote.dns.a);
 	if( con->remote.dns.aaaa != NULL )
 		dns_cancel(g_dionaea->dns->dns, con->remote.dns.aaaa);
-
+	if( ev_is_active(&con->events.dns_timeout) )
+		ev_timer_stop(g_dionaea->loop, &con->events.dns_timeout);
 	connection_set_state(con, connection_state_none);
 }
 
@@ -3585,7 +3589,6 @@ const char *connection_type_to_string(enum connection_type type)
 		"bind", 
 		"connect", 
 		"listen", 
-
 	};
 	return connection_type_str[type];
 }
