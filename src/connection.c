@@ -3363,7 +3363,7 @@ void connection_dns_resolve_cancel(struct connection *con)
 	if( con->remote.dns.aaaa != NULL )
 	{
 		dns_cancel(g_dionaea->dns->dns, con->remote.dns.aaaa);
-		con->remote.dns.aaaa = NULL
+		con->remote.dns.aaaa = NULL;
 	}
 
 	if( ev_is_active(&con->events.dns_timeout) )
