@@ -3356,9 +3356,16 @@ void connection_dns_resolve_cancel(struct connection *con)
 {
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	if( con->remote.dns.a != NULL )
+	{
 		dns_cancel(g_dionaea->dns->dns, con->remote.dns.a);
+		con->remote.dns.a = NULL;
+	}
 	if( con->remote.dns.aaaa != NULL )
+	{
 		dns_cancel(g_dionaea->dns->dns, con->remote.dns.aaaa);
+		con->remote.dns.aaaa = NULL
+	}
+
 	if( ev_is_active(&con->events.dns_timeout) )
 		ev_timer_stop(g_dionaea->loop, &con->events.dns_timeout);
 	connection_set_state(con, connection_state_none);
