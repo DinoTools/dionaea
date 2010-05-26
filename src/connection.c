@@ -3408,8 +3408,8 @@ void connection_connect_resolve(struct connection *con)
 
 	connection_set_state(con, connection_state_resolve);
 	con->events.dns_timeout.data = con;
-	ev_timer_init(&con->events.dns_timeout, connection_dns_resolve_timeout_cb, 10., 0.);
-	ev_timer_start(g_dionaea->loop, &con->events.dns_timeout);
+	ev_timer_init(&con->events.dns_timeout, connection_dns_resolve_timeout_cb, 0., 10.);
+	ev_timer_again(g_dionaea->loop, &con->events.dns_timeout);
 	return;
 }
 
