@@ -357,8 +357,11 @@ class samr(RPCService):
 	uuid = UUID('12345778-1234-abcd-ef00-0123456789ac').hex
 
 	ops = {
+		1: "Close",
+		5: "LookupDomain",
 		6: "EnumDomains",
 		7: "OpenDomain",
+		13: "EnumDomainUsers",
 		62: "Connect4",
 		64: "Connect5"
 	}
@@ -518,6 +521,56 @@ class samr(RPCService):
 		return r.get_buffer()
 	
 	@classmethod
+	def handle_LookupDomain(cls,p):	
+		#3.1.5.11.1 SamrLookupDomainInSamServer (Opnum 5)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245711%28v=PROT.13%29.aspx
+		#
+		#long SamrLookupDomainInSamServer(
+  		#[in] SAMPR_HANDLE ServerHandle,
+  		#[in] PRPC_UNICODE_STRING Name,
+ 		#[out] PRPC_SID* DomainId
+		#);
+		x = ndrlib.Unpacker(p.StubData)
+		ServerHandle = x.unpack_raw(20)
+		print("ServerHandle %s" % ServerHandle)
+
+		Length = x.unpack_short()
+		MaxLength = x.unpack_short()
+		print("Length %i MaxLength %i" % (Length, MaxLength))
+
+		Reference = x.unpack_long()
+		print("Reference %i" % (Reference))
+
+		DomainName = x.unpack_string()
+		print("Domain Name %s" % (DomainName))
+
+		r = ndrlib.Packer()
+		r.pack_pointer(0x0da260)   #same as EnumDomain
+		
+		#Count
+		r.pack_long(4)
+
+		#PRPC_SID* DomainId
+		#Revision
+		r.pack_small(1)
+
+		#SubAuthorityCount
+		r.pack_small(4)
+		
+		#IndentifierAuthority
+		r.pack_raw(b'\0\0\0\0\0\5')
+		
+		#SubAuthority
+		r.pack_long(21)
+		r.pack_long(606747145)
+		r.pack_long(1364589140)
+		r.pack_long(839522115)
+	
+		r.pack_long(0)
+		return r.get_buffer()
+	
+	@classmethod
 	def handle_OpenDomain(cls, p):
 		# 3.1.5.1.5 SamrOpenDomain (Opnum 7)
 		# 
@@ -549,20 +602,133 @@ class samr(RPCService):
 		# http://msdn.microsoft.com/en-us/library/cc230364%28v=PROT.10%29.aspx
 
 		Count = x.unpack_long()
+		
+		Revision = x.unpack_small()
+		SubAuthorityCount = x.unpack_small()
+		IdentifierAuthority = x.unpack_raw(6)
+		print("Revision %i SubAuthorityCount %i IdentifierAuthority %s" % (Revision, SubAuthorityCount, IdentifierAuthority))
+		
 		for i in range(Count):
-			print(i)
-			Revision = x.unpack_small()
-			SubAuthorityCount = x.unpack_small()
-			IdentifierAuthority = x.unpack_raw(6)
 			SubAuthority = x.unpack_long()
-			print("Revision %i SubAuthorityCount %i IdentifierAuthority %s SubAuthority %i" % (Revision, SubAuthorityCount, IdentifierAuthority, SubAuthority))
+			print("%i" % (SubAuthority))
+		
+		r = ndrlib.Packer()
+		r.pack_raw(b'11223344556677889900')
+		r.pack_long(0)
 
+		return r.get_buffer()
+	
+	@classmethod
+	def handle_EnumDomainUsers(cls, p):
+		#3.1.5.2.5 SamrEnumerateUsersInDomain (Opnum 13)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245759%28v=PROT.13%29.aspx
+		#
+		#long SamrEnumerateUsersInDomain(
+  		#[in] SAMPR_HANDLE DomainHandle,
+  		#[in, out] unsigned long* EnumerationContext,
+  		#[in] unsigned long UserAccountControl,
+  		#[out] PSAMPR_ENUMERATION_BUFFER* Buffer,
+  		#[in] unsigned long PreferedMaximumLength,
+  		#[out] unsigned long* CountReturned
+		#)
+		x = ndrlib.Unpacker(p.StubData)
+		DomainHandle = x.unpack_raw(20)
+		print("DomainHandle %s" % DomainHandle)
+	
+		EnumerationContext = x.unpack_long()
+		print("EnumerationContext %i" % EnumerationContext)
+		
+		UserAccountControl = x.unpack_long()
+		print("UserAccountControl %i" % UserAccountControl)
 
+		PreferedMaximumLength = x.unpack_long()
+		print("PreferedMaximumLength %i" % PreferedMaximumLength)
 
+		r = ndrlib.Packer()
+		r.pack_pointer(EnumerationContext)
+		
+		#almost same as EnumDomains
+		#SAMPR_ENUMERATION_BUFFER
+		r.pack_pointer(0x0c40e0)
 
+		# EntriesRead
+		r.pack_long(4)
+	
+		# PSAMPR_RID_ENUMERATION Buffer
+		# Ref ID
+		r.pack_pointer(0x10)
+		# maxcount
+		r.pack_long(4)
 
+		# entry 1
+		# RelativeId;
+		r.pack_long(500)
+		
+		# RPC_UNICODE_STRING
+		#http://msdn.microsoft.com/en-us/library/cc230365%28PROT.10%29.aspx
 
+		r.pack_short(26)
+		r.pack_short(32)
+		
+		# WCHAR* Buffer
+		r.pack_pointer(0x1)
 
+		# entry 2
+		# RelativeId;
+		r.pack_long(501)
+		
+		# RPC_UNICODE_STRING
+		r.pack_short(10)
+		r.pack_short(32)
+
+		# WCHAR* Buffer
+		r.pack_pointer(0x2)
+
+		# entry 3
+		r.pack_long(1000)
+		r.pack_short(26)
+		r.pack_short(32)
+		r.pack_pointer(0x3)
+
+		# entry 4
+		r.pack_long(1002)
+		r.pack_short(32)
+		r.pack_short(32)
+		r.pack_pointer(0x4)
+		
+		r.pack_string('Administrator'.encode('utf16')[2:])
+		#r.pack_short(0)
+		r.pack_string('Guest'.encode('utf16')[2:])
+		#r.pack_short(0)
+		r.pack_string('HelpAssistant'.encode('utf16')[2:])
+		#r.pack_short(0)
+		r.pack_string('SUPPORT_388945a0'.encode('utf16')[2:])		
+		
+		# long* CountReturned
+		r.pack_pointer(0x04)
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_Close(cls, p):
+		#3.1.5.13.1 SamrCloseHandle (Opnum 1)		
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245722%28v=PROT.13%29.aspx
+		#
+		#long SamrCloseHandle(
+  		#[in, out] SAMPR_HANDLE* SamHandle
+		#);
+		x = ndrlib.Unpacker(p.StubData)
+		SamHandle = x.unpack_raw(20)
+		print("SamHandle %s" % SamHandle)
+		
+		r = ndrlib.Packer()
+		r.pack_raw(b'\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0')
+		r.pack_long(0)
+
+		return r.get_buffer()
 
 class SceSvc(RPCService):
 	uuid = UUID('93149ca2-973b-11d1-8c39-00c04fb984f9').hex
