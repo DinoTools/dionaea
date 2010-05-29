@@ -169,6 +169,13 @@ class Packer:
 		self.pack_long(x)
 		self.__buf.write(s)
 
+	def pack_string1(self, s, offset=0, width=16):
+		x = int(len(s)/(width/8))
+		self.pack_long(x)
+		self.pack_long(offset)
+		self.pack_long(x)
+		self.__buf.write(s)
+
 	def pack_raw(self, s):
 		self.__buf.write(s)
 

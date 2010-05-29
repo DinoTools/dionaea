@@ -827,6 +827,20 @@ class SRVSVC(RPCService):
 			ptr = x.unpack_pointer()
 			count = x.unpack_long()
 			buffer = x.unpack_pointer()
+
+		if infostruct_share == 502:
+			# 2.2.4.36 SHARE_INFO_502_CONTAINER
+			#
+			# http://msdn.microsoft.com/en-us/library/cc247160%28PROT.13%29.aspx
+			#
+			# typedef struct _SHARE_INFO_502_CONTAINER {
+			#   DWORD EntriesRead;
+			#   [size_is(EntriesRead)] LPSHARE_INFO_502_I Buffer;
+			# } SHARE_INFO_502_CONTAINER,
+			ctr = x.unpack_pointer()
+			ptr = x.unpack_pointer()
+			count = x.unpack_long()
+			buffer = x.unpack_pointer()
 		
 		preferdmaxlen = x.unpack_long()
 		
@@ -854,9 +868,11 @@ class SRVSVC(RPCService):
 
 		# 2.2.4.33 SHARE_INFO_1_CONTAINER
 
-		# EntriesRead
-		r.pack_long(1)
-		r.pack_pointer(0x23456)
+		if infostruct_level == 1:
+		
+			# EntriesRead
+			r.pack_long(1)
+			r.pack_pointer(0x23456)
 		
 		# 2.2.4.23 SHARE_INFO_1
 		# 
@@ -872,31 +888,97 @@ class SRVSVC(RPCService):
 		
 		# http://msdn.microsoft.com/en-us/library/cc247150%28PROT.10%29.aspx
 
-		# Count
-		r.pack_long(2)
+			# Count
+			r.pack_long(2)
 
-		# pointer 
-		r.pack_pointer(0x99999)
+			# pointer 
+			r.pack_pointer(0x99999)
 
-		# Max Count
-		r.pack_long(2)
+			# Max Count
+			r.pack_long(2)
 
-		# Buffer[0]
-		r.pack_pointer(0x34567)
-		r.pack_long(0x00000000) # STYPE_DISKTREE
-		r.pack_pointer(0x45678)
+			# Buffer[0]
+			r.pack_pointer(0x34567)
+			r.pack_long(0x00000000) # STYPE_DISKTREE
+			r.pack_pointer(0x45678)
 		
-		# Buffer[0]
-		r.pack_pointer(0x343567)
-		r.pack_long(0x00000000) # STYPE_DISKTREE
-		r.pack_pointer(0x45678)
+			# Buffer[0]
+			r.pack_pointer(0x343567)
+			r.pack_long(0x00000000) # STYPE_DISKTREE
+			r.pack_pointer(0x45678)
 
-		r.pack_string('test\0'.encode('utf16')[2:])
-		r.pack_string('es geht test\0'.encode('utf16')[2:])
+			r.pack_string('test\0'.encode('utf16')[2:])
+			r.pack_string('es geht test\0'.encode('utf16')[2:])
 
-		r.pack_string('test2\0'.encode('utf16')[2:])
-		r.pack_string('es geht test\0'.encode('utf16')[2:])
-				
+			r.pack_string('test2\0'.encode('utf16')[2:])
+			r.pack_string('es geht test\0'.encode('utf16')[2:])
+
+		# 2.2.4.26 SHARE_INFO_502_I
+		#
+		# http://msdn.microsoft.com/en-us/library/cc247150%28v=PROT.13%29.aspx
+		#
+		# typedef struct _SHARE_INFO_502_I {
+		#  [string] WCHAR* shi502_netname;
+		#  DWORD shi502_type;
+		#  [string] WCHAR* shi502_remark;
+		#  DWORD shi502_permissions;
+		#  DWORD shi502_max_uses;
+		#  DWORD shi502_current_uses;
+		#  [string] WCHAR* shi502_path;
+		#  [string] WCHAR* shi502_passwd;
+		#  DWORD shi502_reserved;
+		#  [size_is(shi502_reserved)] unsigned char* shi502_security_descriptor;
+		#} SHARE_INFO_502_I, 
+		# *PSHARE_INFO_502_I, 
+		# *LPSHARE_INFO_502_I;
+			
+		if infostruct_level == 502:
+
+			# EntriesRead
+			r.pack_long(502)
+			r.pack_pointer(0x23456)
+
+			# Count
+			r.pack_long(2)
+
+			# pointer 
+			r.pack_pointer(0x99999)
+
+			# Max Count
+			r.pack_long(2)
+
+			# Buffer[0]
+			r.pack_pointer(0x34567)
+			r.pack_long(0x00000000) # STYPE_DISKTREE
+			r.pack_pointer(0x45678)
+			r.pack_long(0)		#permissions
+			r.pack_long(0xffffffff) #max_uses
+			r.pack_long(1)		#current_uses
+			r.pack_pointer(0x78654)
+			r.pack_pointer(0) 
+			r.pack_long(0) #reserved
+			r.pack_pointer(0)
+
+			# Buffer[0]
+			r.pack_pointer(0x343567)
+			r.pack_long(0x00000000) # STYPE_DISKTREE
+			r.pack_pointer(0x45678)
+			r.pack_long(0)
+			r.pack_long(0xffffffff)
+			r.pack_long(1)
+			r.pack_pointer(0x78654)
+			r.pack_pointer(0)
+			r.pack_long(0)
+			r.pack_pointer(0)
+
+			r.pack_string1('test\0'.encode('utf16')[2:])
+			r.pack_string1('es geht test\0'.encode('utf16')[2:])
+			r.pack_string1('C:\0'.encode('utf16')[2:])
+
+			r.pack_string1('test2\0'.encode('utf16')[2:])
+			r.pack_string1('es geht test\0'.encode('utf16')[2:])
+			r.pack_string1('C:\WINDOWS\0'.encode('utf16')[2:])
+
 		# total entries
 		r.pack_long(2)
 
