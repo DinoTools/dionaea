@@ -748,6 +748,7 @@ class SRVSVC(RPCService):
 	version_minor = 0
 
 	ops = {
+		0x0e: "NetShareAdd",
 		0x0f: "NetShareEnum",
 		0x1f: "NetPathCanonicalize",
 		0x20: "NetPathCompare",
@@ -1031,7 +1032,59 @@ class SRVSVC(RPCService):
 		pathtype   = p.unpack_long()
 		pathflags  = p.unpack_long()
 		print("ref 0x%x server_unc %s path1 %s path2 %s pathtype %i pathflags %i" % (ref, server_unc, path1, path2, pathtype, pathflags))
+
+	@classmethod
+	def handle_NetShareAdd(cls, p):
+		#3.1.4.7 NetrShareAdd (Opnum 14)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc247275%28v=PROT.10%29.aspx
+		#
+		#NET_API_STATUS NetrShareAdd(
+  		#[in, string, unique] SRVSVC_HANDLE ServerName,
+		#  [in] DWORD Level,
+		#  [in, switch_is(Level)] LPSHARE_INFO InfoStruct,
+		#  [in, out, unique] DWORD* ParmErr
+		#);
+		p = ndrlib.Unpacker(p.StubData)
+		srvsvc_handle_ref = p.unpack_pointer()
+		srvsvc_handle = p.unpack_string()
+		infostruct_level = p.unpack_long()
+		infostruct_share = p.unpack_long()
+
+		#typedef struct _SHARE_INFO_2 {
+		#  [string] wchar_t* shi2_netname;
+		#  DWORD shi2_type;
+		#  [string] wchar_t* shi2_remark;
+		#  DWORD shi2_permissions;
+		#  DWORD shi2_max_uses;
+		#  DWORD shi2_current_uses;
+		#  [string] wchar_t* shi2_path;
+		#  [string] wchar_t* shi2_passwd;
+		#} SHARE_INFO_2
+
+		if infostruct_share == 2:
+			ref = p.unpack_pointer()
+			ptr = p.unpack_pointer()
+			sharetype = p.unpack_long()
+			ref1 = p.unpack_long()
+			permission = p.unpack_long()
+			max_use = p.unpack_long()
+			current_use = p.unpack_long()
+			path = p.unpack_pointer()
+			password = p.unpack_pointer()
+			share_name = p.unpack_string()
+			share_comment = p.unpack_string()
+			share_path = p.unpack_string()
 		
+		ptr_parm = p.unpack_pointer()
+		error = p.unpack_long()
+
+		# compile reply
+		r = ndrlib.Packer()
+		r.pack_pointer(0x324567)
+		r.pack_long(0)
+		r.pack_long(0)
+		return r.get_buffer()
 
 
 class ssdpsrv(RPCService):
