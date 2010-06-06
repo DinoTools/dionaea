@@ -162,14 +162,20 @@ class Packer:
 		else: 
 			self.__buf.write(b'\0\0\0\0')
 
+	"""to obtain different maxcount and actualcount of the string"""
 	def pack_string(self, s, offset=0, width=16):
 		x = int(len(s)/(width/8))
-		self.pack_long(width)
+		if (x % 8 == 0):
+			maxcount = x
+		else :
+			maxcount = (int(x/8) + 1)*8
+		self.pack_long(maxcount)
 		self.pack_long(offset)
 		self.pack_long(x)
 		self.__buf.write(s)
 
-	def pack_string1(self, s, offset=0, width=16):
+	"""to obtain the same maxcount and actualcount of the string"""
+	def pack_string_fix(self, s, offset=0, width=16):
 		x = int(len(s)/(width/8))
 		self.pack_long(x)
 		self.pack_long(offset)

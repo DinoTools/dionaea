@@ -445,8 +445,8 @@ class samr(RPCService):
   		#   [out] unsigned long* CountReturned
 		#);
 		x = ndrlib.Unpacker(p.StubData)
-		ServerHandle1 = x.unpack_raw(20)
-		print("ServerHandle1 %s" % ServerHandle1)
+		ServerHandle = x.unpack_raw(20)
+		print("ServerHandle %s" % ServerHandle)
 
 		EnumerationContext = x.unpack_long()
 		print("EnumerationContext %i" % EnumerationContext)
@@ -503,16 +503,9 @@ class samr(RPCService):
 
 		# WCHAR* Buffer
 		r.pack_pointer(0x11)
-		r.pack_long(16)
-		r.pack_long(0)
-		r.pack_long(15)
-		
-		r.pack_raw('HOMEUSER-3AF6FE'.encode('utf16')[2:])
-		
-		r.pack_long(8)
-		r.pack_long(0)
-		r.pack_long(7)
-		r.pack_raw('Builtin'.encode('utf16')[2:])
+
+		r.pack_string('HOMEUSER-3AF6FE'.encode('utf16')[2:])
+		r.pack_string('Builtin'.encode('utf16')[2:])
 
 		# long* CountReturned
 		r.pack_pointer(0x02)
@@ -551,7 +544,19 @@ class samr(RPCService):
 		#Count
 		r.pack_long(4)
 
-		#PRPC_SID* DomainId
+		#2.4.2.2 RPC_SID
+		#
+		#http://msdn.microsoft.com/en-us/library/cc230364%28PROT.10%29.aspx
+		#
+		#typedef struct _RPC_SID {
+		#  unsigned char Revision;
+		#  unsigned char SubAuthorityCount;
+		#  RPC_SID_IDENTIFIER_AUTHORITY IdentifierAuthority;
+		#  [size_is(SubAuthorityCount)] 
+		#  unsigned long SubAuthority[];
+		#} RPC_SID, 
+		# *PRPC_SID;
+
 		#Revision
 		r.pack_small(1)
 
@@ -589,18 +594,7 @@ class samr(RPCService):
 		DesiredAccess = x.unpack_long()
 		print("DesiredAccess %i" % DesiredAccess)
 
-		# 2.4.2.1 RPC_SID
-		#
-		# typedef struct _RPC_SID {
-		#  unsigned char Revision;
-		#  unsigned char SubAuthorityCount;
-		#  RPC_SID_IDENTIFIER_AUTHORITY IdentifierAuthority;
-		#  [size_is(SubAuthorityCount)] 
-		#    unsigned long SubAuthority[];
-		#} RPC_SID, 
-		# *PRPC_SID;
-		# http://msdn.microsoft.com/en-us/library/cc230364%28v=PROT.10%29.aspx
-
+		#RPC_SID
 		Count = x.unpack_long()
 		
 		Revision = x.unpack_small()
@@ -680,7 +674,7 @@ class samr(RPCService):
 		
 		# RPC_UNICODE_STRING
 		r.pack_short(10)
-		r.pack_short(32)
+		r.pack_short(16)
 
 		# WCHAR* Buffer
 		r.pack_pointer(0x2)
@@ -698,11 +692,8 @@ class samr(RPCService):
 		r.pack_pointer(0x4)
 		
 		r.pack_string('Administrator'.encode('utf16')[2:])
-		#r.pack_short(0)
 		r.pack_string('Guest'.encode('utf16')[2:])
-		#r.pack_short(0)
 		r.pack_string('HelpAssistant'.encode('utf16')[2:])
-		#r.pack_short(0)
 		r.pack_string('SUPPORT_388945a0'.encode('utf16')[2:])		
 		
 		# long* CountReturned
@@ -850,7 +841,6 @@ class SRVSVC(RPCService):
 		resumehandle = 0
 		if resumehandleptr != 0:
 			resumehandle = x.unpack_long()
-
 		
 		print("srvsvc_handle_ref %x srvsvc_handle %s infostruct_level %i count %i buffer %x preferdmaxlen %i  resumehandleptr %x resumehandle %i" % (
 			srvsvc_handle_ref,
@@ -875,19 +865,19 @@ class SRVSVC(RPCService):
 			r.pack_long(1)
 			r.pack_pointer(0x23456)
 		
-		# 2.2.4.23 SHARE_INFO_1
-		# 
-		# http://msdn.microsoft.com/en-us/library/cc247147%28PROT.10%29.aspx
-		# 
-		# typedef struct _SHARE_INFO_1 {
-		#   [string] wchar_t* shi1_netname;
-		#   DWORD shi1_type;
-		#   [string] wchar_t* shi1_remark;
-		# } SHARE_INFO_1, 
-		#  *PSHARE_INFO_1, 
-		#  *LPSHARE_INFO_1;
+			# 2.2.4.23 SHARE_INFO_1
+			# 
+			# http://msdn.microsoft.com/en-us/library/cc247147%28PROT.10%29.aspx
+			# 
+			# typedef struct _SHARE_INFO_1 {
+			#   [string] wchar_t* shi1_netname;
+			#   DWORD shi1_type;
+			#   [string] wchar_t* shi1_remark;
+			# } SHARE_INFO_1, 
+			#  *PSHARE_INFO_1, 
+			#  *LPSHARE_INFO_1;
 		
-		# http://msdn.microsoft.com/en-us/library/cc247150%28PROT.10%29.aspx
+			# http://msdn.microsoft.com/en-us/library/cc247150%28PROT.10%29.aspx
 
 			# Count
 			r.pack_long(2)
@@ -914,30 +904,31 @@ class SRVSVC(RPCService):
 			r.pack_string('test2\0'.encode('utf16')[2:])
 			r.pack_string('es geht test\0'.encode('utf16')[2:])
 
-		# 2.2.4.26 SHARE_INFO_502_I
-		#
-		# http://msdn.microsoft.com/en-us/library/cc247150%28v=PROT.13%29.aspx
-		#
-		# typedef struct _SHARE_INFO_502_I {
-		#  [string] WCHAR* shi502_netname;
-		#  DWORD shi502_type;
-		#  [string] WCHAR* shi502_remark;
-		#  DWORD shi502_permissions;
-		#  DWORD shi502_max_uses;
-		#  DWORD shi502_current_uses;
-		#  [string] WCHAR* shi502_path;
-		#  [string] WCHAR* shi502_passwd;
-		#  DWORD shi502_reserved;
-		#  [size_is(shi502_reserved)] unsigned char* shi502_security_descriptor;
-		#} SHARE_INFO_502_I, 
-		# *PSHARE_INFO_502_I, 
-		# *LPSHARE_INFO_502_I;
 			
 		if infostruct_level == 502:
 
 			# EntriesRead
 			r.pack_long(502)
 			r.pack_pointer(0x23456)
+
+			# 2.2.4.26 SHARE_INFO_502_I
+			#
+			# http://msdn.microsoft.com/en-us/library/cc247150%28v=PROT.13%29.aspx
+			#
+			# typedef struct _SHARE_INFO_502_I {
+			#  [string] WCHAR* shi502_netname;
+			#  DWORD shi502_type;
+			#  [string] WCHAR* shi502_remark;
+			#  DWORD shi502_permissions;
+			#  DWORD shi502_max_uses;
+			#  DWORD shi502_current_uses;
+			#  [string] WCHAR* shi502_path;
+			#  [string] WCHAR* shi502_passwd;
+			#  DWORD shi502_reserved;
+			#  [size_is(shi502_reserved)] unsigned char* shi502_security_descriptor;
+			#} SHARE_INFO_502_I, 
+			# *PSHARE_INFO_502_I, 
+			# *LPSHARE_INFO_502_I;
 
 			# Count
 			r.pack_long(2)
@@ -951,16 +942,16 @@ class SRVSVC(RPCService):
 			# Buffer[0]
 			r.pack_pointer(0x34567)
 			r.pack_long(0x00000000) # STYPE_DISKTREE
-			r.pack_pointer(0x45678)
-			r.pack_long(0)		#permissions
-			r.pack_long(0xffffffff) #max_uses
-			r.pack_long(1)		#current_uses
-			r.pack_pointer(0x78654)
-			r.pack_pointer(0) 
-			r.pack_long(0) #reserved
-			r.pack_pointer(0)
+			r.pack_pointer(0x45678) # remark
+			r.pack_long(0)		# permissions
+			r.pack_long(0xffffffff) # max_uses
+			r.pack_long(1)		# current_uses
+			r.pack_pointer(0x78654) # path
+			r.pack_pointer(0) 	# passwd
+			r.pack_long(0) 		# reserved
+			r.pack_pointer(0)	# security descriptor
 
-			# Buffer[0]
+			# Buffer[1]
 			r.pack_pointer(0x343567)
 			r.pack_long(0x00000000) # STYPE_DISKTREE
 			r.pack_pointer(0x45678)
@@ -972,20 +963,20 @@ class SRVSVC(RPCService):
 			r.pack_long(0)
 			r.pack_pointer(0)
 
-			r.pack_string1('test\0'.encode('utf16')[2:])
-			r.pack_string1('es geht test\0'.encode('utf16')[2:])
-			r.pack_string1('C:\0'.encode('utf16')[2:])
+			r.pack_string_fix('test\0'.encode('utf16')[2:])
+			r.pack_string_fix('es geht test\0'.encode('utf16')[2:])
+			r.pack_string_fix('C:\0'.encode('utf16')[2:])
 
-			r.pack_string1('test2\0'.encode('utf16')[2:])
-			r.pack_string1('es geht test\0'.encode('utf16')[2:])
-			r.pack_string1('C:\WINDOWS\0'.encode('utf16')[2:])
+			r.pack_string_fix('test2\0'.encode('utf16')[2:])
+			r.pack_string_fix('es geht test\0'.encode('utf16')[2:])
+			r.pack_string_fix('C:\WINDOWS\0'.encode('utf16')[2:])
 
 		# total entries
 		r.pack_long(2)
 
 		# resume handle
 		r.pack_pointer(0x47123123)		
-		r.pack_long(0x47123123)
+		r.pack_long(0)
 
 		r.pack_long(0)
 		return r.get_buffer()
@@ -1051,6 +1042,10 @@ class SRVSVC(RPCService):
 		infostruct_level = p.unpack_long()
 		infostruct_share = p.unpack_long()
 
+		#2.2.4.24 SHARE_INFO_2
+		#
+		#http://msdn.microsoft.com/en-us/library/cc247148%28v=PROT.13%29.aspx
+		#
 		#typedef struct _SHARE_INFO_2 {
 		#  [string] wchar_t* shi2_netname;
 		#  DWORD shi2_type;
@@ -1064,14 +1059,14 @@ class SRVSVC(RPCService):
 
 		if infostruct_share == 2:
 			ref = p.unpack_pointer()
-			ptr = p.unpack_pointer()
+			netname = p.unpack_pointer()
 			sharetype = p.unpack_long()
-			ref1 = p.unpack_long()
+			remark = p.unpack_long()
 			permission = p.unpack_long()
 			max_use = p.unpack_long()
 			current_use = p.unpack_long()
 			path = p.unpack_pointer()
-			password = p.unpack_pointer()
+			passwd = p.unpack_pointer()
 			share_name = p.unpack_string()
 			share_comment = p.unpack_string()
 			share_path = p.unpack_string()
@@ -1079,13 +1074,11 @@ class SRVSVC(RPCService):
 		ptr_parm = p.unpack_pointer()
 		error = p.unpack_long()
 
-		# compile reply
 		r = ndrlib.Packer()
 		r.pack_pointer(0x324567)
 		r.pack_long(0)
 		r.pack_long(0)
 		return r.get_buffer()
-
 
 class ssdpsrv(RPCService):
 	uuid = UUID('4b112204-0e19-11d3-b42b-0000f81feb9f').hex
