@@ -154,6 +154,7 @@ class smbd(connection):
 	def process(self, p):
 		r = ''
 		rp = None
+		self.state['readcount'] = 0
 		#if self.state == STATE_START and p.getlayer(SMB_Header).Command == 0x72:
 		if p.getlayer(SMB_Header).Command == SMB_COM_NEGOTIATE:
 			# Negociate Protocol -> Send response that supports minimal features in NT LM 0.12 dialect
