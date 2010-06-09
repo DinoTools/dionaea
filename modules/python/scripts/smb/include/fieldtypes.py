@@ -417,10 +417,10 @@ class PacketListField(PacketField):
             l = self.length_from(pkt)
         elif self.count_from is not None:
             c = self.count_from(pkt)
-            
         lst = []
-        ret = ""
+        ret = b""
         remain = s
+
         if l is not None:
             remain,ret = s[:l],s[l:]
         while remain:
@@ -428,22 +428,19 @@ class PacketListField(PacketField):
                 if c <= 0:
                     break
                 c -= 1
-            try:
-                p = self.m2i(pkt,remain)
-            except Exception:
-                p = Raw(load=remain)
-                remain = ""
+            p = self.m2i(pkt,remain)
+            if 'Raw' in p:
+                remain = p.load
+                del p['Raw'].underlayer.payload
             else:
-                if 'Padding' in p:
-                    pad = p['Padding']
-                    remain = pad.load
-                    del(pad.underlayer.payload)
-                else:
-                    remain = ""
+                remain = b""
             lst.append(p)
         return remain+ret,lst
+
     def addfield(self, pkt, s, val):
-        return s+"".join(map(str, val))
+        for i in val:
+            s += i.build(pkt)
+        return s
 
 
 class StrFixedLenField(StrField):
@@ -476,6 +473,7 @@ class StrFixedLenField(StrField):
         except:
             l = RandNum(0,200)
         return RandBin(l)
+
 
 class NetBIOSNameField(StrFixedLenField):
     def __init__(self, name, default, length=31):
