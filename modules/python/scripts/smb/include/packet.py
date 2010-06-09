@@ -647,7 +647,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
                 logger.debug("%s  \\%-10s\\" % (label_lvl+lvl, f.name))
                 fvalue_gen = SetGen(fvalue,_iterpacket=0)
                 for fvalue in fvalue_gen:
-                    fvalue.show(indent=indent, label_lvl=label_lvl+lvl+"   |")
+                    fvalue.show(indent=indent, label_lvl=label_lvl+lvl+"   |", goff=goff)
             else:
                 size = f.size(self,fvalue)
                 logger.debug("%s  %-20s%s %-15s sizeof(%3i) off=%3i goff=%3i" % (label_lvl+lvl,
