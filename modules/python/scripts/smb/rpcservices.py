@@ -354,6 +354,14 @@ class MGMT(RPCService):
 	uuid = UUID('afa8bd80-7d8a-11c9-bef4-08002b102989').hex
 
 class samr(RPCService):
+	""" [MS-SAMR]: Security Account Manager (SAM) Remote Protocol Specification (Client-to-Server)
+	
+	http://msdn.microsoft.com/en-us/library/cc245476%28v=PROT.13%29.aspx
+
+	http://download.microsoft.com/download/a/e/6/ae6e4142-aa58-45c6-8dcf-a657e5900cd3/%5BMS-SAMR%5D.pdf"""
+
+	
+
 	uuid = UUID('12345778-1234-abcd-ef00-0123456789ac').hex
 
 	ops = {
@@ -378,7 +386,27 @@ class samr(RPCService):
 		#   [in] unsigned long ClientRevision,
 		#   [in] unsigned long DesiredAccess
 		# );
-		pass
+		x = ndrlib.Unpacker(p.StubData)
+		PServerName = x.unpack_pointer()
+		ServerName = x.unpack_string()
+		print("ServerName %s" % ServerName)
+		DesiredAccess = x.unpack_long()
+		print("DesiredAccess %i" % DesiredAccess)
+		ClientRevision = x.unpack_long()
+		print("InVersion %i" % ClientRevision)
+
+		r = ndrlib.Packer()
+
+		# ServerHandle
+		r.pack_raw(b'01234567890123456789')
+
+		# return 
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+
+		
 
 	@classmethod
 	def handle_Connect5(cls, p):
@@ -734,6 +762,13 @@ class spoolss(RPCService):
 
 
 class SRVSVC(RPCService):
+	""" [MS-SRVS]: Server Service Remote Protocol Specification
+
+	http://msdn.microsoft.com/en-us/library/cc247080%28v=PROT.13%29.aspx
+
+	http://download.microsoft.com/download/a/e/6/ae6e4142-aa58-45c6-8dcf-a657e5900cd3/%5BMS-SRVS%5D.pdf 
+
+	"""
 	uuid = UUID('4b324fc8-1670-01d3-1278-5a47bf6ee188').hex
 	version_major = 0
 	version_minor = 0
@@ -806,7 +841,8 @@ class SRVSVC(RPCService):
 		# 	SHARE_INFO_503_CONTAINER* Level503;
 		# } SHARE_ENUM_UNION;
 
-
+		count = 0
+		buffer = 0
 		if infostruct_share == 1:
 			# 2.2.4.33 SHARE_INFO_1_CONTAINER
  			# 
@@ -1005,6 +1041,17 @@ class SRVSVC(RPCService):
 		pathflags  = x.unpack_long()
 		print("ref 0x%x server_unc %s path %s maxbuf %s prefix %s pathtype %i pathflags %i" % (ref, server_unc, path, maxbuf, prefix, pathtype, pathflags))
 
+		r = ndrlib.Packer()
+#		r.pack_long(pathflags)
+#		r.pack_long(0)
+#		r.pack_long(0)
+		r.pack_long(pathtype)
+		r.pack_long(0)
+		r.pack_string(path)
+		
+
+		return r.get_buffer()
+
 	@classmethod
 	def handle_NetPathCompare(cls, p):
 		# MS08-067
@@ -1019,10 +1066,18 @@ class SRVSVC(RPCService):
 		ref        = p.unpack_pointer()
 		server_unc = p.unpack_string()
 		path1       = p.unpack_string()
-		path2     = p.unpack_long()
+		path2     = p.unpack_string()
 		pathtype   = p.unpack_long()
 		pathflags  = p.unpack_long()
-		print("ref 0x%x server_unc %s path1 %s path2 %s pathtype %i pathflags %i" % (ref, server_unc, path1, path2, pathtype, pathflags))
+		print("ref 0x%x server_unc %s path1 %s path2 %s pathtype %i pathflags %i" % (ref, server_unc, path1.decode('utf-16'), path2.decode('utf-16'), pathtype, pathflags))
+		r = ndrlib.Packer()
+		x = (path1 > path2) - (path1 < path2) 
+		if x < 0:
+			r.pack_long( 0 )
+		else:
+			r.pack_long( 0 )
+#		r.pack_long( x )
+		return r.get_buffer()
 
 	@classmethod
 	def handle_NetShareAdd(cls, p):
