@@ -305,15 +305,15 @@ class smbd(connection):
 		if dcep.PacketType == 11: #bind
 			outbuf = DCERPC_Header()/DCERPC_Bind_Ack()
 			outbuf.CallID = dcep.CallID
-
-#			tmp = dcep.getlayer(DCERPC_CtxItem)
 			c = 0
-			outbuf.CtxItems = []
+			outbuf.CtxItems = [DCERPC_Ack_CtxItem() for i in range(len(dcep.CtxItems))]
 			while c < len(dcep.CtxItems): #isinstance(tmp, DCERPC_CtxItem):
 				tmp = dcep.CtxItems[c]
-				ctxitem = DCERPC_Ack_CtxItem()
+				ctxitem = outbuf.CtxItems[c]
 				service_uuid = UUID(bytes_le=tmp.UUID)
 				transfersyntax_uuid = UUID(bytes_le=tmp.TransferSyntax)
+				ctxitem.TransferSyntax = tmp.TransferSyntax #[:16]
+				ctxitem.TransferSyntaxVersion = tmp.TransferSyntaxVersion
 				if str(transfersyntax_uuid) == '8a885d04-1ceb-11c9-9fe8-08002b104860':
 					if service_uuid.hex in registered_services:
 						service = registered_services[service_uuid.hex]
@@ -322,19 +322,15 @@ class smbd(connection):
 						# Copy Transfer Syntax to CtxItem
 						ctxitem.AckResult = 0
 						ctxitem.AckReason = 0
-						ctxitem.TransferSyntax = tmp.TransferSyntax[:16]
-						ctxitem.TransferSyntaxVersion = tmp.TransferSyntaxVersion
 					else:
 						smblog.warn("Attempt to register %s failed, UUID does not exist or is not implemented" % service_uuid)
 				else:
 					smblog.warn("Attempt to register %s failed, TransferSyntax %s is unknown" % (service_uuid, transfersyntax_uuid) )
-				outbuf.CtxItems.append(ctxitem)
 				i = incident("dionaea.modules.python.smb.dcerpc.bind")
 				i.con = self
 				i.uuid = str(service_uuid)
 				i.transfersyntax = str(transfersyntax_uuid)
 				i.report()
-#				tmp = tmp.payload
 				c += 1
 			outbuf.NumCtxItems = c
 			outbuf.FragLen = len(outbuf.build())
@@ -354,13 +350,10 @@ class smbd(connection):
 				smblog.info("DCERPC Request without pending action")
 			if not resp:
 				self.state['stop'] = True
-
 			outbuf = resp
 		else:
 			# unknown DCERPC packet -> logcrit and bail out.
 			smblog.critical('unknown DCERPC packet. bailing out.')
-
-
 		return outbuf
 
 	def handle_disconnect(self):

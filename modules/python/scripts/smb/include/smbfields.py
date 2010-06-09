@@ -1341,7 +1341,7 @@ class DCERPC_Ack_CtxItem(Packet):
         LEShortField("AckReason",1),
         #Field("TransferSyntax","\0"*16, fmt="QQ"),
 #        StrFixedLenField('TransferSyntax', '', 16),
-        UUIDField("TransferSyntax", 0),
+        UUIDField("TransferSyntax", ""),
         LEIntField('TransferSyntaxVersion', 0)
     ]
 
