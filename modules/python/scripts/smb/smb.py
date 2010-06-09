@@ -162,16 +162,18 @@ class smbd(connection):
 			r = SMB_Negociate_Protocol_Response()
 			# we have to select dialect
 			c = 0
-			tmp = p.getlayer(SMB_Negociate_Protocol_Request_Tail)
-			while isinstance(tmp, SMB_Negociate_Protocol_Request_Tail):
-				if tmp.BufferData.decode('ascii').find('NT LM 0.12') != -1:
+			tmp = p.getlayer(SMB_Negociate_Protocol_Request_Counts)
+			while c < len(tmp.Requests):
+				request = tmp.Requests[c]
+				if request.BufferData.decode('ascii').find('NT LM 0.12') != -1:
 					break
 				c += 1
-				tmp = tmp.payload
 
 			r.DialectIndex = c
 
 #			r.Capabilities = r.Capabilities & ~CAP_EXTENDED_SECURITY
+			if not p.Flags2 & SMB_FLAGS2_EXT_SEC:
+				r.Capabilities = r.Capabilities & ~CAP_EXTENDED_SECURITY
 
 		#elif self.state == STATE_SESSIONSETUP and p.getlayer(SMB_Header).Command == 0x73:
 		elif p.getlayer(SMB_Header).Command == SMB_COM_SESSION_SETUP_ANDX:
@@ -236,9 +238,10 @@ class smbd(connection):
 			if p.getlayer(SMB_Read_AndX_Request).MaxCountLow < len(self.outbuf.build())-self.state['readcount'] :
 #				rdata.Bytecount = p.getlayer(SMB_Read_AndX_Request).MaxCountLow+1
 #			else:
-				rdata.Bytecount = len(self.outbuf.build()) - self.state['readcount']
+				rdata.ByteCount = len(self.outbuf.build()) - self.state['readcount']
 
 			rdata.Bytes = self.outbuf.build()[ self.state['readcount']: self.state['readcount'] + p.getlayer(SMB_Read_AndX_Request).MaxCountLow ]
+#			rdata.ByteCount = len(rdata.Bytes)
 
 			self.state['readcount'] += p.Remaining
 			r.DataLenLow = len(rdata.Bytes)
@@ -260,7 +263,7 @@ class smbd(connection):
 			r.DataCount = dceplen
 
 			rdata = SMB_Data()
-			rdata.Bytecount = dceplen
+			rdata.ByteCount = dceplen
 			rdata.Bytes = self.outbuf.build()
 			
 			r /= rdata
@@ -303,10 +306,11 @@ class smbd(connection):
 			outbuf = DCERPC_Header()/DCERPC_Bind_Ack()
 			outbuf.CallID = dcep.CallID
 
-			tmp = dcep.getlayer(DCERPC_CtxItem)
+#			tmp = dcep.getlayer(DCERPC_CtxItem)
 			c = 0
-			while isinstance(tmp, DCERPC_CtxItem):
-				c += 1
+			outbuf.CtxItems = []
+			while c < len(dcep.CtxItems): #isinstance(tmp, DCERPC_CtxItem):
+				tmp = dcep.CtxItems[c]
 				ctxitem = DCERPC_Ack_CtxItem()
 				service_uuid = UUID(bytes_le=tmp.UUID)
 				transfersyntax_uuid = UUID(bytes_le=tmp.TransferSyntax)
@@ -324,16 +328,15 @@ class smbd(connection):
 						smblog.warn("Attempt to register %s failed, UUID does not exist or is not implemented" % service_uuid)
 				else:
 					smblog.warn("Attempt to register %s failed, TransferSyntax %s is unknown" % (service_uuid, transfersyntax_uuid) )
-
-				outbuf /= ctxitem
+				outbuf.CtxItems.append(ctxitem)
 				i = incident("dionaea.modules.python.smb.dcerpc.bind")
 				i.con = self
 				i.uuid = str(service_uuid)
 				i.transfersyntax = str(transfersyntax_uuid)
 				i.report()
-				tmp = tmp.payload
-		
-			outbuf.NumCtxItems = c
+#				tmp = tmp.payload
+				c += 1
+			outbuf.NumCtxItems = c-1
 			outbuf.FragLen = len(outbuf.build())
 			smblog.debug("dce reply")
 			outbuf.show()
@@ -384,6 +387,10 @@ class epmapper(smbd):
 			t = traceback.format_exc()
 			smblog.critical(t)
 			return len(data)
+
+		if len(data) < p.FragLen:
+			smblog.warning("epmapper - not enough data")
+			return 0
 
 		smblog.debug('packet: {0}'.format(p.summary()))
 

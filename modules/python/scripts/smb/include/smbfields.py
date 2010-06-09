@@ -26,9 +26,11 @@
 #*******************************************************************************/
 
 import datetime
+from uuid import UUID
 
 from .packet import *
 from .fieldtypes import *
+
 
 #
 # http://www.snia.org/tech_activities/CIFS/CIFS-TR-1p00_FINAL.pdf
@@ -585,6 +587,13 @@ class SMBNullField(StrField):
 			return StrNullField.size(self, pkt, s)
 
 
+class UUIDField(StrFixedLenField):
+	def __init__(self, name, default):
+		StrFixedLenField.__init__(self, name, default, 16)
+	def i2repr(self, pkt, v):
+		return str(UUID(bytes_le=v))
+
+
 class NBTSession(Packet):
 	name="NBT Session Packet"
 	fields_desc= [
@@ -641,16 +650,9 @@ class SMB_Parameters(Packet):
 class SMB_Data(Packet):
 	name="SMB Data"
 	fields_desc = [
-		FieldLenField('Bytecount', None, fmt='<H', length_of="Bytes", adjust=lambda pkt,x:x+1),
+		FieldLenField('ByteCount', None, fmt='<H', length_of="Bytes", adjust=lambda pkt,x:x+1),
 		FixGapField("Padding", b'\x00'),
-		StrLenField('Bytes', '', length_from = lambda pkt: pkt.Bytecount),
-	]
-
-class SMB_Negociate_Protocol_Request_Counts(Packet):
-	name = "SMB Negociate_Protocol_Request_Counts"
-	fields_desc = [
-		ByteField("WordCount",0),
-		LEShortField("ByteCount",12),
+		StrLenField('Bytes', '', length_from = lambda pkt: pkt.ByteCount),
 	]
 
 class SMB_Negociate_Protocol_Request_Tail(Packet):
@@ -659,6 +661,17 @@ class SMB_Negociate_Protocol_Request_Tail(Packet):
 		ByteField("BufferFormat",0x02),
 		StrNullField("BufferData","NT LM 0.12"),
 	]
+
+
+class SMB_Negociate_Protocol_Request_Counts(Packet):
+	name = "SMB Negociate_Protocol_Request_Counts"
+	fields_desc = [
+		ByteField("WordCount",0),
+#		LEShortField("ByteCount",12),
+		FieldLenField("ByteCount", 12, fmt='<H', length_of="Requests"),
+		PacketListField("Requests", None, SMB_Negociate_Protocol_Request_Tail, length_from=lambda x:x.ByteCount)
+	]
+
 
 # page 60
 # we support nt lm 0.12
@@ -681,7 +694,8 @@ class SMB_Negociate_Protocol_Response(Packet):
 		NTTimeField("SystemTime",datetime.datetime.now()),
 		ShortField("SystemTimeZone",0xc4ff),
 		ByteField("KeyLength", 0),
-		LEShortField("ByteCount", 16),
+		#LEShortField("ByteCount", 16),
+		MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("EncryptionKey","OemDomainName", "ServerGUID", "SecurityBlob")),
 		# without CAP_EXTENDED_SECURITY
 		ConditionalField(StrNullField("EncryptionKey", b'test'), lambda x: not x.Capabilities & CAP_EXTENDED_SECURITY),
 		ConditionalField(StrNullField("OemDomainName", b'WORKGROUP'), lambda x: not x.Capabilities & CAP_EXTENDED_SECURITY),
@@ -1292,6 +1306,20 @@ class DCERPC_Response(Packet):
 		StrLenField("StubData", ""),
 	]
 
+class DCERPC_CtxItem(Packet):
+	name = "DCERPC CtxItem"
+	fields_desc = [
+		LEShortField("ContextID",0),
+		FieldLenField('NumTransItems', 1, fmt='B', length_of="TransItems"),
+		ByteField("FixGap", 0),
+#		StrLenField('UUID', '', length_from = lambda x: 16),
+        UUIDField('UUID', ''),
+		LEShortField("InterfaceVer",0),
+		LEShortField("InterfaceVerMinor",0),
+#		StrFixedLenField('TransferSyntax', '', 16),
+        UUIDField('TransferSyntax', ''),
+		LEIntField('TransferSyntaxVersion', 0)
+	]
 
 class DCERPC_Bind(Packet):
 	name = "DCERPC Bind"
@@ -1299,22 +1327,24 @@ class DCERPC_Bind(Packet):
 		LEShortField("MaxTransmitFrag",5840),
 		LEShortField("MaxReceiveFrag",5840),
 		XLEIntField("AssocGroup",0),
-		ByteField("NumCtxItems",1),
+#		ByteField("NumCtxItems",1),
+#		PacketLenField("NumCtxItems", 1, None, length_from),
+		FieldLenField("NumCtxItems", 0, fmt='B', count_of="CtxItems"),
 		StrLenField("FixGap", "\0"*3, length_from=lambda x:3),
+		PacketListField("CtxItems", None, DCERPC_CtxItem, count_from=lambda pkt:pkt.NumCtxItems)
 	]
 
-class DCERPC_CtxItem(Packet):
-	name = "DCERPC CtxItem"
-	fields_desc = [
-		LEShortField("ContextID",0),
-		FieldLenField('NumTransItems', 1, fmt='B', length_of="TransItems"),
-		ByteField("FixGap", 0),
-		StrLenField('UUID', '', length_from = lambda x: 16),
-		LEShortField("InterfaceVer",0),
-		LEShortField("InterfaceVerMinor",0),
-		StrFixedLenField('TransferSyntax', '', 16),
-		LEIntField('TransferSyntaxVersion', 0)
-	]
+class DCERPC_Ack_CtxItem(Packet):
+    name = "DCERPC Ack CtxItem"
+    fields_desc = [
+        LEShortField("AckResult",2),
+        LEShortField("AckReason",1),
+        #Field("TransferSyntax","\0"*16, fmt="QQ"),
+#        StrFixedLenField('TransferSyntax', '', 16),
+        UUIDField("TransferSyntax", 0),
+        LEIntField('TransferSyntaxVersion', 0)
+    ]
+
 
 class DCERPC_Bind_Ack(Packet):
 	name = "DCERPC Bind Ack"
@@ -1324,19 +1354,12 @@ class DCERPC_Bind_Ack(Packet):
 		XLEIntField("AssocGroup",0x4ef7),
 		FieldLenField("SecondAddrLen", 14, fmt='<H', length_of="SecondAddr"),
 		StrLenField("SecondAddr", "\\PIPE\\browser\0", length_from=lambda x:x.SecondAddrLen),
-		ByteField("NumCtxItems",1),
+#		ByteField("NumCtxItems",1),
+        FieldLenField("NumCtxItems", 0, fmt='B', count_of="CtxItems"),
 		StrLenField("FixGap", "\0"*3, length_from=lambda x:3),
+        PacketListField("CtxItems", 0, DCERPC_Ack_CtxItem, count_from=lambda pkt:pkt.NumCtxItems)
 	]
 
-class DCERPC_Ack_CtxItem(Packet):
-	name = "DCERPC Ack CtxItem"
-	fields_desc = [
-		LEShortField("AckResult",2),
-		LEShortField("AckReason",1),
-		#Field("TransferSyntax","\0"*16, fmt="QQ"),
-		StrFixedLenField('TransferSyntax', '', 16),
-		LEIntField('TransferSyntaxVersion', 0)
-	]
 
 bind_bottom_up(NBTSession, NBTSession_Request, TYPE = lambda x: x==0x81)
 bind_bottom_up(NBTSession, SMB_Header, TYPE = lambda x: x==0)
@@ -1372,13 +1395,13 @@ bind_bottom_up(SMB_Trans_Request, DCERPC_Header)
 bind_bottom_up(DCERPC_Header, DCERPC_Request, PacketType=lambda x: x==0)
 bind_bottom_up(DCERPC_Header, DCERPC_Bind, PacketType=lambda x: x==11)
 bind_bottom_up(DCERPC_Header, DCERPC_Bind_Ack, PacketType=lambda x: x==12)
-bind_bottom_up(DCERPC_Bind, DCERPC_CtxItem)
-bind_bottom_up(DCERPC_CtxItem, DCERPC_CtxItem)
+#bind_bottom_up(DCERPC_Bind, DCERPC_CtxItem)
+#bind_bottom_up(DCERPC_CtxItem, DCERPC_CtxItem)
 
 #bind_bottom_up(SMB_Sessionsetup_AndX_Request, SMB_Treeconnect_AndX_Request, AndXCommand=lambda x: x==0x75)
 bind_bottom_up(SMB_Sessionsetup_AndX_Request2, SMB_Treeconnect_AndX_Request, AndXCommand=lambda x: x==0x75)
-bind_bottom_up(SMB_Negociate_Protocol_Request_Counts, SMB_Negociate_Protocol_Request_Tail)
-bind_bottom_up(SMB_Negociate_Protocol_Request_Tail, SMB_Negociate_Protocol_Request_Tail)
+#bind_bottom_up(SMB_Negociate_Protocol_Request_Counts, SMB_Negociate_Protocol_Request_Tail)
+#bind_bottom_up(SMB_Negociate_Protocol_Request_Tail, SMB_Negociate_Protocol_Request_Tail)
 bind_bottom_up(SMB_Header, SMB_Parameters)
 bind_bottom_up(SMB_Parameters, SMB_Data)
 
