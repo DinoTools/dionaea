@@ -336,7 +336,7 @@ class smbd(connection):
 				i.report()
 #				tmp = tmp.payload
 				c += 1
-			outbuf.NumCtxItems = c-1
+			outbuf.NumCtxItems = c
 			outbuf.FragLen = len(outbuf.build())
 			smblog.debug("dce reply")
 			outbuf.show()
