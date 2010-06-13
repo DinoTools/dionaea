@@ -185,6 +185,13 @@ class Packer:
 	def pack_raw(self, s):
 		self.__buf.write(s)
 
+	"""to obtain only the maxcount and actualcount of rpc unicode string"""
+	def pack_rpc_unicode_string(self,s):
+		Length = MaximumLength = len(s)
+		if Length%8:
+			MaximumLength = (int(Length/8) + 1)*8
 
-
-
+		self.pack_short(Length*2)
+		self.pack_short(MaximumLength*2)
+		
+	

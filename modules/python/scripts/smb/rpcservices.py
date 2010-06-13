@@ -360,9 +360,155 @@ class samr(RPCService):
 
 	http://download.microsoft.com/download/a/e/6/ae6e4142-aa58-45c6-8dcf-a657e5900cd3/%5BMS-SAMR%5D.pdf"""
 
-	
-
 	uuid = UUID('12345778-1234-abcd-ef00-0123456789ac').hex
+
+	class SAMPR_HANDLE:
+		# 2.2.3.2 SAMPR_HANDLE
+		#
+		# http://msdn.microsoft.com/en-us/library/cc245544%28v=PROT.10%29.aspx
+		#
+		# typedef [context_handle] void* SAMPR_HANDLE; 
+		# 
+		def __init__(self, p, handle=None):
+			if isinstance(p,ndrlib.Packer):
+				p.pack_raw(handle)
+			elif isinstance(p,ndrlib.Unpacker):
+				self.Value = p.unpack_raw(20)
+
+	class RPC_SID_IDENTIFIER_AUTHORITY:
+		# 2.4.1.1 RPC_SID_IDENTIFIER_AUTHORITY
+		#
+		# http://msdn.microsoft.com/en-us/library/cc230372%28PROT.10%29.aspx
+		#
+		# typedef struct _RPC_SID_IDENTIFIER_AUTHORITY {
+		#   byte Value[6];
+		# } RPC_SID_IDENTIFIER_AUTHORITY;
+		#
+		SID_AUTHORITY = {
+			'NULL_SID_AUTHORITY'			: b'\x00\x00\x00\x00\x00\x00', 
+			'WORLD_SID_AUTHORITY'			: b'\x00\x00\x00\x00\x00\x01', 
+			'LOCAL_SID_AUTHORITY'			: b'\x00\x00\x00\x00\x00\x02', 
+			'CREATOR_SID_AUTHORITY'			: b'\x00\x00\x00\x00\x00\x03', 
+			'NON_UNIQUE_AUTHORITY'			: b'\x00\x00\x00\x00\x00\x04',
+			'NT_AUTHORITY'				: b'\x00\x00\x00\x00\x00\x05', 
+			'SECURITY_MANDATORY_LABEL_AUTHORITY'	: b'\x00\x00\x00\x00\x00\x10'
+		}
+		def __init__(self, p, value=None):
+			if isinstance(p,ndrlib.Packer):
+				if not self.SID_AUTHORITY.get(value) == None:
+					p.pack_raw(self.SID_AUTHORITY[value])
+			elif isinstance(p,ndrlib.Unpacker):
+				self.Value = p.unpack_raw(6)
+
+	class RPC_SID:
+		# 2.4.2.2 RPC_SID
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc230364%28PROT.10%29.aspx
+		# 
+		# typedef struct _RPC_SID {
+		#   unsigned char Revision;
+		#   unsigned char SubAuthorityCount;
+		#   RPC_SID_IDENTIFIER_AUTHORITY IdentifierAuthority;
+		#   [size_is(SubAuthorityCount)] 
+		#   unsigned long SubAuthority[];
+		# } RPC_SID, 
+		#  *PRPC_SID;
+		#
+		def __init__(self, p, value=None):
+			if isinstance(p,ndrlib.Packer):
+				# Revision
+				p.pack_small(1)
+
+				# SubAuthorityCount
+				p.pack_small(4)
+
+				# RPC_SID_IDENTIFIER_AUTHORITY
+				samr.RPC_SID_IDENTIFIER_AUTHORITY(p, value)
+
+				# SubAuthority
+				p.pack_long(21)
+				p.pack_long(606747145)
+				p.pack_long(1364589140)
+				p.pack_long(839522115)
+			elif isinstance(p,ndrlib.Unpacker):
+				self.Revision = p.unpack_small()
+				self.SubAuthorityCount = p.unpack_small()
+				self.IdentifierAuthority = samr.RPC_SID_IDENTIFIER_AUTHORITY(p,None)
+				self.SubAuthority = []
+				for i in range(self.SubAuthorityCount):
+					self.SubAuthority.append(p.unpack_long())
+
+	class RPC_UNICODE_STRING:
+		# 2.3.5 RPC_UNICODE_STRING
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc230365%28PROT.10%29.aspx
+		# 
+		# typedef struct _RPC_UNICODE_STRING {
+		#   unsigned short Length;
+		#   unsigned short MaximumLength;
+		#   [size_is(MaximumLength/2), length_is(Length/2)] 
+		# 	WCHAR* Buffer;
+		# } RPC_UNICODE_STRING, 
+		#  *PRPC_UNICODE_STRING;
+		# 
+		def __init__(self, p, data=None):
+			if isinstance(p,ndrlib.Packer):
+				p.pack_rpc_unicode_string(data)
+			elif isinstance(p,ndrlib.Unpacker):
+				self.Length = p.unpack_short()
+				self.MaximumLength = p.unpack_short()
+				self.Reference = p.unpack_pointer()
+				self.Buffer = p.unpack_string()
+
+
+	class SAMPR_RID_ENUMERATION:
+		# 2.2.3.9 SAMPR_RID_ENUMERATION
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc245560%28PROT.10%29.aspx
+		#
+		# typedef struct _SAMPR_RID_ENUMERATION {
+		#   unsigned long RelativeId;
+		#   RPC_UNICODE_STRING Name;
+		# } SAMPR_RID_ENUMERATION, 
+		#  *PSAMPR_RID_ENUMERATION;
+		def __init__(self, p, Name=None):
+			if isinstance(p,ndrlib.Packer):
+				for i in range(len(Name)): 				
+					#RelativeID
+					p.pack_long(0)
+					samr.RPC_UNICODE_STRING(p, Name[i])
+					p.pack_pointer(0x11)
+
+				for j in range(len(Name)):
+					p.pack_string(Name[j].encode('utf16')[2:])
+			elif isinstance(p,ndrlib.Unpacker):
+				self.RelativeId = p.unpack_long()
+				self.Name = RPC_UNICODE_STRING(p, Name)
+
+
+	class SAMPR_ENUMERATION_BUFFER:
+		# 2.2.3.10 SAMPR_ENUMERATION_BUFFER
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc245561%28v=PROT.10%29.aspx
+		# 
+		# typedef struct _SAMPR_ENUMERATION_BUFFER {
+		#     unsigned long EntriesRead;
+				#    [size_is(EntriesRead)] PSAMPR_RID_ENUMERATION Buffer;
+		# } SAMPR_ENUMERATION_BUFFER, 
+		# *PSAMPR_ENUMERATION_BUFFER;
+		def __init__(self, p, Buffer=None):
+			if isinstance(p,ndrlib.Packer):
+				# EntriesRead
+				p.pack_long(len(Buffer))
+				p.pack_pointer(0x4711)
+
+				# maxcount as described by wireshark
+				# the value need same as EntriesRead, I not sure why
+				p.pack_long(len(Buffer))
+ 
+				samr.SAMPR_RID_ENUMERATION(p, Buffer)
+			elif isinstance(p,ndrlib.Unpacker):
+				raise NotImplementedError
 
 	ops = {
 		1: "Close",
@@ -398,15 +544,12 @@ class samr(RPCService):
 		r = ndrlib.Packer()
 
 		# ServerHandle
-		r.pack_raw(b'01234567890123456789')
+		samr.SAMPR_HANDLE(r,b'01234567890123456789')
 
 		# return 
 		r.pack_long(0)
 
 		return r.get_buffer()
-
-
-		
 
 	@classmethod
 	def handle_Connect5(cls, p):
@@ -452,9 +595,9 @@ class samr(RPCService):
 		r.pack_long(SupportedFeatures)
 
 		# ServerHandle
-		r.pack_raw(b'01234567890123456789')
+		samr.SAMPR_HANDLE(r,b'01234567890123456789')
 
-		# return 
+		# return
 		r.pack_long(0)
 
 		return r.get_buffer()
@@ -473,7 +616,7 @@ class samr(RPCService):
   		#   [out] unsigned long* CountReturned
 		#);
 		x = ndrlib.Unpacker(p.StubData)
-		ServerHandle = x.unpack_raw(20)
+		ServerHandle = samr.SAMPR_HANDLE(x)
 		print("ServerHandle %s" % ServerHandle)
 
 		EnumerationContext = x.unpack_long()
@@ -484,56 +627,10 @@ class samr(RPCService):
 		
 		r = ndrlib.Packer()
 		r.pack_pointer(EnumerationContext)
-		
-		#2.2.3.10 SAMPR_ENUMERATION_BUFFER
-		#
-		#http://msdn.microsoft.com/en-us/library/cc245561%28v=PROT.10%29.aspx
-		#
-		#typedef struct _SAMPR_ENUMERATION_BUFFER {
- 		#    unsigned long EntriesRead;
-                #    [size_is(EntriesRead)] PSAMPR_RID_ENUMERATION Buffer;
-		#} SAMPR_ENUMERATION_BUFFER, 
- 		#*PSAMPR_ENUMERATION_BUFFER;
-		
+
+		# PSAMPR_ENUMERATION_BUFFER* Buffer
 		r.pack_pointer(0x0da260)
-		
-		# EntriesRead
-		r.pack_long(2)
-	
-		# PSAMPR_RID_ENUMERATION Buffer
-		# http://msdn.microsoft.com/en-us/library/cc245560%28PROT.10%29.aspx
-
-		r.pack_pointer(0x0c40e0)
-		
-		# maxcount
-		r.pack_long(2)
-
-		# entry 1
-		# RelativeId;
-		r.pack_long(0)
-		
-		# RPC_UNICODE_STRING
-		#http://msdn.microsoft.com/en-us/library/cc230365%28PROT.10%29.aspx
-
-		r.pack_short(30)
-		r.pack_short(32)
-		
-		# WCHAR* Buffer
-		r.pack_pointer(0x1)
-
-		# entry 2
-		# RelativeId;
-		r.pack_long(0)
-		
-		# RPC_UNICODE_STRING
-		r.pack_short(14)
-		r.pack_short(16)
-
-		# WCHAR* Buffer
-		r.pack_pointer(0x11)
-
-		r.pack_string('HOMEUSER-3AF6FE'.encode('utf16')[2:])
-		r.pack_string('Builtin'.encode('utf16')[2:])
+		samr.SAMPR_ENUMERATION_BUFFER(r, ['HOMEUSER-3AF6FE','Builtin'])
 
 		# long* CountReturned
 		r.pack_pointer(0x02)
@@ -553,53 +650,15 @@ class samr(RPCService):
  		#[out] PRPC_SID* DomainId
 		#);
 		x = ndrlib.Unpacker(p.StubData)
-		ServerHandle = x.unpack_raw(20)
-		print("ServerHandle %s" % ServerHandle)
-
-		Length = x.unpack_short()
-		MaxLength = x.unpack_short()
-		print("Length %i MaxLength %i" % (Length, MaxLength))
-
-		Reference = x.unpack_long()
-		print("Reference %i" % (Reference))
-
-		DomainName = x.unpack_string()
-		print("Domain Name %s" % (DomainName))
-
+		ServerHandle = samr.SAMPR_HANDLE(x)
+		Name = samr.RPC_UNICODE_STRING(x)
 		r = ndrlib.Packer()
 		r.pack_pointer(0x0da260)   #same as EnumDomain
 		
-		#Count
+		#Count as described by wireshark, I not sure why this needed
 		r.pack_long(4)
 
-		#2.4.2.2 RPC_SID
-		#
-		#http://msdn.microsoft.com/en-us/library/cc230364%28PROT.10%29.aspx
-		#
-		#typedef struct _RPC_SID {
-		#  unsigned char Revision;
-		#  unsigned char SubAuthorityCount;
-		#  RPC_SID_IDENTIFIER_AUTHORITY IdentifierAuthority;
-		#  [size_is(SubAuthorityCount)] 
-		#  unsigned long SubAuthority[];
-		#} RPC_SID, 
-		# *PRPC_SID;
-
-		#Revision
-		r.pack_small(1)
-
-		#SubAuthorityCount
-		r.pack_small(4)
-		
-		#IndentifierAuthority
-		r.pack_raw(b'\0\0\0\0\0\5')
-		
-		#SubAuthority
-		r.pack_long(21)
-		r.pack_long(606747145)
-		r.pack_long(1364589140)
-		r.pack_long(839522115)
-	
+		samr.RPC_SID(r,'NT_AUTHORITY')	
 		r.pack_long(0)
 		return r.get_buffer()
 	
@@ -616,26 +675,16 @@ class samr(RPCService):
 		#   [out] SAMPR_HANDLE* DomainHandle
 		# );
 		x = ndrlib.Unpacker(p.StubData)
-		ServerHandle = x.unpack_raw(20)
+		ServerHandle = samr.SAMPR_HANDLE(x)
 		print("ServerHandle %s" % ServerHandle)
 
 		DesiredAccess = x.unpack_long()
 		print("DesiredAccess %i" % DesiredAccess)
-
-		#RPC_SID
-		Count = x.unpack_long()
 		
-		Revision = x.unpack_small()
-		SubAuthorityCount = x.unpack_small()
-		IdentifierAuthority = x.unpack_raw(6)
-		print("Revision %i SubAuthorityCount %i IdentifierAuthority %s" % (Revision, SubAuthorityCount, IdentifierAuthority))
-		
-		for i in range(Count):
-			SubAuthority = x.unpack_long()
-			print("%i" % (SubAuthority))
-		
+		DomainId = samr.RPC_SID(x)	
+	
 		r = ndrlib.Packer()
-		r.pack_raw(b'11223344556677889900')
+		samr.SAMPR_HANDLE(r, b'11223344556677889900')
 		r.pack_long(0)
 
 		return r.get_buffer()
@@ -655,7 +704,7 @@ class samr(RPCService):
   		#[out] unsigned long* CountReturned
 		#)
 		x = ndrlib.Unpacker(p.StubData)
-		DomainHandle = x.unpack_raw(20)
+		DomainHandle = samr.SAMPR_HANDLE(x)
 		print("DomainHandle %s" % DomainHandle)
 	
 		EnumerationContext = x.unpack_long()
@@ -669,61 +718,10 @@ class samr(RPCService):
 
 		r = ndrlib.Packer()
 		r.pack_pointer(EnumerationContext)
-		
-		#almost same as EnumDomains
-		#SAMPR_ENUMERATION_BUFFER
-		r.pack_pointer(0x0c40e0)
 
-		# EntriesRead
-		r.pack_long(4)
-	
-		# PSAMPR_RID_ENUMERATION Buffer
-		# Ref ID
-		r.pack_pointer(0x10)
-		# maxcount
-		r.pack_long(4)
-
-		# entry 1
-		# RelativeId;
-		r.pack_long(500)
-		
-		# RPC_UNICODE_STRING
-		#http://msdn.microsoft.com/en-us/library/cc230365%28PROT.10%29.aspx
-
-		r.pack_short(26)
-		r.pack_short(32)
-		
-		# WCHAR* Buffer
-		r.pack_pointer(0x1)
-
-		# entry 2
-		# RelativeId;
-		r.pack_long(501)
-		
-		# RPC_UNICODE_STRING
-		r.pack_short(10)
-		r.pack_short(16)
-
-		# WCHAR* Buffer
-		r.pack_pointer(0x2)
-
-		# entry 3
-		r.pack_long(1000)
-		r.pack_short(26)
-		r.pack_short(32)
-		r.pack_pointer(0x3)
-
-		# entry 4
-		r.pack_long(1002)
-		r.pack_short(32)
-		r.pack_short(32)
-		r.pack_pointer(0x4)
-		
-		r.pack_string('Administrator'.encode('utf16')[2:])
-		r.pack_string('Guest'.encode('utf16')[2:])
-		r.pack_string('HelpAssistant'.encode('utf16')[2:])
-		r.pack_string('SUPPORT_388945a0'.encode('utf16')[2:])		
-		
+		# PSAMPR_ENUMERATION_BUFFER* Buffer
+		r.pack_pointer(0x0da260)
+		samr.SAMPR_ENUMERATION_BUFFER(r, ['Administrator','Guest','HelpAssistant','SUPPORT_388945a0'])
 		# long* CountReturned
 		r.pack_pointer(0x04)
 		r.pack_long(0)
@@ -740,11 +738,11 @@ class samr(RPCService):
   		#[in, out] SAMPR_HANDLE* SamHandle
 		#);
 		x = ndrlib.Unpacker(p.StubData)
-		SamHandle = x.unpack_raw(20)
+		SamHandle = samr.SAMPR_HANDLE(x)
 		print("SamHandle %s" % SamHandle)
 		
 		r = ndrlib.Packer()
-		r.pack_raw(b'\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0')
+		samr.SAMPR_HANDLE(r, b'\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0')
 		r.pack_long(0)
 
 		return r.get_buffer()
