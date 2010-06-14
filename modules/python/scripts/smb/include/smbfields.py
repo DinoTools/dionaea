@@ -1082,12 +1082,13 @@ class SMB_Trans_Request(Packet):
 		ConditionalField(StrFixedLenField("Padding", b'\0', 1), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("TransactionName",b"\\PIPE\\", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
-		FieldListField("Param", 0, ByteField("", 0), count_from = lambda pkt: pkt.ParamCount), 
+		FieldListField("Param", 0, XByteField("", 0), count_from = lambda pkt: pkt.ParamCount), 
 		StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
 #		StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1() ),
 	]
 	def lengthfrom_Pad(self):
-		r = self.ParamOffset		# ...
+		if self.ParamOffset == 0:
+			return 0
 		r = self.underlayer.size()	# underlayer size removed
 		r += 5						# 5 byte vars
 		r += 11*2					# 11 words
@@ -1096,17 +1097,24 @@ class SMB_Trans_Request(Packet):
 		if hasattr(self, 'Padding') and self.Padding != None:
 			r += len(self.Padding)		# optional Padding 
 		r += len(self.TransactionName)	# TransactionName
-		print("r %i usize %i txn %i" % ( r, self.underlayer.size(), len(self.TransactionName)))
+#		print("r %i usize %i txn %i" % ( r, self.underlayer.size(), len(self.TransactionName)))
 		r = self.ParamOffset - r
 		return r
 
 	def lengthfrom_Pad1(self):
-		r = self.ByteCount
+		if self.DataOffset == 0:
+			return 0
+		r = self.underlayer.size()	# underlayer size removed
+		r += 5						# 5 byte vars
+		r += 11*2					# 11 words
+		r += 4						# 1 int
+		r += self.SetupCount*2			# SetupCount words
 		if hasattr(self, 'Padding') and self.Padding != None:
-			r -= len(self.Padding)		# optional Padding 
-		r -= len(self.TransactionName)	# TransactionName
-		r -= len(self.Pad)
-		r -= self.ParamCount
+			r += len(self.Padding)		# optional Padding 
+		r += len(self.TransactionName)	# TransactionName
+		r += len(self.Pad)				# Param Padding
+		r += self.ParamCount			# Param
+		r = self.DataOffset - r
 		return r
 
 
@@ -1159,18 +1167,27 @@ class SMB_Trans2_Request(Packet):
 		StrFixedLenField("Data", b"", length_from=lambda pkt: pkt.DataCount), 
 	]
 	def lengthfrom_Pad(self):
+		if self.ParamOffset == 0:
+			return 0
 		r = self.underlayer.size()	# underlayer size removed
 		r += 5						# 5 byte vars
 		r += 11*2					# 11 words
 		r += 4						# 1 int
-		r += self.SetupCount*2			# SetupCount words
+		r += self.SetupCount*2		# SetupCount words
 		return self.ParamOffset - r
 
 	def lengthfrom_Pad1(self):
 		if self.DataOffset == 0:
 			return 0
-		else:
-			return self.DataOffset - ( self.ParamOffset + self.ParamCount )
+		r = self.underlayer.size()	# underlayer size removed
+		r += 5						# 5 byte vars
+		r += 11*2					# 11 words
+		r += 4						# 1 int
+		r += self.SetupCount*2		# SetupCount words
+		r += len(self.Pad)			# Pad length
+		r += self.ParamCount		# ParamCount arguments
+		return self.DataOffset - r
+
 
 #		if r % 2 == 0:
 #			return r % 4
