@@ -351,8 +351,111 @@ class RemoteAccess(RPCService):
 	uuid = UUID('8f09f000-b7ed-11ce-bbd2-00001a181cad').hex
 
 class MGMT(RPCService):
-	uuid = UUID('afa8bd80-7d8a-11c9-bef4-08002b102989').hex
+	""" Remote Management Interface
+	http://www.opengroup.org/onlinepubs/9629399/apdxq.htm """
 
+	uuid = UUID('afa8bd80-7d8a-11c9-bef4-08002b102989').hex
+	ops = { 
+		0 : "inq_if_ids",
+		1 : "inq_stats",
+		2 : "is_server_listening",
+		3 : "stop_server_listening",
+		4 : "inq_princ_name"
+	}
+# As I lack a way to verify the code, this is commented, maybe samba4 smbtorture can help out
+#	class handle_t:
+#		def __init__(self, p):
+#			self.__packer = p
+#			if isinstance(self.__packer,ndrlib.Packer):
+#				pass
+#
+#			elif isinstance(self.__packer,ndrlib.Unpacker):
+#				pass
+#
+#	class uuid_t:
+#		# typedef struct {
+#		# 	unsigned32          time_low;
+#		# 	unsigned16          time_mid;
+#		# 	unsigned16          time_hi_and_version;
+#		# 	unsigned8           clock_seq_hi_and_reserved;
+#		# 	unsigned8           clock_seq_low;
+#		# 	byte                node[6];
+#		# } uuid_t, *uuid_p_t;
+#		def __init__(self, p):
+#			self.__packer = p
+#			if isinstance(self.__packer,ndrlib.Packer):
+#				self.__packer = p
+#				self.time_low = 0
+#				self.time_mid = 1
+#				self.time_hi_and_version = 2
+#				self.clock_seq_hi_and_reserved = 3
+#				self.clock_seq_low = 4
+#				self.node = b"56789a"
+#
+#		def pack(self):
+#			if isinstance(self.__packer,ndrlib.Packer):
+#				self.__packer.pack_long(self.time_low)
+#				self.__packer.pack_short(self.time_mid)
+#				self.__packer.pack_short(self.time_hi_and_version)
+#				self.__packer.pack_small(self.clock_seq_hi_and_reserved)
+#				self.__packer.pack_small(self.clock_seq_low)
+#				self.__packer.pack_raw(self.node)
+#
+#	class rpc_if_id_t:
+#		# typedef struct {
+#		# 	uuid_t                  uuid;
+#		# 	unsigned16              vers_major;
+#		# 	unsigned16              vers_minor;
+#		# } rpc_if_id_t;
+#		# typedef [ptr] rpc_if_id_t *rpc_if_id_p_t;
+#		def __init__(self, p):
+#			self.__packer = p
+#			if isinstance(self.__packer,ndrlib.Packer):
+#				self.uuid = MGMT.uuid_t(p)
+#				self.vers_major = 0
+#				self.vers_minor = 1
+#		def pack(self):
+#			if isinstance(self.__packer,ndrlib.Packer):
+#				self.uuid.pack()
+#				self.__packer.pack_short(self.vers_major)
+#				self.__packer.pack_short(self.vers_minor)
+#
+#	class rpc_if_id_vector_t:
+#		# typedef struct {
+#		# 	unsigned32              count;
+#		# 	[size_is(count)]
+#		# 	rpc_if_id_p_t           if_id[*];
+#		# } rpc_if_id_vector_t;
+#		# typedef [ptr] rpc_if_id_vector_t *rpc_if_id_vector_p_t;
+#		def __init__(self, p):
+#			self.__packer = p
+#			if isinstance(self.__packer,ndrlib.Packer):
+#				self.count = 0
+#				self.if_id = []
+#		def pack(self):
+#			if isinstance(self.__packer,ndrlib.Packer):
+#				self.count = len(self.if_id)
+#				self.__packer.pack_long(self.count)
+#				for i in self.if_id:
+#					i.pack()
+#
+#	@classmethod
+#	def handle_inq_if_ids(cls, p):
+#		# 
+#		# void rpc__mgmt_inq_if_ids
+#		# (
+#		# 	[in]        handle_t                binding_handle,
+#		# 	[out]       rpc_if_id_vector_p_t    *if_id_vector,
+#		# 	[out]       error_status_t          *status
+#		# );
+#		r = ndrlib.Packer()
+#		r.pack_pointer(0x4747)
+#		v = MGMT.rpc_if_id_vector_t(r)
+#		v.if_id.append(MGMT.rpc_if_id_t(r))
+#		v.pack()
+#		return r.get_buffer()
+
+		
 class samr(RPCService):
 	""" [MS-SAMR]: Security Account Manager (SAM) Remote Protocol Specification (Client-to-Server)
 	
