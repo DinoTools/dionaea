@@ -782,6 +782,170 @@ class SRVSVC(RPCService):
 		0x20: "MS08-67",
 	}
 
+	class SRVSVC_HANDLE:
+		# 2.2.1.1 SRVSVC_HANDLE
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc247105%28PROT.10%29.aspx
+		# 
+		# 	typedef [handle, string] WCHAR* SRVSVC_HANDLE; 
+		def __init__(self, p, handle=None):
+			if isinstance(p,ndrlib.Packer):
+				p.pack_pointer(0x3a20f2)
+				p.pack_string(handle)
+			elif isinstance(p,ndrlib.Unpacker):
+				self.ref = p.unpack_pointer()
+				self.handle = p.unpack_string()
+
+	class SHARE_INFO_1_CONTAINER:
+		# 2.2.4.33 SHARE_INFO_1_CONTAINER
+ 		# 
+		# http://msdn.microsoft.com/en-us/library/cc247157%28PROT.10%29.aspx
+ 		# 
+		# typedef struct _SHARE_INFO_1_CONTAINER {
+		#   DWORD EntriesRead;
+		#   [size_is(EntriesRead)] LPSHARE_INFO_1 Buffer;
+		# } SHARE_INFO_1_CONTAINER;
+		def __init__(self, p, data=None):
+			if isinstance(p,ndrlib.Packer):
+				# EntriesRead
+				p.pack_long(1)
+				p.pack_pointer(0x23456)
+				SRVSVC.SHARE_INFO_1(p,data)				
+			elif isinstance(p,ndrlib.Unpacker):
+				self.ptr = p.unpack_pointer()
+				self.count = p.unpack_long()
+				self.buffer = p.unpack_pointer()
+
+	class SHARE_INFO_502_CONTAINER:
+		# 2.2.4.36 SHARE_INFO_502_CONTAINER
+		#
+		# http://msdn.microsoft.com/en-us/library/cc247160%28PROT.13%29.aspx
+		#
+		# typedef struct _SHARE_INFO_502_CONTAINER {
+		#   DWORD EntriesRead;
+		#   [size_is(EntriesRead)] LPSHARE_INFO_502_I Buffer;
+		# } SHARE_INFO_502_CONTAINER,
+		def __init__(self, p, data=None):
+			if isinstance(p,ndrlib.Packer):
+				# EntriesRead
+				p.pack_long(502)
+				p.pack_pointer(0x23456)
+				SRVSVC.SHARE_INFO_502(p,data)			
+			elif isinstance(p,ndrlib.Unpacker):
+				self.ctr = p.unpack_pointer()
+				self.ptr = p.unpack_pointer()
+				self.count = p.unpack_long()
+				self.buffer = p.unpack_pointer()
+
+	class SHARE_INFO_1:
+		# 2.2.4.23 SHARE_INFO_1
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc247147%28PROT.10%29.aspx
+		# 
+		# typedef struct _SHARE_INFO_1 {
+		#   [string] wchar_t* shi1_netname;
+		#   DWORD shi1_type;
+		#   [string] wchar_t* shi1_remark;
+		# } SHARE_INFO_1, 
+		#  *PSHARE_INFO_1, 
+		#  *LPSHARE_INFO_1;
+		
+		# http://msdn.microsoft.com/en-us/library/cc247150%28PROT.10%29.aspx
+
+		def __init__(self, p, data=None):
+			if isinstance(p,ndrlib.Packer):
+				# Count and maxcount described by wireshark, not documented
+				count = maxcount = int(len(data)/2)
+				p.pack_long(count)
+				p.pack_pointer(0x99999)
+				p.pack_long(maxcount)
+
+				for i in range(count): 				
+					p.pack_pointer(0x34567) # netname
+					p.pack_long(0x00000000) # STYPE_DISKTREE
+					p.pack_pointer(0x45678) # remark
+
+				for j in range(len(data)):
+					p.pack_string(data[j].encode('utf16')[2:])		
+			elif isinstance(p,ndrlib.Unpacker):
+				pass
+
+	class SHARE_INFO_502:
+		# 2.2.4.26 SHARE_INFO_502_I
+		#
+		# http://msdn.microsoft.com/en-us/library/cc247150%28v=PROT.13%29.aspx
+		#
+		# typedef struct _SHARE_INFO_502_I {
+		#  [string] WCHAR* shi502_netname;
+		#  DWORD shi502_type;
+		#  [string] WCHAR* shi502_remark;
+		#  DWORD shi502_permissions;
+		#  DWORD shi502_max_uses;
+		#  DWORD shi502_current_uses;
+		#  [string] WCHAR* shi502_path;
+		#  [string] WCHAR* shi502_passwd;
+		#  DWORD shi502_reserved;
+		#  [size_is(shi502_reserved)] unsigned char* shi502_security_descriptor;
+		#} SHARE_INFO_502_I, 
+		# *PSHARE_INFO_502_I, 
+		# *LPSHARE_INFO_502_I;
+		def __init__(self, p, data=None):
+			if isinstance(p,ndrlib.Packer):
+				# Count and maxcount described by wireshark, not documented
+				count = maxcount = int(len(data)/3)
+				p.pack_long(count)
+				p.pack_pointer(0x99999)
+				p.pack_long(maxcount)
+
+				for i in range(count): 				
+					p.pack_pointer(0x34567) # netname
+					p.pack_long(0x00000000) # STYPE_DISKTREE
+					p.pack_pointer(0x45678) # remark
+					p.pack_long(0)		# permissions
+					p.pack_long(0xffffffff) # max_uses
+					p.pack_long(1)		# current_uses
+					p.pack_pointer(0x78654) # path
+					p.pack_pointer(0) 	# passwd
+					p.pack_long(0) 		# reserved
+					p.pack_pointer(0)	# security descriptor
+
+				for j in range(len(data)):
+					p.pack_string_fix(data[j].encode('utf16')[2:])		
+			elif isinstance(p,ndrlib.Unpacker):
+				pass
+
+	class SHARE_INFO_2:
+		#2.2.4.24 SHARE_INFO_2
+		#
+		#http://msdn.microsoft.com/en-us/library/cc247148%28v=PROT.13%29.aspx
+		#
+		#typedef struct _SHARE_INFO_2 {
+		#  [string] wchar_t* shi2_netname;
+		#  DWORD shi2_type;
+		#  [string] wchar_t* shi2_remark;
+		#  DWORD shi2_permissions;
+		#  DWORD shi2_max_uses;
+		#  DWORD shi2_current_uses;
+		#  [string] wchar_t* shi2_path;
+		#  [string] wchar_t* shi2_passwd;
+		#} SHARE_INFO_2
+		def __init__(self, p, data=None):
+			if isinstance(p,ndrlib.Packer):
+				pass	
+			elif isinstance(p,ndrlib.Unpacker):
+				ref = p.unpack_pointer()
+				netname = p.unpack_pointer()
+				sharetype = p.unpack_long()
+				remark = p.unpack_long()
+				permission = p.unpack_long()
+				max_use = p.unpack_long()
+				current_use = p.unpack_long()
+				path = p.unpack_pointer()
+				passwd = p.unpack_pointer()
+				share_name = p.unpack_string()
+				share_comment = p.unpack_string()
+				share_path = p.unpack_string()
+
 	@classmethod
 	def handle_NetShareEnum(cls, p):
 
@@ -799,15 +963,8 @@ class SRVSVC(RPCService):
 		#	  [in, out, unique] DWORD* ResumeHandle
 		#	);
 
-		# 2.2.1.1 SRVSVC_HANDLE
-		# 
-		# http://msdn.microsoft.com/en-us/library/cc247105%28PROT.10%29.aspx
-		# 
-		# 	typedef [handle, string] WCHAR* SRVSVC_HANDLE; 
-
-		srvsvc_handle_ref = x.unpack_pointer()
-		srvsvc_handle = x.unpack_string()
-
+		ServerName = SRVSVC.SRVSVC_HANDLE(x)
+		
 		# 2.2.4.38 SHARE_ENUM_STRUCT
 		# 
 		# http://msdn.microsoft.com/en-us/library/cc247161%28PROT.10%29.aspx
@@ -839,34 +996,11 @@ class SRVSVC(RPCService):
 		# 	SHARE_INFO_503_CONTAINER* Level503;
 		# } SHARE_ENUM_UNION;
 
-		count = 0
-		buffer = 0
 		if infostruct_share == 1:
-			# 2.2.4.33 SHARE_INFO_1_CONTAINER
- 			# 
-			# http://msdn.microsoft.com/en-us/library/cc247157%28PROT.10%29.aspx
- 			# 
-			# typedef struct _SHARE_INFO_1_CONTAINER {
-			#   DWORD EntriesRead;
-			#   [size_is(EntriesRead)] LPSHARE_INFO_1 Buffer;
-			# } SHARE_INFO_1_CONTAINER;
-			ptr = x.unpack_pointer()
-			count = x.unpack_long()
-			buffer = x.unpack_pointer()
+			buffer = SRVSVC.SHARE_INFO_1_CONTAINER(x)
 
-		if infostruct_share == 502:
-			# 2.2.4.36 SHARE_INFO_502_CONTAINER
-			#
-			# http://msdn.microsoft.com/en-us/library/cc247160%28PROT.13%29.aspx
-			#
-			# typedef struct _SHARE_INFO_502_CONTAINER {
-			#   DWORD EntriesRead;
-			#   [size_is(EntriesRead)] LPSHARE_INFO_502_I Buffer;
-			# } SHARE_INFO_502_CONTAINER,
-			ctr = x.unpack_pointer()
-			ptr = x.unpack_pointer()
-			count = x.unpack_long()
-			buffer = x.unpack_pointer()
+		elif infostruct_share == 502:
+			buffer = SRVSVC.SHARE_INFO_502_CONTAINER(x)
 		
 		preferdmaxlen = x.unpack_long()
 		
@@ -876,134 +1010,17 @@ class SRVSVC(RPCService):
 		if resumehandleptr != 0:
 			resumehandle = x.unpack_long()
 		
-		print("srvsvc_handle_ref %x srvsvc_handle %s infostruct_level %i count %i buffer %x preferdmaxlen %i  resumehandleptr %x resumehandle %i" % (
-			srvsvc_handle_ref,
-			srvsvc_handle,
-			infostruct_level,
-			count,
-			buffer,
-			preferdmaxlen,
-			resumehandleptr,
-			resumehandle) )
-
+		print("infostruct_share %i preferdmaxlen %i  resumehandleptr %x resumehandle %i" % (infostruct_share,preferdmaxlen,resumehandleptr,resumehandle) )
 
 		# compile reply
 		r = ndrlib.Packer()
 		r.pack_long(infostruct_level)
 
-		# 2.2.4.33 SHARE_INFO_1_CONTAINER
-
 		if infostruct_level == 1:
+			SRVSVC.SHARE_INFO_1_CONTAINER(r,['test\0','es geht test\0','test2\0','es geht test\0'])
 		
-			# EntriesRead
-			r.pack_long(1)
-			r.pack_pointer(0x23456)
-		
-			# 2.2.4.23 SHARE_INFO_1
-			# 
-			# http://msdn.microsoft.com/en-us/library/cc247147%28PROT.10%29.aspx
-			# 
-			# typedef struct _SHARE_INFO_1 {
-			#   [string] wchar_t* shi1_netname;
-			#   DWORD shi1_type;
-			#   [string] wchar_t* shi1_remark;
-			# } SHARE_INFO_1, 
-			#  *PSHARE_INFO_1, 
-			#  *LPSHARE_INFO_1;
-		
-			# http://msdn.microsoft.com/en-us/library/cc247150%28PROT.10%29.aspx
-
-			# Count
-			r.pack_long(2)
-
-			# pointer 
-			r.pack_pointer(0x99999)
-
-			# Max Count
-			r.pack_long(2)
-
-			# Buffer[0]
-			r.pack_pointer(0x34567)
-			r.pack_long(0x00000000) # STYPE_DISKTREE
-			r.pack_pointer(0x45678)
-		
-			# Buffer[0]
-			r.pack_pointer(0x343567)
-			r.pack_long(0x00000000) # STYPE_DISKTREE
-			r.pack_pointer(0x45678)
-
-			r.pack_string('test\0'.encode('utf16')[2:])
-			r.pack_string('es geht test\0'.encode('utf16')[2:])
-
-			r.pack_string('test2\0'.encode('utf16')[2:])
-			r.pack_string('es geht test\0'.encode('utf16')[2:])
-
-			
-		if infostruct_level == 502:
-
-			# EntriesRead
-			r.pack_long(502)
-			r.pack_pointer(0x23456)
-
-			# 2.2.4.26 SHARE_INFO_502_I
-			#
-			# http://msdn.microsoft.com/en-us/library/cc247150%28v=PROT.13%29.aspx
-			#
-			# typedef struct _SHARE_INFO_502_I {
-			#  [string] WCHAR* shi502_netname;
-			#  DWORD shi502_type;
-			#  [string] WCHAR* shi502_remark;
-			#  DWORD shi502_permissions;
-			#  DWORD shi502_max_uses;
-			#  DWORD shi502_current_uses;
-			#  [string] WCHAR* shi502_path;
-			#  [string] WCHAR* shi502_passwd;
-			#  DWORD shi502_reserved;
-			#  [size_is(shi502_reserved)] unsigned char* shi502_security_descriptor;
-			#} SHARE_INFO_502_I, 
-			# *PSHARE_INFO_502_I, 
-			# *LPSHARE_INFO_502_I;
-
-			# Count
-			r.pack_long(2)
-
-			# pointer 
-			r.pack_pointer(0x99999)
-
-			# Max Count
-			r.pack_long(2)
-
-			# Buffer[0]
-			r.pack_pointer(0x34567)
-			r.pack_long(0x00000000) # STYPE_DISKTREE
-			r.pack_pointer(0x45678) # remark
-			r.pack_long(0)		# permissions
-			r.pack_long(0xffffffff) # max_uses
-			r.pack_long(1)		# current_uses
-			r.pack_pointer(0x78654) # path
-			r.pack_pointer(0) 	# passwd
-			r.pack_long(0) 		# reserved
-			r.pack_pointer(0)	# security descriptor
-
-			# Buffer[1]
-			r.pack_pointer(0x343567)
-			r.pack_long(0x00000000) # STYPE_DISKTREE
-			r.pack_pointer(0x45678)
-			r.pack_long(0)
-			r.pack_long(0xffffffff)
-			r.pack_long(1)
-			r.pack_pointer(0x78654)
-			r.pack_pointer(0)
-			r.pack_long(0)
-			r.pack_pointer(0)
-
-			r.pack_string_fix('test\0'.encode('utf16')[2:])
-			r.pack_string_fix('es geht test\0'.encode('utf16')[2:])
-			r.pack_string_fix('C:\0'.encode('utf16')[2:])
-
-			r.pack_string_fix('test2\0'.encode('utf16')[2:])
-			r.pack_string_fix('es geht test\0'.encode('utf16')[2:])
-			r.pack_string_fix('C:\WINDOWS\0'.encode('utf16')[2:])
+		elif infostruct_level == 502:
+			SRVSVC.SHARE_INFO_502_CONTAINER(r,['test\0','es geht test\0','C:\0','test2\0','es geht test\0','C:\WINDOWS\0'])
 
 		# total entries
 		r.pack_long(2)
@@ -1014,8 +1031,6 @@ class SRVSVC(RPCService):
 
 		r.pack_long(0)
 		return r.get_buffer()
-
-
 
 	@classmethod
 	def handle_NetPathCanonicalize(cls, p):
@@ -1090,42 +1105,17 @@ class SRVSVC(RPCService):
 		#  [in, out, unique] DWORD* ParmErr
 		#);
 		p = ndrlib.Unpacker(p.StubData)
-		srvsvc_handle_ref = p.unpack_pointer()
-		srvsvc_handle = p.unpack_string()
+		ServerName = SRVSVC.SRVSVC_HANDLE(p)
 		infostruct_level = p.unpack_long()
 		infostruct_share = p.unpack_long()
 
-		#2.2.4.24 SHARE_INFO_2
-		#
-		#http://msdn.microsoft.com/en-us/library/cc247148%28v=PROT.13%29.aspx
-		#
-		#typedef struct _SHARE_INFO_2 {
-		#  [string] wchar_t* shi2_netname;
-		#  DWORD shi2_type;
-		#  [string] wchar_t* shi2_remark;
-		#  DWORD shi2_permissions;
-		#  DWORD shi2_max_uses;
-		#  DWORD shi2_current_uses;
-		#  [string] wchar_t* shi2_path;
-		#  [string] wchar_t* shi2_passwd;
-		#} SHARE_INFO_2
-
 		if infostruct_share == 2:
-			ref = p.unpack_pointer()
-			netname = p.unpack_pointer()
-			sharetype = p.unpack_long()
-			remark = p.unpack_long()
-			permission = p.unpack_long()
-			max_use = p.unpack_long()
-			current_use = p.unpack_long()
-			path = p.unpack_pointer()
-			passwd = p.unpack_pointer()
-			share_name = p.unpack_string()
-			share_comment = p.unpack_string()
-			share_path = p.unpack_string()
+			buffer = SRVSVC.SHARE_INFO_2(p)
 		
 		ptr_parm = p.unpack_pointer()
 		error = p.unpack_long()
+
+		print("infostruct_share %i ptr_parm %x ParmErr %i" % (infostruct_share,ptr_parm,error) )
 
 		r = ndrlib.Packer()
 		r.pack_pointer(0x324567)
