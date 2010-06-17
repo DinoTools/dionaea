@@ -1082,12 +1082,13 @@ class SMB_Trans_Request(Packet):
 		ConditionalField(StrFixedLenField("Padding", b'\0', 1), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("TransactionName",b"\\PIPE\\", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		StrFixedLenField("Pad", b"", length_from=lambda x:x.lengthfrom_Pad()),
-		FieldListField("Param", 0, ByteField("", 0), count_from = lambda pkt: pkt.ParamCount), 
-		StrFixedLenField("Pad1", b"", length_from=lambda x:x.DataOffset - ( x.ParamOffset + x.ParamCount ) ),
+		FieldListField("Param", 0, XByteField("", 0), count_from = lambda pkt: pkt.ParamCount), 
+		StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1()),
 #		StrFixedLenField("Pad1", b"", length_from=lambda x:x.lengthfrom_Pad1() ),
 	]
 	def lengthfrom_Pad(self):
-		r = self.ParamOffset		# ...
+		if self.ParamOffset == 0:
+			return 0
 		r = self.underlayer.size()	# underlayer size removed
 		r += 5						# 5 byte vars
 		r += 11*2					# 11 words
@@ -1096,23 +1097,24 @@ class SMB_Trans_Request(Packet):
 		if hasattr(self, 'Padding') and self.Padding != None:
 			r += len(self.Padding)		# optional Padding 
 		r += len(self.TransactionName)	# TransactionName
-		print("r %i usize %i txn %i" % ( r, self.underlayer.size(), len(self.TransactionName)))
+#		print("r %i usize %i txn %i" % ( r, self.underlayer.size(), len(self.TransactionName)))
 		r = self.ParamOffset - r
 		return r
 
 	def lengthfrom_Pad1(self):
-		r = self.DataOffset		# ...
-		r -= self.underlayer.size()	# underlayer size removed
-		r -= 5						# 5 byte vars
-		r -= 11*2					# 11 words
-		r -= 4						# 1 int
-		r -= self.SetupCount*2			# SetupCount words
+		if self.DataOffset == 0:
+			return 0
+		r = self.underlayer.size()	# underlayer size removed
+		r += 5						# 5 byte vars
+		r += 11*2					# 11 words
+		r += 4						# 1 int
+		r += self.SetupCount*2			# SetupCount words
 		if hasattr(self, 'Padding') and self.Padding != None:
-			r -= len(self.Padding)		# optional Padding 
-		r -= len(self.TransactionName)	# TransactionName
-		r -= len(self.Pad)
-
-		print("r1 %i usize %i" % ( r, self.underlayer.size()))
+			r += len(self.Padding)		# optional Padding 
+		r += len(self.TransactionName)	# TransactionName
+		r += len(self.Pad)				# Param Padding
+		r += self.ParamCount			# Param
+		r = self.DataOffset - r
 		return r
 
 
@@ -1165,18 +1167,27 @@ class SMB_Trans2_Request(Packet):
 		StrFixedLenField("Data", b"", length_from=lambda pkt: pkt.DataCount), 
 	]
 	def lengthfrom_Pad(self):
+		if self.ParamOffset == 0:
+			return 0
 		r = self.underlayer.size()	# underlayer size removed
 		r += 5						# 5 byte vars
 		r += 11*2					# 11 words
 		r += 4						# 1 int
-		r += self.SetupCount*2			# SetupCount words
+		r += self.SetupCount*2		# SetupCount words
 		return self.ParamOffset - r
 
 	def lengthfrom_Pad1(self):
 		if self.DataOffset == 0:
 			return 0
-		else:
-			return self.DataOffset - ( self.ParamOffset + self.ParamCount )
+		r = self.underlayer.size()	# underlayer size removed
+		r += 5						# 5 byte vars
+		r += 11*2					# 11 words
+		r += 4						# 1 int
+		r += self.SetupCount*2		# SetupCount words
+		r += len(self.Pad)			# Pad length
+		r += self.ParamCount		# ParamCount arguments
+		return self.DataOffset - r
+
 
 #		if r % 2 == 0:
 #			return r % 4
@@ -1198,13 +1209,15 @@ class SMB_Open_AndX_Request(Packet):
 	name = "SMB Open AndX Request"
 	fields_desc = [
 		ByteField("WordCount",14),
-		ByteField("AndXCommand",0),
+		ByteEnumField("AndXCommand",0xff,SMB_Commands),
 		ByteField("AndXReserved",0),
 		LEShortField("AndXOffset",0),
-		LEShortField("Flags",0), # FlagsField("CreateFlags", 0, -16, SMB_CreateFlags),
+#		LEShortField("Flags",0), # 
+		FlagsField("Flags", 0, -16, SMB_CreateFlags),
 		LEShortField("DesiredAcess",0),
 		LEShortField("SearchAttributes",0),
-		LEShortField("FileAttributes",0),
+#		LEShortField("FileAttributes",0),
+		FlagsField("FileAttributes", 0, -16, SMB_FileAttributes),
 #		NTTimeField("CreationTime",datetime.datetime.now()),
 		LEIntField("CreationTime", 0),
 		LEShortField("OpenFunction",0),
@@ -1220,11 +1233,11 @@ class SMB_Open_AndX_Response(Packet):
 	smb_cmd = SMB_COM_OPEN_ANDX #0x2d
 	fields_desc = [
 		ByteField("WordCount",15),
-		ByteField("AndXCommand",0xff),
+		ByteEnumField("AndXCommand",0xff,SMB_Commands),
 		ByteField("AndXReserved",0),
 		LEShortField("AndXOffset",0),
 		LEShortField("FID",0),
-		LEShortField("FileAttributes",0),
+		FlagsField("FileAttributes", 0, -16, SMB_FileAttributes),
 		NTTimeField("LastWriteTime",datetime.datetime.now()),
 		LEIntField("DataSize",0),
 		LEShortField("GrantedAccess",0),
@@ -1243,7 +1256,7 @@ class SMB_Close(Packet):
 	smb_cmd = SMB_COM_CLOSE
 	fields_desc = [
 		ByteField("WordCount",3),
-		LEShortField("Fid",0),
+		XLEShortField("FID",0),
 		LEIntField("LastWriteTime", 0),
 		LEShortField("ByteCount",0),
 	]
@@ -1346,6 +1359,36 @@ class DCERPC_Ack_CtxItem(Packet):
     ]
 
 
+class DCERPC_Auth_Verfier(Packet):
+	"""http://www.opengroup.org/onlinepubs/9629399/chap13.htm#tagcjh_18"""
+	name = "DCERPC Auth Verifier"
+	fields_desc = [
+#		StrFixedLenField("Pad", "", 5),
+		ByteField("Type", 0),
+		ByteField("Level", 0),
+		ByteField("PadLength", 0),
+		ByteField("Reserved", 0),
+		XIntField("ContextID", 0),
+	]
+
+class NTLMSSP_Header(Packet):
+	"""
+	http://davenport.sourceforge.net/ntlm.html#theType1Message
+	"""
+	name = "NTLMSSP Header"
+	fields_desc = [
+		StrFixedLenField("Identifier", "NTLMSSP\0", 8),
+		XLEIntField("MessageType",0),
+		XLEIntField("Flags",0),
+		StrFixedLenField("Domain","",8),
+		StrFixedLenField("Workstation","",8),
+		StrFixedLenField("OSVersion","",8),
+#		IntEnumField("MessageType",)
+#		IntFlagsField("Flags", 0),
+	]
+
+
+		
 class DCERPC_Bind_Ack(Packet):
 	name = "DCERPC Bind Ack"
 	fields_desc = [
@@ -1422,5 +1465,5 @@ bind_top_down(DCERPC_Header, DCERPC_Request, PacketType=0)
 bind_top_down(DCERPC_Header, DCERPC_Response, PacketType=2)
 bind_top_down(DCERPC_Header, DCERPC_Bind, PacketType=11)
 bind_top_down(DCERPC_Header, DCERPC_Bind_Ack, PacketType=12)
-
+bind_bottom_up(DCERPC_Auth_Verfier, NTLMSSP_Header, Type=lambda x: x==10)
 

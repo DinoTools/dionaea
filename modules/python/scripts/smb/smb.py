@@ -65,7 +65,8 @@ class smbd(connection):
 		}
 		self.buf = b''
 		self.outbuf = None
-		self.files = {}
+		self.fids = {}
+		self.bistream_prefix = 'smb-'
 
 	def handle_established(self):
 		self.timeouts.sustain = 120
@@ -156,7 +157,8 @@ class smbd(connection):
 		rp = None
 		self.state['readcount'] = 0
 		#if self.state == STATE_START and p.getlayer(SMB_Header).Command == 0x72:
-		if p.getlayer(SMB_Header).Command == SMB_COM_NEGOTIATE:
+		Command = p.getlayer(SMB_Header).Command
+		if Command == SMB_COM_NEGOTIATE:
 			# Negociate Protocol -> Send response that supports minimal features in NT LM 0.12 dialect
 			# (could be randomized later to avoid detection - but we need more dialects/options support)
 			r = SMB_Negociate_Protocol_Response()
@@ -176,46 +178,64 @@ class smbd(connection):
 				r.Capabilities = r.Capabilities & ~CAP_EXTENDED_SECURITY
 
 		#elif self.state == STATE_SESSIONSETUP and p.getlayer(SMB_Header).Command == 0x73:
-		elif p.getlayer(SMB_Header).Command == SMB_COM_SESSION_SETUP_ANDX:
+		elif Command == SMB_COM_SESSION_SETUP_ANDX:
 			if p.haslayer(SMB_Sessionsetup_ESEC_AndX_Request):
 				r = SMB_Sessionsetup_ESEC_AndX_Response()
 			elif p.haslayer(SMB_Sessionsetup_AndX_Request2):
 				r = SMB_Sessionsetup_AndX_Response2()
 			else:
 				smblog.warn("Unknown Session Setup Type used")
-		elif p.getlayer(SMB_Header).Command == SMB_COM_TREE_CONNECT_ANDX:
+		elif Command == SMB_COM_TREE_CONNECT_ANDX:
 			r = SMB_Treeconnect_AndX_Response()
-		elif p.getlayer(SMB_Header).Command == SMB_COM_TREE_DISCONNECT:
+		elif Command == SMB_COM_TREE_DISCONNECT:
 			r = SMB_Treedisconnect()
-		elif p.getlayer(SMB_Header).Command == SMB_COM_CLOSE:
+		elif Command == SMB_COM_CLOSE:
 			r = p.getlayer(SMB_Close)
-		elif p.getlayer(SMB_Header).Command == SMB_COM_LOGOFF_ANDX:
+			if p.FID in self.fids and self.fids[p.FID] is not None:
+				self.fids[p.FID].close()
+				fileobj = self.fids[p.FID]
+				icd = incident("dionaea.download.complete")
+				icd.path = fileobj.name
+				icd.url = "smb://" + self.remote.host
+				icd.con = self
+				icd.report()
+				del self.fids[p.FID]
+		elif Command == SMB_COM_LOGOFF_ANDX:
 			r = SMB_Logoff_AndX()
-		elif p.getlayer(SMB_Header).Command == SMB_COM_NT_CREATE_ANDX:
+		elif Command == SMB_COM_NT_CREATE_ANDX:
 			r = SMB_NTcreate_AndX_Response()
-#			# if a normal file is requested, provide a file
 			h = p.getlayer(SMB_NTcreate_AndX_Request)
-			if h.FileAttributes & SMB_FA_NORMAL:
-				smblog.warn("OPEN FILE!")
-				r.FID = 0x4000
-				self.files[0x4000] = tempfile.NamedTemporaryFile(delete=False, prefix="smb-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
-		elif p.getlayer(SMB_Header).Command == SMB_COM_OPEN_ANDX:
+			r.FID = 0x4000
+			while r.FID in self.fids:
+				r.FID += 0x200
+			if h.FileAttributes & (SMB_FA_HIDDEN|SMB_FA_SYSTEM|SMB_FA_ARCHIVE|SMB_FA_NORMAL):
+				# if a normal file is requested, provide a file
+				smblog.warn("OPEN FILE! %s" % p.Filename)
+				self.fids[r.FID] = tempfile.NamedTemporaryFile(delete=False, prefix="smb-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
+			elif h.FileAttributes & SMB_FA_DIRECTORY:
+				pass
+			else:
+				self.fids[r.FID] = None
+		elif Command == SMB_COM_OPEN_ANDX:
 			r = SMB_Open_AndX_Response()
-			r.FID = 0x9000
-			self.files[0x9000] = tempfile.NamedTemporaryFile(delete=False, prefix="smb-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
-		elif p.getlayer(SMB_Header).Command == SMB_COM_ECHO:
+			r.FID = 0x4000
+			while r.FID in self.fids:
+				r.FID += 0x200
+			smblog.info("OPEN FILE! %s" % p.Filename)
+			self.fids[r.FID] = tempfile.NamedTemporaryFile(delete=False, prefix="smb-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
+		elif Command == SMB_COM_ECHO:
 			r = p.getlayer(SMB_Header).payload
-		elif p.getlayer(SMB_Header).Command == SMB_COM_WRITE_ANDX:
+		elif Command == SMB_COM_WRITE_ANDX:
 			r = SMB_Write_AndX_Response()
 			h = p.getlayer(SMB_Write_AndX_Request)
 			r.CountLow = h.DataLenLow
-			if h.FID in self.files:
+			if h.FID in self.fids and self.fids[h.FID] is not None:
 				smblog.warn("WRITE FILE!")
-				self.files[h.FID].write(h.Data)
+				self.fids[h.FID].write(h.Data)
 			else:
 				self.buf += h.Data
 				self.process_dcerpc_packet(p.getlayer(SMB_Write_AndX_Request).Data)
-		elif p.getlayer(SMB_Header).Command == SMB_COM_READ_ANDX:
+		elif Command == SMB_COM_READ_ANDX:
 			r = SMB_Read_AndX_Response()
 			if self.state['lastcmd'] == 'SMB_COM_WRITE_ANDX':
 				# lastcmd was WRITE
@@ -247,7 +267,7 @@ class smbd(connection):
 			r.DataLenLow = len(rdata.Bytes)
 			r /= rdata
 
-		elif p.getlayer(SMB_Header).Command == SMB_COM_TRANSACTION:
+		elif Command == SMB_COM_TRANSACTION:
 			self.outbuf = self.process_dcerpc_packet(p.getlayer(DCERPC_Header))
 
 			if not self.outbuf:
@@ -282,7 +302,7 @@ class smbd(connection):
 			smbh.PID = p.getlayer(SMB_Header).PID
 			rp = NBTSession()/smbh/r
 
-		if p.getlayer(SMB_Header).Command in SMB_Commands:
+		if Command in SMB_Commands:
 			self.state['lastcmd'] = SMB_Commands[p.getlayer(SMB_Header).Command]
 		else:
 			self.state['lastcmd'] = "UNKNOWN"
@@ -301,6 +321,10 @@ class smbd(connection):
 
 		smblog.debug("data")
 		dcep.show()
+		if dcep.AuthLen > 0:
+			print(dcep.getlayer(Raw).underlayer.load)
+			dcep.getlayer(Raw).underlayer.decode_payload_as(DCERPC_Auth_Verfier) 
+			dcep.show()
 
 		if dcep.PacketType == 11: #bind
 			outbuf = DCERPC_Header()/DCERPC_Bind_Ack()
@@ -362,7 +386,7 @@ class smbd(connection):
 		dir = os.path.join(g_dionaea.config()['bistreams']['python']['dir'], dirname)
 		if not os.path.exists(dir):
 			os.makedirs(dir)
-		self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix="smb-" + self.remote.host + ":" + str(self.remote.port) + "-", suffix=".py", dir=dir)
+		self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix=self.bistream_prefix + self.remote.host + ":" + str(self.remote.port) + "-", suffix=".py", dir=dir)
 		self.fileobj.write(b"stream = ")
 		self.fileobj.write(str(self.bistream).encode())
 		self.fileobj.close()
@@ -372,6 +396,7 @@ class epmapper(smbd):
 	def __init__ (self):
 		connection.__init__(self,"tcp")
 		smbd.__init__(self)
+		self.bistream_prefix = 'epmapper-'
 
 	def handle_io_in(self,data):
 		try:
