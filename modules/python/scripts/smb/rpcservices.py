@@ -599,14 +599,15 @@ class samr(RPCService):
 		#
 		# typedef [context_handle] void* SAMPR_HANDLE; 
 		# 
-		# FIXME what makes a context handle? -common
-		#
-		def __init__(self, p, handle=None):
-			if isinstance(pack,ndrlib.Packer):
-				p.pack_raw(handle)
-			elif isinstance(pack,ndrlib.Unpacker):
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Handle = b''
+			elif isinstance(self.__packer,ndrlib.Unpacker):
 				self.Value = p.unpack_raw(20)
-
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_raw(self.Handle)
 
 	class RPC_SID_IDENTIFIER_AUTHORITY:
 		# 2.4.1.1 RPC_SID_IDENTIFIER_AUTHORITY
@@ -617,20 +618,26 @@ class samr(RPCService):
 		#   byte Value[6];
 		# } RPC_SID_IDENTIFIER_AUTHORITY;
 		#
-		NULL_SID_AUTHORITY					= b'\x00\x00\x00\x00\x00\x00' 
-		WORLD_SID_AUTHORITY 				= b'\x00\x00\x00\x00\x00\x01' 
-		LOCAL_SID_AUTHORITY 				= b'\x00\x00\x00\x00\x00\x02' 
-		CREATOR_SID_AUTHORITY				= b'\x00\x00\x00\x00\x00\x03' 
-		NON_UNIQUE_AUTHORITY				= b'\x00\x00\x00\x00\x00\x04' 
-		NT_AUTHORITY						= b'\x00\x00\x00\x00\x00\x05' 
-		SECURITY_MANDATORY_LABEL_AUTHORITY	= b'\x00\x00\x00\x00\x00\x10'
-
-		def __init__(self, p, value=None):
-			if isinstance(pack,ndrlib.Packer):
-				# Value
-				p.pack_raw(value)
-			elif isinstance(pack,ndrlib.Unpacker):
-				self.Value = p.unpack_raw(6)
+		SID_AUTHORITY = {
+			'NULL_SID_AUTHORITY'			: b'\x00\x00\x00\x00\x00\x00', 
+			'WORLD_SID_AUTHORITY'			: b'\x00\x00\x00\x00\x00\x01', 
+			'LOCAL_SID_AUTHORITY'			: b'\x00\x00\x00\x00\x00\x02', 
+			'CREATOR_SID_AUTHORITY'			: b'\x00\x00\x00\x00\x00\x03', 
+			'NON_UNIQUE_AUTHORITY'			: b'\x00\x00\x00\x00\x00\x04',
+			'NT_AUTHORITY'				: b'\x00\x00\x00\x00\x00\x05', 
+			'SECURITY_MANDATORY_LABEL_AUTHORITY'	: b'\x00\x00\x00\x00\x00\x10'
+		}
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Value = ''
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Value = self.__packer.unpack_raw(6)
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				if not self.SID_AUTHORITY.get(self.Value) == None:
+					self.__packer.pack_raw(self.SID_AUTHORITY[self.Value])
+				
 
 	class RPC_SID:
 		# 2.4.2.2 RPC_SID
@@ -647,28 +654,35 @@ class samr(RPCService):
 		#  *PRPC_SID;
 		#
 		def __init__(self, p):
-			if isinstance(pack,ndrlib.Packer):
-				# Revision
-				p.pack_small(1)
-
-				# SubAuthorityCount
-				p.pack_small(4)
-
-				# RPC_SID_IDENTIFIER_AUTHORITY
-				RPC_SID_IDENTIFIER_AUTHORITY(p)
-
-				# SubAuthority
-				p.pack_long(21)
-				p.pack_long(606747145)
-				p.pack_long(1364589140)
-				p.pack_long(839522115)
-			elif isinstance(pack,ndrlib.Unpacker):
-				self.Revision = p.unpack_small()
-				self.SubAuthorityCount = p.unpack_small()
-				self.IdentifierAuthority = RPC_SID_IDENTIFIER_AUTHORITY(p)
+			self.__packer = p
+			if isinstance(p,ndrlib.Packer):
+				self.Value = ''
+				self.Revision = 1 # must be 0x01
+				self.SubAuthorityCount = 0
+				self.SubAuthority = []
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Revision = self.__packer.unpack_small()
+				self.SubAuthorityCount = self.__packer.unpack_small()
+				self.IdentifierAuthority = samr.RPC_SID_IDENTIFIER_AUTHORITY(self.__packer)
 				self.SubAuthority = []
 				for i in range(self.SubAuthorityCount):
 					self.SubAuthority.append(p.unpack_long())
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				# Revision
+				self.__packer.pack_small(self.Revision)
+
+				# SubAuthorityCount
+				self.__packer.pack_small(self.SubAuthorityCount)
+
+				# RPC_SID_IDENTIFIER_AUTHORITY
+				b = samr.RPC_SID_IDENTIFIER_AUTHORITY(self.__packer)
+				b.Value = self.Value
+				b.pack()
+
+				# SubAuthority
+				for i in range(self.SubAuthorityCount):
+					self.__packer.pack_long(int(self.SubAuthority[i]))
 
 	class RPC_UNICODE_STRING:
 		# 2.3.5 RPC_UNICODE_STRING
@@ -683,28 +697,18 @@ class samr(RPCService):
 		# } RPC_UNICODE_STRING, 
 		#  *PRPC_UNICODE_STRING;
 		# 
-		def __init__(self, p, data=None):
-			if isinstance(pack,ndrlib.Packer):
-				# RPC_UNICODE_STRING
-				Length = MaximumLength = len(data)
-				if Length%8:
-					MaximumLength = Length + (Length%8)
-
-				# Length
-				p.pack_short(Length)
-
-				# MaximumLength
-				p.pack_short(MaximumLength)
-
-				# WCHAR* Buffer
-				p.pack_pointer(0x11)
-				p.pack_string(data.encode('utf16')[2:])
-				
-			elif isinstance(pack,ndrlib.Unpacker):
-				self.Length = p.unpack_short()
-				self.MaximumLength = p.unpack_short()
-				self.Reference = x.unpack_pointer()
-				self.Buffer = p.unpack_string()
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Data =[]
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Length = self.__packer.unpack_short()
+				self.MaximumLength = self.__packer.unpack_short()
+				self.Reference = self.__packer.unpack_pointer()
+				self.Buffer = self.__packer.unpack_string()
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_rpc_unicode_string(self.Data)
 
 
 	class SAMPR_RID_ENUMERATION:
@@ -717,16 +721,30 @@ class samr(RPCService):
 		#   RPC_UNICODE_STRING Name;
 		# } SAMPR_RID_ENUMERATION, 
 		#  *PSAMPR_RID_ENUMERATION;
-		def __init__(self, p, Name=None):
-			if isinstance(pack,ndrlib.Packer):
-				p.pack_long(4711) # FIXME RelativeID
-				RPC_UNICODE_STRING(p, Name)
-			elif isinstance(pack,ndrlib.Unpacker):
-				self.RelativeId = p.unpack_long()
-				self.Name = RPC_UNICODE_STRING(p)
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Name = []
+				self.RelativeId = 0
+				self.Pointer = 0x11
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.RelativeId = self.__packer.unpack_long()
+				self.Name = RPC_UNICODE_STRING(self.__packer, Name)
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				for i in range(len(self.Name)): 				
+					#RelativeID
+					self.__packer.pack_long(self.RelativeId)
 
+					b = samr.RPC_UNICODE_STRING(self.__packer)
+					b.Data = self.Name[i]
+					b.pack()
+					self.__packer.pack_pointer(self.Pointer)
 
-	class SAMPR_ENUMERATION_BUFFER
+				for j in range(len(self.Name)):
+					self.__packer.pack_string(self.Name[j].encode('utf16')[2:])
+
+	class SAMPR_ENUMERATION_BUFFER:
 		# 2.2.3.10 SAMPR_ENUMERATION_BUFFER
 		# 
 		# http://msdn.microsoft.com/en-us/library/cc245561%28v=PROT.10%29.aspx
@@ -736,15 +754,26 @@ class samr(RPCService):
 				#    [size_is(EntriesRead)] PSAMPR_RID_ENUMERATION Buffer;
 		# } SAMPR_ENUMERATION_BUFFER, 
 		# *PSAMPR_ENUMERATION_BUFFER;
-		def __init__(self, p, Buffer=[]):
-			if isinstance(pack,ndrlib.Packer):
-				p.pack_long(len(Buffer))
-				for i in Buffer:
-					p.pack_long(0x4711) # FIXME
-					SAMPR_RID_ENUMERATION(p, i)
-			elif isinstance(pack,ndrlib.Unpacker):
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.EntriesRead = 0
+				self.Buffer = []
+				self.Pointer = 0x4711
+			elif isinstance(self.__packer,ndrlib.Unpacker):
 				raise NotImplementedError
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				# EntriesRead
+				self.__packer.pack_long(self.EntriesRead)
+				self.__packer.pack_pointer(self.Pointer)
 
+				# Maxcount, needed as NDR array
+				self.__packer.pack_long(self.EntriesRead)
+ 
+				b = samr.SAMPR_RID_ENUMERATION(self.__packer)
+				b.Name = self.Buffer
+				b.pack()
 
 	ops = {
 		1: "Close",
@@ -780,15 +809,14 @@ class samr(RPCService):
 		r = ndrlib.Packer()
 
 		# ServerHandle
-		r.pack_raw(b'01234567890123456789')
+		ServerHandle = samr.SAMPR_HANDLE(r)
+		ServerHandle.Handle = b'01234567890123456789'
+		ServerHandle.pack()
 
 		# return 
 		r.pack_long(0)
 
 		return r.get_buffer()
-
-
-		
 
 	@classmethod
 	def handle_Connect5(cls, p):
@@ -834,9 +862,11 @@ class samr(RPCService):
 		r.pack_long(SupportedFeatures)
 
 		# ServerHandle
-		SAMPR_HANDLE(r, b'01234567890123456789')
+		ServerHandle = samr.SAMPR_HANDLE(r)
+		ServerHandle.Handle = b'01234567890123456789'
+		ServerHandle.pack()
 
-		# return 
+		# return
 		r.pack_long(0)
 
 		return r.get_buffer()
@@ -855,7 +885,7 @@ class samr(RPCService):
   		#   [out] unsigned long* CountReturned
 		#);
 		x = ndrlib.Unpacker(p.StubData)
-		ServerHandle = SAMPR_HANDLE(x)
+		ServerHandle = samr.SAMPR_HANDLE(x)
 		print("ServerHandle %s" % ServerHandle)
 
 		EnumerationContext = x.unpack_long()
@@ -868,12 +898,17 @@ class samr(RPCService):
 		# unsigned long* EnumerationContext,
 		r.pack_pointer(EnumerationContext)
 
-		# PSAMPR_ENUMERATION_BUFFER* Buffer
+		# Pointer to SAMPR_ENUMERATION_BUFFER* Buffer
 		r.pack_pointer(0x0da260)
-		SAMPR_ENUMERATION_BUFFER(p, ['HOMEUSER-3AF6FE','Builtin']) 
+
+		# SAMPR_ENUMERATION_BUFFER Buffer
+		s = samr.SAMPR_ENUMERATION_BUFFER(r)
+		s.Buffer = ['HOMEUSER-3AF6FE','Builtin']
+		s.EntriesRead = len(s.Buffer)
+		s.pack()
 
 		# long* CountReturned
-		r.pack_pointer(0x02)
+		r.pack_long(s.EntriesRead)
 		r.pack_long(0)
 
 		return r.get_buffer()
@@ -890,15 +925,22 @@ class samr(RPCService):
  		#[out] PRPC_SID* DomainId
 		#);
 		x = ndrlib.Unpacker(p.StubData)
-		ServerHandle = SAMR_HANDLE(x)
-		Name = RPC_UNICODE_STRING(x)
-
+		ServerHandle = samr.SAMPR_HANDLE(x)
+		Name = samr.RPC_UNICODE_STRING(x)
 		r = ndrlib.Packer()
 		r.pack_pointer(0x0da260)   #same as EnumDomain
+
+		# http://technet.microsoft.com/en-us/library/cc778824%28WS.10%29.aspx
+		# example the SID for the built-in Administrators group : S-1-5-32-544
+		DomainId = samr.RPC_SID(r)
+		DomainId.Value = 'NT_AUTHORITY'
+		DomainId.SubAuthority = ['32','544']
+		DomainId.SubAuthorityCount = len(DomainId.SubAuthority)
 		
-		#Count <- FIXME WHY Count, maybe pointer? -common
-		r.pack_long(4)
-		RPC_SID(r)
+		# Maxcount, needed as the element of NDR array
+		r.pack_long(DomainId.SubAuthorityCount)
+		
+		DomainId.pack()
 	
 		r.pack_long(0)
 		return r.get_buffer()
@@ -916,18 +958,19 @@ class samr(RPCService):
 		#   [out] SAMPR_HANDLE* DomainHandle
 		# );
 		x = ndrlib.Unpacker(p.StubData)
-		ServerHandle = SAMR_HANDLE(x)
+		ServerHandle = samr.SAMPR_HANDLE(x)
 		print("ServerHandle %s" % ServerHandle)
 
 		DesiredAccess = x.unpack_long()
 		print("DesiredAccess %i" % DesiredAccess)
-
-		#RPC_SID
-		DomainId = RPC_SID(x)
 		
+		DomainId = samr.RPC_SID(x)	
+	
 		r = ndrlib.Packer()
-		# SAMPR_HANDLE* DomainHandle
-		SAMPR_HANDLE(b'11223344556677889900')
+
+		DomainHandle = samr.SAMPR_HANDLE(r)
+		DomainHandle.Handle = b'11223344556677889900'
+		DomainHandle.pack()
 
 		r.pack_long(0)
 
@@ -948,7 +991,7 @@ class samr(RPCService):
   		#[out] unsigned long* CountReturned
 		#)
 		x = ndrlib.Unpacker(p.StubData)
-		DomainHandle = x.unpack_raw(20)
+		DomainHandle = samr.SAMPR_HANDLE(x)
 		print("DomainHandle %s" % DomainHandle)
 	
 		EnumerationContext = x.unpack_long()
@@ -962,63 +1005,18 @@ class samr(RPCService):
 
 		r = ndrlib.Packer()
 		r.pack_pointer(EnumerationContext)
-		
-		#almost same as EnumDomains
-		#SAMPR_ENUMERATION_BUFFER
-		r.pack_pointer(0x0c40e0)
 
-		# EntriesRead
-		r.pack_long(4)
-	
-		# PSAMPR_RID_ENUMERATION Buffer
-		# Ref ID
-		r.pack_pointer(0x10)
-		# maxcount
-		r.pack_long(4)
+		# PSAMPR_ENUMERATION_BUFFER* Buffer
+		r.pack_pointer(0x0da260)
 
-		# entry 1
-		# RelativeId;
-		r.pack_long(500)
-		
-		# RPC_UNICODE_STRING
-		#http://msdn.microsoft.com/en-us/library/cc230365%28PROT.10%29.aspx
+		# SAMPR_ENUMERATION_BUFFER Buffer
+		s = samr.SAMPR_ENUMERATION_BUFFER(r)
+		s.Buffer = ['Administrator','Guest','HelpAssistant','SUPPORT_388945a0']
+		s.EntriesRead = len(s.Buffer)
+		s.pack()
 
-		r.pack_short(26)
-		r.pack_short(32)
-		
-		# WCHAR* Buffer
-		r.pack_pointer(0x1)
-
-		# entry 2
-		# RelativeId;
-		r.pack_long(501)
-		
-		# RPC_UNICODE_STRING
-		r.pack_short(10)
-		r.pack_short(16)
-
-		# WCHAR* Buffer
-		r.pack_pointer(0x2)
-
-		# entry 3
-		r.pack_long(1000)
-		r.pack_short(26)
-		r.pack_short(32)
-		r.pack_pointer(0x3)
-
-		# entry 4
-		r.pack_long(1002)
-		r.pack_short(32)
-		r.pack_short(32)
-		r.pack_pointer(0x4)
-		
-		r.pack_string('Administrator'.encode('utf16')[2:])
-		r.pack_string('Guest'.encode('utf16')[2:])
-		r.pack_string('HelpAssistant'.encode('utf16')[2:])
-		r.pack_string('SUPPORT_388945a0'.encode('utf16')[2:])		
-		
 		# long* CountReturned
-		r.pack_pointer(0x04)
+		r.pack_long(s.EntriesRead)
 		r.pack_long(0)
 
 		return r.get_buffer()
@@ -1033,11 +1031,13 @@ class samr(RPCService):
   		#[in, out] SAMPR_HANDLE* SamHandle
 		#);
 		x = ndrlib.Unpacker(p.StubData)
-		SamHandle = x.unpack_raw(20)
+		SamHandle = samr.SAMPR_HANDLE(x)
 		print("SamHandle %s" % SamHandle)
 		
 		r = ndrlib.Packer()
-		r.pack_raw(b'\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0')
+		s = samr.SAMPR_HANDLE(r)
+		s.Handle =  b'\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0'
+		s.pack()
 		r.pack_long(0)
 
 		return r.get_buffer()
@@ -1077,6 +1077,217 @@ class SRVSVC(RPCService):
 		0x20: "MS08-67",
 	}
 
+	class SRVSVC_HANDLE:
+		# 2.2.1.1 SRVSVC_HANDLE
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc247105%28PROT.10%29.aspx
+		# 
+		# 	typedef [handle, string] WCHAR* SRVSVC_HANDLE; 
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Handle = b''
+				self.Pointer = 0x3a20f2
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Ref = self.__packer.unpack_pointer()
+				self.Handle = self.__packer.unpack_string()
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				self.__packer.pack_pointer(self.Pointer)
+				self.__packer.pack_string(handle)
+				
+
+	class SHARE_INFO_1_CONTAINER:
+		# 2.2.4.33 SHARE_INFO_1_CONTAINER
+ 		# 
+		# http://msdn.microsoft.com/en-us/library/cc247157%28PROT.10%29.aspx
+ 		# 
+		# typedef struct _SHARE_INFO_1_CONTAINER {
+		#   DWORD EntriesRead;
+		#   [size_is(EntriesRead)] LPSHARE_INFO_1 Buffer;
+		# } SHARE_INFO_1_CONTAINER;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.EntriesRead = 0
+				self.Data = []
+				self.Pointer = 0x23456
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Ptr = self.__packer.unpack_pointer()
+				self.EntriesRead = self.__packer.unpack_long()
+				self.Buffer = self.__packer.unpack_pointer()
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				# EntriesRead
+				self.__packer.pack_long(self.EntriesRead)
+				# LPSHARE_INFO_1 Buffer
+				b = SRVSVC.SHARE_INFO_1(self.__packer)
+				b.Data = self.Data
+				b.MaxCount = self.EntriesRead
+				b.pack()
+
+	class SHARE_INFO_502_CONTAINER:
+		# 2.2.4.36 SHARE_INFO_502_CONTAINER
+		#
+		# http://msdn.microsoft.com/en-us/library/cc247160%28PROT.13%29.aspx
+		#
+		# typedef struct _SHARE_INFO_502_CONTAINER {
+		#   DWORD EntriesRead;
+		#   [size_is(EntriesRead)] LPSHARE_INFO_502_I Buffer;
+		# } SHARE_INFO_502_CONTAINER,
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.EntriesRead = 0
+				self.Data = []
+				self.Pointer = 0x23456
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Ctr = self.__packer.unpack_pointer()
+				self.Ptr = self.__packer.unpack_pointer()
+				self.EntriesRead = self.__packer.unpack_long()
+				self.Buffer = self.__packer.unpack_pointer()
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				# EntriesRead
+				self.__packer.pack_long(self.EntriesRead)
+				# SHARE_INFO_502_I Buffer
+				b = SRVSVC.SHARE_INFO_502(self.__packer)
+				b.Data = self.Data
+				b.MaxCount = self.EntriesRead
+				b.pack()
+		
+
+	class SHARE_INFO_1:
+		# 2.2.4.23 SHARE_INFO_1
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc247147%28PROT.10%29.aspx
+		# 
+		# typedef struct _SHARE_INFO_1 {
+		#   [string] wchar_t* shi1_netname;
+		#   DWORD shi1_type;
+		#   [string] wchar_t* shi1_remark;
+		# } SHARE_INFO_1, 
+		#  *PSHARE_INFO_1, 
+		#  *LPSHARE_INFO_1;
+		
+		# http://msdn.microsoft.com/en-us/library/cc247150%28PROT.10%29.aspx
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Data = []
+				self.Pointer = 0x99999
+				self.MaxCount = 0
+				self.Netname_pointer = 0x34567
+				self.Type = 0x00000000 # STYPE_DISKTREE
+				self.Remark_pointer = 0x45678
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_pointer(self.Pointer)
+				# MaxCount, needed as the NDR array
+				self.__packer.pack_long(self.MaxCount)
+
+				for i in range(self.MaxCount): 				
+					self.__packer.pack_pointer(self.Netname_pointer) # netname
+					self.__packer.pack_long(self.Type) # type
+					self.__packer.pack_pointer(self.Remark_pointer) # remark
+
+				for j in range(len(self.Data)):
+					self.__packer.pack_string(self.Data[j].encode('utf16')[2:])
+
+	class SHARE_INFO_502:
+		# 2.2.4.26 SHARE_INFO_502_I
+		#
+		# http://msdn.microsoft.com/en-us/library/cc247150%28v=PROT.13%29.aspx
+		#
+		# typedef struct _SHARE_INFO_502_I {
+		#  [string] WCHAR* shi502_netname;
+		#  DWORD shi502_type;
+		#  [string] WCHAR* shi502_remark;
+		#  DWORD shi502_permissions;
+		#  DWORD shi502_max_uses;
+		#  DWORD shi502_current_uses;
+		#  [string] WCHAR* shi502_path;
+		#  [string] WCHAR* shi502_passwd;
+		#  DWORD shi502_reserved;
+		#  [size_is(shi502_reserved)] unsigned char* shi502_security_descriptor;
+		#} SHARE_INFO_502_I, 
+		# *PSHARE_INFO_502_I, 
+		# *LPSHARE_INFO_502_I;
+		def __init__(self, p, data=None):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Data = []
+				self.Pointer = 0x99999
+				self.MaxCount = 0
+				self.Netname_pointer = 0x34567
+				self.Type = 0x00000000
+				self.Remark_pointer = 0x45678
+				self.Permissions = 0
+				self.Max_uses = 0xffffffff
+				self.Current_uses = 1
+				self.Path_pointer = 0x87654
+				self.Passwd_pointer = 0
+				self.Reserved = 0
+				self.Security_descriptor = 0				
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_pointer(self.Pointer)
+				self.__packer.pack_long(self.MaxCount)
+
+				for i in range(self.MaxCount): 				
+					self.__packer.pack_pointer(self.Netname_pointer) # netname
+					self.__packer.pack_long(self.Type) # STYPE_DISKTREE
+					self.__packer.pack_pointer(self.Remark_pointer) # remark
+					self.__packer.pack_long(self.Permissions)		# permissions
+					self.__packer.pack_long(self.Max_uses) # max_uses
+					self.__packer.pack_long(self.Current_uses)		# current_uses
+					self.__packer.pack_pointer(self.Path_pointer) # path
+					self.__packer.pack_pointer(self.Passwd_pointer) 	# passwd
+					self.__packer.pack_long(self.Reserved) # reserved
+					self.__packer.pack_pointer(self.Security_descriptor)	# security descriptor
+
+				for j in range(len(self.Data)):
+					self.__packer.pack_string_fix(self.Data[j].encode('utf16')[2:])
+				
+
+	class SHARE_INFO_2:
+		#2.2.4.24 SHARE_INFO_2
+		#
+		#http://msdn.microsoft.com/en-us/library/cc247148%28v=PROT.13%29.aspx
+		#
+		#typedef struct _SHARE_INFO_2 {
+		#  [string] wchar_t* shi2_netname;
+		#  DWORD shi2_type;
+		#  [string] wchar_t* shi2_remark;
+		#  DWORD shi2_permissions;
+		#  DWORD shi2_max_uses;
+		#  DWORD shi2_current_uses;
+		#  [string] wchar_t* shi2_path;
+		#  [string] wchar_t* shi2_passwd;
+		#} SHARE_INFO_2
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass	
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.ref = self.__packer.unpack_pointer()
+				self.netname = self.__packer.unpack_pointer()
+				self.sharetype = self.__packer.unpack_long()
+				self.remark = self.__packer.unpack_long()
+				self.permission = self.__packer.unpack_long()
+				self.max_use = self.__packer.unpack_long()
+				self.current_use = self.__packer.unpack_long()
+				self.path = self.__packer.unpack_pointer()
+				self.passwd = self.__packer.unpack_pointer()
+				self.share_name = self.__packer.unpack_string()
+				self.share_comment = self.__packer.unpack_string()
+				self.share_path = self.__packer.unpack_string()
+
 	@classmethod
 	def handle_NetShareEnum(cls, p):
 
@@ -1094,15 +1305,8 @@ class SRVSVC(RPCService):
 		#	  [in, out, unique] DWORD* ResumeHandle
 		#	);
 
-		# 2.2.1.1 SRVSVC_HANDLE
-		# 
-		# http://msdn.microsoft.com/en-us/library/cc247105%28PROT.10%29.aspx
-		# 
-		# 	typedef [handle, string] WCHAR* SRVSVC_HANDLE; 
-
-		srvsvc_handle_ref = x.unpack_pointer()
-		srvsvc_handle = x.unpack_string()
-
+		ServerName = SRVSVC.SRVSVC_HANDLE(x)
+		
 		# 2.2.4.38 SHARE_ENUM_STRUCT
 		# 
 		# http://msdn.microsoft.com/en-us/library/cc247161%28PROT.10%29.aspx
@@ -1134,34 +1338,11 @@ class SRVSVC(RPCService):
 		# 	SHARE_INFO_503_CONTAINER* Level503;
 		# } SHARE_ENUM_UNION;
 
-		count = 0
-		buffer = 0
 		if infostruct_share == 1:
-			# 2.2.4.33 SHARE_INFO_1_CONTAINER
- 			# 
-			# http://msdn.microsoft.com/en-us/library/cc247157%28PROT.10%29.aspx
- 			# 
-			# typedef struct _SHARE_INFO_1_CONTAINER {
-			#   DWORD EntriesRead;
-			#   [size_is(EntriesRead)] LPSHARE_INFO_1 Buffer;
-			# } SHARE_INFO_1_CONTAINER;
-			ptr = x.unpack_pointer()
-			count = x.unpack_long()
-			buffer = x.unpack_pointer()
+			buffer = SRVSVC.SHARE_INFO_1_CONTAINER(x)
 
-		if infostruct_share == 502:
-			# 2.2.4.36 SHARE_INFO_502_CONTAINER
-			#
-			# http://msdn.microsoft.com/en-us/library/cc247160%28PROT.13%29.aspx
-			#
-			# typedef struct _SHARE_INFO_502_CONTAINER {
-			#   DWORD EntriesRead;
-			#   [size_is(EntriesRead)] LPSHARE_INFO_502_I Buffer;
-			# } SHARE_INFO_502_CONTAINER,
-			ctr = x.unpack_pointer()
-			ptr = x.unpack_pointer()
-			count = x.unpack_long()
-			buffer = x.unpack_pointer()
+		elif infostruct_share == 502:
+			buffer = SRVSVC.SHARE_INFO_502_CONTAINER(x)
 		
 		preferdmaxlen = x.unpack_long()
 		
@@ -1171,137 +1352,30 @@ class SRVSVC(RPCService):
 		if resumehandleptr != 0:
 			resumehandle = x.unpack_long()
 		
-		print("srvsvc_handle_ref %x srvsvc_handle %s infostruct_level %i count %i buffer %x preferdmaxlen %i  resumehandleptr %x resumehandle %i" % (
-			srvsvc_handle_ref,
-			srvsvc_handle,
-			infostruct_level,
-			count,
-			buffer,
-			preferdmaxlen,
-			resumehandleptr,
-			resumehandle) )
-
+		print("infostruct_share %i preferdmaxlen %i  resumehandleptr %x resumehandle %i" % (infostruct_share,preferdmaxlen,resumehandleptr,resumehandle) )
 
 		# compile reply
 		r = ndrlib.Packer()
 		r.pack_long(infostruct_level)
+		r.pack_long(infostruct_share)
 
-		# 2.2.4.33 SHARE_INFO_1_CONTAINER
+		# pointer to the SHARE_INFO_X_CONTAINER
+		r.pack_pointer(0x23456)
 
-		if infostruct_level == 1:
+		if infostruct_share == 1:
+			s = SRVSVC.SHARE_INFO_1_CONTAINER(r)
+			s.Data = ['test\0','es geht test\0','test2\0','es geht test\0']
+			s.EntriesRead = int(len(s.Data)/2)
+			s.pack()
 		
-			# EntriesRead
-			r.pack_long(1)
-			r.pack_pointer(0x23456)
-		
-			# 2.2.4.23 SHARE_INFO_1
-			# 
-			# http://msdn.microsoft.com/en-us/library/cc247147%28PROT.10%29.aspx
-			# 
-			# typedef struct _SHARE_INFO_1 {
-			#   [string] wchar_t* shi1_netname;
-			#   DWORD shi1_type;
-			#   [string] wchar_t* shi1_remark;
-			# } SHARE_INFO_1, 
-			#  *PSHARE_INFO_1, 
-			#  *LPSHARE_INFO_1;
-		
-			# http://msdn.microsoft.com/en-us/library/cc247150%28PROT.10%29.aspx
-
-			# Count
-			r.pack_long(2)
-
-			# pointer 
-			r.pack_pointer(0x99999)
-
-			# Max Count
-			r.pack_long(2)
-
-			# Buffer[0]
-			r.pack_pointer(0x34567)
-			r.pack_long(0x00000000) # STYPE_DISKTREE
-			r.pack_pointer(0x45678)
-		
-			# Buffer[0]
-			r.pack_pointer(0x343567)
-			r.pack_long(0x00000000) # STYPE_DISKTREE
-			r.pack_pointer(0x45678)
-
-			r.pack_string('test\0'.encode('utf16')[2:])
-			r.pack_string('es geht test\0'.encode('utf16')[2:])
-
-			r.pack_string('test2\0'.encode('utf16')[2:])
-			r.pack_string('es geht test\0'.encode('utf16')[2:])
-
-			
-		if infostruct_level == 502:
-
-			# EntriesRead
-			r.pack_long(502)
-			r.pack_pointer(0x23456)
-
-			# 2.2.4.26 SHARE_INFO_502_I
-			#
-			# http://msdn.microsoft.com/en-us/library/cc247150%28v=PROT.13%29.aspx
-			#
-			# typedef struct _SHARE_INFO_502_I {
-			#  [string] WCHAR* shi502_netname;
-			#  DWORD shi502_type;
-			#  [string] WCHAR* shi502_remark;
-			#  DWORD shi502_permissions;
-			#  DWORD shi502_max_uses;
-			#  DWORD shi502_current_uses;
-			#  [string] WCHAR* shi502_path;
-			#  [string] WCHAR* shi502_passwd;
-			#  DWORD shi502_reserved;
-			#  [size_is(shi502_reserved)] unsigned char* shi502_security_descriptor;
-			#} SHARE_INFO_502_I, 
-			# *PSHARE_INFO_502_I, 
-			# *LPSHARE_INFO_502_I;
-
-			# Count
-			r.pack_long(2)
-
-			# pointer 
-			r.pack_pointer(0x99999)
-
-			# Max Count
-			r.pack_long(2)
-
-			# Buffer[0]
-			r.pack_pointer(0x34567)
-			r.pack_long(0x00000000) # STYPE_DISKTREE
-			r.pack_pointer(0x45678) # remark
-			r.pack_long(0)		# permissions
-			r.pack_long(0xffffffff) # max_uses
-			r.pack_long(1)		# current_uses
-			r.pack_pointer(0x78654) # path
-			r.pack_pointer(0) 	# passwd
-			r.pack_long(0) 		# reserved
-			r.pack_pointer(0)	# security descriptor
-
-			# Buffer[1]
-			r.pack_pointer(0x343567)
-			r.pack_long(0x00000000) # STYPE_DISKTREE
-			r.pack_pointer(0x45678)
-			r.pack_long(0)
-			r.pack_long(0xffffffff)
-			r.pack_long(1)
-			r.pack_pointer(0x78654)
-			r.pack_pointer(0)
-			r.pack_long(0)
-			r.pack_pointer(0)
-
-			r.pack_string_fix('test\0'.encode('utf16')[2:])
-			r.pack_string_fix('es geht test\0'.encode('utf16')[2:])
-			r.pack_string_fix('C:\0'.encode('utf16')[2:])
-
-			r.pack_string_fix('test2\0'.encode('utf16')[2:])
-			r.pack_string_fix('es geht test\0'.encode('utf16')[2:])
-			r.pack_string_fix('C:\WINDOWS\0'.encode('utf16')[2:])
+		elif infostruct_share == 502:
+			s = SRVSVC.SHARE_INFO_502_CONTAINER(r)
+			s.Data = ['test\0','es geht test\0','C:\0','test2\0','es geht test\0','C:\WINDOWS\0']
+			s.EntriesRead = int(len(s.Data)/3)
+			s.pack()
 
 		# total entries
-		r.pack_long(2)
+		r.pack_long(s.EntriesRead)
 
 		# resume handle
 		r.pack_pointer(0x47123123)		
@@ -1309,8 +1383,6 @@ class SRVSVC(RPCService):
 
 		r.pack_long(0)
 		return r.get_buffer()
-
-
 
 	@classmethod
 	def handle_NetPathCanonicalize(cls, p):
@@ -1385,42 +1457,17 @@ class SRVSVC(RPCService):
 		#  [in, out, unique] DWORD* ParmErr
 		#);
 		p = ndrlib.Unpacker(p.StubData)
-		srvsvc_handle_ref = p.unpack_pointer()
-		srvsvc_handle = p.unpack_string()
+		ServerName = SRVSVC.SRVSVC_HANDLE(p)
 		infostruct_level = p.unpack_long()
 		infostruct_share = p.unpack_long()
 
-		#2.2.4.24 SHARE_INFO_2
-		#
-		#http://msdn.microsoft.com/en-us/library/cc247148%28v=PROT.13%29.aspx
-		#
-		#typedef struct _SHARE_INFO_2 {
-		#  [string] wchar_t* shi2_netname;
-		#  DWORD shi2_type;
-		#  [string] wchar_t* shi2_remark;
-		#  DWORD shi2_permissions;
-		#  DWORD shi2_max_uses;
-		#  DWORD shi2_current_uses;
-		#  [string] wchar_t* shi2_path;
-		#  [string] wchar_t* shi2_passwd;
-		#} SHARE_INFO_2
-
 		if infostruct_share == 2:
-			ref = p.unpack_pointer()
-			netname = p.unpack_pointer()
-			sharetype = p.unpack_long()
-			remark = p.unpack_long()
-			permission = p.unpack_long()
-			max_use = p.unpack_long()
-			current_use = p.unpack_long()
-			path = p.unpack_pointer()
-			passwd = p.unpack_pointer()
-			share_name = p.unpack_string()
-			share_comment = p.unpack_string()
-			share_path = p.unpack_string()
+			buffer = SRVSVC.SHARE_INFO_2(p)
 		
 		ptr_parm = p.unpack_pointer()
 		error = p.unpack_long()
+
+		print("infostruct_share %i ptr_parm %x ParmErr %i" % (infostruct_share,ptr_parm,error) )
 
 		r = ndrlib.Packer()
 		r.pack_pointer(0x324567)
