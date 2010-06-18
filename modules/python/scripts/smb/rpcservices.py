@@ -170,11 +170,154 @@ class ISystemActivator(RPCService):
 		# MS04-012
 		pass
 
+class RPC_C_AUTHN:
+	# http://msdn.microsoft.com/en-us/library/ms692656%28VS.85%29.aspx
+	# seems globally used
+	NONE = 0
+	DCE_PRIVATE = 1
+	DCE_PUBLIC = 2
+	DEC_PUBLIC = 4
+	GSS_NEGOTIATE = 9
+	WINNT = 10
+	GSS_SCHANNEL = 14
+	GSS_KERBEROS = 16
+	DEFAULT = 0xFFFFFFFF
+
+class NCACN:
+	# http://www.opengroup.org/onlinepubs/9692999399/apdxi.htm#tagtcjh_51
+	UDP =8
+	IP = 9
+
 class IOXIDResolver(RPCService):
+	"""[MS-DCOM]: Distributed Component Object Model (DCOM) Remote Protocol Specification
+
+	http://msdn.microsoft.com/en-us/library/cc226801%28PROT.10%29.aspx"""
+
+
 	uuid = UUID('99fcfec4-5260-101b-bbcb-00aa0021347a').hex
 	ops = {
 		0x5: "ServerAlive2"
 	}
+
+	class COMVERSION:
+		# typedef struct tagCOMVERSION {
+		# 	unsigned short MajorVersion;
+		# 	unsigned short MinorVersion;
+		# } COMVERSION;
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.MajorVersion = 5
+				self.MinorVersion = 7
+
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_short(self.MajorVersion)
+				self.__packer.pack_short(self.MinorVersion)
+
+		def size(self):
+			return 4
+
+	class DUALSTRINGARRAY:
+		# 2.2.1.19.2 DUALSTRINGARRAY
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc226841%28PROT.10%29.aspx
+		# 
+		# typedef struct tagDUALSTRINGARRAY {
+		# 	unsigned short wNumEntries;
+		# 	unsigned short wSecurityOffset;
+		# 	[size_is(wNumEntries)] unsigned short aStringArray[];
+		# } DUALSTRINGARRAY;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.NumEntries = 0
+				self.SecurityOffset = 0
+				self.StringArray = []
+
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.NumEntries=self.SecurityOffset=0
+				for x in self.StringArray:
+					print("x %s %i" % (x, x.size()))
+					xs = x.size()
+					if isinstance(x, IOXIDResolver.STRINGBINDING):
+						self.SecurityOffset += xs
+					self.NumEntries += xs
+				self.__packer.pack_short(int((self.NumEntries+4)/2))
+				self.__packer.pack_short(int((self.SecurityOffset+2)/2))
+
+				for i in self.StringArray:
+					if isinstance(i, IOXIDResolver.STRINGBINDING):
+						i.pack()
+				self.__packer.pack_raw(b'\0\0')
+
+				for i in self.StringArray:
+					if isinstance(i, IOXIDResolver.SECURITYBINDING):
+						i.pack()
+				self.__packer.pack_raw(b'\0\0')
+				
+
+		def size(self):
+			return 2 + 2 + sum([x.size() for x in self.StringArray]) + 2 + 2
+
+					
+	class STRINGBINDING:
+		# 2.2.1.19.3 STRINGBINDING
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc226838%28PROT.10%29.aspx
+		# 
+		# fixmetypdef struct {
+		# 	unsigned short wTowerId
+		# 	char *aNetworkAddr
+		# } STRINGBINDING;
+		#
+		# TowerId -> http://www.opengroup.org/onlinepubs/9692999399/apdxi.htm#tagcjh_28
+
+			
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.TowerId = NCACN.IP 
+				self.NetworkAddr = ''
+
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_short(self.TowerId)
+				self.__packer.pack_raw(self.NetworkAddr.encode('utf16')[2:])
+				self.__packer.pack_raw(b'\0\0')
+
+		def size(self):
+			return 2 + len(self.NetworkAddr.encode('utf16')[2:]) + 2
+
+	class SECURITYBINDING:
+		# 2.2.1.19.4 SECURITYBINDING
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc226839%28PROT.10%29.aspx
+		# 
+		# fixmetypedef struct {
+		# 	unsigned short wAuthnSvc
+		#	unsigned short Reserved
+		#	wchar_t aPrincName
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.AuthnSvc = RPC_C_AUTHN.GSS_NEGOTIATE
+				self.Reserved = 0xffff
+				self.PrincName = 'none'
+
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_short(self.AuthnSvc)
+				if self.AuthnSvc != RPC_C_AUTHN.NONE:
+					self.__packer.pack_short(self.Reserved)
+					self.__packer.pack_raw(self.PrincName.encode('utf16')[2:])
+					self.__packer.pack_raw(b'\0\0')
+
+		def size(self):
+			return 2 + 2 + len(self.PrincName.encode('utf16')[2:]) + 2
 
 	@classmethod
 	def handle_ServerAlive2(cls, dce):
@@ -189,62 +332,44 @@ class IOXIDResolver(RPCService):
 		#	);
 		p = ndrlib.Packer()
 
-		# 3.2.2.5.1.6 COMVERSION
-		# http://msdn.microsoft.com/en-us/library/cc226880%28PROT.10%29.aspx
-		p.pack_short(5)
-		p.pack_short(7)
-		
+		# prepare values
 
-		# ref
+		ComVersion = IOXIDResolver.COMVERSION(p)
+
+		# the DUALSTRINGARRAY
+		dsa = IOXIDResolver.DUALSTRINGARRAY(p)
+
+		s = IOXIDResolver.STRINGBINDING(p)
+		s.NetworkAddr = '127.0.0.1'
+		dsa.StringArray.append(s)
+
+		s = IOXIDResolver.STRINGBINDING(p)
+		s.NetworkAddr = '127.0.0.2'
+		dsa.StringArray.append(s)
+
+		s = IOXIDResolver.SECURITYBINDING(p)
+		s.AuthnSvc = RPC_C_AUTHN.GSS_NEGOTIATE
+		s.PrincName = "OEMCOMPUTER"	# fixme: config value?
+		dsa.StringArray.append(s)
+		
+		# we are done, pack it
+
+		# ComVersion
+		ComVersion.pack()
+
+		# pointer to DUALSTRINGARRAY
 		p.pack_pointer(0x200008)
 
-		# number of elements in array
-		p.pack_long(11)
+		# DUALSTRINGARRAY size
+		p.pack_long(int(dsa.size()/2))
 
-		# 2.2.1.19.2 DUALSTRINGARRAY
-		# http://msdn.microsoft.com/en-us/library/cc226841%28PROT.10%29.aspx
-		# typedef struct tagDUALSTRINGARRAY {
-		#   unsigned short wNumEntries;
-		#   unsigned short wSecurityOffset;
-		#   [size_is(wNumEntries)] unsigned short aStringArray[];
-		# } DUALSTRINGARRAY;
-
-		# wNumEntries
-		p.pack_short(11)
-		
-		# wSecurityOffset
-		p.pack_short(10)
-
-		# 1 2.2.1.19.3 STRINGBINDING
-		# http://msdn.microsoft.com/en-us/library/cc226838%28PROT.10%29.aspx
-		
-		# wTowerId
-		# http://www.opengroup.org/onlinepubs/9692999399/apdxi.htm#tagcjh_28
-		p.pack_short(0x09) # DOD IP 
-
-		# aNetworkAddr
-		p.pack_raw('127.0.0.1\0\0'.encode('utf16')[2:]) # len = 20
-		
-		# 2.2.1.19.4 SECURITYBINDING
-		# http://msdn.microsoft.com/en-us/library/cc226839%28PROT.10%29.aspx
-
-		# wAuthnSvc
-		# http://msdn.microsoft.com/en-us/library/cc243578%28PROT.10%29.aspx 
-#		p.pack_short(0x00) # RPC_C_AUTHN_NONE
-		p.pack_short(0x0A) # RPC_C_AUTHN_WINNT
-
+		# DUALSTRINGARRAY
+		dsa.pack()
+				
 		# reserved
-		p.pack_short(0xffff)
-
-		# aPrincName
-		p.pack_raw('MUTTER\0\0'.encode('utf16')[2:])
-
-
-		# reserved
-		p.pack_pointer(0)
+		p.pack_pointer(0x4711)
 		p.pack_long(0)
 		
-		print(p.get_buffer())
 		return p.get_buffer()
 
 
@@ -1243,8 +1368,27 @@ class ssdpsrv(RPCService):
 
 
 class SVCCTL(RPCService):
-	uuid = UUID('367abb81-9844-35f1-ad32-98f038001003').hex
+	"""[MS-SCMR]: Service Control Manager Remote Protocol Specification
 
+	http://msdn.microsoft.com/en-us/library/cc245832%28v=PROT.10%29.aspx
+	"""
+	uuid = UUID('367abb81-9844-35f1-ad32-98f038001003').hex
+	version_major = 0
+	version_minor = 0
+
+	ops = {
+		27: "OpenSCManagerA",
+	}
+
+	@classmethod
+	def handle_OpenSCManagerA(cls, p):
+		# DWORD ROpenSCManagerA(
+		# 	[in, string, unique, range(0, SC_MAX_COMPUTER_NAME_LENGTH)] SVCCTL_HANDLEA lpMachineName,
+		# 	[in, string, unique, range(0, SC_MAX_NAME_LENGTH)] LPSTR lpDatabaseName,
+		# 	[in] DWORD dwDesiredAccess,
+		# 	[out] LPSC_RPC_HANDLE lpScHandle
+		# );
+		pass
 
 class tapsrv(RPCService):
 	uuid = UUID('2f5f6520-ca46-1067-b319-00dd010662da').hex
