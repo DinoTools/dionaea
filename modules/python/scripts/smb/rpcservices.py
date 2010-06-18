@@ -472,11 +472,15 @@ class samr(RPCService):
 		#
 		# typedef [context_handle] void* SAMPR_HANDLE; 
 		# 
-		def __init__(self, p, handle=None):
-			if isinstance(p,ndrlib.Packer):
-				p.pack_raw(handle)
-			elif isinstance(p,ndrlib.Unpacker):
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Handle = b''
+			elif isinstance(self.__packer,ndrlib.Unpacker):
 				self.Value = p.unpack_raw(20)
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_raw(self.Handle)
 
 	class RPC_SID_IDENTIFIER_AUTHORITY:
 		# 2.4.1.1 RPC_SID_IDENTIFIER_AUTHORITY
@@ -496,12 +500,17 @@ class samr(RPCService):
 			'NT_AUTHORITY'				: b'\x00\x00\x00\x00\x00\x05', 
 			'SECURITY_MANDATORY_LABEL_AUTHORITY'	: b'\x00\x00\x00\x00\x00\x10'
 		}
-		def __init__(self, p, value=None):
-			if isinstance(p,ndrlib.Packer):
-				if not self.SID_AUTHORITY.get(value) == None:
-					p.pack_raw(self.SID_AUTHORITY[value])
-			elif isinstance(p,ndrlib.Unpacker):
-				self.Value = p.unpack_raw(6)
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Value = ''
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Value = self.__packer.unpack_raw(6)
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				if not self.SID_AUTHORITY.get(self.Value) == None:
+					self.__packer.pack_raw(self.SID_AUTHORITY[self.Value])
+				
 
 	class RPC_SID:
 		# 2.4.2.2 RPC_SID
@@ -517,29 +526,36 @@ class samr(RPCService):
 		# } RPC_SID, 
 		#  *PRPC_SID;
 		#
-		def __init__(self, p, value=None):
+		def __init__(self, p):
+			self.__packer = p
 			if isinstance(p,ndrlib.Packer):
-				# Revision
-				p.pack_small(1)
-
-				# SubAuthorityCount
-				p.pack_small(4)
-
-				# RPC_SID_IDENTIFIER_AUTHORITY
-				samr.RPC_SID_IDENTIFIER_AUTHORITY(p, value)
-
-				# SubAuthority
-				p.pack_long(21)
-				p.pack_long(606747145)
-				p.pack_long(1364589140)
-				p.pack_long(839522115)
-			elif isinstance(p,ndrlib.Unpacker):
-				self.Revision = p.unpack_small()
-				self.SubAuthorityCount = p.unpack_small()
-				self.IdentifierAuthority = samr.RPC_SID_IDENTIFIER_AUTHORITY(p,None)
+				self.Value = ''
+				self.Revision = 1 # must be 0x01
+				self.SubAuthorityCount = 0
+				self.SubAuthority = []
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Revision = self.__packer.unpack_small()
+				self.SubAuthorityCount = self.__packer.unpack_small()
+				self.IdentifierAuthority = samr.RPC_SID_IDENTIFIER_AUTHORITY(self.__packer)
 				self.SubAuthority = []
 				for i in range(self.SubAuthorityCount):
 					self.SubAuthority.append(p.unpack_long())
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				# Revision
+				self.__packer.pack_small(self.Revision)
+
+				# SubAuthorityCount
+				self.__packer.pack_small(self.SubAuthorityCount)
+
+				# RPC_SID_IDENTIFIER_AUTHORITY
+				b = samr.RPC_SID_IDENTIFIER_AUTHORITY(self.__packer)
+				b.Value = self.Value
+				b.pack()
+
+				# SubAuthority
+				for i in range(self.SubAuthorityCount):
+					self.__packer.pack_long(int(self.SubAuthority[i]))
 
 	class RPC_UNICODE_STRING:
 		# 2.3.5 RPC_UNICODE_STRING
@@ -554,14 +570,18 @@ class samr(RPCService):
 		# } RPC_UNICODE_STRING, 
 		#  *PRPC_UNICODE_STRING;
 		# 
-		def __init__(self, p, data=None):
-			if isinstance(p,ndrlib.Packer):
-				p.pack_rpc_unicode_string(data)
-			elif isinstance(p,ndrlib.Unpacker):
-				self.Length = p.unpack_short()
-				self.MaximumLength = p.unpack_short()
-				self.Reference = p.unpack_pointer()
-				self.Buffer = p.unpack_string()
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Data =[]
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Length = self.__packer.unpack_short()
+				self.MaximumLength = self.__packer.unpack_short()
+				self.Reference = self.__packer.unpack_pointer()
+				self.Buffer = self.__packer.unpack_string()
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_rpc_unicode_string(self.Data)
 
 
 	class SAMPR_RID_ENUMERATION:
@@ -574,20 +594,28 @@ class samr(RPCService):
 		#   RPC_UNICODE_STRING Name;
 		# } SAMPR_RID_ENUMERATION, 
 		#  *PSAMPR_RID_ENUMERATION;
-		def __init__(self, p, Name=None):
-			if isinstance(p,ndrlib.Packer):
-				for i in range(len(Name)): 				
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Name = []
+				self.RelativeId = 0
+				self.Pointer = 0x11
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.RelativeId = self.__packer.unpack_long()
+				self.Name = RPC_UNICODE_STRING(self.__packer, Name)
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				for i in range(len(self.Name)): 				
 					#RelativeID
-					p.pack_long(0)
-					samr.RPC_UNICODE_STRING(p, Name[i])
-					p.pack_pointer(0x11)
+					self.__packer.pack_long(self.RelativeId)
 
-				for j in range(len(Name)):
-					p.pack_string(Name[j].encode('utf16')[2:])
-			elif isinstance(p,ndrlib.Unpacker):
-				self.RelativeId = p.unpack_long()
-				self.Name = RPC_UNICODE_STRING(p, Name)
+					b = samr.RPC_UNICODE_STRING(self.__packer)
+					b.Data = self.Name[i]
+					b.pack()
+					self.__packer.pack_pointer(self.Pointer)
 
+				for j in range(len(self.Name)):
+					self.__packer.pack_string(self.Name[j].encode('utf16')[2:])
 
 	class SAMPR_ENUMERATION_BUFFER:
 		# 2.2.3.10 SAMPR_ENUMERATION_BUFFER
@@ -599,19 +627,26 @@ class samr(RPCService):
 				#    [size_is(EntriesRead)] PSAMPR_RID_ENUMERATION Buffer;
 		# } SAMPR_ENUMERATION_BUFFER, 
 		# *PSAMPR_ENUMERATION_BUFFER;
-		def __init__(self, p, Buffer=None):
-			if isinstance(p,ndrlib.Packer):
-				# EntriesRead
-				p.pack_long(len(Buffer))
-				p.pack_pointer(0x4711)
-
-				# maxcount as described by wireshark
-				# the value need same as EntriesRead, I not sure why
-				p.pack_long(len(Buffer))
- 
-				samr.SAMPR_RID_ENUMERATION(p, Buffer)
-			elif isinstance(p,ndrlib.Unpacker):
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.EntriesRead = 0
+				self.Buffer = []
+				self.Pointer = 0x4711
+			elif isinstance(self.__packer,ndrlib.Unpacker):
 				raise NotImplementedError
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				# EntriesRead
+				self.__packer.pack_long(self.EntriesRead)
+				self.__packer.pack_pointer(self.Pointer)
+
+				# Maxcount, needed as NDR array
+				self.__packer.pack_long(self.EntriesRead)
+ 
+				b = samr.SAMPR_RID_ENUMERATION(self.__packer)
+				b.Name = self.Buffer
+				b.pack()
 
 	ops = {
 		1: "Close",
@@ -647,7 +682,9 @@ class samr(RPCService):
 		r = ndrlib.Packer()
 
 		# ServerHandle
-		samr.SAMPR_HANDLE(r,b'01234567890123456789')
+		ServerHandle = samr.SAMPR_HANDLE(r)
+		ServerHandle.Handle = b'01234567890123456789'
+		ServerHandle.pack()
 
 		# return 
 		r.pack_long(0)
@@ -698,7 +735,9 @@ class samr(RPCService):
 		r.pack_long(SupportedFeatures)
 
 		# ServerHandle
-		samr.SAMPR_HANDLE(r,b'01234567890123456789')
+		ServerHandle = samr.SAMPR_HANDLE(r)
+		ServerHandle.Handle = b'01234567890123456789'
+		ServerHandle.pack()
 
 		# return
 		r.pack_long(0)
@@ -731,12 +770,17 @@ class samr(RPCService):
 		r = ndrlib.Packer()
 		r.pack_pointer(EnumerationContext)
 
-		# PSAMPR_ENUMERATION_BUFFER* Buffer
+		# Pointer to SAMPR_ENUMERATION_BUFFER* Buffer
 		r.pack_pointer(0x0da260)
-		samr.SAMPR_ENUMERATION_BUFFER(r, ['HOMEUSER-3AF6FE','Builtin'])
+
+		# SAMPR_ENUMERATION_BUFFER Buffer
+		s = samr.SAMPR_ENUMERATION_BUFFER(r)
+		s.Buffer = ['HOMEUSER-3AF6FE','Builtin']
+		s.EntriesRead = len(s.Buffer)
+		s.pack()
 
 		# long* CountReturned
-		r.pack_pointer(0x02)
+		r.pack_long(s.EntriesRead)
 		r.pack_long(0)
 
 		return r.get_buffer()
@@ -757,11 +801,19 @@ class samr(RPCService):
 		Name = samr.RPC_UNICODE_STRING(x)
 		r = ndrlib.Packer()
 		r.pack_pointer(0x0da260)   #same as EnumDomain
-		
-		#Count as described by wireshark, I not sure why this needed
-		r.pack_long(4)
 
-		samr.RPC_SID(r,'NT_AUTHORITY')	
+		# http://technet.microsoft.com/en-us/library/cc778824%28WS.10%29.aspx
+		# example the SID for the built-in Administrators group : S-1-5-32-544
+		DomainId = samr.RPC_SID(r)
+		DomainId.Value = 'NT_AUTHORITY'
+		DomainId.SubAuthority = ['32','544']
+		DomainId.SubAuthorityCount = len(DomainId.SubAuthority)
+		
+		# Maxcount, needed as the element of NDR array
+		r.pack_long(DomainId.SubAuthorityCount)
+		
+		DomainId.pack()
+	
 		r.pack_long(0)
 		return r.get_buffer()
 	
@@ -787,7 +839,11 @@ class samr(RPCService):
 		DomainId = samr.RPC_SID(x)	
 	
 		r = ndrlib.Packer()
-		samr.SAMPR_HANDLE(r, b'11223344556677889900')
+
+		DomainHandle = samr.SAMPR_HANDLE(r)
+		DomainHandle.Handle = b'11223344556677889900'
+		DomainHandle.pack()
+
 		r.pack_long(0)
 
 		return r.get_buffer()
@@ -824,9 +880,15 @@ class samr(RPCService):
 
 		# PSAMPR_ENUMERATION_BUFFER* Buffer
 		r.pack_pointer(0x0da260)
-		samr.SAMPR_ENUMERATION_BUFFER(r, ['Administrator','Guest','HelpAssistant','SUPPORT_388945a0'])
+
+		# SAMPR_ENUMERATION_BUFFER Buffer
+		s = samr.SAMPR_ENUMERATION_BUFFER(r)
+		s.Buffer = ['Administrator','Guest','HelpAssistant','SUPPORT_388945a0']
+		s.EntriesRead = len(s.Buffer)
+		s.pack()
+
 		# long* CountReturned
-		r.pack_pointer(0x04)
+		r.pack_long(s.EntriesRead)
 		r.pack_long(0)
 
 		return r.get_buffer()
@@ -845,7 +907,9 @@ class samr(RPCService):
 		print("SamHandle %s" % SamHandle)
 		
 		r = ndrlib.Packer()
-		samr.SAMPR_HANDLE(r, b'\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0')
+		s = samr.SAMPR_HANDLE(r)
+		s.Handle =  b'\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0'
+		s.pack()
 		r.pack_long(0)
 
 		return r.get_buffer()
@@ -891,13 +955,19 @@ class SRVSVC(RPCService):
 		# http://msdn.microsoft.com/en-us/library/cc247105%28PROT.10%29.aspx
 		# 
 		# 	typedef [handle, string] WCHAR* SRVSVC_HANDLE; 
-		def __init__(self, p, handle=None):
-			if isinstance(p,ndrlib.Packer):
-				p.pack_pointer(0x3a20f2)
-				p.pack_string(handle)
-			elif isinstance(p,ndrlib.Unpacker):
-				self.ref = p.unpack_pointer()
-				self.handle = p.unpack_string()
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Handle = b''
+				self.Pointer = 0x3a20f2
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Ref = self.__packer.unpack_pointer()
+				self.Handle = self.__packer.unpack_string()
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				self.__packer.pack_pointer(self.Pointer)
+				self.__packer.pack_string(handle)
+				
 
 	class SHARE_INFO_1_CONTAINER:
 		# 2.2.4.33 SHARE_INFO_1_CONTAINER
@@ -908,16 +978,25 @@ class SRVSVC(RPCService):
 		#   DWORD EntriesRead;
 		#   [size_is(EntriesRead)] LPSHARE_INFO_1 Buffer;
 		# } SHARE_INFO_1_CONTAINER;
-		def __init__(self, p, data=None):
-			if isinstance(p,ndrlib.Packer):
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.EntriesRead = 0
+				self.Data = []
+				self.Pointer = 0x23456
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Ptr = self.__packer.unpack_pointer()
+				self.EntriesRead = self.__packer.unpack_long()
+				self.Buffer = self.__packer.unpack_pointer()
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
 				# EntriesRead
-				p.pack_long(1)
-				p.pack_pointer(0x23456)
-				SRVSVC.SHARE_INFO_1(p,data)				
-			elif isinstance(p,ndrlib.Unpacker):
-				self.ptr = p.unpack_pointer()
-				self.count = p.unpack_long()
-				self.buffer = p.unpack_pointer()
+				self.__packer.pack_long(self.EntriesRead)
+				# LPSHARE_INFO_1 Buffer
+				b = SRVSVC.SHARE_INFO_1(self.__packer)
+				b.Data = self.Data
+				b.MaxCount = self.EntriesRead
+				b.pack()
 
 	class SHARE_INFO_502_CONTAINER:
 		# 2.2.4.36 SHARE_INFO_502_CONTAINER
@@ -928,17 +1007,27 @@ class SRVSVC(RPCService):
 		#   DWORD EntriesRead;
 		#   [size_is(EntriesRead)] LPSHARE_INFO_502_I Buffer;
 		# } SHARE_INFO_502_CONTAINER,
-		def __init__(self, p, data=None):
-			if isinstance(p,ndrlib.Packer):
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.EntriesRead = 0
+				self.Data = []
+				self.Pointer = 0x23456
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Ctr = self.__packer.unpack_pointer()
+				self.Ptr = self.__packer.unpack_pointer()
+				self.EntriesRead = self.__packer.unpack_long()
+				self.Buffer = self.__packer.unpack_pointer()
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
 				# EntriesRead
-				p.pack_long(502)
-				p.pack_pointer(0x23456)
-				SRVSVC.SHARE_INFO_502(p,data)			
-			elif isinstance(p,ndrlib.Unpacker):
-				self.ctr = p.unpack_pointer()
-				self.ptr = p.unpack_pointer()
-				self.count = p.unpack_long()
-				self.buffer = p.unpack_pointer()
+				self.__packer.pack_long(self.EntriesRead)
+				# SHARE_INFO_502_I Buffer
+				b = SRVSVC.SHARE_INFO_502(self.__packer)
+				b.Data = self.Data
+				b.MaxCount = self.EntriesRead
+				b.pack()
+		
 
 	class SHARE_INFO_1:
 		# 2.2.4.23 SHARE_INFO_1
@@ -955,23 +1044,30 @@ class SRVSVC(RPCService):
 		
 		# http://msdn.microsoft.com/en-us/library/cc247150%28PROT.10%29.aspx
 
-		def __init__(self, p, data=None):
-			if isinstance(p,ndrlib.Packer):
-				# Count and maxcount described by wireshark, not documented
-				count = maxcount = int(len(data)/2)
-				p.pack_long(count)
-				p.pack_pointer(0x99999)
-				p.pack_long(maxcount)
-
-				for i in range(count): 				
-					p.pack_pointer(0x34567) # netname
-					p.pack_long(0x00000000) # STYPE_DISKTREE
-					p.pack_pointer(0x45678) # remark
-
-				for j in range(len(data)):
-					p.pack_string(data[j].encode('utf16')[2:])		
-			elif isinstance(p,ndrlib.Unpacker):
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Data = []
+				self.Pointer = 0x99999
+				self.MaxCount = 0
+				self.Netname_pointer = 0x34567
+				self.Type = 0x00000000 # STYPE_DISKTREE
+				self.Remark_pointer = 0x45678
+			elif isinstance(self.__packer,ndrlib.Unpacker):
 				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_pointer(self.Pointer)
+				# MaxCount, needed as the NDR array
+				self.__packer.pack_long(self.MaxCount)
+
+				for i in range(self.MaxCount): 				
+					self.__packer.pack_pointer(self.Netname_pointer) # netname
+					self.__packer.pack_long(self.Type) # type
+					self.__packer.pack_pointer(self.Remark_pointer) # remark
+
+				for j in range(len(self.Data)):
+					self.__packer.pack_string(self.Data[j].encode('utf16')[2:])
 
 	class SHARE_INFO_502:
 		# 2.2.4.26 SHARE_INFO_502_I
@@ -993,29 +1089,43 @@ class SRVSVC(RPCService):
 		# *PSHARE_INFO_502_I, 
 		# *LPSHARE_INFO_502_I;
 		def __init__(self, p, data=None):
-			if isinstance(p,ndrlib.Packer):
-				# Count and maxcount described by wireshark, not documented
-				count = maxcount = int(len(data)/3)
-				p.pack_long(count)
-				p.pack_pointer(0x99999)
-				p.pack_long(maxcount)
-
-				for i in range(count): 				
-					p.pack_pointer(0x34567) # netname
-					p.pack_long(0x00000000) # STYPE_DISKTREE
-					p.pack_pointer(0x45678) # remark
-					p.pack_long(0)		# permissions
-					p.pack_long(0xffffffff) # max_uses
-					p.pack_long(1)		# current_uses
-					p.pack_pointer(0x78654) # path
-					p.pack_pointer(0) 	# passwd
-					p.pack_long(0) 		# reserved
-					p.pack_pointer(0)	# security descriptor
-
-				for j in range(len(data)):
-					p.pack_string_fix(data[j].encode('utf16')[2:])		
-			elif isinstance(p,ndrlib.Unpacker):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Data = []
+				self.Pointer = 0x99999
+				self.MaxCount = 0
+				self.Netname_pointer = 0x34567
+				self.Type = 0x00000000
+				self.Remark_pointer = 0x45678
+				self.Permissions = 0
+				self.Max_uses = 0xffffffff
+				self.Current_uses = 1
+				self.Path_pointer = 0x87654
+				self.Passwd_pointer = 0
+				self.Reserved = 0
+				self.Security_descriptor = 0				
+			elif isinstance(self.__packer,ndrlib.Unpacker):
 				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_pointer(self.Pointer)
+				self.__packer.pack_long(self.MaxCount)
+
+				for i in range(self.MaxCount): 				
+					self.__packer.pack_pointer(self.Netname_pointer) # netname
+					self.__packer.pack_long(self.Type) # STYPE_DISKTREE
+					self.__packer.pack_pointer(self.Remark_pointer) # remark
+					self.__packer.pack_long(self.Permissions)		# permissions
+					self.__packer.pack_long(self.Max_uses) # max_uses
+					self.__packer.pack_long(self.Current_uses)		# current_uses
+					self.__packer.pack_pointer(self.Path_pointer) # path
+					self.__packer.pack_pointer(self.Passwd_pointer) 	# passwd
+					self.__packer.pack_long(self.Reserved) # reserved
+					self.__packer.pack_pointer(self.Security_descriptor)	# security descriptor
+
+				for j in range(len(self.Data)):
+					self.__packer.pack_string_fix(self.Data[j].encode('utf16')[2:])
+				
 
 	class SHARE_INFO_2:
 		#2.2.4.24 SHARE_INFO_2
@@ -1032,22 +1142,23 @@ class SRVSVC(RPCService):
 		#  [string] wchar_t* shi2_path;
 		#  [string] wchar_t* shi2_passwd;
 		#} SHARE_INFO_2
-		def __init__(self, p, data=None):
-			if isinstance(p,ndrlib.Packer):
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
 				pass	
-			elif isinstance(p,ndrlib.Unpacker):
-				ref = p.unpack_pointer()
-				netname = p.unpack_pointer()
-				sharetype = p.unpack_long()
-				remark = p.unpack_long()
-				permission = p.unpack_long()
-				max_use = p.unpack_long()
-				current_use = p.unpack_long()
-				path = p.unpack_pointer()
-				passwd = p.unpack_pointer()
-				share_name = p.unpack_string()
-				share_comment = p.unpack_string()
-				share_path = p.unpack_string()
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.ref = self.__packer.unpack_pointer()
+				self.netname = self.__packer.unpack_pointer()
+				self.sharetype = self.__packer.unpack_long()
+				self.remark = self.__packer.unpack_long()
+				self.permission = self.__packer.unpack_long()
+				self.max_use = self.__packer.unpack_long()
+				self.current_use = self.__packer.unpack_long()
+				self.path = self.__packer.unpack_pointer()
+				self.passwd = self.__packer.unpack_pointer()
+				self.share_name = self.__packer.unpack_string()
+				self.share_comment = self.__packer.unpack_string()
+				self.share_path = self.__packer.unpack_string()
 
 	@classmethod
 	def handle_NetShareEnum(cls, p):
@@ -1118,15 +1229,25 @@ class SRVSVC(RPCService):
 		# compile reply
 		r = ndrlib.Packer()
 		r.pack_long(infostruct_level)
+		r.pack_long(infostruct_share)
 
-		if infostruct_level == 1:
-			SRVSVC.SHARE_INFO_1_CONTAINER(r,['test\0','es geht test\0','test2\0','es geht test\0'])
+		# pointer to the SHARE_INFO_X_CONTAINER
+		r.pack_pointer(0x23456)
+
+		if infostruct_share == 1:
+			s = SRVSVC.SHARE_INFO_1_CONTAINER(r)
+			s.Data = ['test\0','es geht test\0','test2\0','es geht test\0']
+			s.EntriesRead = int(len(s.Data)/2)
+			s.pack()
 		
-		elif infostruct_level == 502:
-			SRVSVC.SHARE_INFO_502_CONTAINER(r,['test\0','es geht test\0','C:\0','test2\0','es geht test\0','C:\WINDOWS\0'])
+		elif infostruct_share == 502:
+			s = SRVSVC.SHARE_INFO_502_CONTAINER(r)
+			s.Data = ['test\0','es geht test\0','C:\0','test2\0','es geht test\0','C:\WINDOWS\0']
+			s.EntriesRead = int(len(s.Data)/3)
+			s.pack()
 
 		# total entries
-		r.pack_long(2)
+		r.pack_long(s.EntriesRead)
 
 		# resume handle
 		r.pack_pointer(0x47123123)		
