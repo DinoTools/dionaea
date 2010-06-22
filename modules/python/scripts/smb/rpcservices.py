@@ -34,6 +34,18 @@ from .include.smbfields import DCERPC_Header, DCERPC_Response
 
 rpclog = logging.getLogger('rpcservices')
 
+
+class DCERPCValueError(Exception):
+	"""Raised when an a value is passed to a dcerpc operation which is invalid"""
+
+	def __init__(self, varname, reason, value):
+		self.varname = varname
+		self.reason = reason
+		self.value = value
+	def __str__(self):
+		return "%s is %s (%s)" % (self.varname, self.reason, self.value)
+
+
 class RPCService:
 	uuid = ''
 	version_major = 0
@@ -55,7 +67,13 @@ class RPCService:
 					rpclog.info("Calling %s %s (%x)" % ( service.__class__.__name__,  opname, opnum ) )
 				
 				r = DCERPC_Header() / DCERPC_Response()
-				data = method(p)
+
+				try:
+					data = method(p)
+				except DCERPCValueError as e:
+					rpclog.warn("DCERPCValueError %s" % e)
+					return None
+
 				if data is None:
 					data = b''
 				r.StubData = data
@@ -1406,10 +1424,15 @@ class SRVSVC(RPCService):
 		pathflags  = x.unpack_long()
 		print("ref 0x%x server_unc %s path %s maxbuf %s prefix %s pathtype %i pathflags %i" % (ref, server_unc, path, maxbuf, prefix, pathtype, pathflags))
 
+		# conficker is stubborn
+		# dionaea replies to the exploit, conficker retries to exploit
+		# I'd prefer a real check for a bad path, but the path provided by conficker is not utf16, 
+		# therefore it is not possible to canonicalize the path and check if it path canonicalizes beyond /
+		# the workaround ... is checking for a 'long' path ...
+		if len(path) > 128:
+			raise DCERPCValueError("path","too long", path)
+
 		r = ndrlib.Packer()
-#		r.pack_long(pathflags)
-#		r.pack_long(0)
-#		r.pack_long(0)
 		r.pack_long(pathtype)
 		r.pack_long(0)
 		r.pack_string(path)
@@ -1434,7 +1457,7 @@ class SRVSVC(RPCService):
 		path2     = p.unpack_string()
 		pathtype   = p.unpack_long()
 		pathflags  = p.unpack_long()
-		print("ref 0x%x server_unc %s path1 %s path2 %s pathtype %i pathflags %i" % (ref, server_unc, path1.decode('utf-16'), path2.decode('utf-16'), pathtype, pathflags))
+		print("ref 0x%x server_unc %s path1 %s path2 %s pathtype %i pathflags %i" % (ref, server_unc, path1, path2, pathtype, pathflags))
 		r = ndrlib.Packer()
 		x = (path1 > path2) - (path1 < path2) 
 		if x < 0:
@@ -1489,8 +1512,40 @@ class SVCCTL(RPCService):
 	version_minor = 0
 
 	ops = {
+		0 : "CloseServiceHandle",
+		24: "CreateServiceA",
 		27: "OpenSCManagerA",
 	}
+
+	@classmethod
+	def handle_CloseServiceHandle(cls, p):
+		# DWORD RCloseServiceHandle(
+		# 	[in, out] LPSC_RPC_HANDLE hSCObject
+		# );
+		pass
+
+	@classmethod
+	def handle_CreateServiceA(cls, p):
+		# DWORD RCreateServiceA(
+		# 	[in] SC_RPC_HANDLE hSCManager,
+		# 	[in, string, range(0, SC_MAX_NAME_LENGTH)] LPSTR lpServiceName,
+		# 	[in, string, unique, range(0, SC_MAX_NAME_LENGTH)] LPSTR lpDisplayName,
+		# 	[in] DWORD dwDesiredAccess,
+		# 	[in] DWORD dwServiceType,
+		# 	[in] DWORD dwStartType,
+		# 	[in] DWORD dwErrorControl,
+		# 	[in, string, range(0, SC_MAX_PATH_LENGTH)] LPSTR lpBinaryPathName,
+		# 	[in, string, unique, range(0, SC_MAX_NAME_LENGTH)] LPSTR lpLoadOrderGroup,
+		# 	[in, out, unique] LPDWORD lpdwTagId,
+		# 	[in, unique, size_is(dwDependSize)] LPBYTE lpDependencies,
+		# 	[in, range(0, SC_MAX_DEPEND_SIZE)] DWORD dwDependSize,
+		# 	[in, string, unique, range(0, SC_MAX_ACCOUNT_NAME_LENGTH)] LPSTR lpServiceStartName,
+		# 	[in, unique, size_is(dwPwSize)] LPBYTE lpPassword,
+		# 	[in, range(0, SC_MAX_PWD_SIZE)] DWORD dwPwSize,
+		# 	[out] LPSC_RPC_HANDLE lpServiceHandle
+		# );
+		pass
+
 
 	@classmethod
 	def handle_OpenSCManagerA(cls, p):
