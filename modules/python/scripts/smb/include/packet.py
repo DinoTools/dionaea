@@ -647,6 +647,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
                 logger.debug("%s  \\%-10s\\" % (label_lvl+lvl, f.name))
                 fvalue_gen = SetGen(fvalue,_iterpacket=0)
                 for fvalue in fvalue_gen:
+                    size = fvalue.size()
                     fvalue.show(indent=indent, label_lvl=label_lvl+lvl+"   |", goff=goff)
             else:
                 size = f.size(self,fvalue)
@@ -657,8 +658,8 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
                                           size,
                                           off,
                                           goff))
-                off += size
-                goff +=size
+            off += size
+            goff +=size
         self.payload.show(indent=indent, lvl=lvl+(" "*indent*self.show_indent), label_lvl=label_lvl, goff=goff)
     def show2(self):
         """Prints a hierarchical view of an assembled version of the packet, so that automatic fields are calculated (checksums, etc.)"""
