@@ -981,14 +981,14 @@ class SMB_Write_AndX_Request(Packet):
 		XLEShortField("FID",0),
 		LEIntField("Offset",0),
 		XIntField("Reserved2",0xffffffff),
-		XLEShortField("WriteMode",8),
+		FlagsField("WriteMode", 0, -16, SMB_WriteMode),
 		FieldLenField("Remaining", None, fmt='<H', length_of="Data"),
 		LEShortField("DataLenHigh",0), #multiply with 64k		
 		LEShortField("DataLenLow",0),
 		LEShortField("DataOffset",0),
 		ConditionalField(IntField("HighOffset",0), lambda x:x.WordCount==14),
-		XLEShortField("ByteCount",  0),
-		ConditionalField(XLEShortField("PipeWriteLen", 0), lambda x:x.WriteMode & SMB_WM_MSGSTART and x.WriteMode & SMB_WM_WRITERAW),
+		LEShortField("ByteCount",  0),
+		ConditionalField(LEShortField("PipeWriteLen", 0), lambda x:x.WriteMode & SMB_WM_MSGSTART and x.WriteMode & SMB_WM_WRITERAW),
 		StrLenField("Padding", None, length_from=lambda x:x.ByteCount-((x.DataLenHigh<<16)|x.DataLenLow)),
 		StrLenField("Data", b"", length_from=lambda x:((x.DataLenHigh<<16)|x.DataLenLow)),
 	]
@@ -1371,24 +1371,6 @@ class DCERPC_Auth_Verfier(Packet):
 		XIntField("ContextID", 0),
 	]
 
-class NTLMSSP_Header(Packet):
-	"""
-	http://davenport.sourceforge.net/ntlm.html#theType1Message
-	"""
-	name = "NTLMSSP Header"
-	fields_desc = [
-		StrFixedLenField("Identifier", "NTLMSSP\0", 8),
-		XLEIntField("MessageType",0),
-		XLEIntField("Flags",0),
-		StrFixedLenField("Domain","",8),
-		StrFixedLenField("Workstation","",8),
-		StrFixedLenField("OSVersion","",8),
-#		IntEnumField("MessageType",)
-#		IntFlagsField("Flags", 0),
-	]
-
-
-		
 class DCERPC_Bind_Ack(Packet):
 	name = "DCERPC Bind Ack"
 	fields_desc = [
@@ -1398,11 +1380,10 @@ class DCERPC_Bind_Ack(Packet):
 		FieldLenField("SecondAddrLen", 14, fmt='<H', length_of="SecondAddr"),
 		StrLenField("SecondAddr", "\\PIPE\\browser\0", length_from=lambda x:x.SecondAddrLen),
 #		ByteField("NumCtxItems",1),
-        FieldLenField("NumCtxItems", 0, fmt='B', count_of="CtxItems"),
+		FieldLenField("NumCtxItems", 0, fmt='B', count_of="CtxItems"),
 		StrLenField("FixGap", "\0"*3, length_from=lambda x:3),
-        PacketListField("CtxItems", 0, DCERPC_Ack_CtxItem, count_from=lambda pkt:pkt.NumCtxItems)
+		PacketListField("CtxItems", 0, DCERPC_Ack_CtxItem, count_from=lambda pkt:pkt.NumCtxItems)
 	]
-
 
 bind_bottom_up(NBTSession, NBTSession_Request, TYPE = lambda x: x==0x81)
 bind_bottom_up(NBTSession, SMB_Header, TYPE = lambda x: x==0)
@@ -1465,5 +1446,5 @@ bind_top_down(DCERPC_Header, DCERPC_Request, PacketType=0)
 bind_top_down(DCERPC_Header, DCERPC_Response, PacketType=2)
 bind_top_down(DCERPC_Header, DCERPC_Bind, PacketType=11)
 bind_top_down(DCERPC_Header, DCERPC_Bind_Ack, PacketType=12)
-bind_bottom_up(DCERPC_Auth_Verfier, NTLMSSP_Header, Type=lambda x: x==10)
+#bind_bottom_up(DCERPC_Auth_Verfier, NTLMSSP_Header, Type=lambda x: x==10)
 
