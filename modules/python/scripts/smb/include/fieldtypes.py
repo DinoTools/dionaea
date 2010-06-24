@@ -365,13 +365,13 @@ class PacketField(StrField):
     def m2i(self, pkt, m):
         return self.cls(m)
     def getfield(self, pkt, s):
-        i = self.m2i(pkt, s)
-        remain = ""
-        if 'Padding' in i:
-            r = i['Padding']
-            del(r.underlayer.payload)
-            remain = r.load
-        return remain,i
+        p = self.m2i(pkt, s)
+        if 'Raw' in p:
+            remain = p.load
+            del p['Raw'].underlayer.payload
+        else:
+            remain = b""
+        return remain,p
     
 class PacketLenField(PacketField):
     holds_packets=1
