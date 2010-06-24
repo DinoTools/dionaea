@@ -4,38 +4,40 @@
 ## This program is published under a GPLv2 license
 
 import random
-from scapy.config import conf
-from scapy.error import Scapy_Exception,warning
-from scapy.volatile import RandField
-from scapy.utils import Enum_metaclass, EnumElement
+#from scapy.config import conf
+#from scapy.error import Scapy_Exception,warning
+#from scapy.volatile import RandField
 
-class RandASN1Object(RandField):
-    def __init__(self, objlist=None):
-        if objlist is None:
-            objlist = [x._asn1_obj for x in [x for x in list(ASN1_Class_UNIVERSAL.__rdict__.values()) if hasattr(x,"_asn1_obj")]]
-        self.objlist = objlist
-        self.chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
-    def _fix(self, n=0):
-        o = random.choice(self.objlist)
-        if issubclass(o, ASN1_INTEGER):
-            return o(int(random.gauss(0,1000)))
-        elif issubclass(o, ASN1_IPADDRESS):
-            z = RandIP()._fix()
-            return o(z)
-        elif issubclass(o, ASN1_STRING):
-            z = int(random.expovariate(0.05)+1)
-            return o("".join([random.choice(self.chars) for i in range(z)]))
-        elif issubclass(o, ASN1_SEQUENCE) and (n < 10):
-            z = int(random.expovariate(0.08)+1)
-            return o([x._fix(n+1) for x in [self.__class__(objlist=self.objlist)]*z])
-        return ASN1_INTEGER(int(random.gauss(0,1000)))
+#from scapy.utils import Enum_metaclass, EnumElement
+from dionaea.smb.include.helpers import  Enum_metaclass, EnumElement
+
+#class RandASN1Object(RandField):
+#    def __init__(self, objlist=None):
+#        if objlist is None:
+#            objlist = [x._asn1_obj for x in [x for x in list(ASN1_Class_UNIVERSAL.__rdict__.values()) if hasattr(x,"_asn1_obj")]]
+#        self.objlist = objlist
+#        self.chars = "ABCDEFGHIJKLMNOPQRSTUVWXYZabcdefghijklmnopqrstuvwxyz0123456789"
+#    def _fix(self, n=0):
+#        o = random.choice(self.objlist)
+#        if issubclass(o, ASN1_INTEGER):
+#            return o(int(random.gauss(0,1000)))
+#        elif issubclass(o, ASN1_IPADDRESS):
+#            z = RandIP()._fix()
+#            return o(z)
+#        elif issubclass(o, ASN1_STRING):
+#            z = int(random.expovariate(0.05)+1)
+#            return o("".join([random.choice(self.chars) for i in range(z)]))
+#        elif issubclass(o, ASN1_SEQUENCE) and (n < 10):
+#            z = int(random.expovariate(0.08)+1)
+#            return o([x._fix(n+1) for x in [self.__class__(objlist=self.objlist)]*z])
+#        return ASN1_INTEGER(int(random.gauss(0,1000)))
 
 
 ##############
 #### ASN1 ####
 ##############
 
-class ASN1_Error(Scapy_Exception):
+class ASN1_Error(Exception):
     pass
 
 class ASN1_Encoding_Error(ASN1_Error):
@@ -90,10 +92,11 @@ class ASN1Tag(EnumElement):
             return self._asn1_obj(val)
         raise ASN1_Error("%r does not have any assigned ASN1 object" % self)
     def register(self, codecnum, codec):
-        self._codec[codecnum] = codec
+        self._codec[type(codecnum)] = codec
+        pass
     def get_codec(self, codec):
         try:
-            c = self._codec[codec]
+            c = self._codec[type(codec)]
         except KeyError as msg:
             raise ASN1_Error("Codec %r not found for tag %r" % (codec, self))
         return c
@@ -111,9 +114,10 @@ class ASN1_Class_metaclass(Enum_metaclass):
             if type(v) is int:
                 v = ASN1Tag(k,v) 
                 dct[k] = v
-                rdict[v] = v
+             # FIXME  TypeError: unhashable type: 'ASN1Tag'
+                rdict[type(v)] = v
             elif isinstance(v, ASN1Tag):
-                rdict[v] = v
+                rdict[type(v)] = v
         dct["__rdict__"] = rdict
 
         cls = type.__new__(cls, name, bases, dct)
@@ -185,7 +189,8 @@ class ASN1_Object(metaclass=ASN1_Object_metaclass):
     def __repr__(self):
         return "<%s[%r]>" % (self.__dict__.get("name", self.__class__.__name__), self.val)
     def __str__(self):
-        return self.enc(conf.ASN1_default_codec)
+#        return self.enc(conf.ASN1_default_codec)
+        return self.enc(ASN1_Codecs.BER)
     def strshow(self, lvl=0):
         return ("  "*lvl)+repr(self)+"\n"
     def show(self, lvl=0):
@@ -286,13 +291,15 @@ class ASN1_SET(ASN1_SEQUENCE):
 class ASN1_OID(ASN1_Object):
     tag = ASN1_Class_UNIVERSAL.OID
     def __init__(self, val):
-        val = conf.mib._oid(val)
+#        val = conf.mib._oid(val)
         ASN1_Object.__init__(self, val)
     def __repr__(self):
-        return "<%s[%r]>" % (self.__dict__.get("name", self.__class__.__name__), conf.mib._oidname(self.val))
+#        return "<%s[%r]>" % (self.__dict__.get("name", self.__class__.__name__), conf.mib._oidname(self.val))
+        return "<%s[%r]>" % (self.__dict__.get("name", self.__class__.__name__), self.val)
     def __oidname__(self):
-        return '%s'%conf.mib._oidname(self.val)
+#        return '%s'%conf.mib._oidname(self.val)
+        return '%s'%self.val
     
 
 
-conf.ASN1_default_codec = ASN1_Codecs.BER
+#conf.ASN1_default_codec = ASN1_Codecs.BER

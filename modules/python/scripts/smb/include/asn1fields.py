@@ -18,7 +18,8 @@ class ASN1F_badsequence(Exception):
     pass
 
 class ASN1F_element:
-    pass
+    def size(self, pkt, x):
+        return 0
 
 class ASN1F_optionnal(ASN1F_element):
     def __init__(self, field):
@@ -305,8 +306,9 @@ class ASN1F_CHOICE(ASN1F_PACKET):
     def __init__(self, name, default, *args):
         self.name=name
         self.choice = {}
+		# FIXME TypeError: unhashable type: 'ASN1Tag
         for p in args:
-            self.choice[p.ASN1_root.ASN1_tag] = p
+            self.choice[type(p.ASN1_root.ASN1_tag)] = p
 #        self.context=context
         self.default=default
     def m2i(self, pkt, x):
@@ -321,7 +323,6 @@ class ASN1F_CHOICE(ASN1F_PACKET):
         return z
     def randval(self):
         return RandChoice(*[fuzz(x()) for x in list(self.choice.values())])
-            
-    
-# This import must come in last to avoid problems with cyclic dependencies
+
 from . import packet
+

@@ -2,10 +2,17 @@
 ## See http://www.secdev.org/projects/scapy for more informations
 ## Copyright (C) Philippe Biondi <phil@secdev.org>
 ## This program is published under a GPLv2 license
+import logging
 
-from scapy.error import warning
-from scapy.utils import inet_aton,inet_ntoa
+#from scapy.error import warning
+#from scapy.utils import inet_aton,inet_ntoa
+from socket import inet_aton,inet_ntoa
 from .asn1 import ASN1_Decoding_Error,ASN1_Encoding_Error,ASN1_BadTag_Decoding_Error,ASN1_Codecs,ASN1_Class_UNIVERSAL,ASN1_Error,ASN1_DECODING_ERROR,ASN1_BADTAG
+
+
+logger = logging.getLogger('ber')
+logger.setLevel(logging.DEBUG)
+
 
 ##################
 ## BER encoding ##
@@ -100,10 +107,10 @@ def BER_num_dec(s):
 class BERcodec_metaclass(type):
     def __new__(cls, name, bases, dct):
         c = super(BERcodec_metaclass, cls).__new__(cls, name, bases, dct)
-        try:
-            c.tag.register(c.codec, c)
-        except:
-            warning("Error registering %r for %r" % (c.tag, c.codec))
+#        try:
+        c.tag.register(c.codec, c)
+#        except:
+#            logger.warning("Error registering %r for %r" % (c.tag, c.codec))
         return c
 
 
@@ -241,7 +248,10 @@ class BERcodec_STRING(BERcodec_Object):
     tag = ASN1_Class_UNIVERSAL.STRING
     @classmethod
     def enc(cls,s):
-        return chr(cls.tag)+BER_len_enc(len(s))+s
+        logger.info("s %s type %s" % (s,type(s)))
+        x = chr(cls.tag)+BER_len_enc(len(s))+s
+        logger.info("s %s type %s" % (x,type(x)))
+        return x
     @classmethod
     def do_dec(cls, s, context=None, safe=False):
         l,s,t = cls.check_type_check_len(s)
