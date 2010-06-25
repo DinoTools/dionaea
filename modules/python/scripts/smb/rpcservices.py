@@ -793,12 +793,90 @@ class samr(RPCService):
 				b.Name = self.Buffer
 				b.pack()
 
+	class SAMPR_DOMAIN_DISPLAY_USER:
+		# 2.2.8.2 SAMPR_DOMAIN_DISPLAY_USER
+		#
+		# http://msdn.microsoft.com/en-us/library/cc245632%28PROT.10%29.aspx
+		#
+		# typedef struct _SAMPR_DOMAIN_DISPLAY_USER {
+		#  unsigned long Index;
+		#  unsigned long Rid;
+		#  unsigned long AccountControl;
+		#  RPC_UNICODE_STRING AccountName;
+		#  RPC_UNICODE_STRING AdminComment;
+		#  RPC_UNICODE_STRING FullName;
+		#} SAMPR_DOMAIN_DISPLAY_USER, 
+		# *PSAMPR_DOMAIN_DISPLAY_USER;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Name = []
+				self.Index = 0
+				self.Rid = 0
+				# AccountControl
+				#http://msdn.microsoft.com/en-us/library/cc245514%28v=PROT.10%29.aspx
+				self.AccountControl = 16 # USER_NORMAL_ACCOUNT
+				self.Pointer = 0x11
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.RelativeId = self.__packer.unpack_long()
+				self.Name = RPC_UNICODE_STRING(self.__packer, Name)
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				for i in range(int(len(self.Name)/3)): 
+					#Index
+					self.__packer.pack_long(self.Index)
+					#RelativeID
+					self.__packer.pack_long(self.Rid)
+					#AccountCotrol
+					self.__packer.pack_long(self.AccountControl)
+
+					for k in range(3):
+						b = samr.RPC_UNICODE_STRING(self.__packer)
+						b.Data = self.Name[i*k]
+						b.pack()
+						self.__packer.pack_pointer(self.Pointer)
+
+				for j in range(len(self.Name)):
+					self.__packer.pack_string(self.Name[j].encode('utf16')[2:])
+
+	class SAMPR_DOMAIN_DISPLAY_USER_BUFFER:
+		# 2.2.8.7 SAMPR_DOMAIN_DISPLAY_USER_BUFFER
+		#
+		# http://msdn.microsoft.com/en-us/library/cc245637%28PROT.13%29.aspx
+		#
+		#typedef struct _SAMPR_DOMAIN_DISPLAY_USER_BUFFER {
+		#  unsigned long EntriesRead;
+		#  [size_is(EntriesRead)] PSAMPR_DOMAIN_DISPLAY_USER Buffer;
+		#} SAMPR_DOMAIN_DISPLAY_USER_BUFFER, 
+		# *PSAMPR_DOMAIN_DISPLAY_USER_BUFFER;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.EntriesRead = 0
+				self.Buffer = []
+				self.Pointer = 0x4711
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				raise NotImplementedError
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				# EntriesRead
+				self.__packer.pack_long(self.EntriesRead)
+				self.__packer.pack_pointer(self.Pointer)
+
+				# Maxcount, needed as NDR array
+				self.__packer.pack_long(self.EntriesRead)
+ 
+				b = samr.SAMPR_DOMAIN_DISPLAY_USER(self.__packer)
+				b.Name = self.Buffer
+				b.pack()
+
 	ops = {
 		1: "Close",
 		5: "LookupDomain",
 		6: "EnumDomains",
 		7: "OpenDomain",
 		13: "EnumDomainUsers",
+		40: "QueryDisplayInformation",
 		62: "Connect4",
 		64: "Connect5"
 	}
@@ -1035,6 +1113,57 @@ class samr(RPCService):
 
 		# long* CountReturned
 		r.pack_long(s.EntriesRead)
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_QueryDisplayInformation(cls,p):
+		#3.1.5.3.3 SamrQueryDisplayInformation (Opnum 40)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245763%28PROT.10%29.aspx
+		#
+		#long SamrQueryDisplayInformation(
+		#  [in] SAMPR_HANDLE DomainHandle,
+		#  [in] DOMAIN_DISPLAY_INFORMATION DisplayInformationClass,
+		#  [in] unsigned long Index,
+		#  [in] unsigned long EntryCount,
+		#  [in] unsigned long PreferredMaximumLength,
+		#  [out] unsigned long* TotalAvailable,
+		#  [out] unsigned long* TotalReturned,
+		#  [out, switch_is(DisplayInformationClass)] 
+		#    PSAMPR_DISPLAY_INFO_BUFFER Buffer
+		#);
+		x = ndrlib.Unpacker(p.StubData)
+		DomainHandle = samr.SAMPR_HANDLE(x)
+		print("DomainHandle %s" % DomainHandle)
+	
+		DisplayInformationClass = x.unpack_long()
+		print("DisplayInformationClass %i" % DisplayInformationClass)
+		
+		Index = x.unpack_long()
+		print("Index %i" % Index)
+
+		EntryCount = x.unpack_long()
+		print("EntryCount %i" % EntryCount)
+
+		PreferredMaximumLength = x.unpack_long()
+		print("PreferredMaximumLength %i" % PreferredMaximumLength)
+
+		r = ndrlib.Packer()
+		# unsigned long* TotalAvailable
+		r.pack_long(30)
+		# unsigned long* TotalReturned
+		r.pack_long(30)
+
+		if DisplayInformationClass == 1 :
+			r.pack_long(DisplayInformationClass)
+			# SAMPR_DOMAIN_DISPLAY_USER_BUFFER
+			s = samr.SAMPR_DOMAIN_DISPLAY_USER_BUFFER(r)
+			s.Buffer = ['Administrator','Builtin','Full Name','Guest','Builtin','Full Name','HelpAssistant','Builtin','Full Name','SUPPORT_388945a0','Builtin','Full Name']
+			s.EntriesRead = int(len(s.Buffer)/3)
+			s.pack()
+
 		r.pack_long(0)
 
 		return r.get_buffer()
