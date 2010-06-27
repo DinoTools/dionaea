@@ -398,6 +398,280 @@ class llsrpc(RPCService):
 class lsarpc(RPCService):
 	uuid = UUID('12345778-1234-abcd-ef00-0123456789ab').hex
 
+	class LSAPR_HANDLE:
+		# 2.2.2.1 LSAPR_HANDLE
+		#
+		# http://msdn.microsoft.com/en-us/library/cc234257%28v=PROT.10%29.aspx
+		#
+		#typedef [context_handle] void* LSAPR_HANDLE;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Handle = b''
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Value = p.unpack_raw(20)
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_raw(self.Handle)
+
+	class LSAPR_OBJECT_ATTRIBUTES:
+		# 2.2.9 LSAPR_OBJECT_ATTRIBUTES
+		#
+		#http://help.outlook.com/en-us/140/cc234450%28PROT.10%29.aspx
+		#
+		#typedef struct _LSAPR_OBJECT_ATTRIBUTES {
+		#  unsigned long Length;
+		#  unsigned char* RootDirectory;
+		#  PSTRING ObjectName;
+		#  unsigned long Attributes;
+		#  PLSAPR_SECURITY_DESCRIPTOR SecurityDescriptor;
+		#  PSECURITY_QUALITY_OF_SERVICE SecurityQualityOfService;
+		#} LSAPR_OBJECT_ATTRIBUTES, 
+		# *PLSAPR_OBJECT_ATTRIBUTES;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Length = self.__packer.unpack_long()
+				print("Length = %i" % self.Length)
+				self.RootDirectory = self.__packer.unpack_short()
+				print("RootDirectory = %x" % self.RootDirectory)
+				self.ObjectName = self.__packer.unpack_pointer()
+				print("ObjectName = %x" % self.ObjectName)
+				self.Attributes = self.__packer.unpack_long()
+				self.SecurityDescriptor = self.__packer.unpack_pointer()
+				self.SecurityQualityOfService = self.__packer.unpack_pointer()
+
+	class LSA_TRANSLATED_SID:
+		#http://msdn.microsoft.com/en-us/library/dd424381.aspx
+		#
+		#typedef struct {
+		#  SID_NAME_USE Use;
+		#  ULONG RelativeId;
+		#  LONG DomainIndex;
+		#} LSA_TRANSLATED_SID, 
+		# *PLSA_TRANSLATED_SID;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Use = 0
+				self.RelativeId = 0
+				self.DomainIndex = 0
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_short(self.Use)
+				self.__packer.pack_long(self.RelativeId)
+				self.__packer.pack_long(self.DomainIndex)
+				# unknown
+				self.__packer.pack_long(0)
+
+	class LSAPR_TRANSLATED_SIDS:
+		# 2.2.15 LSAPR_TRANSLATED_SIDS
+		#
+		#http://msdn.microsoft.com/en-us/library/cc234457%28PROT.10%29.aspx
+		#
+		#typedef struct _LSAPR_TRANSLATED_SIDS {
+		#  [range(0,1000)] unsigned long Entries;
+		#  [size_is(Entries)] PLSA_TRANSLATED_SID Sids;
+		#} LSAPR_TRANSLATED_SIDS, 
+		# *PLSAPR_TRANSLATED_SIDS;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Entries = 0
+				self.Pointer = 0x3456
+				self.MaxCount = 0
+				self.Data = []
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Entries = self.__packer.unpack_long()
+				print("Entries = %i" % self.Entries)
+				self.Pointer = self.__packer.unpack_pointer()
+				self.MaxCount = self.__packer.unpack_long()
+				if self.Entries != 0:
+					Sids = LSA_TRANSLATED_SID(self.__packer)
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_long(self.Entries)
+				print("Entries = %i" % self.Entries)
+				self.__packer.pack_pointer(self.Pointer)
+				self.__packer.pack_long(self.Entries)
+				for i in range(self.Entries):
+					Sids = lsarpc.LSA_TRANSLATED_SID(self.__packer)
+					Sids.pack()
+									
+
+	class LSAPR_TRUST_INFORMATION:
+		#2.2.11 LSAPR_TRUST_INFORMATION
+		#
+		#http://msdn.microsoft.com/en-us/library/cc234452%28PROT.10%29.aspx
+		#
+		#typedef struct _LSAPR_TRUST_INFORMATION {
+		#  RPC_UNICODE_STRING Name;
+		#  PRPC_SID Sid;
+		#} LSAPR_TRUST_INFORMATION, 
+		# *PLSAPR_TRUST_INFORMATION;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Name = []
+				self.Entries = 0
+				self.RelativeId = 0
+				self.Pointer = 0x11
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				# Pointer
+				self.__packer.pack_long(self.Pointer)
+				# pad? maxcount at the end
+				self.__packer.pack_long(32)
+				# MaxCount,needed as the element of NDR array
+				self.__packer.pack_long(self.Entries)
+				
+				#  RPC_UNICODE_STRING Name;
+				for i in range(self.Entries): 				
+					b = samr.RPC_UNICODE_STRING(self.__packer)
+					b.Data = self.Name[i]
+					b.pack()
+				# Pointer to RPC_UNICODE_STRING buffer
+				self.__packer.pack_long(self.Pointer)
+				# Pointer to RPC_SID buffer
+				self.__packer.pack_long(self.Pointer)
+				for j in range(self.Entries):
+					self.__packer.pack_string(self.Name[j].encode('utf16')[2:])
+				#  PRPC_SID Sid	;
+				sid = samr.RPC_SID(self.__packer)
+				sid.Value = 'NT_AUTHORITY'
+				sid.SubAuthority = ['32','544']
+				sid.SubAuthorityCount = len(sid.SubAuthority)
+				
+				# Maxcount, needed as the element of NDR array
+				self.__packer.pack_long(sid.SubAuthorityCount)
+				sid.pack()
+
+
+	class LSAPR_REFERENCED_DOMAIN_LIST:
+		# 2.2.12 LSAPR_REFERENCED_DOMAIN_LIST
+		#
+		#http://msdn.microsoft.com/en-us/library/cc234453%28PROT.13%29.aspx
+		#
+		#typedef struct _LSAPR_REFERENCED_DOMAIN_LIST {
+		#  unsigned long Entries;
+		#  [size_is(Entries)] PLSAPR_TRUST_INFORMATION Domains;
+		#  unsigned long MaxEntries;
+		#} LSAPR_REFERENCED_DOMAIN_LIST, 
+		# *PLSAPR_REFERENCED_DOMAIN_LIST;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Entries = 0
+				self.MaxEntries = 0
+				self.Data = []
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_long(self.Entries)
+				for i in range(self.Entries):
+					Domains = lsarpc.LSAPR_TRUST_INFORMATION(self.__packer)
+					Domains.Name = self.Data
+					Domains.Entries = self.Entries
+					Domains.pack()
+			
+	ops = {
+		44: "OpenPolicy",
+		58: "LookupNames2"
+	}
+
+	@classmethod
+	def handle_OpenPolicy(cls,p):
+		# 3.1.4.4.1 LsarOpenPolicy2 (Opnum 44)
+		#
+		# http://msdn.microsoft.com/en-us/library/cc234337%28PROT.10%29.aspx
+		#
+		#NTSTATUS LsarOpenPolicy2(
+		#  [in, unique, string] wchar_t* SystemName,
+		#  [in] PLSAPR_OBJECT_ATTRIBUTES ObjectAttributes,
+		#  [in] ACCESS_MASK DesiredAccess,
+		#  [out] LSAPR_HANDLE* PolicyHandle
+		#);
+
+		# ObjectAttributes: This parameter does not have any effect on message
+		# processing in any environment. All fields MUST be ignored except
+		# RootDirectory which MUST be NULL.
+
+		x = ndrlib.Unpacker(p.StubData)
+		PSystemName = x.unpack_pointer()
+		SystemName = x.unpack_string()
+		print("ServerName %s" % SystemName)
+
+		ObjectAttributes = lsarpc.LSAPR_OBJECT_ATTRIBUTES(x)
+		DesiredAccess = x.unpack_long()
+
+		r = ndrlib.Packer()
+		PolicyHandle = lsarpc.LSAPR_HANDLE(r)
+		PolicyHandle.Handle = b'01234567890123456789'
+		PolicyHandle.pack()
+
+		# return 
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_LookupNames2(cls,p):
+		# 3.1.4.7 LsarLookupNames2 (Opnum 58)
+		#
+		# http://msdn.microsoft.com/en-us/library/cc234494%28PROT.13%29.aspx
+		#
+		#NTSTATUS LsarLookupNames2(
+		#  [in] LSAPR_HANDLE PolicyHandle,
+		#  [in, range(0,1000)] unsigned long Count,
+		#  [in, size_is(Count)] PRPC_UNICODE_STRING Names,
+		#  [out] PLSAPR_REFERENCED_DOMAIN_LIST* ReferencedDomains,
+		#  [in, out] PLSAPR_TRANSLATED_SIDS_EX TranslatedSids,
+		#  [in] LSAP_LOOKUP_LEVEL LookupLevel,
+		#  [in, out] unsigned long* MappedCount,
+		#  [in] unsigned long LookupOptions,
+		#  [in] unsigned long ClientRevision
+		#);
+
+		x = ndrlib.Unpacker(p.StubData)
+		PolicyHandle = lsarpc.LSAPR_HANDLE(x)
+		Count = x.unpack_long()
+
+		# Maxcount, needed as the element of NDR array
+		MaxCount = x.unpack_long()
+		Names = samr.RPC_UNICODE_STRING(x,MaxCount)
+		TranslatedSids = lsarpc.LSAPR_TRANSLATED_SIDS(x)
+
+		LookupLevel = x.unpack_short()
+		MappedCount = x.unpack_long()
+		LookupOptions = x.unpack_long()
+		ClientRevision = x.unpack_long()
+
+		r = ndrlib.Packer()
+		r.pack_pointer(0x23456)
+		
+		ReferenceDomains = lsarpc.LSAPR_REFERENCED_DOMAIN_LIST(r)
+		ReferenceDomains.Data = ['HOMEUSER-3AF6FE']
+		ReferenceDomains.Entries = len(ReferenceDomains.Data)
+		ReferenceDomains.pack()
+
+		Sids = lsarpc.LSAPR_TRANSLATED_SIDS(r)
+		Sids.Entries = Count
+		Sids.pack()
+
+		# MappedCount 
+		r.pack_long(3)
+		# Return
+		r.pack_pointer(0x00000107) #STATUS_SOME_NOT_MAPPED
+
+		return r.get_buffer()
+
 
 class msgsvcsend(RPCService):
 	uuid = UUID('5a7b91f8-ff00-11d0-a9b2-00c04fb6e6fc').hex
@@ -715,15 +989,24 @@ class samr(RPCService):
 		# } RPC_UNICODE_STRING, 
 		#  *PRPC_UNICODE_STRING;
 		# 
-		def __init__(self, p):
+		def __init__(self, p, c=1):
 			self.__packer = p
 			if isinstance(self.__packer,ndrlib.Packer):
 				self.Data =[]
 			elif isinstance(self.__packer,ndrlib.Unpacker):
-				self.Length = self.__packer.unpack_short()
-				self.MaximumLength = self.__packer.unpack_short()
-				self.Reference = self.__packer.unpack_pointer()
-				self.Buffer = self.__packer.unpack_string()
+				self.Count = c #specify how many string array
+				print("Count = %i" % self.Count)
+				for i in range(self.Count):
+					print(" i = %i" % i)
+					self.Length = self.__packer.unpack_short()
+					print(" Length = %i" % self.Length)
+					self.MaximumLength = self.__packer.unpack_short()
+					print(" MaximumLength = %i" % self.MaximumLength)
+					self.Reference = self.__packer.unpack_pointer()
+					print(" Reference = %i" % self.Reference)
+				for j in range(self.Count):
+					print(" j = %i" % j)
+					self.Buffer = self.__packer.unpack_string()
 		def pack(self):
 			if isinstance(self.__packer,ndrlib.Packer):
 				self.__packer.pack_rpc_unicode_string(self.Data)
