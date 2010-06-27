@@ -7,12 +7,18 @@ import logging
 #from scapy.error import warning
 #from scapy.utils import inet_aton,inet_ntoa
 from socket import inet_aton,inet_ntoa
+import struct
 from .asn1 import ASN1_Decoding_Error,ASN1_Encoding_Error,ASN1_BadTag_Decoding_Error,ASN1_Codecs,ASN1_Class_UNIVERSAL,ASN1_Error,ASN1_DECODING_ERROR,ASN1_BADTAG
 
 
 logger = logging.getLogger('ber')
 logger.setLevel(logging.DEBUG)
 
+BER_CLASS_UNI = 0
+BER_CLASS_APP = 1
+BER_CLASS_CON = 2
+BER_CLASS_PRI = 3
+BER_CLASS_ANY = 99
 
 ##################
 ## BER encoding ##
@@ -57,28 +63,61 @@ class BER_Decoding_Error(ASN1_Decoding_Error):
 class BER_BadTag_Decoding_Error(BER_Decoding_Error, ASN1_BadTag_Decoding_Error):
     pass
 
+def BER_identifier_enc(l):
+    pass
+
+def BER_identifier_dec(l):
+    off = 0
+    val = l[off]
+    off += 1
+
+    cls = (val>>6) & 0x03
+    pc = (val>>5) & 0x01;
+    tag = val&0x1F;
+
+    if tag == 0x1f:
+        tag = 0
+        while off < len(l):
+            val = l[off]
+            off += 1
+            tag &= 1
+            tag <<= 7
+            tag |= t & 0x7f
+            if not (t & 0x80):
+                break
+    return (cls,pc,tag,l[off:])
+
+
 def BER_len_enc(l, size=0):
         if l <= 127 and size==0:
-            return chr(l)
-        s = ""
+            return struct.pack("b", int(l))
+        s = b""
         while l or size>0:
-            s = chr(l&0xff)+s
+            s = struct.pack("b", int(l&0xff))+s
             l >>= 8
             size -= 1
         if len(s) > 127:
             raise BER_Exception("BER_len_enc: Length too long (%i) to be encoded [%r]" % (len(s),s))
-        return chr(len(s)|0x80)+s
+        x = struct.pack("b", int(len(s)|0x80))
+#        logger.debug("x %s s %s" % (x,s))
+        return x+s
+
 def BER_len_dec(s):
-        l = ord(s[0])
-        if not l & 0x80:
+#        l = ord(s[0])
+        l = s[0]
+#        logger.debug("l %i" % l)
+        if not (l & 0x80):
             return l,s[1:]
+#        print("l %i" % l)
         l &= 0x7f
+#        print("l %i" % l)
         if len(s) <= l:
             raise BER_Decoding_Error("BER_len_dec: Got %i bytes while expecting %i" % (len(s)-1, l),remaining=s)
         ll = 0
         for c in s[1:l+1]:
             ll <<= 8
-            ll |= ord(c)
+#            ll |= ord(c)
+            ll |= c
         return ll,s[l+1:]
         
 def BER_num_enc(l, size=1):
@@ -89,11 +128,12 @@ def BER_num_enc(l, size=1):
                 x[0] |= 0x80
             l >>= 7
             size -= 1
-        return "".join([chr(k) for k in x])
+        return b"".join([struct.pack("B",k) for k in x])
 def BER_num_dec(s):
         x = 0
         for i in range(len(s)):
-            c = ord(s[i])
+#            c = ord(s[i])
+            c = s[i]
             x <<= 7
             x |= c&0x7f
             if not c&0x80:
@@ -130,9 +170,13 @@ class BERcodec_Object(metaclass=BERcodec_metaclass):
     @classmethod
     def check_type(cls, s):
         cls.check_string(s)
-        if cls.tag != ord(s[0]):
+#        if cls.tag != ord(s[0]):
+        if cls.tag != s[0]:
+#            raise BER_BadTag_Decoding_Error("%s: Got tag [%i/%#x] while expecting %r" %
+#                                            (cls.__name__, ord(s[0]), ord(s[0]),cls.tag), remaining=s)
             raise BER_BadTag_Decoding_Error("%s: Got tag [%i/%#x] while expecting %r" %
-                                            (cls.__name__, ord(s[0]), ord(s[0]),cls.tag), remaining=s)
+                                            (cls.__name__, s[0], s[0],cls.tag), remaining=s)
+
         return s[1:]
     @classmethod
     def check_type_get_len(cls, s):
@@ -154,11 +198,12 @@ class BERcodec_Object(metaclass=BERcodec_metaclass):
         if context is None:
             context = cls.tag.context
         cls.check_string(s)
-        p = ord(s[0])
+#        p = ord(s[0])
+        p = s[0]
         if p not in context:
             t = s
             if len(t) > 18:
-                t = t[:15]+"..."
+                t = t[:15]+b"..."
             raise BER_Decoding_Error("Unknown prefix [%02x] for [%r]" % (p,t), remaining=s)
         codec = context[p].get_codec(ASN1_Codecs.BER)
         return codec.dec(s,context,safe)
@@ -208,21 +253,24 @@ class BERcodec_INTEGER(BERcodec_Object):
             i >>= 8
             if not i:
                 break
-        s = list(map(chr, s))
+#        s = list(map(chr, s))
+        s = [struct.pack("b",x) for x in s]
         s.append(BER_len_enc(len(s)))
-        s.append(chr(cls.tag))
+        s.append(struct.pack("b",int(cls.tag)))
         s.reverse()
-        return "".join(s)
+        return b"".join(s)
     @classmethod
     def do_dec(cls, s, context=None, safe=False):
         l,s,t = cls.check_type_check_len(s)
         x = 0
         if s:
-            if ord(s[0])&0x80: # negative int
+#            if ord(s[0])&0x80: # negative int
+            if s[0]&0x80: # negative int
                 x = -1
             for c in s:
                 x <<= 8
-                x |= ord(c)
+#                x |= ord(c)
+                x |= c
         return cls.asn1_object(x),t
     
 
@@ -248,9 +296,14 @@ class BERcodec_STRING(BERcodec_Object):
     tag = ASN1_Class_UNIVERSAL.STRING
     @classmethod
     def enc(cls,s):
-        logger.info("s %s type %s" % (s,type(s)))
-        x = chr(cls.tag)+BER_len_enc(len(s))+s
-        logger.info("s %s type %s" % (x,type(x)))
+        if isinstance(s,str):
+            s=s.encode('ascii')
+#        logger.info("s %s type %s" % (s,type(s)))
+#        x = chr(cls.tag)+BER_len_enc(len(s))+s
+        l = BER_len_enc(len(s))
+#        logger.info("l %s type %s" % (l,type(l)))
+        x = struct.pack("b", int(cls.tag)) +  l + s
+#        logger.info("x %s type %s" % (x,type(x)))
         return x
     @classmethod
     def do_dec(cls, s, context=None, safe=False):
@@ -314,9 +367,9 @@ class BERcodec_SEQUENCE(BERcodec_Object):
     tag = ASN1_Class_UNIVERSAL.SEQUENCE
     @classmethod
     def enc(cls, l):
-        if type(l) is not str:
-            l = "".join([x.enc(cls.codec) for x in l])
-        return chr(cls.tag)+BER_len_enc(len(l))+l
+        if type(l) is not bytes:
+            l = b"".join([x.enc(cls.codec) for x in l])
+        return struct.pack("B",int(cls.tag))+BER_len_enc(len(l))+l
     @classmethod
     def do_dec(cls, s, context=None, safe=False):
         if context is None:
@@ -351,8 +404,9 @@ class BERcodec_OID(BERcodec_Object):
         if len(lst) >= 2:
             lst[1] += 40*lst[0]
             del(lst[0])
-        s = "".join([BER_num_enc(k) for k in lst])
-        return chr(cls.tag)+BER_len_enc(len(s))+s
+        s = b"".join([BER_num_enc(k) for k in lst])
+#        return chr(cls.tag)+BER_len_enc(len(s))+s
+        return struct.pack("B",int(cls.tag))+BER_len_enc(len(s))+s
     @classmethod
     def do_dec(cls, s, context=None, safe=False):
         l,s,t = cls.check_type_check_len(s)
@@ -361,7 +415,7 @@ class BERcodec_OID(BERcodec_Object):
             l,s = BER_num_dec(s)
             lst.append(l)
         if (len(lst) > 0):
-            lst.insert(0,lst[0]/40)
+            lst.insert(0,int((lst[0]-(lst[0]%40))/40))
             lst[1] %= 40
         return cls.asn1_object(".".join([str(k) for k in lst])), t
 
