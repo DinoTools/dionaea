@@ -12,7 +12,6 @@ import datetime
 
 from .helpers import *
 
-
 ############
 ## Fields ##
 ############
@@ -344,7 +343,10 @@ class StrField(Field):
             x=str(x).encode('ascii')
         return x
     def addfield(self, pkt, s, val):
-        return s+self.i2m(pkt, val)
+        m = self.i2m(pkt, val)
+#        for i in [pkt,s,val,m]:
+#            print(" %s type %s" % (i,type(i)))
+        return s+m
     def getfield(self, pkt, s):
         if self.remain == 0:
             return "",self.m2i(pkt, s)
@@ -361,7 +363,7 @@ class PacketField(StrField):
         StrField.__init__(self, name, default, remain=remain)
         self.cls = cls
     def i2m(self, pkt, i):
-        return str(i)
+        return i.build()
     def m2i(self, pkt, m):
         return self.cls(m)
     def getfield(self, pkt, s):
@@ -409,6 +411,11 @@ class PacketListField(PacketField):
         return 1
     def i2len(self, pkt, val):
         return sum( len(p) for p in val )
+    def i2m(self, pkt, val):
+        r=b""
+        for i in val:
+            r += i.build()
+        return r
     def do_copy(self, x):
         return [p.copy() for p in x]
     def getfield(self, pkt, s):
@@ -598,6 +605,7 @@ class MultiFieldLenField(Field):
                 fld,fval = pkt.getfield_and_val(fieldname)
                 f = fld.size(pkt, fval)
                 l += self.adjust(pkt,f)
+#        print("MultiFIeldLenField %i" % l)
         return l
 
 
