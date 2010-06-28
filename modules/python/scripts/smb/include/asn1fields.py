@@ -3,12 +3,16 @@
 ## Copyright (C) Philippe Biondi <phil@secdev.org>
 ## This program is published under a GPLv2 license
 
+import logging
+
 from .asn1.asn1 import *
 from .asn1.ber import *
 #from volatile import *
 from .helpers import BasePacket
 from functools import reduce
 
+logger = logging.getLogger('asn1fields')
+logger.setLevel(logging.DEBUG)
 
 #####################
 #### ASN1 Fields ####
@@ -37,7 +41,7 @@ class ASN1F_optionnal(ASN1F_element):
             return s
     def build(self, pkt):
         if self._field.is_empty(pkt):
-            return ""
+            return b""
         return self._field.build(pkt)
 
 class ASN1F_field(ASN1F_element):
@@ -142,12 +146,21 @@ class ASN1F_enum_INTEGER(ASN1F_INTEGER):
         for k in keys:
             i2s[k] = enum[k]
             s2i[enum[k]] = k
+        logger.debug("i2s %s" % self.i2s)
+        logger.debug("s2i %s" % self.s2i)
+
     def any2i_one(self, pkt, x):
         if type(x) is str:
             x = self.s2i[x]
         return x
     def i2repr_one(self, pkt, x):
-        return self.i2s.get(x, repr(x))
+        if isinstance(x, ASN1_Object):
+            if isinstance(x.val, int):
+                return self.i2s.get(x.val, repr(x))
+        if isinstance(x, int):
+            return self.i2s.get(x, repr(x))
+#        return self.i2s.get(x, repr(x))
+        return repr(x)
     
     def any2i(self, pkt, x):
         if type(x) is list:
@@ -190,6 +203,10 @@ class ASN1F_OID(ASN1F_field):
     ASN1_tag = ASN1_Class_UNIVERSAL.OID
     def randval(self):
         return RandOID()
+    def i2repr(self, pkt, x):
+        if isinstance(x, ASN1_Object):
+            return x.val
+        return repr(x)
 
 class ASN1F_SEQUENCE(ASN1F_field):
     ASN1_tag = ASN1_Class_UNIVERSAL.SEQUENCE
@@ -210,7 +227,7 @@ class ASN1F_SEQUENCE(ASN1F_field):
     def get_fields_list(self):
         return reduce(lambda x,y: x+y.get_fields_list(), self.seq, [])
     def build(self, pkt):
-        s = reduce(lambda x,y: x+y.build(pkt), self.seq, "")
+        s = reduce(lambda x,y: x+y.build(pkt), self.seq, b"")
         return self.i2m(pkt, s)
     def dissect(self, pkt, s):
         codec = self.ASN1_tag.get_codec(pkt.ASN1_codec)
@@ -308,18 +325,23 @@ class ASN1F_CHOICE(ASN1F_PACKET):
         self.choice = {}
 		# FIXME TypeError: unhashable type: 'ASN1Tag
         for p in args:
-            self.choice[type(p.ASN1_root.ASN1_tag)] = p
+            self.choice[int(p.ASN1_root.ASN1_tag)] = p
+#            print("ASN1_tag %r %s" % ( p.ASN1_root.ASN1_tag, p))
+        logger.debug("self.choice %s" % self.choice)
 #        self.context=context
         self.default=default
     def m2i(self, pkt, x):
         if len(x) == 0:
             return packet.Raw(),""
             raise ASN1_Error("ASN1F_CHOICE: got empty string")
-        if ord(x[0]) not in self.choice:
-            return packet.Raw(x),"" # XXX return RawASN1 packet ? Raise error 
-            raise ASN1_Error("Decoding Error: choice [%i] not found in %r" % (ord(x[0]), list(self.choice.keys())))
+#        if ord(x[0]) not in self.choice:
+        if x[0] not in self.choice:
+#            return packet.Raw(x),"" # XXX return RawASN1 packet ? Raise error 
+#            raise ASN1_Error("Decoding Error: choice [%i] not found in %r" % (ord(x[0]), list(self.choice.keys())))
+            raise ASN1_Error("Decoding Error: choice [%i] not found in %s" % (x[0], self.choice))
 
-        z = ASN1F_PACKET.extract_packet(self, self.choice[ord(x[0])], x)
+#        z = ASN1F_PACKET.extract_packet(self, self.choice[ord(x[0])], x)
+        z = ASN1F_PACKET.extract_packet(self, self.choice[x[0]], x)
         return z
     def randval(self):
         return RandChoice(*[fuzz(x()) for x in list(self.choice.values())])
