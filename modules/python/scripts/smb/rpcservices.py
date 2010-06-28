@@ -1089,6 +1089,7 @@ class SRVSVC(RPCService):
 		0x0f: "NetShareEnum",
 		0x1f: "NetPathCanonicalize",
 		0x20: "NetPathCompare",
+#		0x22, "NetNameCanonicalize"
 	}
 	vulns  = { 
 		0x1f: "MS08-67",
@@ -1573,8 +1574,8 @@ class w32time(RPCService):
 	uuid = UUID('8fb6d884-2388-11d0-8c35-00c04fda2795').hex
 
 
-class winipsec(RPCService):
-	uuid = UUID('12345678-1234-abcd-ef00-0123456789ab').hex
+#class winipsec(RPCService):
+#	uuid = UUID('12345678-1234-abcd-ef00-0123456789ab').hex
 
 
 class winreg(RPCService):
