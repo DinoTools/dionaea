@@ -132,11 +132,8 @@ class Enum_metaclass(type):
     def __new__(cls, name, bases, dct):
         rdict={}
         for k,v in dct.items():
-            print("k %s %s" % (type(k),k))
-            print("v %s %s" % (type(v),v))
             if type(v) is int:
                 v = cls.element_class(k,v)
-                print("v %s %s" % (type(v),v))
                 dct[k] = v
                 rdict[type(v)] = k
         dct["__rdict__"] = rdict
