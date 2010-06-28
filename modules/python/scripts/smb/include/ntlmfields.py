@@ -190,11 +190,11 @@ class NTLM_Negotiate(Packet):
 class NTLM_Challenge(Packet):
 	name = "NTLM Challenge"
 	fields_desc = [
-		PacketField("TargetNameFields",0,NTLM_Value),
+		PacketField("TargetNameFields",NTLM_Value(),NTLM_Value),
 		FlagsField("NegotiateFlags", 0, -32, NTLMSSP_Flags),
 		StrFixedLenField("ServerChallenge","",8),
 		StrFixedLenField("Reserved","",8),
-		PacketField("TargetInfoFields",0,NTLM_Value),
+		PacketField("TargetInfoFields",NTLM_Value(),NTLM_Value),
 #		PacketField("Version",0,NTLM_Version),
 		ConditionalField(PacketField("Version",0,NTLM_Version), lambda x: x.NegotiateFlags & NTLMSSP_NEGOTIATE_VERSION),
 		StrField("Payload","")
@@ -216,8 +216,9 @@ class NTLM_Authenticate(Packet):
 		StrField("Payload",""),
 	]
 
-
 bind_bottom_up(NTLMSSP_Header, NTLM_Negotiate, MessageType = lambda x: x==1)
 bind_bottom_up(NTLMSSP_Header, NTLM_Challenge, MessageType = lambda x: x==2)
 bind_bottom_up(NTLMSSP_Header, NTLM_Authenticate, MessageType = lambda x: x==3)
 
+
+bind_top_down(NTLMSSP_Header, NTLM_Challenge, MessageType = 2)
