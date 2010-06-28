@@ -398,6 +398,463 @@ class llsrpc(RPCService):
 class lsarpc(RPCService):
 	uuid = UUID('12345778-1234-abcd-ef00-0123456789ab').hex
 
+	class LSAPR_HANDLE:
+		# 2.2.2.1 LSAPR_HANDLE
+		#
+		# http://msdn.microsoft.com/en-us/library/cc234257%28v=PROT.10%29.aspx
+		#
+		#typedef [context_handle] void* LSAPR_HANDLE;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Handle = b''
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Value = p.unpack_raw(20)
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_raw(self.Handle)
+
+	class LSAPR_OBJECT_ATTRIBUTES:
+		# 2.2.9 LSAPR_OBJECT_ATTRIBUTES
+		#
+		#http://help.outlook.com/en-us/140/cc234450%28PROT.10%29.aspx
+		#
+		#typedef struct _LSAPR_OBJECT_ATTRIBUTES {
+		#  unsigned long Length;
+		#  unsigned char* RootDirectory;
+		#  PSTRING ObjectName;
+		#  unsigned long Attributes;
+		#  PLSAPR_SECURITY_DESCRIPTOR SecurityDescriptor;
+		#  PSECURITY_QUALITY_OF_SERVICE SecurityQualityOfService;
+		#} LSAPR_OBJECT_ATTRIBUTES, 
+		# *PLSAPR_OBJECT_ATTRIBUTES;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Length = self.__packer.unpack_long()
+				print("Length = %i" % self.Length)
+				self.RootDirectory = self.__packer.unpack_short()
+				print("RootDirectory = %x" % self.RootDirectory)
+				self.ObjectName = self.__packer.unpack_pointer()
+				print("ObjectName = %x" % self.ObjectName)
+				self.Attributes = self.__packer.unpack_long()
+				self.SecurityDescriptor = self.__packer.unpack_pointer()
+				self.SecurityQualityOfService = self.__packer.unpack_pointer()
+
+	class LSA_TRANSLATED_SID:
+		#http://msdn.microsoft.com/en-us/library/dd424381.aspx
+		#
+		#typedef struct {
+		#  SID_NAME_USE Use;
+		#  ULONG RelativeId;
+		#  LONG DomainIndex;
+		#} LSA_TRANSLATED_SID, 
+		# *PLSA_TRANSLATED_SID;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Use = 0
+				self.RelativeId = 0
+				self.DomainIndex = 0
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_short(self.Use)
+				self.__packer.pack_long(self.RelativeId)
+				self.__packer.pack_long(self.DomainIndex)
+				# unknown
+				self.__packer.pack_long(0)
+
+	class LSAPR_TRANSLATED_SIDS:
+		# 2.2.15 LSAPR_TRANSLATED_SIDS
+		#
+		#http://msdn.microsoft.com/en-us/library/cc234457%28PROT.10%29.aspx
+		#
+		#typedef struct _LSAPR_TRANSLATED_SIDS {
+		#  [range(0,1000)] unsigned long Entries;
+		#  [size_is(Entries)] PLSA_TRANSLATED_SID Sids;
+		#} LSAPR_TRANSLATED_SIDS, 
+		# *PLSAPR_TRANSLATED_SIDS;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Entries = 0
+				self.Pointer = 0x3456
+				self.MaxCount = 0
+				self.Data = []
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Entries = self.__packer.unpack_long()
+				print("Entries = %i" % self.Entries)
+				self.Pointer = self.__packer.unpack_pointer()
+				self.MaxCount = self.__packer.unpack_long()
+				if self.Entries != 0:
+					Sids = LSA_TRANSLATED_SID(self.__packer)
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_long(self.Entries)
+				print("Entries = %i" % self.Entries)
+				self.__packer.pack_pointer(self.Pointer)
+				self.__packer.pack_long(self.Entries)
+				for i in range(self.Entries):
+					Sids = lsarpc.LSA_TRANSLATED_SID(self.__packer)
+					Sids.pack()
+									
+
+	class LSAPR_TRUST_INFORMATION:
+		#2.2.11 LSAPR_TRUST_INFORMATION
+		#
+		#http://msdn.microsoft.com/en-us/library/cc234452%28PROT.10%29.aspx
+		#
+		#typedef struct _LSAPR_TRUST_INFORMATION {
+		#  RPC_UNICODE_STRING Name;
+		#  PRPC_SID Sid;
+		#} LSAPR_TRUST_INFORMATION, 
+		# *PLSAPR_TRUST_INFORMATION;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Name = []
+				self.Entries = 0
+				self.RelativeId = 0
+				self.Pointer = 0x11
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				# MaxCount,needed as the element of NDR array
+				self.__packer.pack_long(self.Entries)
+				
+				#  RPC_UNICODE_STRING Name;
+				for i in range(self.Entries): 				
+					b = samr.RPC_UNICODE_STRING(self.__packer)
+					b.Data = self.Name[i]
+					b.pack()
+				# Pointer to RPC_UNICODE_STRING buffer
+				self.__packer.pack_long(self.Pointer)
+				# Pointer to RPC_SID buffer
+				self.__packer.pack_long(self.Pointer)
+				for j in range(self.Entries):
+					self.__packer.pack_string(self.Name[j].encode('utf16')[2:])
+				#  PRPC_SID Sid	;
+				sid = samr.RPC_SID(self.__packer)
+				sid.Value = 'NT_AUTHORITY'
+				sid.SubAuthority = ['32','544']
+				sid.SubAuthorityCount = len(sid.SubAuthority)
+				
+				# Maxcount, needed as the element of NDR array
+				self.__packer.pack_long(sid.SubAuthorityCount)
+				sid.pack()
+
+
+	class LSAPR_REFERENCED_DOMAIN_LIST:
+		# 2.2.12 LSAPR_REFERENCED_DOMAIN_LIST
+		#
+		#http://msdn.microsoft.com/en-us/library/cc234453%28PROT.13%29.aspx
+		#
+		#typedef struct _LSAPR_REFERENCED_DOMAIN_LIST {
+		#  unsigned long Entries;
+		#  [size_is(Entries)] PLSAPR_TRUST_INFORMATION Domains;
+		#  unsigned long MaxEntries;
+		#} LSAPR_REFERENCED_DOMAIN_LIST, 
+		# *PLSAPR_REFERENCED_DOMAIN_LIST;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Entries = 0
+				self.MaxEntries = 0
+				self.Data = []
+				self.Pointer = 0x4567
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_long(self.Entries)
+				for i in range(self.Entries):
+					# Pointer
+					self.__packer.pack_long(self.Pointer)
+					# MaxEntries
+					self.__packer.pack_long(0)
+					Domains = lsarpc.LSAPR_TRUST_INFORMATION(self.__packer)
+					Domains.Name = self.Data
+					Domains.Entries = self.Entries
+					Domains.pack()
+
+	class LSAPR_SID_INFORMATION:
+		# 2.2.17 LSAPR_SID_INFORMATION
+		#
+		# http://msdn.microsoft.com/en-us/library/cc234459%28v=PROT.10%29.aspx
+		#
+		#typedef struct _LSAPR_SID_INFORMATION {
+		#  PRPC_SID Sid;
+		#} LSAPR_SID_INFORMATION, 
+		# *PLSAPR_SID_INFORMATION
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Count = self.__packer.unpack_long()
+				Sid = samr.RPC_SID(self.__packer)
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				pass
+
+	class LSAPR_SID_ENUM_BUFFER:
+		# 2.2.18 LSAPR_SID_ENUM_BUFFER
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc234460%28PROT.10%29.aspx
+		# 
+		#typedef struct _LSAPR_SID_ENUM_BUFFER {
+		#  [range(0,20480)] unsigned long Entries;
+		#  [size_is(Entries)] PLSAPR_SID_INFORMATION SidInfo;
+		#} LSAPR_SID_ENUM_BUFFER, 
+		# *PLSAPR_SID_ENUM_BUFFER;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Entries = self.__packer.unpack_long()
+				self.Pointer = self.__packer.unpack_pointer()
+				self.MaxCount = self.__packer.unpack_long()
+				for i in range(self.MaxCount):
+					self.Reference = self.__packer.unpack_pointer()
+				for j in range(self.MaxCount):
+					SidInfo = lsarpc.LSAPR_SID_INFORMATION(self.__packer)
+
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				pass
+				
+	class LSAPR_TRANSLATED_NAME_EX:
+		#2.2.21 LSAPR_TRANSLATED_NAME_EX
+		#
+		#http://msdn.microsoft.com/en-us/library/cc234463%28v=PROT.13%29.aspx
+		#
+		#typedef struct _LSAPR_TRANSLATED_NAME_EX {
+		#  SID_NAME_USE Use;
+		#  RPC_UNICODE_STRING Name;
+		#  long DomainIndex;
+		#  unsigned long Flags;
+		#} LSAPR_TRANSLATED_NAME_EX, 
+		# *PLSAPR_TRANSLATED_NAME_EX;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				#2.2.13 SID_NAME_USE
+				#http://msdn.microsoft.com/en-us/library/cc234454%28v=PROT.13%29.aspx
+				self.Use = 8 #SidTypeUnknown
+				self.Flags = 0
+				self.DomainIndex = 0
+				self.Data = []
+				self.Pointer = 0x11
+				self.Entries = 0
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				for i in range(self.Entries):
+					self.__packer.pack_short(self.Use)
+					Name = samr.RPC_UNICODE_STRING(self.__packer)
+					# Empty String
+					Name.Data = self.Data
+					self.__packer.pack_pointer(0x00)
+					Name.pack()	
+					self.__packer.pack_long(self.DomainIndex)
+					self.__packer.pack_long(self.Flags)
+
+
+	class LSAPR_TRANSLATED_NAMES_EX:
+		#2.2.22 LSAPR_TRANSLATED_NAMES_EX
+		#
+		#http://msdn.microsoft.com/en-us/library/cc234464%28PROT.13%29.aspx
+		#
+		#typedef struct _LSAPR_TRANSLATED_NAMES_EX {
+		#  [range(0,20480)] unsigned long Entries;
+		#  [size_is(Entries)] PLSAPR_TRANSLATED_NAME_EX Names;
+		#} LSAPR_TRANSLATED_NAMES_EX, 
+		# *PLSAPR_TRANSLATED_NAMES_EX;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Entries = 0
+				self.Data = []
+				self.Pointer = 0x6879
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Entries = self.__packer.unpack_long()
+				self.Pointer = self.__packer.unpack_pointer()
+				if self.Entries != 0:
+					Sids = LSA_TRANSLATED_Name_EX(self.__packer)
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_long(self.Entries)
+				self.__packer.pack_pointer(self.Pointer)
+				self.__packer.pack_long(self.Entries)
+				Names = lsarpc.LSAPR_TRANSLATED_NAME_EX(self.__packer)
+				Names.Entries = self.Entries
+				Names.pack()
+			
+	ops = {
+		0: "Close",
+		44: "OpenPolicy",
+		57: "LookupSids2",
+		58: "LookupNames2"
+	}
+
+	@classmethod
+	def handle_OpenPolicy(cls,p):
+		# 3.1.4.4.1 LsarOpenPolicy2 (Opnum 44)
+		#
+		# http://msdn.microsoft.com/en-us/library/cc234337%28PROT.10%29.aspx
+		#
+		#NTSTATUS LsarOpenPolicy2(
+		#  [in, unique, string] wchar_t* SystemName,
+		#  [in] PLSAPR_OBJECT_ATTRIBUTES ObjectAttributes,
+		#  [in] ACCESS_MASK DesiredAccess,
+		#  [out] LSAPR_HANDLE* PolicyHandle
+		#);
+
+		x = ndrlib.Unpacker(p.StubData)
+		PSystemName = x.unpack_pointer()
+		SystemName = x.unpack_string()
+		print("ServerName %s" % SystemName)
+
+		ObjectAttributes = lsarpc.LSAPR_OBJECT_ATTRIBUTES(x)
+		DesiredAccess = x.unpack_long()
+
+		r = ndrlib.Packer()
+		PolicyHandle = lsarpc.LSAPR_HANDLE(r)
+		PolicyHandle.Handle = b'01234567890123456789'
+		PolicyHandle.pack()
+
+		# return 
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_LookupNames2(cls,p):
+		# 3.1.4.7 LsarLookupNames2 (Opnum 58)
+		#
+		# http://msdn.microsoft.com/en-us/library/cc234494%28PROT.13%29.aspx
+		#
+		#NTSTATUS LsarLookupNames2(
+		#  [in] LSAPR_HANDLE PolicyHandle,
+		#  [in, range(0,1000)] unsigned long Count,
+		#  [in, size_is(Count)] PRPC_UNICODE_STRING Names,
+		#  [out] PLSAPR_REFERENCED_DOMAIN_LIST* ReferencedDomains,
+		#  [in, out] PLSAPR_TRANSLATED_SIDS_EX TranslatedSids,
+		#  [in] LSAP_LOOKUP_LEVEL LookupLevel,
+		#  [in, out] unsigned long* MappedCount,
+		#  [in] unsigned long LookupOptions,
+		#  [in] unsigned long ClientRevision
+		#);
+
+		x = ndrlib.Unpacker(p.StubData)
+		PolicyHandle = lsarpc.LSAPR_HANDLE(x)
+		Count = x.unpack_long()
+
+		# Maxcount, needed as the element of NDR array
+		MaxCount = x.unpack_long()
+		Names = samr.RPC_UNICODE_STRING(x,MaxCount)
+		TranslatedSids = lsarpc.LSAPR_TRANSLATED_SIDS(x)
+
+		LookupLevel = x.unpack_short()
+		MappedCount = x.unpack_long()
+		LookupOptions = x.unpack_long()
+		ClientRevision = x.unpack_long()
+
+		r = ndrlib.Packer()
+		r.pack_pointer(0x23456)
+		
+		ReferenceDomains = lsarpc.LSAPR_REFERENCED_DOMAIN_LIST(r)
+		ReferenceDomains.Data = ['HOMEUSER-3AF6FE']
+		ReferenceDomains.Entries = len(ReferenceDomains.Data)
+		ReferenceDomains.pack()
+
+		Sids = lsarpc.LSAPR_TRANSLATED_SIDS(r)
+		Sids.Entries = Count
+		Sids.pack()
+
+		# MappedCount 
+		r.pack_long(3)
+		# Return
+		r.pack_pointer(0x00000107) #STATUS_SOME_NOT_MAPPED
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_LookupSids2(cls,p):
+		# 3.1.4.10 LsarLookupSids2 (Opnum 57)
+		#
+		# http://msdn.microsoft.com/en-us/library/cc234487%28PROT.13%29.aspx
+		#
+		#NTSTATUS LsarLookupSids2(
+		#  [in] LSAPR_HANDLE PolicyHandle,
+		#  [in] PLSAPR_SID_ENUM_BUFFER SidEnumBuffer,
+		#  [out] PLSAPR_REFERENCED_DOMAIN_LIST* ReferencedDomains,
+		#  [in, out] PLSAPR_TRANSLATED_NAMES_EX TranslatedNames,
+		#  [in] LSAP_LOOKUP_LEVEL LookupLevel,
+		#  [in, out] unsigned long* MappedCount,
+		#  [in] unsigned long LookupOptions,
+		#  [in] unsigned long ClientRevision
+		#);
+
+		x = ndrlib.Unpacker(p.StubData)
+		PolicyHandle = lsarpc.LSAPR_HANDLE(x)
+		SidEnumBuffer = lsarpc.LSAPR_SID_ENUM_BUFFER(x)
+		print("EntriesRead = %i" % SidEnumBuffer.Entries)
+		TranslatedNames = lsarpc.LSAPR_TRANSLATED_NAMES_EX(x)
+		
+		LookupLevel = x.unpack_short()
+		MappedCount = x.unpack_long()
+		LookupOptions = x.unpack_long()
+		ClientRevision = x.unpack_long()
+		print ("LookupLevel %i MappedCount %i LookupOptions %i ClientRevision %i" %(LookupLevel,MappedCount,LookupOptions,ClientRevision))
+		
+		r = ndrlib.Packer()
+		r.pack_pointer(0x23456)
+		
+		ReferenceDomains = lsarpc.LSAPR_REFERENCED_DOMAIN_LIST(r)
+		ReferenceDomains.Data = ['HOMEUSER-3AF6FE']
+		ReferenceDomains.Entries = len(ReferenceDomains.Data)
+		ReferenceDomains.pack()
+
+		# Nmap smb-enum-users.nse scanning will simply return none of the element has translated, ugly but it works for the moment
+		TranslatedNames = lsarpc.LSAPR_TRANSLATED_NAMES_EX(r)
+		TranslatedNames.Entries = SidEnumBuffer.Entries
+		TranslatedNames.pack()
+
+		# return 
+		r.pack_long(0)
+		r.pack_pointer(0xc0000073) #STATUS_NONE_MAPPED
+
+		return r.get_buffer()
+	
+	@classmethod
+	def handle_Close(cls,p):
+		#3.1.4.3 LsarClose (Opnum 0)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc234490%28v=PROT.13%29.aspx
+		#
+		#NTSTATUS LsarClose(
+		#  [in, out] LSAPR_HANDLE* ObjectHandle
+		#);
+		x = ndrlib.Unpacker(p.StubData)
+		ObjectHandle = lsarpc.LSAPR_HANDLE(x)
+		print("ObjectHandle %s" % ObjectHandle)
+		
+		r = ndrlib.Packer()
+		s = lsarpc.LSAPR_HANDLE(r)
+		s.Handle =  b'\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0'
+		s.pack()
+		r.pack_long(0)
+
+		return r.get_buffer()
+
 
 class msgsvcsend(RPCService):
 	uuid = UUID('5a7b91f8-ff00-11d0-a9b2-00c04fb6e6fc').hex
@@ -715,15 +1172,19 @@ class samr(RPCService):
 		# } RPC_UNICODE_STRING, 
 		#  *PRPC_UNICODE_STRING;
 		# 
-		def __init__(self, p):
+		def __init__(self, p, c=1):
 			self.__packer = p
 			if isinstance(self.__packer,ndrlib.Packer):
 				self.Data =[]
 			elif isinstance(self.__packer,ndrlib.Unpacker):
-				self.Length = self.__packer.unpack_short()
-				self.MaximumLength = self.__packer.unpack_short()
-				self.Reference = self.__packer.unpack_pointer()
-				self.Buffer = self.__packer.unpack_string()
+				self.Count = c #specify how many string array
+				print("Count = %i" % self.Count)
+				for i in range(self.Count):
+					self.Length = self.__packer.unpack_short()
+					self.MaximumLength = self.__packer.unpack_short()
+					self.Reference = self.__packer.unpack_pointer()
+				for j in range(self.Count):
+					self.Buffer = self.__packer.unpack_string()
 		def pack(self):
 			if isinstance(self.__packer,ndrlib.Packer):
 				self.__packer.pack_rpc_unicode_string(self.Data)
@@ -793,12 +1254,90 @@ class samr(RPCService):
 				b.Name = self.Buffer
 				b.pack()
 
+	class SAMPR_DOMAIN_DISPLAY_USER:
+		# 2.2.8.2 SAMPR_DOMAIN_DISPLAY_USER
+		#
+		# http://msdn.microsoft.com/en-us/library/cc245632%28PROT.10%29.aspx
+		#
+		# typedef struct _SAMPR_DOMAIN_DISPLAY_USER {
+		#  unsigned long Index;
+		#  unsigned long Rid;
+		#  unsigned long AccountControl;
+		#  RPC_UNICODE_STRING AccountName;
+		#  RPC_UNICODE_STRING AdminComment;
+		#  RPC_UNICODE_STRING FullName;
+		#} SAMPR_DOMAIN_DISPLAY_USER, 
+		# *PSAMPR_DOMAIN_DISPLAY_USER;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Name = []
+				self.Index = 0
+				self.Rid = 0
+				# AccountControl
+				#http://msdn.microsoft.com/en-us/library/cc245514%28v=PROT.10%29.aspx
+				self.AccountControl = 16 # USER_NORMAL_ACCOUNT
+				self.Pointer = 0x11
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.RelativeId = self.__packer.unpack_long()
+				self.Name = RPC_UNICODE_STRING(self.__packer, Name)
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				for i in range(int(len(self.Name)/3)): 
+					#Index
+					self.__packer.pack_long(self.Index)
+					#RelativeID
+					self.__packer.pack_long(self.Rid)
+					#AccountCotrol
+					self.__packer.pack_long(self.AccountControl)
+
+					for k in range(3):
+						b = samr.RPC_UNICODE_STRING(self.__packer)
+						b.Data = self.Name[i*k]
+						b.pack()
+						self.__packer.pack_pointer(self.Pointer)
+
+				for j in range(len(self.Name)):
+					self.__packer.pack_string(self.Name[j].encode('utf16')[2:])
+
+	class SAMPR_DOMAIN_DISPLAY_USER_BUFFER:
+		# 2.2.8.7 SAMPR_DOMAIN_DISPLAY_USER_BUFFER
+		#
+		# http://msdn.microsoft.com/en-us/library/cc245637%28PROT.13%29.aspx
+		#
+		#typedef struct _SAMPR_DOMAIN_DISPLAY_USER_BUFFER {
+		#  unsigned long EntriesRead;
+		#  [size_is(EntriesRead)] PSAMPR_DOMAIN_DISPLAY_USER Buffer;
+		#} SAMPR_DOMAIN_DISPLAY_USER_BUFFER, 
+		# *PSAMPR_DOMAIN_DISPLAY_USER_BUFFER;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.EntriesRead = 0
+				self.Buffer = []
+				self.Pointer = 0x4711
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				raise NotImplementedError
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				# EntriesRead
+				self.__packer.pack_long(self.EntriesRead)
+				self.__packer.pack_pointer(self.Pointer)
+
+				# Maxcount, needed as NDR array
+				self.__packer.pack_long(self.EntriesRead)
+ 
+				b = samr.SAMPR_DOMAIN_DISPLAY_USER(self.__packer)
+				b.Name = self.Buffer
+				b.pack()
+
 	ops = {
 		1: "Close",
 		5: "LookupDomain",
 		6: "EnumDomains",
 		7: "OpenDomain",
 		13: "EnumDomainUsers",
+		40: "QueryDisplayInformation",
 		62: "Connect4",
 		64: "Connect5"
 	}
@@ -1035,6 +1574,57 @@ class samr(RPCService):
 
 		# long* CountReturned
 		r.pack_long(s.EntriesRead)
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_QueryDisplayInformation(cls,p):
+		#3.1.5.3.3 SamrQueryDisplayInformation (Opnum 40)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245763%28PROT.10%29.aspx
+		#
+		#long SamrQueryDisplayInformation(
+		#  [in] SAMPR_HANDLE DomainHandle,
+		#  [in] DOMAIN_DISPLAY_INFORMATION DisplayInformationClass,
+		#  [in] unsigned long Index,
+		#  [in] unsigned long EntryCount,
+		#  [in] unsigned long PreferredMaximumLength,
+		#  [out] unsigned long* TotalAvailable,
+		#  [out] unsigned long* TotalReturned,
+		#  [out, switch_is(DisplayInformationClass)] 
+		#    PSAMPR_DISPLAY_INFO_BUFFER Buffer
+		#);
+		x = ndrlib.Unpacker(p.StubData)
+		DomainHandle = samr.SAMPR_HANDLE(x)
+		print("DomainHandle %s" % DomainHandle)
+	
+		DisplayInformationClass = x.unpack_long()
+		print("DisplayInformationClass %i" % DisplayInformationClass)
+		
+		Index = x.unpack_long()
+		print("Index %i" % Index)
+
+		EntryCount = x.unpack_long()
+		print("EntryCount %i" % EntryCount)
+
+		PreferredMaximumLength = x.unpack_long()
+		print("PreferredMaximumLength %i" % PreferredMaximumLength)
+
+		r = ndrlib.Packer()
+		# unsigned long* TotalAvailable
+		r.pack_long(30)
+		# unsigned long* TotalReturned
+		r.pack_long(30)
+
+		if DisplayInformationClass == 1 :
+			r.pack_long(DisplayInformationClass)
+			# SAMPR_DOMAIN_DISPLAY_USER_BUFFER
+			s = samr.SAMPR_DOMAIN_DISPLAY_USER_BUFFER(r)
+			s.Buffer = ['Administrator','Builtin','Full Name','Guest','Builtin','Full Name','HelpAssistant','Builtin','Full Name','SUPPORT_388945a0','Builtin','Full Name']
+			s.EntriesRead = int(len(s.Buffer)/3)
+			s.pack()
+
 		r.pack_long(0)
 
 		return r.get_buffer()
