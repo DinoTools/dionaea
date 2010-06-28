@@ -295,7 +295,7 @@ class ASN1_OID(ASN1_Object):
         ASN1_Object.__init__(self, val)
     def __repr__(self):
 #        return "<%s[%r]>" % (self.__dict__.get("name", self.__class__.__name__), conf.mib._oidname(self.val))
-        return "<%s[%r]>" % (self.__dict__.get("name", self.__class__.__name__), self.val)
+        return "<%s[%s]>" % (self.__dict__.get("name", self.__class__.__name__), self.val)
     def __oidname__(self):
 #        return '%s'%conf.mib._oidname(self.val)
         return '%s'%self.val
