@@ -524,10 +524,6 @@ class lsarpc(RPCService):
 				pass
 		def pack(self):
 			if isinstance(self.__packer,ndrlib.Packer):
-				# Pointer
-				self.__packer.pack_long(self.Pointer)
-				# pad? maxcount at the end
-				self.__packer.pack_long(32)
 				# MaxCount,needed as the element of NDR array
 				self.__packer.pack_long(self.Entries)
 				
@@ -570,17 +566,21 @@ class lsarpc(RPCService):
 				self.Entries = 0
 				self.MaxEntries = 0
 				self.Data = []
+				self.Pointer = 0x4567
 			elif isinstance(self.__packer,ndrlib.Unpacker):
 				pass
 		def pack(self):
 			if isinstance(self.__packer,ndrlib.Packer):
 				self.__packer.pack_long(self.Entries)
 				for i in range(self.Entries):
+					# Pointer
+					self.__packer.pack_long(self.Pointer)
+					# MaxEntries
+					self.__packer.pack_long(0)
 					Domains = lsarpc.LSAPR_TRUST_INFORMATION(self.__packer)
 					Domains.Name = self.Data
 					Domains.Entries = self.Entries
 					Domains.pack()
-	
 
 	class LSAPR_SID_INFORMATION:
 		# 2.2.17 LSAPR_SID_INFORMATION
@@ -601,7 +601,7 @@ class lsarpc(RPCService):
 		def pack(self):
 			if isinstance(self.__packer, ndrlib.Packer):
 				pass
-				
+
 	class LSAPR_SID_ENUM_BUFFER:
 		# 2.2.18 LSAPR_SID_ENUM_BUFFER
 		# 
@@ -716,10 +716,6 @@ class lsarpc(RPCService):
 		#  [in] ACCESS_MASK DesiredAccess,
 		#  [out] LSAPR_HANDLE* PolicyHandle
 		#);
-
-		# ObjectAttributes: This parameter does not have any effect on message
-		# processing in any environment. All fields MUST be ignored except
-		# RootDirectory which MUST be NULL.
 
 		x = ndrlib.Unpacker(p.StubData)
 		PSystemName = x.unpack_pointer()
@@ -1184,15 +1180,10 @@ class samr(RPCService):
 				self.Count = c #specify how many string array
 				print("Count = %i" % self.Count)
 				for i in range(self.Count):
-					print(" i = %i" % i)
 					self.Length = self.__packer.unpack_short()
-					print(" Length = %i" % self.Length)
 					self.MaximumLength = self.__packer.unpack_short()
-					print(" MaximumLength = %i" % self.MaximumLength)
 					self.Reference = self.__packer.unpack_pointer()
-					print(" Reference = %i" % self.Reference)
 				for j in range(self.Count):
-					print(" j = %i" % j)
 					self.Buffer = self.__packer.unpack_string()
 		def pack(self):
 			if isinstance(self.__packer,ndrlib.Packer):
