@@ -283,16 +283,21 @@ class smbd(connection):
 			else:
 				self.buf += h.Data
 #				self.process_dcerpc_packet(p.getlayer(SMB_Write_AndX_Request).Data)
-
-			if len(self.buf) >= 10:
-				# we got the dcerpc header
-				outpacket = self.process_dcerpc_packet(self.buf[:10])
-				if outpacket.FragLen == len(self.buf):
-					outpacket = self.process_dcerpc_packet(self.buf)
-					self.outbuf = outpacket.build()
-					self.buf = b''
+				if len(self.buf) >= 10:
+					# we got the dcerpc header
+					smblog.info("got header")
+					inpacket = DCERPC_Header(self.buf)
+					smblog.info("FragLen %i len(self.buf) %i" % (inpacket.FragLen, len(self.buf)))
+					if inpacket.FragLen == len(self.buf):
+						outpacket = self.process_dcerpc_packet(self.buf)
+						if outpacket is not None:
+							outpacket.show()
+							self.outbuf = outpacket.build()
+						self.buf = b''
 
 		elif Command == SMB_COM_READ_ANDX:
+			r = SMB_Read_AndX_Response()
+			h = p.getlayer(SMB_Read_AndX_Request)
 			# self.outbuf should contain response buffer now
 			if not self.outbuf:
 				if self.state['stop']:
@@ -308,9 +313,9 @@ class smbd(connection):
 			if h.MaxCountLow < outbuflen-self.state['readcount']:
 				rdata.ByteCount = h.MaxCountLow
 				newreadcount = self.state['readcount']+h.MaxCountLow
-				self.outbuf = None
 			else:
 				newreadcount = 0
+				self.outbuf = None
 
 			rdata.Bytes = outbuf[ self.state['readcount'] : self.state['readcount'] + h.MaxCountLow ]
 			rdata.ByteCount = len(rdata.Bytes)+1
