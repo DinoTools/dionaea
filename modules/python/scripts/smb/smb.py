@@ -283,19 +283,17 @@ class smbd(connection):
 			else:
 				self.buf += h.Data
 #				self.process_dcerpc_packet(p.getlayer(SMB_Write_AndX_Request).Data)
+
+			if len(self.buf) >= 10:
+				# we got the dcerpc header
+				outpacket = self.process_dcerpc_packet(self.buf[:10])
+				if outpacket.FragLen == len(self.buf):
+					outpacket = self.process_dcerpc_packet(self.buf)
+					self.outbuf = outpacket.build()
+					self.buf = b''
+
 		elif Command == SMB_COM_READ_ANDX:
-			r = SMB_Read_AndX_Response()
-			h = p.getlayer(SMB_Read_AndX_Request)
-			if self.state['lastcmd'] == 'SMB_COM_WRITE_ANDX':
-				# lastcmd was WRITE
-				# - self.buf should contain a DCERPC packet now
-				# - build response packet and store in self.outbuf
-				# - send out like client wants to recv
-
-				self.outbuf = self.process_dcerpc_packet(self.buf)
-				self.buf = b''
-
-			# self.outbuf should contain response packet now
+			# self.outbuf should contain response buffer now
 			if not self.outbuf:
 				if self.state['stop']:
 					smblog.debug('drop dead!')
@@ -304,12 +302,13 @@ class smbd(connection):
 				return rp
 
 			rdata = SMB_Data()
-			outbuf = self.outbuf.build()
+			outbuf = self.outbuf
 			outbuflen = len(outbuf)
 			smblog.info("MaxCountLow %i len(outbuf) %i readcount %i" %(h.MaxCountLow, outbuflen, self.state['readcount']) )
 			if h.MaxCountLow < outbuflen-self.state['readcount']:
 				rdata.ByteCount = h.MaxCountLow
 				newreadcount = self.state['readcount']+h.MaxCountLow
+				self.outbuf = None
 			else:
 				newreadcount = 0
 
@@ -322,23 +321,24 @@ class smbd(connection):
 			self.state['readcount'] = newreadcount
 
 		elif Command == SMB_COM_TRANSACTION:
-			self.outbuf = self.process_dcerpc_packet(p.getlayer(DCERPC_Header))
+			outpacket = self.process_dcerpc_packet(p.getlayer(DCERPC_Header))
 
-			if not self.outbuf:
+			if not outpacket:
 				if self.state['stop']:
 					smblog.debug('drop dead!')
 				else:
 					smblog.critical('dcerpc processing failed. bailing out.')
 				return rp
 
-			dceplen = len(self.outbuf.build())
+			self.outbuf = outpacket.build()
+			dceplen = len(self.outbuf)
 			r = SMB_Trans_Response()
 			r.TotalDataCount = dceplen
 			r.DataCount = dceplen
 
 			rdata = SMB_Data()
 			rdata.ByteCount = dceplen
-			rdata.Bytes = self.outbuf.build()
+			rdata.Bytes = len(self.outbuf)
 			
 			r /= rdata
 		elif p.getlayer(SMB_Header).Command == SMB_COM_TRANSACTION2:
@@ -479,6 +479,7 @@ class epmapper(smbd):
 			return len(data)
 
 		smblog.debug('response: {0}'.format(r.summary()))
+		r.show()
 		self.send(r.build())
 
 		if p.haslayer(Raw):
