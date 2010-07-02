@@ -108,3 +108,41 @@ def lhex(x):
     else:
         return x
 
+#########################
+#### Enum management ####
+#########################
+
+class EnumElement:
+    _value=None
+    def __init__(self, key, value):
+        self._key = key
+        self._value = value
+    def __repr__(self):
+        return "<%s %s[%r]>" % (self.__dict__.get("_name", self.__class__.__name__), self._key, self._value)
+    def __getattr__(self, attr):
+        return getattr(self._value, attr)
+    def __str__(self):
+        return self._key
+    def __eq__(self, other):
+        return self._value == int(other)
+
+
+class Enum_metaclass(type):
+    element_class = EnumElement
+    def __new__(cls, name, bases, dct):
+        rdict={}
+        for k,v in dct.items():
+            if type(v) is int:
+                v = cls.element_class(k,v)
+                dct[k] = v
+                rdict[type(v)] = k
+        dct["__rdict__"] = rdict
+        return super(Enum_metaclass, cls).__new__(cls, name, bases, dct)
+    def __getitem__(self, attr):
+        return self.__rdict__[attr]
+    def __contains__(self, val):
+        return val in self.__rdict__
+    def get(self, attr, val=None):
+        return self._rdict__.get(attr, val)
+    def __repr__(self):
+        return "<%s>" % self.__dict__.get("name", self.__name__)
