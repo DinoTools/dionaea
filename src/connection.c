@@ -1696,9 +1696,14 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 		int accepted_socket = accept(con->socket, (struct sockaddr *)&sa, &sizeof_sa);
 
-		if( accepted_socket == -1 )//&& (errno == EAGAIN || errno == EWOULDBLOCK) )
+		if( accepted_socket == -1 )
+		{
+			if( errno != EAGAIN && errno != EWOULDBLOCK )
+			{
+				g_warning("accept() failed errno=%i (%s)",  errno, strerror(errno));
+			}
 			break;
-
+		}
 
 		struct connection *accepted = connection_new(connection_transport_tcp);
 		connection_set_type(accepted, connection_type_accept);
