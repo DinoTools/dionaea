@@ -344,7 +344,7 @@ class smbd(connection):
 
 			rdata = SMB_Data()
 			rdata.ByteCount = dceplen
-			rdata.Bytes = len(self.outbuf)
+			rdata.Bytes = self.outbuf
 			
 			r /= rdata
 		elif p.getlayer(SMB_Header).Command == SMB_COM_TRANSACTION2:
