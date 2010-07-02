@@ -75,6 +75,7 @@ class smbd(connection):
 
 	def handle_established(self):
 #		self.timeouts.sustain = 120
+		self.timeouts.idle = 120
 #		self._in.accounting.limit  = 2000*1024
 #		self._out.accounting.limit = 2000*1024
 		self.processors()
@@ -441,6 +442,9 @@ class smbd(connection):
 			# unknown DCERPC packet -> logcrit and bail out.
 			smblog.critical('unknown DCERPC packet. bailing out.')
 		return outbuf
+
+	def handle_timeout_idle(self):
+		return False
 
 	def handle_disconnect(self):
 		now = datetime.datetime.now()
