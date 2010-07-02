@@ -1703,6 +1703,35 @@ class SRVSVC(RPCService):
 			if isinstance(self.__packer, ndrlib.Packer):
 				self.__packer.pack_pointer(self.Pointer)
 				self.__packer.pack_string(handle)
+
+	class SHARE_INFO_0_CONTAINER:
+		# 2.2.4.32 SHARE_INFO_0_CONTAINER
+ 		# 
+		# http://msdn.microsoft.com/en-us/library/cc247156%28PROT.13%29.aspx
+ 		# 
+		#typedef struct _SHARE_INFO_0_CONTAINER {
+		#  DWORD EntriesRead;
+		#  [size_is(EntriesRead)] LPSHARE_INFO_0 Buffer;
+		#} SHARE_INFO_0_CONTAINER;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.EntriesRead = 0
+				self.Data = []
+				self.Pointer = 0x23456
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Ptr = self.__packer.unpack_pointer()
+				self.EntriesRead = self.__packer.unpack_long()
+				self.Buffer = self.__packer.unpack_pointer()
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				# EntriesRead
+				self.__packer.pack_long(self.EntriesRead)
+				# LPSHARE_INFO_0 Buffer
+				b = SRVSVC.SHARE_INFO_0(self.__packer)
+				b.Data = self.Data
+				b.MaxCount = self.EntriesRead
+				b.pack()
 				
 
 	class SHARE_INFO_1_CONTAINER:
@@ -1763,7 +1792,36 @@ class SRVSVC(RPCService):
 				b.Data = self.Data
 				b.MaxCount = self.EntriesRead
 				b.pack()
-		
+
+	class SHARE_INFO_0:
+		# 2.2.4.22 SHARE_INFO_0
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc247146%28v=PROT.13%29.aspx
+		# 
+		#typedef struct _SHARE_INFO_0 {
+		#  [string] wchar_t* shi0_netname;
+		#} SHARE_INFO_0, 
+		# *PSHARE_INFO_0, 
+		# *LPSHARE_INFO_0
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Data = []
+				self.Pointer = 0x99999
+				self.MaxCount = 0
+				self.Netname_pointer = 0x34567
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_pointer(self.Pointer)
+				# MaxCount, needed as the NDR array
+				self.__packer.pack_long(self.MaxCount)
+
+				for i in range(self.MaxCount): 				
+					self.__packer.pack_pointer(self.Netname_pointer) # netname
+				for j in range(len(self.Data)):
+					self.__packer.pack_string_fix(self.Data[j].encode('utf16')[2:])
 
 	class SHARE_INFO_1:
 		# 2.2.4.23 SHARE_INFO_1
@@ -1945,8 +2003,9 @@ class SRVSVC(RPCService):
 		#   [case(503)] 
 		# 	SHARE_INFO_503_CONTAINER* Level503;
 		# } SHARE_ENUM_UNION;
-
-		if infostruct_share == 1:
+		if infostruct_share == 0:
+			buffer = SRVSVC.SHARE_INFO_0_CONTAINER(x)
+		elif infostruct_share == 1:
 			buffer = SRVSVC.SHARE_INFO_1_CONTAINER(x)
 
 		elif infostruct_share == 502:
@@ -1969,8 +2028,14 @@ class SRVSVC(RPCService):
 
 		# pointer to the SHARE_INFO_X_CONTAINER
 		r.pack_pointer(0x23456)
+		
+		if infostruct_share == 0:
+			s = SRVSVC.SHARE_INFO_0_CONTAINER(r)
+			s.Data = ['test\0','test2\0']
+			s.EntriesRead = int(len(s.Data))
+			s.pack()
 
-		if infostruct_share == 1:
+		elif infostruct_share == 1:
 			s = SRVSVC.SHARE_INFO_1_CONTAINER(r)
 			s.Data = ['test\0','es geht test\0','test2\0','es geht test\0']
 			s.EntriesRead = int(len(s.Data)/2)
