@@ -734,6 +734,22 @@ int main (int argc, char *argv[])
 	ev_signal_init(&d->signals->sighup,  sighup_cb, SIGHUP);
 	ev_signal_start(d->loop, &d->signals->sighup);
 	signal(SIGSEGV, sigsegv_backtrace_cb);
+
+	/* 
+	 * SIGPIPE 
+	 *  
+	 * Preventing the signal is hard.
+	 * From what I know, sigpipe can be raised issued by write/send
+	 * read/write, maybe even accept?, I do not know. 
+	 *  
+	 * Linux provides send(MSG_NOSIGNAL), 
+	 * Freebsd requires a setsockopt(SO_NOSIGPIPE) 
+	 * some documentation list MSG_NOSIGNAL as flag for recv too 
+	 * Therefore, to make things easy, we simply ignore SIGPIPE 
+	 * Given the alternatives I consider ignoring the best option
+	 */
+	signal(SIGPIPE, SIG_IGN);
+
 //	ev_signal_init(&d->signals->sigsegv,  sigsegv_cb, SIGSEGV);
 //	ev_signal_start(d->loop, &d->signals->sigsegv);
 //	signal(SIGSEGV, (sighandler_t) segv_handler);
