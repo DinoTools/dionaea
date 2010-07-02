@@ -385,7 +385,7 @@ void show_help(bool defaults)
 		{"L",   "log-domains=WHAT",     "which domains use * and ? wildcards, combine using ',', exclude using -",  0},
 		{"u",   "user=USER",            "switch to USER after startup", "keep current user"},
 		{"p",   "pid-file=FILE",        "write pid to file",    0},
-		{"r",   "chroot=DIR",           "chroot to DIR after startup",              "don't chroot"},
+		{"r",   "chroot=DIR",           "chroot to DIR after startup, warning: chrooting causes problems with logsql/sqlite",              "don't chroot"},
 		{"V",   "version",              "show version",                         ""},
 		{"w",   "workingdir=DIR",       "set the process' working dir to DIR",          PREFIX},
 	};
@@ -405,9 +405,10 @@ void show_help(bool defaults)
 	puts("\n\nexamples:\n"
 		 "\t# dionaea -l all,-debug -L '*'\n"
 		 "\t# dionaea -l all,-debug -L 'con*,py*'\n"
-		 "\t# dionaea -u nobody -g nogroup -r /opt/dionaea/ -w /opt/dionaea -p /opt/dionaea/var/dionaea.pid\n");
+		 "\t# dionaea -u nobody -g nogroup -w /opt/dionaea -p /opt/dionaea/var/run/dionaea.pid\n");
 
 }
+
 static void log_ev_fatal_error (const char *msg)
 {
 	g_error("%s",msg);
