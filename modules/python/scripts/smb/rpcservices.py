@@ -1677,6 +1677,7 @@ class SRVSVC(RPCService):
 	ops = {
 		0x0e: "NetShareAdd",
 		0x0f: "NetShareEnum",
+		0x10: "NetrShareGetInfo",
 		0x1f: "NetPathCanonicalize",
 		0x20: "NetPathCompare",
 #		0x22, "NetNameCanonicalize"
@@ -1760,6 +1761,38 @@ class SRVSVC(RPCService):
 				self.__packer.pack_long(self.EntriesRead)
 				# LPSHARE_INFO_1 Buffer
 				b = SRVSVC.SHARE_INFO_1(self.__packer)
+				b.Data = self.Data
+				b.MaxCount = self.EntriesRead
+				b.pack()
+
+
+	class SHARE_INFO_2_CONTAINER:
+		# 2.2.4.34 SHARE_INFO_2_CONTAINER
+ 		# 
+		# http://msdn.microsoft.com/en-us/library/cc247158%28PROT.13%29.aspx
+ 		# 
+		#typedef struct _SHARE_INFO_2_CONTAINER {
+		#  DWORD EntriesRead;
+		#  [size_is(EntriesRead)] LPSHARE_INFO_2 Buffer;
+		#} SHARE_INFO_2_CONTAINER, 
+		# *PSHARE_INFO_2_CONTAINER, 
+		# *LPSHARE_INFO_2_CONTAINER;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.EntriesRead = 0
+				self.Data = []
+				self.Pointer = 0x23456
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Ptr = self.__packer.unpack_pointer()
+				self.EntriesRead = self.__packer.unpack_long()
+				self.Buffer = self.__packer.unpack_pointer()
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				# EntriesRead
+				#self.__packer.pack_long(self.EntriesRead)
+				# LPSHARE_INFO_2 Buffer
+				b = SRVSVC.SHARE_INFO_2(self.__packer)
 				b.Data = self.Data
 				b.MaxCount = self.EntriesRead
 				b.pack()
@@ -1940,7 +1973,17 @@ class SRVSVC(RPCService):
 		def __init__(self, p):
 			self.__packer = p
 			if isinstance(self.__packer,ndrlib.Packer):
-				pass	
+				self.Data = []
+				self.Pointer = 0x99999
+				self.MaxCount = 0
+				self.Netname_pointer = 0x34567
+				self.Type = 0x00000000
+				self.Remark_pointer = 0x45678
+				self.Permissions = 0
+				self.Max_uses = 0xffffffff
+				self.Current_uses = 1
+				self.Path_pointer = 0x87654
+				self.Passwd_pointer = 0		
 			elif isinstance(self.__packer,ndrlib.Unpacker):
 				self.ref = self.__packer.unpack_pointer()
 				self.netname = self.__packer.unpack_pointer()
@@ -1954,6 +1997,19 @@ class SRVSVC(RPCService):
 				self.share_name = self.__packer.unpack_string()
 				self.share_comment = self.__packer.unpack_string()
 				self.share_path = self.__packer.unpack_string()
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_pointer(self.Netname_pointer) # netname
+				self.__packer.pack_long(self.Type) # STYPE_DISKTREE
+				self.__packer.pack_pointer(self.Remark_pointer) # remark
+				self.__packer.pack_long(self.Permissions) # permissions
+				self.__packer.pack_long(self.Max_uses) # max_uses
+				self.__packer.pack_long(self.Current_uses) # current_uses
+				self.__packer.pack_pointer(self.Path_pointer) # path
+				self.__packer.pack_pointer(self.Passwd_pointer) # passwd
+
+				for j in range(len(self.Data)):
+					self.__packer.pack_string_fix(self.Data[j].encode('utf16')[2:])
 
 	@classmethod
 	def handle_NetShareEnum(cls, p):
@@ -2153,7 +2209,41 @@ class SRVSVC(RPCService):
 		r.pack_long(0)
 		r.pack_long(0)
 		return r.get_buffer()
+		
+	@classmethod
+	def handle_NetrShareGetInfo(cls, p):
+		#3.1.4.10 NetrShareGetInfo (Opnum 16)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc247236%28PROT.13%29.aspx
+		#
+		#NET_API_STATUS NetrShareGetInfo(
+		#  [in, string, unique] SRVSVC_HANDLE ServerName,
+		#  [in, string] WCHAR* NetName,
+		#  [in] DWORD Level,
+		#  [out, switch_is(Level)] LPSHARE_INFO InfoStruct
+		#);
+		p = ndrlib.Unpacker(p.StubData)
+		ServerName = SRVSVC.SRVSVC_HANDLE(p)
+		NetName = p.unpack_string()
+		Level = p.unpack_long()
+		print("NetName %s Level %i" % (NetName,Level))
 
+		r = ndrlib.Packer()
+		r.pack_long(Level)
+
+		# pointer to the SHARE_INFO_X_CONTAINER
+		r.pack_pointer(0x23456)
+		
+		if Level == 2:
+			s = SRVSVC.SHARE_INFO_2_CONTAINER(r)
+			s.Data = [NetName.decode('utf16'),'es geht test\0','C:\0']
+			s.EntriesRead = int(len(s.Data)/3)
+			s.pack()
+
+		r.pack_long(0)
+		return r.get_buffer()
+		
+		
 class ssdpsrv(RPCService):
 	uuid = UUID('4b112204-0e19-11d3-b42b-0000f81feb9f').hex
 

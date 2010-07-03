@@ -243,7 +243,7 @@ class smbd(connection):
 			if h.Path == b'nmap-share-test\0':
 				r = SMB_Treeconnect_AndX_Response2()
 				rstatus = 0xc00000cc #STATUS_BAD_NETWORK_NAME
-			elif h.Path != b'IPC$\0':
+			elif h.Path == b'test\0' or h.Path == b'test2\0':
 				r = SMB_Treeconnect_AndX_Response2()
 				rstatus = 0xc0000022 #STATUS_ACCESS_DENIED
 
