@@ -297,11 +297,19 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 	{
 		itsc = it->data;
 		uint32_t start_offset = 0;
-		uint32_t end_offset = itsc->data->len-1;
+		uint32_t end_offset = itsc->data->len;
 
+		/* first element
+		 * if the wanted buffer starts within the element 
+		 * calculate where 
+		 */
 		if( itsc->stream_offset < start )
 			start_offset = start - itsc->stream_offset;
 
+		/* last element
+		 * if the wanted buffer ends within an element
+		 * calculate where
+		 */
 		if( itsc->stream_offset + itsc->data->len > end )
 			end_offset = end - itsc->stream_offset;
 
