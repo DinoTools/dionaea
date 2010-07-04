@@ -71,7 +71,7 @@ for i in libs.split():
 
 ext_modules=[
 	Extension("dionaea.core", 
-		['binding.pyx', 'module.c'], 
+		['binding.pyx', 'module.c', 'pyev.c'], 
 		language="c",
 		include_dirs=['../../include', '../../'] + [k for k in sorted(include_dir_dict)],
 		extra_compile_args=[k for k in sorted(extra_compile_dict)],

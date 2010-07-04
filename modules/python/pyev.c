@@ -47,6 +47,9 @@
 #include "Python.h"
 #include "structmember.h"
 
+#define LIBEV_VERSION "unknown"
+#define PYEV_VERSION "unknown"
+
 #if 0
 #ifdef NDEBUG
 #undef NDEBUG
@@ -75,7 +78,7 @@
 #undef EV_FORK_ENABLE
 #undef EV_ASYNC_ENABLE
 
-#include "libev/ev.c"
+#include <ev.h>
 
 #ifdef HAVE_LONG_LONG
 #define PYEV_T_DEV_RDEV T_LONGLONG
@@ -1027,7 +1030,7 @@ static PyTypeObject LoopType = {
 /*******************************************************************************
 * _WatcherType
 *******************************************************************************/
-
+void traceback(void);
 /* watcher callback */
 static void
 _watcher_cb(struct ev_loop *loop, ev_watcher *watcher, int events)
@@ -1059,7 +1062,8 @@ _watcher_cb(struct ev_loop *loop, ev_watcher *watcher, int events)
             py_result = PyObject_CallFunctionObjArgs(_watcher->callback,
                                                      _watcher, py_events, NULL);
             if (!py_result) {
-                PyErr_WriteUnraisable(_watcher->callback);
+                traceback();
+//                PyErr_WriteUnraisable(_watcher->callback);
             }
             else {
                 Py_DECREF(py_result);
@@ -2543,6 +2547,7 @@ for more information.");
 int
 set_signal(Signal *self, int signum)
 {
+/* 
     struct ev_loop *loop = ((_Watcher *)self)->loop->loop;
 
     if (signum <= 0 || signum >= EV_NSIG) {
@@ -2558,7 +2563,7 @@ set_signal(Signal *self, int signum)
     signals[signum - 1].loop = loop;
 
     ev_signal_set(&self->signal, signum);
-
+*/
     return 0;
 }
 
