@@ -410,7 +410,8 @@ void session_upload_new(struct incident *i)
 		{
 			/* ignore help field values */
 			if( strstr(name, "_fieldname") != NULL || 
-				strstr(name, "_ct") != NULL )
+				strstr(name, "_ct") != NULL ||
+				strcmp(name, "url") == 0)
 				continue;
 
 			if( strcmp(name, "user") == 0 )

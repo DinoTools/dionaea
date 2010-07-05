@@ -77,6 +77,7 @@ class RPCService:
 				if data is None:
 					data = b''
 				r.StubData = data
+				r.AllocHint = len(data)
 				r.CallID = p.CallID
 				r.FragLen = 24 + len(data)
 				print(data)

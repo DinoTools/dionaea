@@ -10,6 +10,7 @@ install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)
 	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/dionaea
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)
+	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/run/
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/binaries/
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/bistreams/
