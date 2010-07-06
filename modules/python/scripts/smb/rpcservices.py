@@ -964,97 +964,149 @@ class MGMT(RPCService):
 		4 : "inq_princ_name"
 	}
 # As I lack a way to verify the code, this is commented, maybe samba4 smbtorture can help out
-#	class handle_t:
-#		def __init__(self, p):
-#			self.__packer = p
-#			if isinstance(self.__packer,ndrlib.Packer):
-#				pass
-#
-#			elif isinstance(self.__packer,ndrlib.Unpacker):
-#				pass
-#
-#	class uuid_t:
-#		# typedef struct {
-#		# 	unsigned32          time_low;
-#		# 	unsigned16          time_mid;
-#		# 	unsigned16          time_hi_and_version;
-#		# 	unsigned8           clock_seq_hi_and_reserved;
-#		# 	unsigned8           clock_seq_low;
-#		# 	byte                node[6];
-#		# } uuid_t, *uuid_p_t;
-#		def __init__(self, p):
-#			self.__packer = p
-#			if isinstance(self.__packer,ndrlib.Packer):
-#				self.__packer = p
-#				self.time_low = 0
-#				self.time_mid = 1
-#				self.time_hi_and_version = 2
-#				self.clock_seq_hi_and_reserved = 3
-#				self.clock_seq_low = 4
-#				self.node = b"56789a"
-#
-#		def pack(self):
-#			if isinstance(self.__packer,ndrlib.Packer):
-#				self.__packer.pack_long(self.time_low)
-#				self.__packer.pack_short(self.time_mid)
-#				self.__packer.pack_short(self.time_hi_and_version)
-#				self.__packer.pack_small(self.clock_seq_hi_and_reserved)
-#				self.__packer.pack_small(self.clock_seq_low)
-#				self.__packer.pack_raw(self.node)
-#
-#	class rpc_if_id_t:
-#		# typedef struct {
-#		# 	uuid_t                  uuid;
-#		# 	unsigned16              vers_major;
-#		# 	unsigned16              vers_minor;
-#		# } rpc_if_id_t;
-#		# typedef [ptr] rpc_if_id_t *rpc_if_id_p_t;
-#		def __init__(self, p):
-#			self.__packer = p
-#			if isinstance(self.__packer,ndrlib.Packer):
-#				self.uuid = MGMT.uuid_t(p)
-#				self.vers_major = 0
-#				self.vers_minor = 1
-#		def pack(self):
-#			if isinstance(self.__packer,ndrlib.Packer):
-#				self.uuid.pack()
-#				self.__packer.pack_short(self.vers_major)
-#				self.__packer.pack_short(self.vers_minor)
-#
-#	class rpc_if_id_vector_t:
-#		# typedef struct {
-#		# 	unsigned32              count;
-#		# 	[size_is(count)]
-#		# 	rpc_if_id_p_t           if_id[*];
-#		# } rpc_if_id_vector_t;
-#		# typedef [ptr] rpc_if_id_vector_t *rpc_if_id_vector_p_t;
-#		def __init__(self, p):
-#			self.__packer = p
-#			if isinstance(self.__packer,ndrlib.Packer):
-#				self.count = 0
-#				self.if_id = []
-#		def pack(self):
-#			if isinstance(self.__packer,ndrlib.Packer):
-#				self.count = len(self.if_id)
-#				self.__packer.pack_long(self.count)
-#				for i in self.if_id:
-#					i.pack()
-#
-#	@classmethod
-#	def handle_inq_if_ids(cls, p):
-#		# 
-#		# void rpc__mgmt_inq_if_ids
-#		# (
-#		# 	[in]        handle_t                binding_handle,
-#		# 	[out]       rpc_if_id_vector_p_t    *if_id_vector,
-#		# 	[out]       error_status_t          *status
-#		# );
-#		r = ndrlib.Packer()
-#		r.pack_pointer(0x4747)
-#		v = MGMT.rpc_if_id_vector_t(r)
-#		v.if_id.append(MGMT.rpc_if_id_t(r))
-#		v.pack()
-#		return r.get_buffer()
+	class handle_t:
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.handle = self.__packer.unpack_short()
+
+	class uuid_t:
+		# typedef struct {
+		# 	unsigned32          time_low;
+		# 	unsigned16          time_mid;
+		# 	unsigned16          time_hi_and_version;
+		# 	unsigned8           clock_seq_hi_and_reserved;
+		# 	unsigned8           clock_seq_low;
+		# 	byte                node[6];
+		# } uuid_t, *uuid_p_t;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer = p
+				self.time_low = 0
+				self.time_mid = 1
+				self.time_hi_and_version = 2
+				self.clock_seq_hi_and_reserved = 3
+				self.clock_seq_low = 4
+				self.node = b"56789a"
+
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_long(self.time_low)
+				self.__packer.pack_short(self.time_mid)
+				self.__packer.pack_short(self.time_hi_and_version)
+				self.__packer.pack_small(self.clock_seq_hi_and_reserved)
+				self.__packer.pack_small(self.clock_seq_low)
+				self.__packer.pack_raw(self.node)
+		def __str__(self):
+			return "123455"
+
+	class rpc_if_id_t:
+		# typedef struct {
+		# 	uuid_t                  uuid;
+		# 	unsigned16              vers_major;
+		# 	unsigned16              vers_minor;
+		# } rpc_if_id_t;
+		# typedef [ptr] rpc_if_id_t *rpc_if_id_p_t;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.uuid = MGMT.uuid_t(p)
+				self.vers_major = 0
+				self.vers_minor = 1
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.uuid.pack()
+				self.__packer.pack_short(self.vers_major)
+				self.__packer.pack_short(self.vers_minor)
+		def show(self):
+			print("uuid %s %i.%i" % (self.uuid, self.vers_major, self.vers_minor))
+
+	class rpc_if_id_vector_t:
+		# typedef struct {
+		# 	unsigned32              count;
+		# 	[size_is(count)]
+		# 	rpc_if_id_p_t           if_id[*];
+		# } rpc_if_id_vector_t;
+		# typedef [ptr] rpc_if_id_vector_t *rpc_if_id_vector_p_t;
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.count = 0
+				self.if_id = []
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.count = len(self.if_id)
+				self.__packer.pack_long(self.count)
+				self.__packer.pack_long(self.count) # maybe array size?
+				# pointers ...
+				for i in self.if_id:
+					self.__packer.pack_pointer(65)
+				# the if_id_vectors
+				for i in self.if_id:
+					i.pack()
+
+		def show(self, indent=0):
+			print("rpc_if_id_vector_t")
+			print("count %i", len(self.if_id))
+			for i in self.if_id:
+				i.show()
+	@classmethod
+	def handle_inq_if_ids(cls, p):
+		# 
+		# void rpc__mgmt_inq_if_ids
+		# (
+		# 	[in]        handle_t                binding_handle,
+		# 	[out]       rpc_if_id_vector_p_t    *if_id_vector,
+		# 	[out]       error_status_t          *status
+		# );
+		r = ndrlib.Packer()
+		r.pack_pointer(0x4747)
+		v = MGMT.rpc_if_id_vector_t(r)
+		v.if_id.append(MGMT.rpc_if_id_t(r))
+		v.show()
+		v.pack()
+		r.pack_long(0) # return value
+		return r.get_buffer()
+
+	@classmethod
+	def handle_inq_stats(cls, p):
+		pass
+
+	@classmethod
+	def handle_is_server_listening(cls, p):
+		pass
+
+	@classmethod
+	def handle_stop_server_listening(cls, p):
+		pass
+
+	@classmethod
+	def handle_inq_princ_name(cls, p):
+		# void rpc__mgmt_inq_princ_name
+		# (
+		#     [in]        handle_t                binding_handle,
+		#     [in]        unsigned32              authn_proto,
+		#     [in]        unsigned32              princ_name_size,
+		#     [out, string, size_is(princ_name_size)]       
+		#                 char                    princ_name[],
+		#     [out]       error_status_t          *status
+		# );
+		x = ndrlib.Unpacker(p.StubData)
+		handle = MGMT.handle_t(x)
+#		authn_proto = x.unpack_long()
+#		princ_name_size = x.unpack_long()
+
+		r = ndrlib.Packer()
+		r.pack_string(b"oemcomputer")
+#		r.pack_long(0)
+#		r.pack_long(0)
+		return r.get_buffer()
+
+
+
 
 		
 class samr(RPCService):
