@@ -40,7 +40,7 @@ from .include.smbfields import *
 from .include.gssapifields import GSSAPI,SPNEGO, NegTokenTarg
 from .include.ntlmfields import NTLMSSP_Header, NTLM_Negotiate, NTLM_Challenge
 from .include.packet import Raw
-from .include.asn1.ber import BER_len_dec, BER_len_enc, BER_identifier_dec, BER_CLASS_APP
+from .include.asn1.ber import BER_len_dec, BER_len_enc, BER_identifier_dec, BER_CLASS_INDENTIFIER, BER_identifier_enc
 
 
 smblog = logging.getLogger('SMB')
@@ -194,7 +194,7 @@ class smbd(connection):
 				sb = p.getlayer(SMB_Sessionsetup_ESEC_AndX_Request).SecurityBlob
 				cls,pc,tag,sb = BER_identifier_dec(sb)
 				l,sb = BER_len_dec(sb)
-				if not (cls == BER_CLASS_APP and pc > 0 and tag == 0):
+				if not (cls == int(BER_CLASS_INDENTIFIER.get('BER_CLASS_APP')) and pc > 0 and tag == 0):
 					if sb.startswith(b"NTLMSSP"):
 						# GSS-SPNEGO
 						ntlmssp = NTLMSSP_Header(a)
@@ -228,7 +228,8 @@ class smbd(connection):
 						negtokentarg.responseToken = rntlmssp.build()
 						negtokentarg.mechListMIC = None
 						raw = negtokentarg.build()
-						r.SecurityBlob = b'\xa1' + BER_len_enc(len(raw)) + raw
+						#r.SecurityBlob = b'\xa1' + BER_len_enc(len(raw)) + raw
+						r.SecurityBlob = BER_identifier_enc('BER_CLASS_CON',1,1) + BER_len_enc(len(raw)) + raw
 						rstatus = 0xc0000016 # STATUS_MORE_PROCESSING_REQUIRED
 			elif p.haslayer(SMB_Sessionsetup_AndX_Request2):
 				r = SMB_Sessionsetup_AndX_Response2()

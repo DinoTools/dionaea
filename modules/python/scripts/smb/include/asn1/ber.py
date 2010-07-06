@@ -14,11 +14,12 @@ from .asn1 import ASN1_Decoding_Error,ASN1_Encoding_Error,ASN1_BadTag_Decoding_E
 logger = logging.getLogger('ber')
 logger.setLevel(logging.DEBUG)
 
-BER_CLASS_UNI = 0
-BER_CLASS_APP = 1
-BER_CLASS_CON = 2
-BER_CLASS_PRI = 3
-BER_CLASS_ANY = 99
+BER_CLASS_INDENTIFIER = {
+	'BER_CLASS_UNI' : '0',
+	'BER_CLASS_APP' : '1',
+	'BER_CLASS_CON' : '2',
+	'BER_CLASS_PRI' : '3'
+}
 
 ##################
 ## BER encoding ##
@@ -63,8 +64,45 @@ class BER_Decoding_Error(ASN1_Decoding_Error):
 class BER_BadTag_Decoding_Error(BER_Decoding_Error, ASN1_BadTag_Decoding_Error):
     pass
 
-def BER_identifier_enc(l):
-    pass
+def BER_identifier_enc(l, pr=0, num=0):
+	ident = BER_CLASS_INDENTIFIER.get(l)
+	#print ("ident %s" % ident)
+	if ident != None :
+		cls = int(ident) & 0x03
+		cls <<=6
+		#print ("cls %i" %cls)
+	pc = pr & 0x01
+	pc <<=5
+	#print ("pc %i" % pc) 
+
+	if num <= 30:
+		tag = num & 0x1f
+		#print ("tag %i" %tag)
+		s = cls | pc | tag
+		#print ("s %i" %s)
+		x = struct.pack("B", int(s))
+		return(x)
+	else:
+		x = b""
+		x1 = b""
+		tag = 0x1f
+		s = cls | pc | tag
+		x = struct.pack("B", int(s)) # leading octet
+			
+		binaries = bin(num)[2:]
+		octet = int(len(binaries) / 7)
+		if octet == 0: # only 1 leading and 1 following octet
+			x1 = struct.pack("b", int(num&0x7f))
+		else :
+			for i in range(octet+1): # 1 leading and more than 1 following octet
+				if i == 0 :
+					x1 = struct.pack("b", int(num&0x7f))
+				else:
+					temp = int(num&0x7f)
+					x1 = struct.pack("B", int(temp|0x80)) + x1
+				num >>= 7
+		return(x+x1)	
+		
 
 def BER_identifier_dec(l):
     off = 0
@@ -80,10 +118,9 @@ def BER_identifier_dec(l):
         while off < len(l):
             val = l[off]
             off += 1
-            tag &= 1
             tag <<= 7
-            tag |= t & 0x7f
-            if not (t & 0x80):
+            tag |= val & 0x7f
+            if not (val & 0x80):
                 break
     return (cls,pc,tag,l[off:])
 
