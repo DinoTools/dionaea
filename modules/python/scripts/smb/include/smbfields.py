@@ -902,6 +902,15 @@ class SMB_Treeconnect_AndX_Response(Packet):
 		StrNullField("NativeFilesystem",""),
 	]
 
+# Used when the error's return is needed
+class SMB_Treeconnect_AndX_Response2(Packet):
+	name="SMB Treeconnect AndX Response2"
+	smb_cmd = SMB_COM_TREE_CONNECT_ANDX #0x75
+	fields_desc = [
+		ByteField("WordCount",0),
+		LEShortField("ByteCount",0),
+	]
+
 # page 76
 class SMB_NTcreate_AndX_Request(Packet):
 	name = "SMB NTcreate AndX Request"
@@ -1396,6 +1405,7 @@ bind_bottom_up(SMB_Header, SMB_Sessionsetup_ESEC_AndX_Request, Command=lambda x:
 bind_bottom_up(SMB_Header, SMB_Treedisconnect, Command=lambda x: x==0x71)
 bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Request, Command=lambda x: x==0x75, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Response, Command=lambda x: x==0x75, Flags=lambda x: x&0x80)
+bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Response2, Command=lambda x: x==0x75, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Request, Command=lambda x: x==0xa2, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Response, Command=lambda x: x==0xa2, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Trans_Request, Command=lambda x: x==0x25, Flags=lambda x: not x&0x80)
@@ -1433,6 +1443,7 @@ bind_top_down(SMB_Header, SMB_Negociate_Protocol_Response, Command=0x72)
 bind_top_down(SMB_Header, SMB_Sessionsetup_AndX_Response2, Command=0x73)
 bind_top_down(SMB_Header, SMB_Sessionsetup_ESEC_AndX_Response, Command=0x73)
 bind_top_down(SMB_Header, SMB_Treeconnect_AndX_Response, Command=0x75)
+bind_top_down(SMB_Header, SMB_Treeconnect_AndX_Response2, Command=0x75)
 bind_top_down(SMB_Header, SMB_Treedisconnect, Command=0x71)
 bind_top_down(SMB_Header, SMB_NTcreate_AndX_Response, Command=0xa2)
 bind_top_down(SMB_Header, SMB_Write_AndX_Response, Command=0x2f)
