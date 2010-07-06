@@ -40,7 +40,7 @@ from .include.smbfields import *
 from .include.gssapifields import GSSAPI,SPNEGO, NegTokenTarg
 from .include.ntlmfields import NTLMSSP_Header, NTLM_Negotiate, NTLM_Challenge
 from .include.packet import Raw
-from .include.asn1.ber import BER_len_dec, BER_len_enc, BER_identifier_dec, BER_CLASS_APP
+from .include.asn1.ber import BER_len_dec, BER_len_enc, BER_identifier_dec, BER_CLASS_APP, BER_CLASS_CON
 
 
 smblog = logging.getLogger('SMB')
@@ -192,48 +192,74 @@ class smbd(connection):
 				r = SMB_Sessionsetup_ESEC_AndX_Response()
 				ntlmssp = None
 				sb = p.getlayer(SMB_Sessionsetup_ESEC_AndX_Request).SecurityBlob
-				cls,pc,tag,sb = BER_identifier_dec(sb)
-				l,sb = BER_len_dec(sb)
-				if not (cls == BER_CLASS_APP and pc > 0 and tag == 0):
-					if sb.startswith(b"NTLMSSP"):
-						# GSS-SPNEGO
-						ntlmssp = NTLMSSP_Header(a)
-					elif sb.startswith(b"\x04\x04") or sb.startswith(b"\x05\x04"):
-						#GSSKRB5 CFX wrapping
-						pass
-				else:
-					gssapi = GSSAPI(sb)
 
-					sb = gssapi.getlayer(Raw).load
-					cls,pc,tag,sb = BER_identifier_dec(sb)
-					l,sb = BER_len_dec(sb)
-					spnego = SPNEGO(sb)
-					spnego.show()
-					sb = spnego.NegotiationToken.mechToken.__str__()
-					cls,pc,tag,sb = BER_identifier_dec(sb)
-					l,sb = BER_len_dec(sb)
+				if sb.startswith(b"NTLMSSP"):
+					# GSS-SPNEGO without OID
 					ntlmssp = NTLMSSP_Header(sb)
 					ntlmssp.show()
-				if False or ntlmssp is not None:
-					if ntlmssp.MessageType == 1:
-						r.Action = 0
-						ntlmnegotiate = ntlmssp.getlayer(NTLM_Negotiate)
-						rntlmssp = NTLMSSP_Header(MessageType=2)
-						rntlmchallenge = NTLM_Challenge(NegotiateFlags=ntlmnegotiate.NegotiateFlags)
-						rntlmchallenge.TargetInfoFields.Offset = rntlmchallenge.TargetNameFields.Offset = 0x30
-						rntlmchallenge.ServerChallenge = b"\xa4\xdf\xe8\x0b\xf5\xc6\x1e\x3a"
-						rntlmssp = rntlmssp / rntlmchallenge
-						rntlmssp.show()
-						negtokentarg = NegTokenTarg(negResult=1,supportedMech='1.3.6.1.4.1.311.2.2.10')
-						negtokentarg.responseToken = rntlmssp.build()
-						negtokentarg.mechListMIC = None
-						raw = negtokentarg.build()
+					# FIXME what is a proper reply?
+					# currently there windows calls Sessionsetup_AndX2_request after this one with bad reply
+				elif sb.startswith(b"\x04\x04") or sb.startswith(b"\x05\x04"):
+					# GSSKRB5 CFX wrapping
+					# FIXME is this relevant at all?
+					pass
+				else:
+					# (hopefully) the SecurityBlob is prefixed with 
+					# * BER encoded identifier
+					# * BER encoded length of the data
+					cls,pc,tag,sb = BER_identifier_dec(sb)
+					l,sb = BER_len_dec(sb)
+					if cls == BER_CLASS_APP and pc > 0 and tag == 0:
+						# NTLM NEGOTIATE
+						# 
+						# reply NTML CHALLENGE
+						# SMB_Header.Status = STATUS_MORE_PROCESSING_REQUIRED
+						# SMB_Sessionsetup_ESEC_AndX_Response.SecurityBlob is 
+						# \xa1 BER_length encoded prefixed NegTokenTarg where 
+						# NegTokenTarg.responseToken is NTLM_Header / NTLM_Challenge 
+						gssapi = GSSAPI(sb)
+						sb = gssapi.getlayer(Raw).load
+						cls,pc,tag,sb = BER_identifier_dec(sb)
+						l,sb = BER_len_dec(sb)
+						spnego = SPNEGO(sb)
+						spnego.show()
+						sb = spnego.NegotiationToken.mechToken.__str__()
+						cls,pc,tag,sb = BER_identifier_dec(sb)
+						l,sb = BER_len_dec(sb)
+						ntlmssp = NTLMSSP_Header(sb)
+						ntlmssp.show()
+						if ntlmssp.MessageType == 1:
+							r.Action = 0
+							ntlmnegotiate = ntlmssp.getlayer(NTLM_Negotiate)
+							rntlmssp = NTLMSSP_Header(MessageType=2)
+							rntlmchallenge = NTLM_Challenge(NegotiateFlags=ntlmnegotiate.NegotiateFlags)
+							rntlmchallenge.TargetInfoFields.Offset = rntlmchallenge.TargetNameFields.Offset = 0x30
+							rntlmchallenge.ServerChallenge = b"\xa4\xdf\xe8\x0b\xf5\xc6\x1e\x3a"
+							rntlmssp = rntlmssp / rntlmchallenge
+							rntlmssp.show()
+							negtokentarg = NegTokenTarg(negResult=1,supportedMech='1.3.6.1.4.1.311.2.2.10')
+							negtokentarg.responseToken = rntlmssp.build()
+							negtokentarg.mechListMIC = None
+							raw = negtokentarg.build()
+							r.SecurityBlob = b'\xa1' + BER_len_enc(len(raw)) + raw
+							rstatus = 0xc0000016 # STATUS_MORE_PROCESSING_REQUIRED
+					elif cls == BER_CLASS_CON and pc == 1 and tag == 1:
+						# NTLM AUTHENTICATE
+						# 
+						# reply 
+						# \xa1 BER_length NegTokenTarg('accepted')
+						negtokentarg = NegTokenTarg(sb)
+						negtokentarg.show()
+						ntlmssp = NTLMSSP_Header(negtokentarg.responseToken.val)
+						ntlmssp.show()
+						rnegtokentarg = NegTokenTarg(negResult=0, supportedMech=None)
+						raw = rnegtokentarg.build()
 						r.SecurityBlob = b'\xa1' + BER_len_enc(len(raw)) + raw
-						rstatus = 0xc0000016 # STATUS_MORE_PROCESSING_REQUIRED
 			elif p.haslayer(SMB_Sessionsetup_AndX_Request2):
 				r = SMB_Sessionsetup_AndX_Response2()
 			else:
 				smblog.warn("Unknown Session Setup Type used")
+
 		elif Command == SMB_COM_TREE_CONNECT_ANDX:
 			r = SMB_Treeconnect_AndX_Response()
 		elif Command == SMB_COM_TREE_DISCONNECT:
