@@ -40,7 +40,7 @@ from .include.smbfields import *
 from .include.gssapifields import GSSAPI,SPNEGO, NegTokenTarg
 from .include.ntlmfields import NTLMSSP_Header, NTLM_Negotiate, NTLM_Challenge
 from .include.packet import Raw
-from .include.asn1.ber import BER_len_dec, BER_len_enc, BER_identifier_dec, BER_CLASS_APP, BER_CLASS_CON
+from .include.asn1.ber import BER_len_dec, BER_len_enc, BER_identifier_dec, BER_CLASS_APP, BER_CLASS_CON,BER_identifier_enc
 
 
 smblog = logging.getLogger('SMB')
@@ -241,7 +241,8 @@ class smbd(connection):
 							negtokentarg.responseToken = rntlmssp.build()
 							negtokentarg.mechListMIC = None
 							raw = negtokentarg.build()
-							r.SecurityBlob = b'\xa1' + BER_len_enc(len(raw)) + raw
+							#r.SecurityBlob = b'\xa1' + BER_len_enc(len(raw)) + raw
+							r.SecurityBlob = BER_identifier_enc(BER_CLASS_CON,1,1) + BER_len_enc(len(raw)) + raw
 							rstatus = 0xc0000016 # STATUS_MORE_PROCESSING_REQUIRED
 					elif cls == BER_CLASS_CON and pc == 1 and tag == 1:
 						# NTLM AUTHENTICATE
@@ -254,7 +255,8 @@ class smbd(connection):
 						ntlmssp.show()
 						rnegtokentarg = NegTokenTarg(negResult=0, supportedMech=None)
 						raw = rnegtokentarg.build()
-						r.SecurityBlob = b'\xa1' + BER_len_enc(len(raw)) + raw
+						#r.SecurityBlob = b'\xa1' + BER_len_enc(len(raw)) + raw
+						r.SecurityBlob = BER_identifier_enc(BER_CLASS_CON,1,1) + BER_len_enc(len(raw)) + raw
 			elif p.haslayer(SMB_Sessionsetup_AndX_Request2):
 				r = SMB_Sessionsetup_AndX_Response2()
 			else:

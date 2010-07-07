@@ -14,12 +14,11 @@ from .asn1 import ASN1_Decoding_Error,ASN1_Encoding_Error,ASN1_BadTag_Decoding_E
 logger = logging.getLogger('ber')
 logger.setLevel(logging.DEBUG)
 
-BER_CLASS_INDENTIFIER = {
-	'BER_CLASS_UNI' : '0',
-	'BER_CLASS_APP' : '1',
-	'BER_CLASS_CON' : '2',
-	'BER_CLASS_PRI' : '3'
-}
+BER_CLASS_UNI = 0
+BER_CLASS_APP = 1
+BER_CLASS_CON = 2
+BER_CLASS_PRI = 3
+BER_CLASS_ANY = 99
 
 ##################
 ## BER encoding ##
@@ -65,7 +64,7 @@ class BER_BadTag_Decoding_Error(BER_Decoding_Error, ASN1_BadTag_Decoding_Error):
     pass
 
 def BER_identifier_enc(l, pr=0, num=0):
-	ident = BER_CLASS_INDENTIFIER.get(l)
+	ident = l
 	#print ("ident %s" % ident)
 	if ident != None :
 		cls = int(ident) & 0x03
