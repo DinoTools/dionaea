@@ -215,7 +215,7 @@ class smbd(connection):
 						# reply NTML CHALLENGE
 						# SMB_Header.Status = STATUS_MORE_PROCESSING_REQUIRED
 						# SMB_Sessionsetup_ESEC_AndX_Response.SecurityBlob is 
-						# \xa1 BER_length encoded prefixed NegTokenTarg where 
+						# \xa1 BER_length NegTokenTarg where 
 						# NegTokenTarg.responseToken is NTLM_Header / NTLM_Challenge 
 						gssapi = GSSAPI(sb)
 						sb = gssapi.getlayer(Raw).load
