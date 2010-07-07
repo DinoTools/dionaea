@@ -262,6 +262,16 @@ class smbd(connection):
 
 		elif Command == SMB_COM_TREE_CONNECT_ANDX:
 			r = SMB_Treeconnect_AndX_Response()
+			h = p.getlayer(SMB_Treeconnect_AndX_Request)
+			print ("Service : %s" % h.Path)
+			
+			# specific for NMAP smb-enum-shares.nse support
+			if h.Path == b'nmap-share-test\0':
+				r = SMB_Treeconnect_AndX_Response2()
+				rstatus = 0xc00000cc #STATUS_BAD_NETWORK_NAME
+			elif h.Path == b'test\0' or h.Path == b'test2\0':
+				r = SMB_Treeconnect_AndX_Response2()
+				rstatus = 0xc0000022 #STATUS_ACCESS_DENIED
 		elif Command == SMB_COM_TREE_DISCONNECT:
 			r = SMB_Treedisconnect()
 		elif Command == SMB_COM_CLOSE:
