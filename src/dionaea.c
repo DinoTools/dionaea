@@ -119,18 +119,18 @@ bool options_parse(struct options* options, int argc, char* argv[])
 		int option_index = 0;
 		static struct option long_options[] = {
 			{ "config",         1, 0, 'c'},
-			{ "daemonize",      1, 0, 'D'},
+			{ "daemonize",      0, 0, 'D'},
 			{ "group",          1, 0, 'g'},
 			{ "garbage",        1, 0, 'G'},
 			{ "help",           0, 0, 'h'},
 			{ "large-help",     0, 0, 'H'},
-			{ "log-levels",     0, 0, 'l'},
-			{ "log-domains",    0, 0, 'L'},
+			{ "log-levels",     1, 0, 'l'},
+			{ "log-domains",    1, 0, 'L'},
 			{ "user",           1, 0, 'u'},
 			{ "chroot",         1, 0, 'r'},
 			{ "pid-file",       1, 0, 'p'},
 			{ "version",        0, 0, 'V'},
-			{ "workingdir",     0, 0, 'w'},
+			{ "workingdir",     1, 0, 'w'},
 			{ 0, 0, 0, 0}
 		};
 
