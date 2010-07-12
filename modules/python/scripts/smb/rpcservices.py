@@ -1878,7 +1878,7 @@ class SRVSVC(RPCService):
 		0x10: "NetrShareGetInfo",
 		0x1f: "NetPathCanonicalize",
 		0x20: "NetPathCompare",
-#		0x22, "NetNameCanonicalize"
+		0x22: "NetNameCanonicalize"
 	}
 	vulns  = { 
 		0x1f: "MS08-67",
@@ -2438,6 +2438,37 @@ class SRVSVC(RPCService):
 			s.EntriesRead = int(len(s.Data)/3)
 			s.pack()
 
+		r.pack_long(0)
+		return r.get_buffer()
+
+	@classmethod
+	def handle_NetNameCanonicalize (cls, p):
+		#3.1.4.33 NetprNameCanonicalize (Opnum 34)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc247261%28PROT.13%29.aspx
+		#
+		#NET_API_STATUS NetprNameCanonicalize(
+		#  [in, string, unique] SRVSVC_HANDLE ServerName,
+		#  [in, string] WCHAR* Name,
+		#  [out, size_is(OutbufLen)] WCHAR* Outbuf,
+		#  [in, range(0,64000)] DWORD OutbufLen,
+		#  [in] DWORD NameType,
+		#  [in] DWORD Flags
+		#);
+		
+		# Combination of metasploit ms08-067 exploit + wireshark cant parse this request correct, so this function have not fully tested
+		p = ndrlib.Unpacker(p.StubData)
+		ServerName = SRVSVC.SRVSVC_HANDLE(p)
+		Name = p.unpack_string()
+		Outbuflen = p.unpack_long()
+		NameType = p.unpack_long()
+		Flags = p.unpack_long()
+		print("ServerName %s Name %s Outbuflen %i Nametype %i Flags %i" % (ServerName, Name, Outbuflen , NameType, Flags))
+
+		r = ndrlib.Packer()
+		r.pack_pointer(0)
+		r.pack_string(Name)
+	
 		r.pack_long(0)
 		return r.get_buffer()
 		
