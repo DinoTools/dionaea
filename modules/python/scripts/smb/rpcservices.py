@@ -27,7 +27,7 @@
 
 import logging
 from uuid import UUID
-
+from time import time, localtime, altzone
 
 from dionaea import ndrlib
 from .include.smbfields import DCERPC_Header, DCERPC_Response
@@ -1876,6 +1876,7 @@ class SRVSVC(RPCService):
 		0x0e: "NetShareAdd",
 		0x0f: "NetShareEnum",
 		0x10: "NetrShareGetInfo",
+		0x1c: "NetrRemoteTOD",
 		0x1f: "NetPathCanonicalize",
 		0x20: "NetPathCompare",
 		0x22: "NetNameCanonicalize"
@@ -2469,6 +2470,60 @@ class SRVSVC(RPCService):
 		r.pack_pointer(0)
 		r.pack_string(Name)
 	
+		r.pack_long(0)
+		return r.get_buffer()
+
+	@classmethod
+	def handle_NetrRemoteTOD(cls, p):
+		#3.1.4.21 NetrRemoteTOD (Opnum 28)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc247248%28v=PROT.13%29.aspx
+		#
+		#NET_API_STATUS NetrRemoteTOD(
+		#  [in, string, unique] SRVSVC_HANDLE ServerName,
+		#  [out] LPTIME_OF_DAY_INFO* BufferPtr
+		#);
+		p = ndrlib.Unpacker(p.StubData)
+		ServerName = SRVSVC.SRVSVC_HANDLE(p)
+
+		r = ndrlib.Packer()
+
+		# pointer to the LPTIME_OF_DAY_INFO* BufferPtr
+		r.pack_pointer(0x23456)
+		
+		#typedef struct TIME_OF_DAY_INFO {
+		#  DWORD tod_elapsedt;
+		#  DWORD tod_msecs;
+		#  DWORD tod_hours;
+		#  DWORD tod_mins;
+		#  DWORD tod_secs;
+		#  DWORD tod_hunds;
+		#  long tod_timezone;
+		#  DWORD tod_tinterval;
+		#  DWORD tod_day;
+		#  DWORD tod_month;
+		#  DWORD tod_year;
+		#  DWORD tod_weekday;
+		#} TIME_OF_DAY_INFO, 
+		# *PTIME_OF_DAY_INFO, 
+		# *LPTIME_OF_DAY_INFO;
+
+		ctime = localtime()
+		#Eg, time.struct_time(tm_year=2010, tm_mon=7, tm_mday=13, tm_hour=2, tm_min=12, tm_sec=27, tm_wday=1, tm_yday=194, tm_isdst=0)
+
+		r.pack_long(int(time()))#elapsedt
+		r.pack_long(515893)	#msecs
+		r.pack_long(ctime[3])	#hours
+		r.pack_long(ctime[4])   #mins
+		r.pack_long(ctime[5])   #secs
+		r.pack_long(59) 	#hunds
+		r.pack_long_signed(int(altzone/60),) #timezone
+		r.pack_long(310) 	#tinterval
+		r.pack_long(ctime[2])   #day
+		r.pack_long(ctime[1])   #month
+		r.pack_long(ctime[0])   #year
+		r.pack_long(ctime[6])   #weekday
+
 		r.pack_long(0)
 		return r.get_buffer()
 		
