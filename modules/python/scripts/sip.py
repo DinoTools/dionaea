@@ -32,3 +32,11 @@ import logging
 import time
 import random
 import hashlib
+
+from dionaea.core import connection, ihandler, g_dionaea, incident
+
+logger = logging.getLogger('sip')
+logger.setLevel(logging.DEBUG)
+
+# Shortcut to sip config
+g_sipconfig = g_dionaea.config()['modules']['python']['sip']
