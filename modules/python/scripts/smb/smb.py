@@ -199,6 +199,17 @@ class smbd(connection):
 					ntlmssp.show()
 					# FIXME what is a proper reply?
 					# currently there windows calls Sessionsetup_AndX2_request after this one with bad reply
+					if ntlmssp.MessageType == 1:
+						r.Action = 0
+						ntlmnegotiate = ntlmssp.getlayer(NTLM_Negotiate)
+						rntlmssp = NTLMSSP_Header(MessageType=2)
+						rntlmchallenge = NTLM_Challenge(NegotiateFlags=ntlmnegotiate.NegotiateFlags)
+						rntlmchallenge.ServerChallenge = b"\xa4\xdf\xe8\x0b\xf5\xc6\x1e\x3a"
+						rntlmssp = rntlmssp / rntlmchallenge
+						rntlmssp.show()
+						raw = rntlmssp.build()
+						r.SecurityBlob = raw
+						rstatus = 0xc0000016 # STATUS_MORE_PROCESSING_REQUIRED
 				elif sb.startswith(b"\x04\x04") or sb.startswith(b"\x05\x04"):
 					# GSSKRB5 CFX wrapping
 					# FIXME is this relevant at all?
