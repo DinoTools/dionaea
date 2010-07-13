@@ -76,6 +76,12 @@ class RPCService:
 
 				if data is None:
 					data = b''
+				
+				#for metasploit OS type 'Windows XP Service Pack 2+" 
+				#comment 2 lines belows if want to be detected as 'SP 0/1'
+				if opname == "NetNameCanonicalize":
+					r.PacketType = 3
+					
 				r.StubData = data
 				r.AllocHint = len(data)
 				r.CallID = p.CallID
@@ -2557,7 +2563,6 @@ class SRVSVC(RPCService):
 		#  [in] DWORD Flags
 		#);
 		
-		# Combination of metasploit ms08-067 exploit + wireshark cant parse this request correct, so this function have not fully tested
 		p = ndrlib.Unpacker(p.StubData)
 		ServerName = SRVSVC.SRVSVC_HANDLE(p)
 		Name = p.unpack_string()
@@ -2567,10 +2572,21 @@ class SRVSVC(RPCService):
 		print("ServerName %s Name %s Outbuflen %i Nametype %i Flags %i" % (ServerName, Name, Outbuflen , NameType, Flags))
 
 		r = ndrlib.Packer()
-		r.pack_pointer(0)
-		r.pack_string(Name)
-	
+		
+		# Metasploit smb fingerprinting for OS type
+		#https://www.metasploit.com/redmine/projects/framework/repository/revisions/8941/entry/lib/msf/core/exploit/smb.rb#L324
+		
+		# for 'Windows XP Service Pack 0 / 1'
+		# to enable this, simply uncomment the 3 lines below and comment part SP2
+		#r.pack_pointer(0)
+		#r.pack_string(Name)
+		#r.pack_long(0)
+		
+		# for 'Windows XP Service Pack 2+'
+		# to disable this, comment the 2 lines below and 2 lines at processrequest()
+		r.pack_pointer(0x000006f7)
 		r.pack_long(0)
+		
 		return r.get_buffer()
 
 	@classmethod
