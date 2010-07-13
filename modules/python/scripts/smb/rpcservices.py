@@ -1859,6 +1859,106 @@ class sfcapi(RPCService):
 class spoolss(RPCService):
 	uuid = UUID('12345678-1234-abcd-ef00-0123456789ab').hex
 
+	ops = {
+		0x00: "EnumPrinters"
+
+	}
+
+	class PRINTER_INFO_1 :
+		# PRINTER_INFO_1 Structure
+		# 
+		# http://msdn.microsoft.com/en-us/library/dd162844%28v=VS.85%29.aspx
+		# 
+		#typedef struct _PRINTER_INFO_1 {
+		#  DWORD  Flags;
+		#  LPTSTR pDescription;
+		#  LPTSTR pName;
+		#  LPTSTR pComment;
+		#} PRINTER_INFO_1, *PPRINTER_INFO_1;
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Flags = 0x00018000
+				self.Buffer = ''
+				self.Buffersize = 0
+				self.Offset = 0
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				self.__packer.pack_pointer(self.Flags)
+				
+				# self.Offset is the distance of the string count from the end of PRINTER_INFO_1 buffer. To count the distance of the string from the start of PRINTER_INFO_1 buffer, self.Buffersize - self offset needed
+				for j in range(len(self.Buffer)):
+					count = 0
+					count = len(self.Buffer) - j - 1
+					self.Offset = self.Offset + 2*len(self.Buffer[count])
+					self.__packer.pack_long(self.Buffersize-self.Offset)					
+				
+				for i in range(len(self.Buffer)):
+					
+					self.__packer.pack_raw(self.Buffer[i].encode('utf16')[2:])
+		def size(self):
+			size = 4 + 4*len(self.Buffer) + 2*(sum([len(x) for x in self.Buffer]))
+			print ("PRINTER_INFO_1 size %i" % size)
+			return size
+
+	@classmethod
+	def handle_EnumPrinters (cls, p):
+		#EnumPrinters Function
+		#
+		#http://msdn.microsoft.com/en-us/library/dd162692%28VS.85%29.aspx
+		#
+		#BOOL EnumPrinters(
+		#  __in   DWORD Flags,
+		#  __in   LPTSTR Name,
+		#  __in   DWORD Level,
+		#  __out  LPBYTE pPrinterEnum,
+		#  __in   DWORD cbBuf,
+		#  __out  LPDWORD pcbNeeded,
+		#  __out  LPDWORD pcReturned
+		#);
+		
+		p = ndrlib.Unpacker(p.StubData)
+		Flags = p.unpack_long()
+		Name = p.unpack_pointer()
+		Level = p.unpack_long()
+		Pointer = p.unpack_pointer()
+		cbBuf = p.unpack_long()
+		
+		print("Flags %s Name %s Level %i cbBuf %i " % (Flags, Name, Level, cbBuf))
+
+		r = ndrlib.Packer()
+		# Pointer to PRINTER_INFO_X buffer
+		r.pack_pointer(0x6b254)
+		
+		# PRINTER_INFO_1 Buffer
+		a = spoolss.PRINTER_INFO_1(r)
+			
+		# these string are the default response of windows xp
+		# 'Windows NT Remote Printers' need for msf fingerprinting OS language as 'English version'
+		#https://www.metasploit.com/redmine/projects/framework/repository/revisions/8941/entry/lib/msf/core/exploit/smb.rb#L396
+			
+		a.Buffer = ['Internet URL Printers\0','Windows NT Internet Provider\0','Windows NT Internet Printing\0','Remote Printers\0','Windows NT Remote Printers\0','Microsoft Windows Network\0','Locally Connected Printers\0','Windows NT Local Print Providor\0','Windows NT Local Printers\0']
+		a.Buffersize = a.size()
+		
+		if Level == 1 and cbBuf != 0:
+			r.pack_long(a.Buffersize)
+			a.pack()
+		
+			r.pack_long(a.Buffersize)
+			r.pack_long(3) #pcReturned, default in windows xp is 3
+			r.pack_long(0)
+		else:
+			# this need to trick metasploit ms08-067 exploit
+			# dionaea need send a malformed response if the cbBuf == 0
+			r.pack_long(0)
+			r.pack_long(a.Buffersize)
+			r.pack_long(0)
+			
+		return r.get_buffer()
+
 
 class SRVSVC(RPCService):
 	""" [MS-SRVS]: Server Service Remote Protocol Specification
