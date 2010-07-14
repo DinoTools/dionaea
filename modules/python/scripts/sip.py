@@ -202,10 +202,10 @@ class Sip(connection):
 	"""Only UDP connections are supported at the moment"""
 
 	def __init__(self):
-	connection.__init__(self, 'udp')
+		connection.__init__(self, 'udp')
 
-	# Dictionary with SIP sessions (key is Call-ID)
-	self.__sessions = {}
+		# Dictionary with SIP sessions (key is Call-ID)
+		self.__sessions = {}
 
-	# Test log entry
-	logger.info("SIP instance created")
+		# Test log entry
+		logger.info("SIP instance created")
