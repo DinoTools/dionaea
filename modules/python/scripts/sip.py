@@ -37,6 +37,7 @@ from dionaea.core import connection, ihandler, g_dionaea, incident
 
 logger = logging.getLogger('sip')
 logger.setLevel(logging.DEBUG)
+logger.info("HELLO SIP")
 
 # Shortcut to sip config
 g_sipconfig = g_dionaea.config()['modules']['python']['sip']
@@ -188,7 +189,7 @@ shortHeaders = {"call-id": "i",
 
 longHeaders = {}
 for k, v in shortHeaders.items():
-    longHeaders[v] = k
+	longHeaders[v] = k
 del k, v
 
 class SipParsingError(Exception):
@@ -200,11 +201,11 @@ class AuthenticationError(Exception):
 class Sip(connection):
 	"""Only UDP connections are supported at the moment"""
 
-    def __init__(self):
-    connection.__init__(self, 'udp')
+	def __init__(self):
+	connection.__init__(self, 'udp')
 
-    # Dictionary with SIP sessions (key is Call-ID)
-    self.__sessions = {}
+	# Dictionary with SIP sessions (key is Call-ID)
+	self.__sessions = {}
 
-    # Test log entry
-    logger.info("SIP instance created")
+	# Test log entry
+	logger.info("SIP instance created")
