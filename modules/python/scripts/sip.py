@@ -37,7 +37,6 @@ from dionaea.core import connection, ihandler, g_dionaea, incident
 
 logger = logging.getLogger('sip')
 logger.setLevel(logging.DEBUG)
-logger.info("HELLO SIP")
 
 # Shortcut to sip config
 g_sipconfig = g_dionaea.config()['modules']['python']['sip']
@@ -198,6 +197,90 @@ class SipParsingError(Exception):
 class AuthenticationError(Exception):
 	"""Exception class for errors occuring during SIP authentication"""
 
+def parseSipMessage(msg):
+	"""Parses a SIP message (string), returns a tupel (type, firstLine, header,
+	body)"""
+	# Sanitize input: remove superfluous leading and trailing newlines and
+	# spaces
+	msg = msg.strip("\n\r\t ")
+
+	# Split request/status line plus headers from body: we don't care about the
+	# body in the SIP parser
+	parts = msg.split("\n\n", 1)
+	if len(parts) < 1:
+		logger.error("Message too short")
+		raise SipParsingError("Message too short")
+
+	msg = parts[0]
+
+	# Python way of doing a ? b : c
+	body = len(parts) == 2 and parts[1] or ''
+
+	# Normalize line feed and carriage return to \n
+	msg = msg.replace("\n\r", "\n")
+
+	# Split lines into a list, each item containing one line
+	lines = msg.split('\n')
+
+	# Get message type (first word, smallest possible one is "ACK" or "BYE")
+	sep = lines[0].find(' ')
+	if sep < 3:
+		raise SipParsingError("Malformed request or status line")
+
+	msgType = lines[0][:sep]
+	firstLine = lines[0][sep+1:]
+
+	# Done with first line: delete from list of lines
+	del lines[0]
+
+	# Parse header
+	headers = {}
+	for i in range(len(lines)):
+		# Take first line and remove from list of lines
+		line = lines.pop(0)
+
+		# Strip each line of leading and trailing whitespaces
+		line = line.strip("\n\r\t ")
+
+		# Break on empty line (end of headers)
+		if len(line.strip(' ')) == 0:
+			break
+
+		# Parse header lines
+		sep = line.find(':')
+		if sep < 1:
+			raise SipParsingError("Malformed header line (no ':')")
+
+		# Get header identifier (word before the ':')
+		identifier = line[:sep]
+		identifier = identifier.lower()
+
+		# Check for valid header
+		if identifier not in shortHeaders.keys() and \
+			identifier not in longHeaders.keys():
+			raise SipParsingError("Unknown header type: {}".format(identifier))
+
+		# Get long header identifier if necessary
+		if identifier in longHeaders.keys():
+			identifier = longHeaders[identifier]
+
+		# Get header value (line after ':')
+		value = line[sep+1:].strip(' ')
+
+		# The Via header can occur multiple times
+		if identifier == "via":
+			if identifier not in headers:
+				headers["via"] = [value]
+			else:
+				headers["via"].append(value)
+
+		# Assign any other header value directly to the header key
+		else:
+			headers[identifier] = value
+
+	# Return message type, header dictionary, and body string
+	return (msgType, firstLine, headers, body)
+
 class Sip(connection):
 	"""Only UDP connections are supported at the moment"""
 
@@ -207,5 +290,57 @@ class Sip(connection):
 		# Dictionary with SIP sessions (key is Call-ID)
 		self.__sessions = {}
 
+		# Initialize remote host variables
+		# TODO: Use this variables with self.remote.host and self.remote.port
+		self.__remoteAddress = ''
+		self.__remoteSipPort = 0
+
+		# Set SIP connection in session class variable
+		# SipSession.sipConnection = self
+
 		# Test log entry
-		logger.info("SIP instance created")
+		logger.info("SIP server created")
+
+	def send(self, s):
+		logger.debug('Sending message "{}" to ({}:{})'.format(
+			s, self.__remoteAddress, self.__remoteSipPort))
+		
+		self.remote.host = self.__remoteAddress
+		self.remote.port = self.__remoteSipPort
+		self.send(s.encode('utf-8'))
+
+	def handle_read(self):
+		data, conInfo = self.recvfrom(1024)
+
+		# TODO: avoid race condition with remote addr/port
+		self.__remoteAddress = conInfo[0]
+		self.__remoteSipPort = conInfo[1]
+
+		# Get byte data and decode to unicode string
+		data = data.decode('utf-8')
+
+		# Parse SIP message
+		try:
+			msgType, firstLine, headers, body = parseSipMessage(data)
+		except SipParsingError as e:
+			logger.error(e)
+			return
+
+		if msgType == 'INVITE':
+			self.sip_INVITE(firstLine, headers, body)
+		elif msgType == 'ACK':
+			self.sip_ACK(firstLine, headers, body)
+		elif msgType == 'OPTIONS':
+			self.sip_OPTIONS(firstLine, headers, body)
+		elif msgType == 'BYE':
+			self.sip_BYE(firstLine, headers, body)
+		elif msgType == 'CANCEL':
+			self.sip_CANCEL(firstLine, headers, body)
+		elif msgType == 'REGISTER':
+			self.sip_REGISTER(firstLine, headers, body)
+		elif msgType == 'SIP/2.0':
+			self.sip_RESPONSE(firstLine, headers, body)
+		elif msgType == 'Error':
+			logger.error("Error on parsing SIP message")
+		else:
+			logger.error("Error: unknown header")
