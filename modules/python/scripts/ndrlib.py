@@ -143,6 +143,16 @@ class Packer:
 		else:
 			self.__buf.write(struct.pack('>L', x))
 
+	def pack_long_signed(self, x):
+		"""32-bit signed integer"""
+		align = self.__buf.tell() % 4
+		if align > 0:
+			self.__buf.write(b'\0'*align)
+		if self.integer == 'le':
+			self.__buf.write(struct.pack('<l', x))
+		else:
+			self.__buf.write(struct.pack('>l', x))
+
 	def pack_hyper(self, x):
 		"""64-bit integer"""
 		align = self.__buf.tell() % 8

@@ -27,7 +27,7 @@
 
 import logging
 from uuid import UUID
-
+from time import time, localtime, altzone
 
 from dionaea import ndrlib
 from .include.smbfields import DCERPC_Header, DCERPC_Response
@@ -76,6 +76,12 @@ class RPCService:
 
 				if data is None:
 					data = b''
+				
+				#for metasploit OS type 'Windows XP Service Pack 2+" 
+				#comment 2 lines belows if want to be detected as 'SP 0/1'
+				if opname == "NetNameCanonicalize":
+					r.PacketType = 3
+					
 				r.StubData = data
 				r.AllocHint = len(data)
 				r.CallID = p.CallID
@@ -1859,6 +1865,106 @@ class sfcapi(RPCService):
 class spoolss(RPCService):
 	uuid = UUID('12345678-1234-abcd-ef00-0123456789ab').hex
 
+	ops = {
+		0x00: "EnumPrinters"
+
+	}
+
+	class PRINTER_INFO_1 :
+		# PRINTER_INFO_1 Structure
+		# 
+		# http://msdn.microsoft.com/en-us/library/dd162844%28v=VS.85%29.aspx
+		# 
+		#typedef struct _PRINTER_INFO_1 {
+		#  DWORD  Flags;
+		#  LPTSTR pDescription;
+		#  LPTSTR pName;
+		#  LPTSTR pComment;
+		#} PRINTER_INFO_1, *PPRINTER_INFO_1;
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Flags = 0x00018000
+				self.Buffer = ''
+				self.Buffersize = 0
+				self.Offset = 0
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				self.__packer.pack_pointer(self.Flags)
+				
+				# self.Offset is the distance of the string count from the end of PRINTER_INFO_1 buffer. To count the distance of the string from the start of PRINTER_INFO_1 buffer, self.Buffersize - self offset needed
+				for j in range(len(self.Buffer)):
+					count = 0
+					count = len(self.Buffer) - j - 1
+					self.Offset = self.Offset + 2*len(self.Buffer[count])
+					self.__packer.pack_long(self.Buffersize-self.Offset)					
+				
+				for i in range(len(self.Buffer)):
+					
+					self.__packer.pack_raw(self.Buffer[i].encode('utf16')[2:])
+		def size(self):
+			size = 4 + 4*len(self.Buffer) + 2*(sum([len(x) for x in self.Buffer]))
+			print ("PRINTER_INFO_1 size %i" % size)
+			return size
+
+	@classmethod
+	def handle_EnumPrinters (cls, p):
+		#EnumPrinters Function
+		#
+		#http://msdn.microsoft.com/en-us/library/dd162692%28VS.85%29.aspx
+		#
+		#BOOL EnumPrinters(
+		#  __in   DWORD Flags,
+		#  __in   LPTSTR Name,
+		#  __in   DWORD Level,
+		#  __out  LPBYTE pPrinterEnum,
+		#  __in   DWORD cbBuf,
+		#  __out  LPDWORD pcbNeeded,
+		#  __out  LPDWORD pcReturned
+		#);
+		
+		p = ndrlib.Unpacker(p.StubData)
+		Flags = p.unpack_long()
+		Name = p.unpack_pointer()
+		Level = p.unpack_long()
+		Pointer = p.unpack_pointer()
+		cbBuf = p.unpack_long()
+		
+		print("Flags %s Name %s Level %i cbBuf %i " % (Flags, Name, Level, cbBuf))
+
+		r = ndrlib.Packer()
+		# Pointer to PRINTER_INFO_X buffer
+		r.pack_pointer(0x6b254)
+		
+		# PRINTER_INFO_1 Buffer
+		a = spoolss.PRINTER_INFO_1(r)
+			
+		# these string are the default response of windows xp
+		# 'Windows NT Remote Printers' need for msf fingerprinting OS language as 'English version'
+		#https://www.metasploit.com/redmine/projects/framework/repository/revisions/8941/entry/lib/msf/core/exploit/smb.rb#L396
+			
+		a.Buffer = ['Internet URL Printers\0','Windows NT Internet Provider\0','Windows NT Internet Printing\0','Remote Printers\0','Windows NT Remote Printers\0','Microsoft Windows Network\0','Locally Connected Printers\0','Windows NT Local Print Providor\0','Windows NT Local Printers\0']
+		a.Buffersize = a.size()
+		
+		if Level == 1 and cbBuf != 0:
+			r.pack_long(a.Buffersize)
+			a.pack()
+		
+			r.pack_long(a.Buffersize)
+			r.pack_long(3) #pcReturned, default in windows xp is 3
+			r.pack_long(0)
+		else:
+			# this need to trick metasploit ms08-067 exploit
+			# dionaea need send a malformed response if the cbBuf == 0
+			r.pack_long(0)
+			r.pack_long(a.Buffersize)
+			r.pack_long(0)
+			
+		return r.get_buffer()
+
 
 class SRVSVC(RPCService):
 	""" [MS-SRVS]: Server Service Remote Protocol Specification
@@ -1876,9 +1982,10 @@ class SRVSVC(RPCService):
 		0x0e: "NetShareAdd",
 		0x0f: "NetShareEnum",
 		0x10: "NetrShareGetInfo",
+		0x1c: "NetrRemoteTOD",
 		0x1f: "NetPathCanonicalize",
 		0x20: "NetPathCompare",
-#		0x22, "NetNameCanonicalize"
+		0x22: "NetNameCanonicalize"
 	}
 	vulns  = { 
 		0x1f: "MS08-67",
@@ -2437,6 +2544,101 @@ class SRVSVC(RPCService):
 			s.Data = [NetName.decode('utf16'),'es geht test\0','C:\0']
 			s.EntriesRead = int(len(s.Data)/3)
 			s.pack()
+
+		r.pack_long(0)
+		return r.get_buffer()
+
+	@classmethod
+	def handle_NetNameCanonicalize (cls, p):
+		#3.1.4.33 NetprNameCanonicalize (Opnum 34)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc247261%28PROT.13%29.aspx
+		#
+		#NET_API_STATUS NetprNameCanonicalize(
+		#  [in, string, unique] SRVSVC_HANDLE ServerName,
+		#  [in, string] WCHAR* Name,
+		#  [out, size_is(OutbufLen)] WCHAR* Outbuf,
+		#  [in, range(0,64000)] DWORD OutbufLen,
+		#  [in] DWORD NameType,
+		#  [in] DWORD Flags
+		#);
+		
+		p = ndrlib.Unpacker(p.StubData)
+		ServerName = SRVSVC.SRVSVC_HANDLE(p)
+		Name = p.unpack_string()
+		Outbuflen = p.unpack_long()
+		NameType = p.unpack_long()
+		Flags = p.unpack_long()
+		print("ServerName %s Name %s Outbuflen %i Nametype %i Flags %i" % (ServerName, Name, Outbuflen , NameType, Flags))
+
+		r = ndrlib.Packer()
+		
+		# Metasploit smb fingerprinting for OS type
+		#https://www.metasploit.com/redmine/projects/framework/repository/revisions/8941/entry/lib/msf/core/exploit/smb.rb#L324
+		
+		# for 'Windows XP Service Pack 0 / 1'
+		# to enable this, simply uncomment the 3 lines below and comment part SP2
+		#r.pack_pointer(0)
+		#r.pack_string(Name)
+		#r.pack_long(0)
+		
+		# for 'Windows XP Service Pack 2+'
+		# to disable this, comment the 2 lines below and 2 lines at processrequest()
+		r.pack_pointer(0x000006f7)
+		r.pack_long(0)
+		
+		return r.get_buffer()
+
+	@classmethod
+	def handle_NetrRemoteTOD(cls, p):
+		#3.1.4.21 NetrRemoteTOD (Opnum 28)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc247248%28v=PROT.13%29.aspx
+		#
+		#NET_API_STATUS NetrRemoteTOD(
+		#  [in, string, unique] SRVSVC_HANDLE ServerName,
+		#  [out] LPTIME_OF_DAY_INFO* BufferPtr
+		#);
+		p = ndrlib.Unpacker(p.StubData)
+		ServerName = SRVSVC.SRVSVC_HANDLE(p)
+
+		r = ndrlib.Packer()
+
+		# pointer to the LPTIME_OF_DAY_INFO* BufferPtr
+		r.pack_pointer(0x23456)
+		
+		#typedef struct TIME_OF_DAY_INFO {
+		#  DWORD tod_elapsedt;
+		#  DWORD tod_msecs;
+		#  DWORD tod_hours;
+		#  DWORD tod_mins;
+		#  DWORD tod_secs;
+		#  DWORD tod_hunds;
+		#  long tod_timezone;
+		#  DWORD tod_tinterval;
+		#  DWORD tod_day;
+		#  DWORD tod_month;
+		#  DWORD tod_year;
+		#  DWORD tod_weekday;
+		#} TIME_OF_DAY_INFO, 
+		# *PTIME_OF_DAY_INFO, 
+		# *LPTIME_OF_DAY_INFO;
+
+		ctime = localtime()
+		#Eg, time.struct_time(tm_year=2010, tm_mon=7, tm_mday=13, tm_hour=2, tm_min=12, tm_sec=27, tm_wday=1, tm_yday=194, tm_isdst=0)
+
+		r.pack_long(int(time()))#elapsedt
+		r.pack_long(515893)	#msecs
+		r.pack_long(ctime[3])	#hours
+		r.pack_long(ctime[4])   #mins
+		r.pack_long(ctime[5])   #secs
+		r.pack_long(59) 	#hunds
+		r.pack_long_signed(int(altzone/60),) #timezone
+		r.pack_long(310) 	#tinterval
+		r.pack_long(ctime[2])   #day
+		r.pack_long(ctime[1])   #month
+		r.pack_long(ctime[0])   #year
+		r.pack_long(ctime[6])   #weekday
 
 		r.pack_long(0)
 		return r.get_buffer()

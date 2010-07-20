@@ -6,6 +6,7 @@ import random
 
 import postgresql
 import postgresql.driver as pg_driver
+from postgresql.exceptions import ConnectionError
 
 from time import sleep
 
@@ -57,7 +58,7 @@ class surfidshandler(ihandler):
 		origin = icd.origin
 		origin = origin.replace(".","_")
 		try:
-			method = getattr(handler, "_handle_incident_" + origin)
+			method = getattr(self, "_handle_incident_" + origin)
 		except:
 			return
 
