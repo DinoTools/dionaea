@@ -281,6 +281,243 @@ def parseSipMessage(msg):
 	# Return message type, header dictionary, and body string
 	return (msgType, firstLine, headers, body)
 
+class RtpUdpStream(connection):
+	"""RTP stream that can send data and writes the whole conversation to a
+	file"""
+	def __init__(self, address, port):
+		connection.__init__(self, 'udp')
+
+		# Bind to free random port for incoming RTP traffic
+		self.bind(('', 0))
+		self.__localport = self.getsockname()[1]
+
+		# The address and port of the remote host
+		self.__address = address
+		self.__port = port
+
+		# Send byte buffer
+		self.__sendBuffer = b''
+
+		# Create a stream dump file with date and time and random ID in case of
+		# flooding attacks
+		dumpDateTime = time.strftime("var/dionaea/%Y%m%d_%H:%M:%S")
+		dumpId = random.randint(1000, 9999)
+		streamDumpFile = "stream_{0}_{1}.rtpdump".format(dumpDateTime, dumpId)
+
+		# Catch IO errors
+		try:
+			self.__streamDump = open(streamDumpFile, "wb")
+		except IOError as e:
+			logger.error("Could not open stream dump file: {}".format(e))
+			self.__streamDump = None
+
+		logger.info("Created RTP channel :{} <-> :{}".format(
+			self.__localport, self.__port))
+
+    def handle_timeout_idle(self):
+        return False
+
+    def handle_timeout_sustain(self):
+        return False
+
+	def handle_close(self):
+		self.close()
+
+	def handle_io_in(self, data):
+		# Write data to disk
+		if self.__streamDump:
+			self.__streamDump.write(data)
+
+	def handle_io_out(self):
+		# Because of the writable function, handle_write will only be called if
+		# there is data in the send buffer
+		bytesSent = self.send(self.__sendBuffer)
+
+		# Write the sent part of the buffer to the stream dump file
+		# TODO: separate inbound and outbound traffic?
+		if self.__streamDump:
+			self.__streamDump.write(self.__sendBuffer[:bytesSent])
+
+		# Shift sending window for next send or handle_write operation
+		self.__sendBuffer = self.__sendBuffer[bytesSent:]
+
+	def send(self, msg):
+		# Append to send buffer, handle_write will take care of socket operation
+		self.__sendBuffer += msg.encode('utf-8')
+
+	def close(self):
+		if self.__streamDump:
+			self.__streamDump.close()
+
+		connection.close(self)
+
+class SipSession(object):
+	"""Usually, a new SipSession instance is created when the SIP server
+	receives an INVITE message"""
+	NO_SESSION, SESSION_SETUP, ACTIVE_SESSION, SESSION_TEARDOWN = range(4)
+	sipConnection = None
+
+	def __init__(self, conInfo, rtpPort, inviteHeaders):
+		if not SipSession.sipConnection:
+			logger.error("SIP connection class variable not set")
+
+		# Store incoming information of the remote host
+		self.__state = SipSession.SESSION_SETUP
+		self.__remoteAddress = conInfo[0]
+		self.__remoteSipPort = conInfo[1]
+		self.__remoteRtpPort = rtpPort
+		self.__callId = inviteHeaders['call-id']
+
+		# Generate static values for SIP messages
+		global g_sipconfig
+		self.__sipTo = inviteHeaders['from']
+		self.__sipFrom = "{0} <sip:{0}@{1}>".format(g_sipconfig['user'],
+			g_sipconfig['ip'])
+		self.__sipVia = "SIP/2.0/UDP {}:{}".format(g_sipconfig['ip'],
+			g_sipconfig['port'])
+
+	def handle_INVITE(self, headers):
+		# Check authentication
+		if g_sipconfig['use_authentication']:
+			r = self.__challengeINVITE(headers)
+			if not r:
+				raise AuthenticationError()
+
+		# From now on, client's INVITE request is authenticated
+
+		# Create RTP stream instance and pass address and port of listening
+		# remote RTP host
+		self.__rtpStream = RtpUdpStream(self.__remoteAddress,
+			self.__remoteRtpPort)
+
+		# Send 180 Ringing to make honeypot appear more human-like
+		# TODO: Delay between 180 and 200
+		msgLines = []
+		msgLines.append("SIP/2.0 " + RESPONSE[RINGING])
+		msgLines.append("Via: " + self.__sipVia)
+		msgLines.append("Max-Forwards: 70")
+		msgLines.append("To: " + self.__sipTo)
+		msgLines.append("From: " + self.__sipFrom)
+		msgLines.append("Call-ID: {}".format(self.__callId))
+		msgLines.append("CSeq: " + headers['cseq'])
+		msgLines.append("Contact: " + self.__sipFrom)
+		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+		SipSession.sipConnection.send('\n'.join(msgLines))
+
+		# Send our RTP port to the remote host as a 200 OK response to the
+		# remote host's INVITE request
+		logger.debug("getsockname: {}".format(self.__rtpStream.getsockname()))
+		localRtpPort = self.__rtpStream.getsockname()[1]
+		
+		msgLines = []
+		msgLines.append("SIP/2.0 " + RESPONSE[OK])
+		msgLines.append("Via: " + self.__sipVia)
+		msgLines.append("Max-Forwards: 70")
+		msgLines.append("To: " + self.__sipTo)
+		msgLines.append("From: " + self.__sipFrom)
+		msgLines.append("Call-ID: {}".format(self.__callId))
+		msgLines.append("CSeq: " + headers['cseq'])
+		msgLines.append("Contact: " + self.__sipFrom)
+		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+		msgLines.append("Content-Type: application/sdp")
+		msgLines.append("\nv=0")
+		msgLines.append("o=... 0 0 IN IP4 localhost")
+		msgLines.append("t=0 0")
+		msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
+		SipSession.sipConnection.send('\n'.join(msgLines))
+
+	def handle_ACK(self, headers, body):
+		if self.__state == SipSession.SESSION_SETUP:
+			logger.debug(
+				"Waiting for ACK after INVITE -> got ACK -> active session")
+			logger.info("Connection accepted (session {})".format(
+				self.__callId))
+
+			# Set current state to active (ready for multimedia stream)
+			self.__state = SipSession.ACTIVE_SESSION
+
+	def handle_BYE(self, headers, body):
+		global g_sipconfig
+
+		# Only close down RTP stream if session is active
+		if self.__state == SipSession.ACTIVE_SESSION:
+			self.__rtpStream.close()
+
+		# A BYE ends the session immediately
+		self.__state = SipSession.NO_SESSION
+
+		# Send OK response to other client
+		msgLines = []
+		msgLines.append("SIP/2.0 200 OK")
+		msgLines.append("Via: " + self.__sipVia)
+		msgLines.append("Max-Forwards: 70")
+		msgLines.append("To: " + self.__sipTo)
+		msgLines.append("From: " + self.__sipFrom)
+		msgLines.append("Call-ID: {}".format(self.__callId))
+		msgLines.append("CSeq: 1 BYE")
+		msgLines.append("Contact: " + self.__sipFrom)
+		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+		SipSession.sipConnection.send('\n'.join(msgLines))
+
+	def __challengeINVITE(self, headers):
+		global g_sipconfig
+
+		if "authorization" not in headers:
+			# Calculate new nonce for authentication based on current time
+			self.__nonce = hash("{}".format(time.time()))
+
+			# Send 401 Unauthorized response
+			msgLines = []
+			msgLines.append('SIP/2.0 ' + RESPONSE[UNAUTHORIZED])
+			msgLines.append("Via: " + self.__sipVia)
+			msgLines.append("Max-Forwards: 70")
+			msgLines.append("To: " + self.__sipTo)
+			msgLines.append("From: " + self.__sipFrom)
+			msgLines.append("Call-ID: {}".format(self.__callId))
+			msgLines.append("CSeq: 1 INVITE")
+			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+			msgLines.append('WWW-Authenticate: Digest ' + \
+				'realm="{}@{}",'.format(g_sipconfig['user'],
+					g_sipconfig['ip']) + \
+				'nonce="{}",'.format(self.__nonce))
+			SipSession.sipConnection.send('\n'.join(msgLines))
+
+		else:
+			# Check against config file
+			authMethod, authLine = headers['authorization'].split(' ', 1)
+			if authMethod != 'Digest':
+				logger.error("Authorization method is not Digest")
+				return
+
+			# Get Authorization header parts (a="a", b="b", c="c", ...) and put
+			# them in a dictionary for easy lookup
+			authLineParts = [x.strip(' \t\r\n') for x in authLine.split(',')]
+			authLineDict = {}
+			for x in authLineParts:
+				parts = x.split('=')
+				authLineDict[parts[0]] = parts[1].strip(' \n\r\t"\'')
+
+			# The calculation of the expected response is taken from
+			# Sipvicious (c) Sandro Gaucci
+			# TODO: compare config values to values in Authorization header
+			realm = "{}@{}".format(g_sipconfig['user'], g_sipconfig['ip'])
+			uri = "sip:" + realm
+			a1 = hash("{}:{}:{}".format(
+				g_sipconfig['user'], realm, g_sipconfig['secret']))
+			a2 = hash("INVITE:{}".format(uri))
+			expected = hash("{}:{}:{}".format(a1, self.__nonce, a2))
+
+			logger.debug("a1: {}".format(a1))
+			logger.debug("a2: {}".format(a2))
+			logger.debug("expected: {}".format(expected))
+
+			if expected != authLineDict['response']:
+				logger.error("Authorization failed")
+				return
+
+			return expected
+
 class Sip(connection):
 	"""Only UDP connections are supported at the moment"""
 
@@ -309,14 +546,14 @@ class Sip(connection):
 		self.remote.port = self.__remoteSipPort
 		self.send(s.encode('utf-8'))
 
-	def handle_read(self):
-		data, conInfo = self.recvfrom(1024)
-
+	def handle_io_in(self, data):
+		# TODO: get conInfo (in self.remote.host and .port?)
 		# TODO: avoid race condition with remote addr/port
 		self.__remoteAddress = conInfo[0]
 		self.__remoteSipPort = conInfo[1]
 
 		# Get byte data and decode to unicode string
+		# TODO: Check for need to decode
 		data = data.decode('utf-8')
 
 		# Parse SIP message
