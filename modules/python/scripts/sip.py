@@ -41,8 +41,13 @@ logger.setLevel(logging.DEBUG)
 # Shortcut to sip config
 g_sipconfig = g_dionaea.config()['modules']['python']['sip']
 
+# Shortcut hashing function
 def hash(s):
 	return hashlib.md5(s.encode('utf-8')).hexdigest()
+
+#############
+# SIP globals
+#############
 
 TRYING                      = '100'
 RINGING                     = '180'
@@ -197,6 +202,99 @@ class SipParsingError(Exception):
 class AuthenticationError(Exception):
 	"""Exception class for errors occuring during SIP authentication"""
 
+#############
+# SDP globals
+#############
+
+sessionDescriptionTypes = {
+	"v": "protocol version",
+	"o": "session owner",
+	"s": "session name",
+	"i": "session information",
+	"u": "uri",
+	"e": "email address",
+	"p": "phone number",
+	"c": "connection information",
+	"b": "bandwidth information",
+	"z": "time zone adjustment",
+	"k": "encryption key",
+	"t": "active time",
+	"r": "repeat time",
+	"a": "session attribute line"
+}
+
+mediaDescriptionTypes = {
+	"m": "media name",
+	"i": "media title",
+	"c": "connection information",
+	"b": "bandwidth information",
+	"k": "encryption key",
+	"a": "attribute line"
+}
+
+class SdpParsingError(Exception):
+	"""Exception class for errors occuring during SDP message parsing"""
+
+###################
+# Parsing functions
+###################
+
+def parseSdpMessage(msg):
+	"""Parses an SDP message (string), returns a tupel of dictionaries with
+	{type: value} entries: (sessionDescription, mediaDescriptions)"""
+	# Normalize line feed and carriage return to \n
+	msg = msg.replace("\n\r", "\n")
+
+	# Sanitize input: remove superfluous leading and trailing newlines and
+	# spaces
+	msg = msg.strip("\n\r\t ")
+
+	# Split message into session description, and media description parts
+	SEC_SESSION, SEC_MEDIA = range(2)
+	curSection = SEC_SESSION
+	sessionDescription = {}
+	mediaDescriptions = []
+	mediaDescriptionNumber = -1
+
+	# Process each line individually
+	if len(msg) > 0:
+		lines = msg.split("\n")
+		for line in lines:
+			# Remove leading and trailing whitespaces from line
+			line = line.strip('\n\r\t ')
+
+			# Get first two characters of line and check for "type="
+			if len(line) < 2:
+				raise SdpParsingError("Line too short")
+			elif line[1] != "=":
+				raise SdpParsingError("Invalid SDP line")
+
+			type = line[0]
+			value = line[2:].strip("\n\r\t ")
+
+			# Change current section if necessary
+			# (session -> media -> media -> ...)
+			if type == "m":
+				curSection = SEC_MEDIA
+				mediaDescriptionNumber += 1
+				mediaDescriptions.append({})
+
+			# Store the SDP values
+			if curSection == SEC_SESSION:
+				if type not in sessionDescriptionTypes:
+					raise SdpParsingError(
+						"Invalid session description type: " + type)
+				else:
+					sessionDescription[type] = value
+			elif curSection == SEC_MEDIA:
+				if type not in mediaDescriptionTypes:
+					raise SdpParsingError(
+						"Invalid media description type: " + type)
+				else:
+					mediaDescriptions[mediaDescriptionNumber][type] = value
+
+	return (sessionDescription, mediaDescriptions)
+
 def parseSipMessage(msg):
 	"""Parses a SIP message (string), returns a tupel (type, firstLine, header,
 	body)"""
@@ -280,6 +378,10 @@ def parseSipMessage(msg):
 
 	# Return message type, header dictionary, and body string
 	return (msgType, firstLine, headers, body)
+
+#########
+# Classes
+#########
 
 class RtpUdpStream(connection):
 	"""RTP stream that can send data and writes the whole conversation to a
