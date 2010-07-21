@@ -161,3 +161,14 @@ void node_info_set_port(struct node_info *node, uint16_t port)
 	}
 }
 
+void node_info_set_addr(struct node_info *node, char *addr)
+{
+	socklen_t sizeof_sa;
+	if( !parse_addr(addr, node->iface_scope, ntohs(node->port), &node->addr, &node->domain, &sizeof_sa) )
+		g_debug("error parsing new addr ...\n");
+	else
+	{
+		node_info_set(node, &node->addr);
+		g_debug("new node info %s\n", node->node_string);
+	}
+}
