@@ -1,6 +1,12 @@
 #!/usr/bin/python -u
 #
-# ./pg_backend.py -U USER@sensors.carnivore.it -P XMPPPASS -R pg_backend -M dionaea.sensors.carnivore.it -C anon-files -C anon-events -s DBHOST -u DBUSER -d xmpp -p DBPASS -f /tmp/
+# aptitude install python-pyxmpp python-pgsql
+# 
+# with db
+# ./pg_backend.py -U USER@sensors.carnivore.it -P XMPPPASS -M dionaea.sensors.carnivore.it -C anon-files -C anon-events -s DBHOST -u DBUSER -d xmpp -p DBPASS -f /tmp/
+# 
+# without db
+# ./pg_backend.py -U USER@sensors.carnivore.it -P XMPPPASS -M dionaea.sensors.carnivore.it -C anon-files -C anon-events -f /tmp/
 
 import sys
 import logging
@@ -34,8 +40,13 @@ class RoomHandler(MucRoomHandler):
 		self.setns = False
 
 	def user_joined(self, user, stanza):
-		print 'User %s joined room' % user
+		print 'User %s joined room' % user.room_jid.as_unicode()
 		user.attacks = {}
+	
+	def user_left(self, user, stanza):
+		print 'User %s left room' % user.room_jid.as_unicode()
+		user.attacks = None
+		user = None
 
 	def subject_changed(self, user, stanza):
 		print 'subject: %s' % stanza
@@ -278,7 +289,7 @@ class Client(JabberClient):
 		# setup client with provided connection information
 		# and identity data
 		JabberClient.__init__(self, jid, password,
-				disco_name="PyXMPP example: echo bot", disco_type="bot")
+				disco_name="PyXMPP example: echo bot", disco_type="bot", keepalive=10)
 
 		# register features to be announced via Service Discovery
 		self.disco_info.add_feature("jabber:iq:version")
@@ -447,23 +458,28 @@ else:
 if not options.files:
 	print("Not storing files, are you sure?")
 
+while True:
+	print u"creating client... %s" % options.resource
+	c=Client(JID(options.username + '/' + options.resource),options.password)
+	
+	print u"connecting..."
+	c.connect()
+	
+	print u"looping..."
+	try:
+		# Component class provides basic "main loop" for the applitation
+		# Though, most applications would need to have their own loop and call
+		# component.stream.loop_iter() from it whenever an event on
+		# component.stream.fileno() occurs.
+		c.loop(1)
+		c.idle()
+	except KeyboardInterrupt:
+		print u"disconnecting..."
+		c.disconnect()
+		print u"exiting..."
+		break
+	except:
+		continue
+	
 
-print u"creating client... %s" % options.resource
-c=Client(JID(options.username + '/' + options.resource),options.password)
-
-print u"connecting..."
-c.connect()
-
-print u"looping..."
-try:
-	# Component class provides basic "main loop" for the applitation
-	# Though, most applications would need to have their own loop and call
-	# component.stream.loop_iter() from it whenever an event on
-	# component.stream.fileno() occurs.
-	c.loop(1)
-except KeyboardInterrupt:
-	print u"disconnecting..."
-	c.disconnect()
-
-print u"exiting..."
 # vi: sts=4 et sw=4
