@@ -314,11 +314,11 @@ class RtpUdpStream(connection):
 		logger.info("Created RTP channel :{} <-> :{}".format(
 			self.__localport, self.__port))
 
-    def handle_timeout_idle(self):
-        return False
+	def handle_timeout_idle(self):
+		return False
 
-    def handle_timeout_sustain(self):
-        return False
+	def handle_timeout_sustain(self):
+		return False
 
 	def handle_close(self):
 		self.close()
@@ -376,6 +376,10 @@ class SipSession(object):
 		self.__sipVia = "SIP/2.0/UDP {}:{}".format(g_sipconfig['ip'],
 			g_sipconfig['port'])
 
+	def send(self, s):
+		SipSession.sipConnection.sendto(s,
+			(self.__remoteAddress, self.__remoteSipPort))
+
 	def handle_INVITE(self, headers):
 		# Check authentication
 		if g_sipconfig['use_authentication']:
@@ -402,29 +406,35 @@ class SipSession(object):
 		msgLines.append("CSeq: " + headers['cseq'])
 		msgLines.append("Contact: " + self.__sipFrom)
 		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-		SipSession.sipConnection.send('\n'.join(msgLines))
+		self.send('\n'.join(msgLines))
 
-		# Send our RTP port to the remote host as a 200 OK response to the
-		# remote host's INVITE request
-		logger.debug("getsockname: {}".format(self.__rtpStream.getsockname()))
-		localRtpPort = self.__rtpStream.getsockname()[1]
-		
-		msgLines = []
-		msgLines.append("SIP/2.0 " + RESPONSE[OK])
-		msgLines.append("Via: " + self.__sipVia)
-		msgLines.append("Max-Forwards: 70")
-		msgLines.append("To: " + self.__sipTo)
-		msgLines.append("From: " + self.__sipFrom)
-		msgLines.append("Call-ID: {}".format(self.__callId))
-		msgLines.append("CSeq: " + headers['cseq'])
-		msgLines.append("Contact: " + self.__sipFrom)
-		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-		msgLines.append("Content-Type: application/sdp")
-		msgLines.append("\nv=0")
-		msgLines.append("o=... 0 0 IN IP4 localhost")
-		msgLines.append("t=0 0")
-		msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
-		SipSession.sipConnection.send('\n'.join(msgLines))
+		def timer_cb():
+			# Send our RTP port to the remote host as a 200 OK response to the
+			# remote host's INVITE request
+			logger.debug("getsockname: {}".format(self.__rtpStream.getsockname()))
+			localRtpPort = self.__rtpStream.getsockname()[1]
+			
+			msgLines = []
+			msgLines.append("SIP/2.0 " + RESPONSE[OK])
+			msgLines.append("Via: " + self.__sipVia)
+			msgLines.append("Max-Forwards: 70")
+			msgLines.append("To: " + self.__sipTo)
+			msgLines.append("From: " + self.__sipFrom)
+			msgLines.append("Call-ID: {}".format(self.__callId))
+			msgLines.append("CSeq: " + headers['cseq'])
+			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+			msgLines.append("Content-Type: application/sdp")
+			msgLines.append("\nv=0")
+			msgLines.append("o=... 0 0 IN IP4 localhost")
+			msgLines.append("t=0 0")
+			msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
+			self.send('\n'.join(msgLines))
+
+		# Delay between 180 and 200 response with pyev callback timer
+		# We have to take note of the 
+		timer = dionaea.pyev.Timer(3, 0, dionaea.pyev.default_loop(),
+				timer_cb, 0)
 
 	def handle_ACK(self, headers, body):
 		if self.__state == SipSession.SESSION_SETUP:
@@ -457,7 +467,7 @@ class SipSession(object):
 		msgLines.append("CSeq: 1 BYE")
 		msgLines.append("Contact: " + self.__sipFrom)
 		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-		SipSession.sipConnection.send('\n'.join(msgLines))
+		self.send('\n'.join(msgLines))
 
 	def __challengeINVITE(self, headers):
 		global g_sipconfig
@@ -481,7 +491,7 @@ class SipSession(object):
 				'realm="{}@{}",'.format(g_sipconfig['user'],
 					g_sipconfig['ip']) + \
 				'nonce="{}",'.format(self.__nonce))
-			SipSession.sipConnection.send('\n'.join(msgLines))
+			self.send('\n'.join(msgLines))
 
 		else:
 			# Check against config file
@@ -528,32 +538,35 @@ class Sip(connection):
 		self.__sessions = {}
 
 		# Initialize remote host variables
-		# TODO: Use this variables with self.remote.host and self.remote.port
+		# TODO: Are these necessary?
 		self.__remoteAddress = ''
 		self.__remoteSipPort = 0
 
 		# Set SIP connection in session class variable
-		# SipSession.sipConnection = self
+		SipSession.sipConnection = self
 
 		# Test log entry
 		logger.info("SIP server created")
 
-	def send(self, s):
+	def sendto(self, s, con):
+		"""
+		Since the dionaea connection class doesn't provide a sendto method it is
+		implemented here. It is needed to other classes (instances) send
+		messages through the SIP connection (particularly instances of
+		SipSession). It is not needed in this class itself because all send
+		calls are in direct response to an incoming message so self.remote.host
+		and self.remote.port are already set correctly.
+		"""
 		logger.debug('Sending message "{}" to ({}:{})'.format(
 			s, self.__remoteAddress, self.__remoteSipPort))
 		
-		self.remote.host = self.__remoteAddress
-		self.remote.port = self.__remoteSipPort
+		# Set remote host and port before UDP send
+		self.remote.host = con[0]
+		self.remote.port = con[1]
 		self.send(s.encode('utf-8'))
 
 	def handle_io_in(self, data):
-		# TODO: get conInfo (in self.remote.host and .port?)
-		# TODO: avoid race condition with remote addr/port
-		self.__remoteAddress = conInfo[0]
-		self.__remoteSipPort = conInfo[1]
-
 		# Get byte data and decode to unicode string
-		# TODO: Check for need to decode
 		data = data.decode('utf-8')
 
 		# Parse SIP message
@@ -581,3 +594,202 @@ class Sip(connection):
 			logger.error("Error on parsing SIP message")
 		else:
 			logger.error("Error: unknown header")
+
+	def sip_INVITE(self, requestLine, headers, body):
+		global g_sipconfig
+
+		# Print SIP header
+		logger.info("Received INVITE")
+		for k, v in headers.items():
+			logger.info("SIP header {}: {}".format(k, v))
+
+		if self.__checkForMissingHeaders(headers, ["accept", "content-type"]):
+			return
+
+		# Header has to define Content-Type: application/sdp if body contains
+		# SDP message. Also, Accept has to be set to sdp so that we can send
+		# back a SDP response.
+		if headers["content-type"] != "application/sdp":
+			logger.error("INVITE without SDP message: exit")
+			return
+
+		if headers["accept"] != "application/sdp":
+			logger.error("INVITE without SDP message: exit")
+			return
+
+		# Check for SDP body
+		if not body:
+			logger.error("INVITE without SDP message: exit")
+			return
+
+		# Parse SDP part of session invite
+		try:
+			sessionDescription, mediaDescriptions = parseSdpMessage(body)
+		except SdpParsingError as e:
+			logger.error(e)
+			return
+
+		# Check for all necessary fields
+		sdpSessionOwnerParts = sessionDescription['o'].split(' ')
+		if len(sdpSessionOwnerParts) < 6:
+			logger.error("SDP session owner field to short: exit")
+			return
+
+		logger.debug("Parsed SDP message:")
+		logger.debug(sessionDescription)
+		logger.debug(mediaDescriptions)
+
+		# Get RTP port from SDP media description
+		if len(mediaDescriptions) < 1:
+			logger.error("SDP message has to include a media description: exit")
+			return
+		
+		mediaDescriptionParts = mediaDescriptions[0]['m'].split(' ')
+		if mediaDescriptionParts[0] != 'audio':
+			logger.error("SDP media description has to be of audio type: exit")
+			return
+
+		rtpPort = mediaDescriptionParts[1]
+
+		# Read Call-ID field and create new SipSession instance on first INVITE
+		# request received (remote host might send more than one because of time
+		# outs or because he wants to flood the honeypot)
+		callId = headers["call-id"]
+		if callId in self.__sessions:
+			logger.info("SIP session with Call-ID {} already exists".format(
+				callId))
+			return
+
+		# Establish a new SIP session
+		newSession = SipSession((self.__remoteAddress,
+			self.__remoteSipPort), rtpPort, headers)
+		try:
+			newSession.handle_INVITE(headers)
+		except AuthenticationError:
+			logger.error("Authentication failed, not creating SIP session")
+			del newSession
+		else:
+			# Store session object in sessions dictionary
+			self.__sessions[callId] = newSession
+
+	def sip_ACK(self, requestLine, headers, body):
+		logger.info("Received ACK")
+
+		if self.__checkForMissingHeaders(headers):
+			return
+
+		callId = headers['call-id'] 
+
+		if callId not in self.__sessions:
+			logger.error("Given Call-ID does not belong to a session: exit")
+			return
+
+		# Get SIP session for given Call-ID
+		s = self.__sessions[callId]
+		
+		# Handle incoming ACKs depending on current state
+		s.handle_ACK(headers, body)
+
+	def sip_OPTIONS(self, requestLine, headers, body):
+		logger.info("Received OPTIONS")
+
+		# Construct OPTIONS response
+		global g_sipconfig
+		msgLines = []
+		msgLines.append("SIP/2.0 " + RESPONSE[OK])
+		msgLines.append("Via: SIP/2.0/UDP {}:{}".format(g_sipconfig['ip'],
+			g_sipconfig['port']))
+		msgLines.append("To: " + headers['from'])
+		msgLines.append("From: {0} <sip:{0}@{1}>".format(g_sipconfig['user'],
+			g_sipconfig['ip']))
+		msgLines.append("Call-ID: " + headers['call-id'])
+		msgLines.append("CSeq: " + headers['cseq'])
+		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(g_sipconfig['user'],
+			g_sipconfig['ip']))
+		msgLines.append("Allow: INVITE, ACK, CANCEL, OPTIONS, BYE")
+		msgLines.append("Accept: application/sdp")
+		msgLines.append("Accept-Language: en")
+
+		self.send('\n'.join(msgLines))
+
+	def sip_BYE(self, requestLine, headers, body):
+		logger.info("Received BYE")
+
+		if self.__checkForMissingHeaders(headers):
+			return
+
+		# Get SIP session for given Call-ID
+		try:
+			s = self.__sessions[headers["call-id"]]
+		except KeyError:
+			logger.error("Given Call-ID does not belong to a session: exit")
+			return
+		
+		# Handle incoming BYE request depending on current state
+		s.handle_BYE(headers, body)
+
+	def sip_CANCEL(self, requestLine, headers, body):
+		logger.info("Received CANCEL")
+
+		# Check mandatory headers
+		if self.__checkForMissingHeaders(headers):
+			return
+
+		# Get Call-Id and check if there's already a SipSession
+		callId = headers['call-id']
+
+		# Get CSeq to find out which request to cancel
+		cseqParts = headers['cseq'].split(' ')
+		cseqMethod = cseqParts[1]
+
+		if cseqMethod == "INVITE" or cseqMethod == "ACK":
+			# Find SipSession and delete it
+			if callId not in self.__sessions:
+				logger.info(
+					"CANCEL request does not match any existing SIP session")
+				return
+
+			# No RTP connection has been made yet so deleting the session
+			# instance is sufficient
+			del self.__session[callId]
+		
+		# Construct CANCEL response
+		global g_sipconfig
+		msgLines = []
+		msgLines.append("SIP/2.0 " + RESPONSE[OK])
+		msgLines.append("Via: SIP/2.0/UDP {}:{}".format(g_sipconfig['ip'],
+			g_sipconfig['port']))
+		msgLines.append("To: " + headers['from'])
+		msgLines.append("From: {0} <sip:{0}@{1}>".format(g_sipconfig['user'],
+			g_sipconfig['ip']))
+		msgLines.append("Call-ID: " + headers['call-id'])
+		msgLines.append("CSeq: " + headers['cseq'])
+		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(g_sipconfig['user'],
+			g_sipconfig['ip']))
+
+		self.send('\n'.join(msgLines))
+
+	def sip_REGISTER(self, requestLine, headers, body):
+		logger.info("Received REGISTER")
+
+	def sip_RESPONSE(self, statusLine, headers, body):
+		logger.info("Received a response")
+
+	def __checkForMissingHeaders(self, headers, mandatoryHeaders=[]):
+		"""
+		Check for specific missing headers given as a list in the second
+		argument are present as keys in the dictionary of headers.
+		If list of mandatory headers is omitted, a set of common standard
+		headers is used: To, From, Call-ID, CSeq, and Contact.
+		"""
+		if not mandatoryHeaders:
+			mandatoryHeaders = ["to", "from", "call-id", "cseq", "contact"]
+
+		headerMissing = False
+
+		for m in mandatoryHeaders:
+			if m not in headers:
+				logger.warning("Mandatory header {} not in message".format(m))
+				headerMissing = True
+
+		return headerMissing
