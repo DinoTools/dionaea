@@ -196,7 +196,7 @@ class NTLM_Challenge(Packet):
 		StrFixedLenField("Reserved","",8),
 		PacketField("TargetInfoFields",NTLM_Value(),NTLM_Value),
 #		PacketField("Version",0,NTLM_Version),
-		ConditionalField(PacketField("Version",0,NTLM_Version), lambda x: x.NegotiateFlags & NTLMSSP_NEGOTIATE_VERSION),
+		ConditionalField(PacketField("Version",NTLM_Version(),NTLM_Version), lambda x: x.NegotiateFlags & NTLMSSP_NEGOTIATE_VERSION),
 		StrField("Payload","")
 	]
 
@@ -211,7 +211,7 @@ class NTLM_Authenticate(Packet):
 		PacketField("EncryptedRandomSessionKeyFields",0,NTLM_Value),
 		FlagsField("NegotiateFlags", 0, -32, NTLMSSP_Flags),
 #		PacketField("Version",0,NTLM_Version),
-		ConditionalField(PacketField("Version",0,NTLM_Version), lambda x: x.NegotiateFlags & NTLMSSP_NEGOTIATE_VERSION),
+		ConditionalField(PacketField("Version",NTLM_Version(),NTLM_Version), lambda x: x.NegotiateFlags & NTLMSSP_NEGOTIATE_VERSION),
 		StrFixedLenField("MIC","",16),
 		StrField("Payload",""),
 	]
