@@ -194,6 +194,8 @@ cdef class node_info:
 		"""the nodes address as string"""
 		def __get__(self): 
 			return bytes.decode(self.thisptr.ip_string, u'UTF-8')
+		def __set__(self, addr):
+			c_node_info_set_addr(self.thisptr, addr)
 
 	property hostname:
 		"""the nodes hostname as string"""
