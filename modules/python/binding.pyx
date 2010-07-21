@@ -195,6 +195,8 @@ cdef class node_info:
 		def __get__(self): 
 			return bytes.decode(self.thisptr.ip_string, u'UTF-8')
 		def __set__(self, addr):
+			if isinstance(addr, unicode):
+				addr = addr.encode(u'UTF-8')
 			c_node_info_set_addr(self.thisptr, addr)
 
 	property hostname:
