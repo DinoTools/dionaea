@@ -108,6 +108,8 @@ cdef extern from "../../include/connection.h":
 
 	char *c_node_info_get_ip_string "node_info_get_ip_string" (c_node_info *node)
 	char *c_node_info_get_port_string "node_info_get_port_string" (c_node_info *node)
+	void c_node_info_set_port "node_info_set_port" (c_node_info *, int )
+	void c_node_info_set_addr "node_info_set_addr" (c_node_info *, char *)
 
 	ctypedef enum c_connection_transport "enum connection_transport":
 		pass
@@ -176,8 +178,6 @@ cdef extern from "../../include/connection.h":
 	int c_connection_ref "connection_ref"(c_connection *)
 	int c_connection_unref "connection_unref"(c_connection *)
 	
-	void c_node_info_set_port "node_info_set_port" (c_node_info *, int )
-
 	void c_PyErr_Print "PyErr_Print"()
 	
 
@@ -570,9 +570,10 @@ cdef class connection:
 		if isinstance(iface, unicode):
 			iface_utf8 = iface.encode(u'UTF-8')
 		elif not iface:
-			iface_utf8 = u''
+			iface_utf8 = b''
 		else:
 			raise ValueError(u"iface requires text input, got %s" % type(iface))
+
 		return c_connection_bind(self.thisptr, addr_utf8, port, iface_utf8)
 	
 	def listen(self, size=20):
