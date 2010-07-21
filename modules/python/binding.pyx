@@ -572,7 +572,7 @@ cdef class connection:
 		if isinstance(iface, unicode):
 			iface_utf8 = iface.encode(u'UTF-8')
 		elif not iface:
-			iface_utf8 = b''
+			iface_utf8 = u''.encode(u'UTF-8')
 		else:
 			raise ValueError(u"iface requires text input, got %s" % type(iface))
 
