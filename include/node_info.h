@@ -64,5 +64,6 @@ void node_info_add_addr(struct node_info *pi, const char *addr);
 char *node_info_get_ip_string(struct node_info *node);
 char *node_info_get_port_string(struct node_info *node);
 void node_info_set_port(struct node_info *node, uint16_t port);
+void node_info_set_addr(struct node_info *node, char *addr);
 void node_info_addr_clear(struct node_info *node);
 const char *node_info_get_next_addr(struct node_info *node);

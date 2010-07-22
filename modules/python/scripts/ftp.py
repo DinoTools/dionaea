@@ -684,7 +684,7 @@ class ftpctrl(connection):
 	def __init__(self, ftp):
 		connection.__init__(self, 'tcp')
 		self.ftp = ftp
-		self.state = 'USER'
+		self.state = 'NONE'
 		self.timeouts.sustain = 60
 
 	def handle_established(self):
@@ -701,15 +701,14 @@ class ftpctrl(connection):
 			logger.debug("FTP LINE: " + str(line))
 			c = int(line[:3])
 			s = line[3:4]
-			if self.state == 'USER':
+			if self.state == 'NONE':
 				if c == 220 and s != b'-':
 					self.cmd('USER ' + self.ftp.user)
-					self.state = 'PASS'
-			elif self.state == 'PASS':
-				if c == 331 and s != b'-':
+					self.state = 'USER'
+			elif self.state == 'USER' or self.state == 'PASS':
+				if self.state == 'USER' and c == 331 and s != b'-':
 					self.cmd('PASS ' + self.ftp.passwd)
-					self.state = 'WELCOME'
-			elif self.state == 'WELCOME':
+					self.state = 'PASS'
 				if c == 230 and s != b'-':
 					if self.ftp.mode == 'binary':
 						self.cmd('TYPE I')
