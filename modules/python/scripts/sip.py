@@ -510,7 +510,7 @@ class SipSession(object):
 		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 		self.send('\n'.join(msgLines))
 
-		def timer_cb():
+		def timer_cb(watcher, events):
 			# Send our RTP port to the remote host as a 200 OK response to the
 			# remote host's INVITE request
 			logger.debug("getsockname: {}".format(self.__rtpStream.getsockname()))
@@ -534,9 +534,8 @@ class SipSession(object):
 			self.send('\n'.join(msgLines))
 
 		# Delay between 180 and 200 response with pyev callback timer
-		# We have to take note of the 
 		timer = dionaea.pyev.Timer(3, 0, dionaea.pyev.default_loop(),
-				timer_cb, 0)
+				timer_cb)
 
 	def handle_ACK(self, headers, body):
 		if self.__state == SipSession.SESSION_SETUP:
