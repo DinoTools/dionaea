@@ -855,6 +855,7 @@ AC_CONFIG_FILES([Makefile
 				modules/emu/Makefile
 				modules/curl/Makefile
 				modules/nl/Makefile
+				modules/nfq/Makefile
 				modules/pcap/Makefile])
 
                  
