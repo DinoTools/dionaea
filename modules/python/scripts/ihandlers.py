@@ -79,6 +79,10 @@ def start():
 			x = dionaea.logxmpp.logxmpp(conf['server'], int(conf['port']), conf['username'], conf['password'], resource, conf['muc'], conf['config'])
 			g_handlers.append(x)
 
+	if "nfq" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import dionaea.nfq
+		g_handlers.append(dionaea.nfq.nfqhandler())
+
 def stop():
 	global g_handlers
 	for i in g_handlers:
