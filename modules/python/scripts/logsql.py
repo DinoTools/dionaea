@@ -17,6 +17,9 @@ class logsqlhandler(ihandler):
 
 		# mapping socket -> attackid
 		self.attacks = {}
+
+		self.pending = {}
+
 #		self.dbh = sqlite3.connect(user = g_dionaea.config()['modules']['python']['logsql']['file'])
 		file = g_dionaea.config()['modules']['python']['logsql']['sqlite']['file']
 		self.dbh = sqlite3.connect(file)
@@ -355,6 +358,18 @@ class logsqlhandler(ihandler):
 		attackid = self.cursor.lastrowid
 		self.attacks[con] = (attackid, attackid)
 		self.dbh.commit()
+
+		# maybe this was a early connection?
+		if con in self.pending:
+			for i in self.pending[con]:
+				print("%s %s %s" % (attackid, attackid, i))
+				self.cursor.execute("UPDATE connections SET connection_root = ?, connection_parent = ? WHERE connection = ?",
+					(attackid, attackid, i ) )
+				self.cursor.execute("UPDATE connections SET connection_root = ? WHERE connection_root = ?",
+					(attackid, i ) )
+
+			self.dbh.commit()
+
 		return attackid
 
 
@@ -407,6 +422,19 @@ class logsqlhandler(ihandler):
 		logger.info("reject connection from %s:%i to %s:%i (id=%i)" % 
 			(con.remote.host, con.remote.port, con.local.host, con.local.port, attackid))
 
+	def handle_incident_dionaea_connection_tcp_pending(self, icd):
+		attackid = self.connection_insert(icd, 'pending')
+		con=icd.con
+		logger.info("pending connection from %s:%i to %s:%i (id=%i)" % 
+			(con.remote.host, con.remote.port, con.local.host, con.local.port, attackid))
+
+	def handle_incident_dionaea_connection_link_early(self, icd):
+		if icd.parent not in self.attacks:
+			if icd.parent not in self.pending:
+				self.pending[icd.parent] = {self.attacks[icd.child][1]: True}
+			else:
+				if icd.child not in self.pending[icd.parent]:
+					self.pending[icd.parent][self.attacks[icd.child][1]] = True
 
 	def handle_incident_dionaea_connection_link(self, icd):
 		if icd.parent in self.attacks:
@@ -422,12 +450,19 @@ class logsqlhandler(ihandler):
 			logger.info("child %i parent %i root %i" % (childid, parentid, parentroot) )
 			r = self.cursor.execute("UPDATE connections SET connection_root = ?, connection_parent = ? WHERE connection = ?",
 				(parentroot, parentid, childid) )
-#			print(r.fetchall())
-#			r = self.cursor.execute("INSERT INTO connection_links (connection_parent, connection_child) VALUES(?,?)",
-#				(parentid, childid) )
 			self.dbh.commit()
-			
-						
+
+		if icd.child in self.pending:
+			parentroot, parentid = self.attacks[icd.parent]
+			if icd.child in self.attacks:
+				childroot, childid = self.attacks[icd.child]
+			else:
+				childid = parentid
+
+			self.cursor.execute("UPDATE connections SET connection_root = ? WHERE connection_root = ?",
+				(parentroot, childid) )
+			self.dbh.commit()
+
 	def handle_incident_dionaea_connection_free(self, icd):
 		con=icd.con
 		if con in self.attacks:
@@ -436,6 +471,8 @@ class logsqlhandler(ihandler):
 			logger.info("attackid %i is done" % attackid)
 		else:
 			logger.warn("no attackid for %s:%s" % (con.local.host, con.local.port) )
+		if con in self.pending:
+			del self.pending[con]
 
 
 	def handle_incident_dionaea_module_emu_profile(self, icd):
