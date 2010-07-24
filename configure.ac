@@ -809,6 +809,19 @@ CFLAGS_DEFAULT="-Wall ${CFLAGS_DEFAULT}"
 CFLAGS="${CFLAGS} -D _GNU_SOURCE ${LIB_EV_CFLAGS} ${LIB_GLIB_CFLAGS} ${LIB_LCFG_CFLAGS} ${CFLAGS_DEFAULT} -Wstrict-prototypes ${CFLAGS_DEBUG} ${CFLAGS_LFS}"
 
 
+dnl **************************************************
+dnl * revision                                       *
+dnl **************************************************
+
+#AC_PATH_PROG(GIT_BIN, git, "no")
+#if test "x$GIT_BIN" != "xno" ; then
+#	REV="\`$GIT_BIN show-ref heads/master | cut -b 1-6\`"
+#	AC_DEFINE([DIONAEA_GIT_VERSION], [$REV], [this is the git revision])
+#	CFLAGS="${CFLAGS} -DDIONAEA_REV=$REV..." 
+#fi
+
+
+
 AC_DEFUN([AC_DEFINE_DIR], [
   prefix_NONE=
   exec_prefix_NONE=
