@@ -305,7 +305,6 @@ modules = {
 					sustain = "240"
 				}
 			}
-
 		}
 		p0f = {
 			/**
@@ -319,6 +318,7 @@ modules = {
 			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", 
 			"logsql",
 //			"logxmpp",
+//			"nfq",
 //			"p0f",
 //			"surfids"
 			]
