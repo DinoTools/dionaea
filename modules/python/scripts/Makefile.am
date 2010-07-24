@@ -24,6 +24,7 @@ PYSCRIPTS += smb/smb.py
 PYSCRIPTS += smb/rpcservices.py
 PYSCRIPTS += test.py
 PYSCRIPTS += mirror.py
+PYSCRIPTS += nfq.py
 PYSCRIPTS += http.py
 PYSCRIPTS += log.py
 PYSCRIPTS += logsql.py
