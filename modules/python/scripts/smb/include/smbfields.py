@@ -902,6 +902,25 @@ class SMB_Treeconnect_AndX_Response(Packet):
 		StrNullField("NativeFilesystem",""),
 	]
 
+#[MS-SMB].pdf
+#Page 62
+class SMB_Treeconnect_AndX_Response_Extended(Packet):
+	name="SMB Treeconnect AndX Response Extended"
+	smb_cmd = SMB_COM_TREE_CONNECT_ANDX #0x75
+	fields_desc = [
+		ByteField("WordCount",7),
+		ByteEnumField("AndXCommand",0xff,SMB_Commands),
+		ByteField("Reserved1",0),
+		LEShortField("AndXOffset",56), #windows xp gives senseless 56
+		XLEShortField("OptSupport",0x0001),
+		FlagsField("MaximalShareAccessRights", 0x01ff, -32, SMB_AccessMask),
+		FlagsField("GuestMaximalShareAccessRights", 0x01ff, -32, SMB_AccessMask),
+		LEShortField("ByteCount",7),
+		StrNullField("Service","IPC"),
+		ConditionalField(StrFixedLenField("Padding", b'\0', 2), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
+		StrNullField("NativeFileSystem",""),	
+	]
+
 # Used when the error's return is needed
 class SMB_Treeconnect_AndX_Response2(Packet):
 	name="SMB Treeconnect AndX Response2"
@@ -1406,6 +1425,7 @@ bind_bottom_up(SMB_Header, SMB_Treedisconnect, Command=lambda x: x==0x71)
 bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Request, Command=lambda x: x==0x75, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Response, Command=lambda x: x==0x75, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Response2, Command=lambda x: x==0x75, Flags=lambda x: x&0x80)
+#bind_bottom_up(SMB_Header, SMB_Treeconnect_AndX_Response_Extended, Command=lambda x: x==0x75, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Request, Command=lambda x: x==0xa2, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_NTcreate_AndX_Response, Command=lambda x: x==0xa2, Flags=lambda x: x&0x80)
 bind_bottom_up(SMB_Header, SMB_Trans_Request, Command=lambda x: x==0x25, Flags=lambda x: not x&0x80)
@@ -1444,6 +1464,7 @@ bind_top_down(SMB_Header, SMB_Sessionsetup_AndX_Response2, Command=0x73)
 bind_top_down(SMB_Header, SMB_Sessionsetup_ESEC_AndX_Response, Command=0x73)
 bind_top_down(SMB_Header, SMB_Treeconnect_AndX_Response, Command=0x75)
 bind_top_down(SMB_Header, SMB_Treeconnect_AndX_Response2, Command=0x75)
+#bind_top_down(SMB_Header, SMB_Treeconnect_AndX_Response_Extended, Command=0x75)
 bind_top_down(SMB_Header, SMB_Treedisconnect, Command=0x71)
 bind_top_down(SMB_Header, SMB_NTcreate_AndX_Response, Command=0xa2)
 bind_top_down(SMB_Header, SMB_Write_AndX_Response, Command=0x2f)

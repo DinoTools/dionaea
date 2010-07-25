@@ -134,11 +134,12 @@ class NTLMSSP_Message_Signature(Packet):
 class NTLM_Version(Packet):
 	name = "NTLM Version"
 	fields_desc = [
+		# Set to Windows 5.1 Build 2600 NLMPv15
 		ByteField("ProductMajorVersion",5),
 		ByteField("ProductMinorVersion",1),
-		LEShortField("ProductBuild",0),
+		LEShortField("ProductBuild",2600),
 		StrFixedLenField("Reserved", "\0\0\0", 3),
-		ByteField("NTLMRevisionCurrent",1),
+		ByteField("NTLMRevisionCurrent",15),
 	]
 
 AV_Pair_Ids = {
@@ -158,7 +159,7 @@ AV_Pair_Ids = {
 class AV_PAIR(Packet):
 	name = "AV Pair"
 	fields_desc = [
-		ShortEnumField("Id",0,AV_Pair_Ids),
+		LEShortEnumField("Id",0,AV_Pair_Ids),
 		FieldLenField("Len", 0, fmt='<H', length_of="Value"),
 		StrLenField("Value", "", length_from=lambda x:x.Len),
 	]
@@ -197,7 +198,14 @@ class NTLM_Challenge(Packet):
 		PacketField("TargetInfoFields",NTLM_Value(),NTLM_Value),
 #		PacketField("Version",0,NTLM_Version),
 		ConditionalField(PacketField("Version",NTLM_Version(),NTLM_Version), lambda x: x.NegotiateFlags & NTLMSSP_NEGOTIATE_VERSION),
-		StrField("Payload","")
+		ConditionalField(StrFixedLenField("TargetFieldString","HOMEUSER-3AF6FE".encode('utf16')[2:],30), lambda x: x.NegotiateFlags & NTLMSSP_REQUEST_TARGET),
+		#StrField("Payload","")
+		#PacketField("AVPair1",AV_PAIR(),AV_PAIR),
+		#PacketField("AVPair2",AV_PAIR(),AV_PAIR),
+		#PacketField("AVPair3",AV_PAIR(),AV_PAIR),
+		#PacketField("AVPair4",AV_PAIR(),AV_PAIR),
+		#PacketField("AVPair5",AV_PAIR(),AV_PAIR),
+		#PacketField("AVPair6",AV_PAIR(),AV_PAIR),
 	]
 
 class NTLM_Authenticate(Packet):

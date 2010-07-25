@@ -38,7 +38,7 @@ from uuid import UUID
 from .include.smbfields import *
 
 from .include.gssapifields import GSSAPI,SPNEGO, NegTokenTarg
-from .include.ntlmfields import NTLMSSP_Header, NTLM_Negotiate, NTLM_Challenge
+from .include.ntlmfields import NTLMSSP_Header, NTLM_Negotiate, NTLM_Challenge, NTLMSSP_REQUEST_TARGET
 from .include.packet import Raw
 from .include.asn1.ber import BER_len_dec, BER_len_enc, BER_identifier_dec, BER_CLASS_APP, BER_CLASS_CON,BER_identifier_enc
 
@@ -204,6 +204,11 @@ class smbd(connection):
 						ntlmnegotiate = ntlmssp.getlayer(NTLM_Negotiate)
 						rntlmssp = NTLMSSP_Header(MessageType=2)
 						rntlmchallenge = NTLM_Challenge(NegotiateFlags=ntlmnegotiate.NegotiateFlags)
+						if ntlmnegotiate.NegotiateFlags & NTLMSSP_REQUEST_TARGET:
+							rntlmchallenge.TargetNameFields.Offset = 0x38
+							rntlmchallenge.TargetNameFields.Len = 0x1E
+							rntlmchallenge.TargetNameFields.MaxLen = 0x1E
+						
 						rntlmchallenge.ServerChallenge = b"\xa4\xdf\xe8\x0b\xf5\xc6\x1e\x3a"
 						rntlmssp = rntlmssp / rntlmchallenge
 						rntlmssp.show()
@@ -244,7 +249,10 @@ class smbd(connection):
 							ntlmnegotiate = ntlmssp.getlayer(NTLM_Negotiate)
 							rntlmssp = NTLMSSP_Header(MessageType=2)
 							rntlmchallenge = NTLM_Challenge(NegotiateFlags=ntlmnegotiate.NegotiateFlags)
-							rntlmchallenge.TargetInfoFields.Offset = rntlmchallenge.TargetNameFields.Offset = 0x30
+							if ntlmnegotiate.NegotiateFlags & NTLMSSP_REQUEST_TARGET:
+								rntlmchallenge.TargetNameFields.Offset = 0x38
+								rntlmchallenge.TargetNameFields.Len = 0x1E
+								rntlmchallenge.TargetNameFields.MaxLen = 0x1E
 							rntlmchallenge.ServerChallenge = b"\xa4\xdf\xe8\x0b\xf5\xc6\x1e\x3a"
 							rntlmssp = rntlmssp / rntlmchallenge
 							rntlmssp.show()
@@ -277,6 +285,10 @@ class smbd(connection):
 			r = SMB_Treeconnect_AndX_Response()
 			h = p.getlayer(SMB_Treeconnect_AndX_Request)
 			print ("Service : %s" % h.Path)
+			
+			# for SMB_Treeconnect_AndX_Request.Flags = 0x0008
+			if h.Flags == 0x08:
+				r = SMB_Treeconnect_AndX_Response_Extended()
 			
 			# specific for NMAP smb-enum-shares.nse support
 			if h.Path == b'nmap-share-test\0':
