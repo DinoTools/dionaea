@@ -95,6 +95,71 @@ class RPCService:
 class ATSVC(RPCService):
 	uuid = UUID('1ff70682-0a51-30e8-076d-740be8cee98b').hex
 
+	ops = {
+		0x02: "NetrJobEnum",
+		
+	}
+	
+	class ATSVC_HANDLE:
+		# 2.3.2 ATSVC_HANDLE
+		#
+		# http://msdn.microsoft.com/en-us/library/cc248473%28PROT.13%29.aspx
+		#
+		#typedef [handle] const wchar_t* ATSVC_HANDLE; 
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Pointer = p.unpack_pointer()
+				self.Handle = p.unpack_string()
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+
+	#this function have not tested for the moment
+	@classmethod
+	def handle_NetrJobEnum(cls,p):
+		# 3.2.5.2.3 NetrJobEnum (Opnum 2)
+		#
+		# http://msdn.microsoft.com/en-us/library/cc248425%28PROT.10%29.aspx
+		#
+		#NET_API_STATUS NetrJobEnum(
+		#  [in, string, unique] ATSVC_HANDLE ServerName,
+		#  [in, out] LPAT_ENUM_CONTAINER pEnumContainer,
+		#  [in] DWORD PreferedMaximumLength,
+		#  [out] LPDWORD pTotalEntries,
+		#  [in, out, unique] LPDWORD pResumeHandle
+		#);
+
+		x = ndrlib.Unpacker(p.StubData)
+		ServerName = ATSVC.ATSVC_HANDLE(x)
+		
+		Pad = x.unpack_short()
+		# pEnumContainer
+		EntriesRead = x.unpack_long()
+		pEntries = x.unpack_pointer()
+		# PreferedMaximumLength
+		PreferedMaxLength = x.unpack_long()
+		# pResumeHandle
+		Pointer = x.unpack_pointer()
+		ResumeHandle = x.unpack_long()
+		
+		r = ndrlib.Packer()
+		# pEnumContainer
+		r.pack_long(0)		# EntriesRead
+		r.pack_pointer(0)	# pEntries
+		# pTotalEntries
+		r.pack_long(0)
+		# pResumeHandle
+		r.pack_pointer(0x0016c918)
+		r.pack_long(0)
+
+		# return 
+		r.pack_long(0)
+
+		return r.get_buffer()
+
 
 class AudioSrv(RPCService):
 	uuid = UUID('3faf4738-3a21-4307-b46c-fdda9bb8c0d5').hex
