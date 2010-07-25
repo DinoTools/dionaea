@@ -167,7 +167,7 @@ struct module_api *module_init(struct dionaea *d)
 		.prepare = &nfq_prepare,
 		.new = &nfq_new,
 		.free = NULL,
-		.hup = &nfq_config,
+		.hup = NULL,
 	};
 
     return &nfq_api;
