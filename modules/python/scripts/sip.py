@@ -500,7 +500,6 @@ class SipSession(object):
 			self.__remoteRtpPort)
 
 		# Send 180 Ringing to make honeypot appear more human-like
-		# TODO: Delay between 180 and 200
 		msgLines = []
 		msgLines.append("SIP/2.0 " + RESPONSE[RINGING])
 		msgLines.append("Via: " + self.__sipVia)
@@ -641,11 +640,6 @@ class Sip(connection):
 		# Dictionary with SIP sessions (key is Call-ID)
 		self.__sessions = {}
 
-		# Initialize remote host variables
-		# TODO: Are these necessary?
-		self.__remoteAddress = ''
-		self.__remoteSipPort = 0
-
 		# Set SIP connection in session class variable
 		SipSession.sipConnection = self
 
@@ -662,7 +656,7 @@ class Sip(connection):
 		and self.remote.port are already set correctly.
 		"""
 		logger.debug('Sending message "{}" to ({}:{})'.format(
-			s, self.__remoteAddress, self.__remoteSipPort))
+			s, con[0], con[1]))
 		
 		# Set remote host and port before UDP send
 		self.remote.host = con[0]
@@ -765,8 +759,8 @@ class Sip(connection):
 			return
 
 		# Establish a new SIP session
-		newSession = SipSession((self.__remoteAddress,
-			self.__remoteSipPort), rtpPort, headers)
+		newSession = SipSession((self.remote.host, self.remote.port),
+			rtpPort, headers)
 		try:
 			newSession.handle_INVITE(headers)
 		except AuthenticationError:
