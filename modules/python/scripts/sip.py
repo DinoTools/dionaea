@@ -404,11 +404,15 @@ class RtpUdpStream(connection):
 		# flooding attacks
 		dumpDateTime = time.strftime("var/dionaea/%Y%m%d_%H:%M:%S")
 		dumpId = random.randint(1000, 9999)
-		streamDumpFile = "stream_{0}_{1}.rtpdump".format(dumpDateTime, dumpId)
+		streamDumpFileIn = "stream_{0}_{1}_in.rtpdump".format(
+			dumpDateTime, dumpId)
+		streamDumpFileOut = "stream_{0}_{1}_out.rtpdump".format(
+			dumpDateTime, dumpId)
 
 		# Catch IO errors
 		try:
-			self.__streamDump = open(streamDumpFile, "wb")
+			self.__streamDumpIn = open(streamDumpFileIn, "wb")
+			self.__streamDumpOut = open(streamDumpFileOut, "wb")
 		except IOError as e:
 			logger.error("Could not open stream dump file: {}".format(e))
 			self.__streamDump = None
@@ -426,9 +430,9 @@ class RtpUdpStream(connection):
 		self.close()
 
 	def handle_io_in(self, data):
-		# Write data to disk
-		if self.__streamDump:
-			self.__streamDump.write(data)
+		# Write incoming data to disk
+		if self.__streamDumpIn:
+			self.__streamDumpIn.write(data)
 
 	def handle_io_out(self):
 		# Because of the writable function, handle_write will only be called if
@@ -436,9 +440,8 @@ class RtpUdpStream(connection):
 		bytesSent = self.send(self.__sendBuffer)
 
 		# Write the sent part of the buffer to the stream dump file
-		# TODO: separate inbound and outbound traffic?
-		if self.__streamDump:
-			self.__streamDump.write(self.__sendBuffer[:bytesSent])
+		if self.__streamDumpOut:
+			self.__streamDumpOut.write(self.__sendBuffer[:bytesSent])
 
 		# Shift sending window for next send or handle_write operation
 		self.__sendBuffer = self.__sendBuffer[bytesSent:]
