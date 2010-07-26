@@ -297,6 +297,7 @@ class smbd(connection):
 				icd.url = "smb://" + self.remote.host
 				icd.con = self
 				icd.report()
+				self.fids[p.FID].unlink(self.fids[p.FID].name)
 				del self.fids[p.FID]
 		elif Command == SMB_COM_LOGOFF_ANDX:
 			r = SMB_Logoff_AndX()
@@ -308,19 +309,49 @@ class smbd(connection):
 				r.FID += 0x200
 			if h.FileAttributes & (SMB_FA_HIDDEN|SMB_FA_SYSTEM|SMB_FA_ARCHIVE|SMB_FA_NORMAL):
 				# if a normal file is requested, provide a file
-				smblog.warn("OPEN FILE! %s" % p.Filename)
 				self.fids[r.FID] = tempfile.NamedTemporaryFile(delete=False, prefix="smb-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
+
+				# get pretty filename
+				f,v = h.getfield_and_val('Filename')
+				filename = f.i2repr(h,v)
+				for j in range(len(filename)):
+					if filename[j] != '\\' and filename[j] != '/':
+						break
+				filename = filename[j:]
+
+				i = incident("dionaea.download.offer")
+				i.con = self
+				i.url = "smb://%s/%s" % (self.remote.host, filename)
+				i.report()
+				smblog.info("OPEN FILE! %s" % filename)
+
 			elif h.FileAttributes & SMB_FA_DIRECTORY:
 				pass
 			else:
 				self.fids[r.FID] = None
 		elif Command == SMB_COM_OPEN_ANDX:
+			h = p.getlayer(SMB_Open_AndX_Request)
 			r = SMB_Open_AndX_Response()
 			r.FID = 0x4000
 			while r.FID in self.fids:
 				r.FID += 0x200
-			smblog.info("OPEN FILE! %s" % p.Filename)
+			
 			self.fids[r.FID] = tempfile.NamedTemporaryFile(delete=False, prefix="smb-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
+
+			# get pretty filename
+			f,v = h.getfield_and_val('FileName')
+			filename = f.i2repr(h,v)
+			for j in range(len(filename)):
+				if filename[j] != '\\' and filename[j] != '/':
+					break
+			filename = filename[j:]
+
+			i = incident("dionaea.download.offer")
+			i.con = self
+			i.url = "smb://%s/%s" % (self.remote.host, filename)
+			i.report()
+			smblog.info("OPEN FILE! %s" % filename)
+
 		elif Command == SMB_COM_ECHO:
 			r = p.getlayer(SMB_Header).payload
 		elif Command == SMB_COM_WRITE_ANDX:
@@ -496,6 +527,11 @@ class smbd(connection):
 		return False
 
 	def handle_disconnect(self):
+		for i in self.fids:
+			if self.fids[i] is not None:
+				self.fids[i].close()
+				self.fids[i].unlink(self.fids[i].name)
+
 		now = datetime.datetime.now()
 		dirname = "%04i-%02i-%02i" % (now.year, now.month, now.day)
 		dir = os.path.join(g_dionaea.config()['bistreams']['python']['dir'], dirname)

@@ -13,6 +13,8 @@ install-exec-am: all
 	cp build/*/dionaea/*.so $(DESTDIR)$(pkglibdir)/python.so
 	rm -rf $(DESTDIR)$(pkglibdir)/python/dionaea/core.so
 	ln -s $(DESTDIR)$(pkglibdir)/python.so $(DESTDIR)$(pkglibdir)/python/dionaea/core.so
+	rm -rf $(DESTDIR)$(pkglibdir)/python/dionaea/pyev.so
+	ln -s $(DESTDIR)$(pkglibdir)/python.so $(DESTDIR)$(pkglibdir)/python/dionaea/pyev.so
 
 clean:
 	python setup.py clean

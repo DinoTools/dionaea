@@ -163,6 +163,16 @@ modules = {
 		}
 	}
 
+	nfq =
+	{ 
+		/** 
+		 * queue has to be the nfqueue num 
+		 * refer to http://dionaea.carnivore.it/#nfq_python
+		 * if you do not specify a queue-num with iptables, 0 is the default
+		 */
+		queue = "0"
+	}
+
 	python = {
 		// default expands to PREFIX/lib/dionaea/python/
 		// ordering is granted
@@ -267,6 +277,35 @@ modules = {
 				}
 			}
 		}
+		nfq = {
+			/** 
+			 * nfq can intercept incoming tcp connections during the tcp handshake
+			 * giving your honeypot the possibility to provide service on  
+			 * ports which are not served by default.
+			 * refer to the documentation (http://dionaea.carnivore.it/#nfq_python) 
+			 * BEFORE using this
+			 */
+
+			nfaction = "0" // DROP
+
+			throttle = {
+				window = "30"
+				limits = {
+					total = "30"
+					slot = "30"
+				}
+			}
+
+			timeouts = {
+				server = {
+					listen = "5"
+				}
+				client = {
+					idle = "10"
+					sustain = "240"
+				}
+			}
+		}
 		p0f = {
 			/**
 			 * start p0f with 
@@ -279,6 +318,7 @@ modules = {
 			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", 
 			"logsql",
 //			"logxmpp",
+//			"nfq",
 //			"p0f",
 //			"surfids"
 			]

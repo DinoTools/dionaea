@@ -85,13 +85,13 @@ def print_dcerpcrequests(cursor, connection, indent):
 			dcerpcrequest['dcerpcserviceop_vuln']) )
 
 def print_connection(c, indent):
-	if c['connection_type'] in ['accept', 'reject']:
-		print("%*s connection %i %s %s %s %s:%i <- %s:%i" % ( indent, " ", c['connection'], c['connection_protocol'], c['connection_transport'], c['connection_type'], c['local_host'], c['local_port'], c['remote_host'], c['remote_port']) )
+	if c['connection_type'] in ['accept', 'reject', 'pending']:
+		print("%*s connection %i %s %s %s %s:%i <- %s:%i" % ( indent, " ", c['connection'], c['connection_protocol'], c['connection_transport'], c['connection_type'], c['local_host'], c['local_port'], c['remote_host'], c['remote_port']), end='' )
 	elif c['connection_type'] == 'connect':
-		print("%*s connection %i %s %s %s %s:%i -> %s/%s:%i" % ( indent, " ", c['connection'], c['connection_protocol'], c['connection_transport'], c['connection_type'], c['local_host'], c['local_port'], c['remote_hostname'], c['remote_host'], c['remote_port']) )
+		print("%*s connection %i %s %s %s %s:%i -> %s/%s:%i" % ( indent, " ", c['connection'], c['connection_protocol'], c['connection_transport'], c['connection_type'], c['local_host'], c['local_port'], c['remote_hostname'], c['remote_host'], c['remote_port']), end='' )
 	elif c['connection_type'] == 'listen':
-		print("%*s connection %i %s %s %s %s:%i" % ( indent, " ", c['connection'], c['connection_protocol'], c['connection_transport'], c['connection_type'], c['local_host'], c['local_port']) )
-	
+		print("%*s connection %i %s %s %s %s:%i" % ( indent, " ", c['connection'], c['connection_protocol'], c['connection_transport'], c['connection_type'], c['local_host'], c['local_port']), end='' )
+	print(" (%s %s)" % ( c['connection_root'], c['connection_parent']) )
 
 def recursive_print(cursor, connection, indent):
 	result = cursor.execute("SELECT * from connections WHERE connection_parent = ?", (connection, ))
@@ -116,6 +116,8 @@ def print_db(opts, args):
 	query = """
 SELECT DISTINCT 
 	c.connection AS connection,
+	connection_root,
+	connection_parent,
 	connection_type,
 	connection_protocol,
 	connection_transport,
@@ -159,6 +161,9 @@ WHERE
 	if options.opnum:
 		query = query + "\tAND dcerpcrequest_opnum = %s \n" % options.opnum
 			
+	if options.protocol:
+		query = query + "\tAND connection_protocol = '%s' \n" % options.protocol
+					
 	if options.md5sum:
 		query = query + "\tAND download_md5_hash = '%s' \n" % options.md5sum
 	
@@ -202,6 +207,7 @@ if __name__ == "__main__":
 		parser.add_option("-T", "--time-to", action="store", type="string", dest="time_to")
 		parser.add_option("-u", "--dcerpcbind-uuid", action="store", type="string", dest="uuid")
 		parser.add_option("-p", "--dcerpcrequest-opnum", action="store", type="string", dest="opnum")
+		parser.add_option("-P", "--protocol", action="store", type="string", dest="protocol")
 		parser.add_option("-m", "--downloads-md5sum", action="store", type="string", dest="md5sum")
 		parser.add_option("-y", "--connection-type", action="store", type="string", dest="type")
 		(options, args) = parser.parse_args()

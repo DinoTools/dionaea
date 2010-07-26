@@ -1,3 +1,30 @@
+/********************************************************************************
+ *                               Dionaea
+ *                           - catches bugs -
+ *
+ *
+ *
+ * Copyright (C) 2009  Paul Baecher & Markus Koetter
+ * 
+ * This program is free software; you can redistribute it and/or
+ * modify it under the terms of the GNU General Public License
+ * as published by the Free Software Foundation; either version 2
+ * of the License, or (at your option) any later version.
+ * 
+ * This program is distributed in the hope that it will be useful,
+ * but WITHOUT ANY WARRANTY; without even the implied warranty of
+ * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+ * GNU General Public License for more details.
+ * 
+ * You should have received a copy of the GNU General Public License
+ * along with this program; if not, write to the Free Software
+ * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+ * 
+ * 
+ *             contact nepenthesdev@gmail.com  
+ *
+ *******************************************************************************/
+
 #include <glib.h>
 #include <stdio.h>
 #include <ev.h>
@@ -49,6 +76,7 @@ static int nfqueue_cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nf
 
 static struct 
 {
+	struct lcfgx_tree_node *config;
 	struct nfq_handle *h;
 	struct nfq_q_handle *qh;
 	struct nfnl_handle *nh;
@@ -57,13 +85,19 @@ static struct
 	struct ev_io io;
 } nfq_runtime;
 
-bool nfq_config(struct lcfgx_tree_node *node)
+bool nfq_config(struct lcfgx_tree_node *config)
 {
-	g_debug("%s %s node %p", __PRETTY_FUNCTION__, __FILE__, node);
+	g_debug("%s %s node %p", __PRETTY_FUNCTION__, __FILE__, config);
 	memset(&nfq_runtime, 0, sizeof(nfq_runtime));
 
-//	lcfgx_tree_dump(node,0);
-	nfq_runtime.queuenum = 0;
+	struct lcfgx_tree_node *node;
+	nfq_runtime.config = config;
+
+	if( lcfgx_get_string(config, &node, "queue") == LCFGX_PATH_FOUND_TYPE_OK )
+		nfq_runtime.queuenum  = atoi(node->value.string.data);
+
+	g_info("nfq on queue %i", nfq_runtime.queuenum);
+
 	return true;
 }
 
@@ -133,7 +167,7 @@ struct module_api *module_init(struct dionaea *d)
 		.prepare = &nfq_prepare,
 		.new = &nfq_new,
 		.free = NULL,
-		.hup = &nfq_config,
+		.hup = NULL,
 	};
 
     return &nfq_api;
