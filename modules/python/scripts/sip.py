@@ -306,8 +306,8 @@ def parseSipMessage(msg):
 	# body in the SIP parser
 	parts = msg.split("\n\n", 1)
 	if len(parts) < 1:
-		logger.error("Message too short")
-		raise SipParsingError("Message too short")
+		logger.error("SIP message is too short")
+		raise SipParsingError("SIP message is too short")
 
 	msg = parts[0]
 
@@ -414,10 +414,10 @@ class RtpUdpStream(connection):
 			self.__streamDumpIn = open(streamDumpFileIn, "wb")
 			self.__streamDumpOut = open(streamDumpFileOut, "wb")
 		except IOError as e:
-			logger.error("Could not open stream dump file: {}".format(e))
+			logger.error("RtpStream: Could not open stream dump file: {}".format(e))
 			self.__streamDump = None
 
-		logger.info("Created RTP channel :{} <-> :{}".format(
+		logger.info("Created RTP channel on ports :{} <-> :{}".format(
 			self.__localport, self.__port))
 
 	def handle_timeout_idle(self):
@@ -464,7 +464,7 @@ class SipSession(object):
 
 	def __init__(self, conInfo, rtpPort, inviteHeaders):
 		if not SipSession.sipConnection:
-			logger.error("SIP connection class variable not set")
+			logger.critical("SIP connection class variable not set")
 
 		# Store incoming information of the remote host
 		self.__state = SipSession.SESSION_SETUP
@@ -515,7 +515,8 @@ class SipSession(object):
 		def timer_cb(watcher, events):
 			# Send our RTP port to the remote host as a 200 OK response to the
 			# remote host's INVITE request
-			logger.debug("getsockname: {}".format(self.__rtpStream.getsockname()))
+			logger.debug("getsockname SipSession: {}".format(
+				self.__rtpStream.getsockname()))
 			localRtpPort = self.__rtpStream.getsockname()[1]
 			
 			msgLines = []
@@ -543,7 +544,7 @@ class SipSession(object):
 		if self.__state == SipSession.SESSION_SETUP:
 			logger.debug(
 				"Waiting for ACK after INVITE -> got ACK -> active session")
-			logger.info("Connection accepted (session {})".format(
+			logger.info("SIP session established (session {})".format(
 				self.__callId))
 
 			# Set current state to active (ready for multimedia stream)
@@ -671,7 +672,7 @@ class Sip(connection):
 		try:
 			msgType, firstLine, headers, body = parseSipMessage(data)
 		except SipParsingError as e:
-			logger.error(e)
+			logger.error("Error while parsing SIP message: {}".format(e))
 			return
 
 		if msgType == 'INVITE':
@@ -689,7 +690,9 @@ class Sip(connection):
 		elif msgType == 'SIP/2.0':
 			self.sip_RESPONSE(firstLine, headers, body)
 		else:
-			logger.error("Error: unknown header")
+			logger.error("Unknown SIP header " + \
+				"(supported: INVITE, ACK, OPTIONS, BYE, CANCEL, REGISTER " + \
+				"and SIP responses")
 
 	def sip_INVITE(self, requestLine, headers, body):
 		global g_sipconfig
@@ -697,7 +700,7 @@ class Sip(connection):
 		# Print SIP header
 		logger.info("Received INVITE")
 		for k, v in headers.items():
-			logger.info("SIP header {}: {}".format(k, v))
+			logger.debug("SIP header {}: {}".format(k, v))
 
 		if self.__checkForMissingHeaders(headers, ["accept", "content-type"]):
 			return
@@ -722,7 +725,7 @@ class Sip(connection):
 		try:
 			sessionDescription, mediaDescriptions = parseSdpMessage(body)
 		except SdpParsingError as e:
-			logger.error(e)
+			logger.error("Error while parsing SDP message: {}".format(e))
 			return
 
 		# Check for all necessary fields
@@ -740,6 +743,7 @@ class Sip(connection):
 			logger.error("SDP message has to include a media description: exit")
 			return
 		
+		# TODO: look at other mediaDescriptions as well
 		mediaDescriptionParts = mediaDescriptions[0]['m'].split(' ')
 		if mediaDescriptionParts[0] != 'audio':
 			logger.error("SDP media description has to be of audio type: exit")
@@ -752,7 +756,7 @@ class Sip(connection):
 		# outs or because he wants to flood the honeypot)
 		callId = headers["call-id"]
 		if callId in self.__sessions:
-			logger.info("SIP session with Call-ID {} already exists".format(
+			logger.error("SIP session with Call-ID {} already exists".format(
 				callId))
 			return
 
@@ -777,7 +781,7 @@ class Sip(connection):
 		callId = headers['call-id'] 
 
 		if callId not in self.__sessions:
-			logger.error("Given Call-ID does not belong to a session: exit")
+			logger.error("Given Call-ID does not belong to any session: exit")
 			return
 
 		# Get SIP session for given Call-ID
@@ -818,7 +822,7 @@ class Sip(connection):
 		try:
 			s = self.__sessions[headers["call-id"]]
 		except KeyError:
-			logger.error("Given Call-ID does not belong to a session: exit")
+			logger.error("Given Call-ID does not belong to any session: exit")
 			return
 		
 		# Handle incoming BYE request depending on current state
@@ -885,7 +889,7 @@ class Sip(connection):
 
 		for m in mandatoryHeaders:
 			if m not in headers:
-				logger.warning("Mandatory header {} not in message".format(m))
+				logger.error("Mandatory header {} not in message".format(m))
 				headerMissing = True
 
 		return headerMissing
