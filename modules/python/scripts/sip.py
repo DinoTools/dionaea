@@ -688,8 +688,6 @@ class Sip(connection):
 			self.sip_REGISTER(firstLine, headers, body)
 		elif msgType == 'SIP/2.0':
 			self.sip_RESPONSE(firstLine, headers, body)
-		elif msgType == 'Error':
-			logger.error("Error on parsing SIP message")
 		else:
 			logger.error("Error: unknown header")
 
