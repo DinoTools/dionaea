@@ -34,6 +34,7 @@ import random
 import hashlib
 
 from dionaea.core import connection, ihandler, g_dionaea, incident
+from dionaea import pyev
 
 logger = logging.getLogger('sip')
 logger.setLevel(logging.DEBUG)
@@ -534,8 +535,8 @@ class SipSession(object):
 			# Send our RTP port to the remote host as a 200 OK response to the
 			# remote host's INVITE request
 			logger.debug("getsockname SipSession: {}".format(
-				self.__rtpStream.getsockname()))
-			localRtpPort = self.__rtpStream.getsockname()[1]
+				self.__rtpStream.local.port))
+			localRtpPort = self.__rtpStream.local.port
 			
 			msgLines = []
 			msgLines.append("SIP/2.0 " + RESPONSE[OK])
@@ -555,8 +556,9 @@ class SipSession(object):
 			self.send('\n'.join(msgLines))
 
 		# Delay between 180 and 200 response with pyev callback timer
-		timer = dionaea.pyev.Timer(3, 0, dionaea.pyev.default_loop(),
-				timer_cb)
+		loop = pyev.default_loop()
+		timer = pyev.Timer(3, 0, loop, timer_cb)
+		timer.start()
 
 		return 0
 
