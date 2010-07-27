@@ -647,7 +647,6 @@ class SipSession(object):
 
 			# The calculation of the expected response is taken from
 			# Sipvicious (c) Sandro Gaucci
-			# TODO: compare config values to values in Authorization header
 			realm = "{}@{}".format(g_sipconfig['user'], g_sipconfig['ip'])
 			uri = "sip:" + realm
 			a1 = hash("{}:{}:{}".format(
@@ -663,6 +662,7 @@ class SipSession(object):
 				logger.warn("Authorization failed")
 				return
 
+			logger.info("Authorization succeeded")
 			return expected
 
 class Sip(connection):
