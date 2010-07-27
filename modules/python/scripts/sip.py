@@ -41,6 +41,12 @@ logger.setLevel(logging.DEBUG)
 # Shortcut to sip config
 g_sipconfig = g_dionaea.config()['modules']['python']['sip']
 
+# Make "yes"/"no" from config file into boolean value
+if g_sipconfig['use_authentication'].lower() == 'no':
+	g_sipconfig['use_authentication'] = False
+else:
+	g_sipconfig['use_authentication'] = True
+
 # Shortcut hashing function
 def hash(s):
 	return hashlib.md5(s.encode('utf-8')).hexdigest()
@@ -306,7 +312,7 @@ def parseSipMessage(msg):
 	# body in the SIP parser
 	parts = msg.split("\n\n", 1)
 	if len(parts) < 1:
-		logger.error("SIP message is too short")
+		logger.warn("SIP message is too short")
 		raise SipParsingError("SIP message is too short")
 
 	msg = parts[0]
@@ -390,8 +396,8 @@ class RtpUdpStream(connection):
 		connection.__init__(self, 'udp')
 
 		# Bind to free random port for incoming RTP traffic
-		self.bind(('', 0))
-		self.__localport = self.getsockname()[1]
+		# TODO: Address from config file?
+		self.bind('0.0.0.0', 0)
 
 		# The address and port of the remote host
 		self.__address = address
@@ -402,23 +408,28 @@ class RtpUdpStream(connection):
 
 		# Create a stream dump file with date and time and random ID in case of
 		# flooding attacks
-		dumpDateTime = time.strftime("var/dionaea/%Y%m%d_%H:%M:%S")
+		dumpDateTime = time.strftime("%Y%m%d_%H:%M:%S")
 		dumpId = random.randint(1000, 9999)
-		streamDumpFileIn = "stream_{0}_{1}_in.rtpdump".format(
+		streamDumpFileIn = "var/dionaea/stream_{0}_{1}_in.rtpdump".format(
 			dumpDateTime, dumpId)
-		streamDumpFileOut = "stream_{0}_{1}_out.rtpdump".format(
+		streamDumpFileOut = "var/dionaea/stream_{0}_{1}_out.rtpdump".format(
 			dumpDateTime, dumpId)
 
 		# Catch IO errors
 		try:
 			self.__streamDumpIn = open(streamDumpFileIn, "wb")
+		except IOError as e:
+			logger.warn("RtpStream: Could not open stream dump file: {}".format(e))
+			self.__streamDumpIn = None
+
+		try:
 			self.__streamDumpOut = open(streamDumpFileOut, "wb")
 		except IOError as e:
-			logger.error("RtpStream: Could not open stream dump file: {}".format(e))
-			self.__streamDump = None
+			logger.warn("RtpStream: Could not open stream dump file: {}".format(e))
+			self.__streamDumpOut = None
 
 		logger.info("Created RTP channel on ports :{} <-> :{}".format(
-			self.__localport, self.__port))
+			self.local.port, self.__port))
 
 	def handle_timeout_idle(self):
 		return False
@@ -428,31 +439,35 @@ class RtpUdpStream(connection):
 
 	def handle_close(self):
 		self.close()
+		logger.info("Closed RTP channel on ports :{} <-> :{}".format(
+			self.local.port, self.remote.port))
 
 	def handle_io_in(self, data):
 		# Write incoming data to disk
 		if self.__streamDumpIn:
 			self.__streamDumpIn.write(data)
 
+		return len(data)
+
 	def handle_io_out(self):
-		# Because of the writable function, handle_write will only be called if
-		# there is data in the send buffer
+		# TODO: Only necessary to set once in __init__?
+		self.remote.host = self.__address
+		self.remote.port = self.__port
 		bytesSent = self.send(self.__sendBuffer)
 
 		# Write the sent part of the buffer to the stream dump file
 		if self.__streamDumpOut:
 			self.__streamDumpOut.write(self.__sendBuffer[:bytesSent])
 
-		# Shift sending window for next send or handle_write operation
+		# Shift sending window for next send operation
 		self.__sendBuffer = self.__sendBuffer[bytesSent:]
 
-	def send(self, msg):
-		# Append to send buffer, handle_write will take care of socket operation
-		self.__sendBuffer += msg.encode('utf-8')
-
 	def close(self):
-		if self.__streamDump:
-			self.__streamDump.close()
+		if self.__streamDumpIn:
+			self.__streamDumpIn.close()
+
+		if self.__streamDumpOut:
+			self.__streamDumpOut.close()
 
 		connection.close(self)
 
@@ -488,9 +503,12 @@ class SipSession(object):
 	def handle_INVITE(self, headers):
 		# Check authentication
 		if g_sipconfig['use_authentication']:
+			logger.debug("Starting challenge response mechanism")
 			r = self.__challengeINVITE(headers)
 			if not r:
 				raise AuthenticationError()
+		else:
+			logger.debug("Skipping authentication")
 
 		# From now on, client's INVITE request is authenticated
 
@@ -540,6 +558,8 @@ class SipSession(object):
 		timer = dionaea.pyev.Timer(3, 0, dionaea.pyev.default_loop(),
 				timer_cb)
 
+		return 0
+
 	def handle_ACK(self, headers, body):
 		if self.__state == SipSession.SESSION_SETUP:
 			logger.debug(
@@ -576,9 +596,12 @@ class SipSession(object):
 	def __challengeINVITE(self, headers):
 		global g_sipconfig
 
+		logger.debug("'Authorization' in SIP headers: {}".format(
+			'authorization' in headers))
+
 		if "authorization" not in headers:
 			# Calculate new nonce for authentication based on current time
-			self.__nonce = hash("{}".format(time.time()))
+			nonce = hash("{}".format(time.time()))
 
 			# Send 401 Unauthorized response
 			msgLines = []
@@ -594,14 +617,14 @@ class SipSession(object):
 			msgLines.append('WWW-Authenticate: Digest ' + \
 				'realm="{}@{}",'.format(g_sipconfig['user'],
 					g_sipconfig['ip']) + \
-				'nonce="{}",'.format(self.__nonce))
+				'nonce="{}"'.format(nonce))
 			self.send('\n'.join(msgLines))
 
 		else:
 			# Check against config file
 			authMethod, authLine = headers['authorization'].split(' ', 1)
 			if authMethod != 'Digest':
-				logger.error("Authorization method is not Digest")
+				logger.warn("Authorization method is not Digest")
 				return
 
 			# Get Authorization header parts (a="a", b="b", c="c", ...) and put
@@ -612,6 +635,16 @@ class SipSession(object):
 				parts = x.split('=')
 				authLineDict[parts[0]] = parts[1].strip(' \n\r\t"\'')
 
+			logger.debug("Authorization dict: {}".format(authLineDict))
+
+			if 'nonce' not in authLineDict:
+				logger.warn("Nonce missing from authorization header")
+				return
+
+			if 'response' not in authLineDict:
+				logger.warn("Response missing from authorization header")
+				return
+
 			# The calculation of the expected response is taken from
 			# Sipvicious (c) Sandro Gaucci
 			# TODO: compare config values to values in Authorization header
@@ -620,14 +653,14 @@ class SipSession(object):
 			a1 = hash("{}:{}:{}".format(
 				g_sipconfig['user'], realm, g_sipconfig['secret']))
 			a2 = hash("INVITE:{}".format(uri))
-			expected = hash("{}:{}:{}".format(a1, self.__nonce, a2))
+			expected = hash("{}:{}:{}".format(a1, authLineDict['nonce'], a2))
 
 			logger.debug("a1: {}".format(a1))
 			logger.debug("a2: {}".format(a2))
 			logger.debug("expected: {}".format(expected))
 
 			if expected != authLineDict['response']:
-				logger.error("Authorization failed")
+				logger.warn("Authorization failed")
 				return
 
 			return expected
@@ -672,8 +705,8 @@ class Sip(connection):
 		try:
 			msgType, firstLine, headers, body = parseSipMessage(data)
 		except SipParsingError as e:
-			logger.error("Error while parsing SIP message: {}".format(e))
-			return
+			logger.warn("Error while parsing SIP message: {}".format(e))
+			return len(data)
 
 		if msgType == 'INVITE':
 			self.sip_INVITE(firstLine, headers, body)
@@ -690,9 +723,12 @@ class Sip(connection):
 		elif msgType == 'SIP/2.0':
 			self.sip_RESPONSE(firstLine, headers, body)
 		else:
-			logger.error("Unknown SIP header " + \
+			logger.warn("Unknown SIP header " + \
 				"(supported: INVITE, ACK, OPTIONS, BYE, CANCEL, REGISTER " + \
 				"and SIP responses")
+
+		logger.debug("io_in: returning {}".format(len(data)))
+		return len(data)
 
 	def sip_INVITE(self, requestLine, headers, body):
 		global g_sipconfig
@@ -709,44 +745,47 @@ class Sip(connection):
 		# SDP message. Also, Accept has to be set to sdp so that we can send
 		# back a SDP response.
 		if headers["content-type"] != "application/sdp":
-			logger.error("INVITE without SDP message: exit")
+			logger.warn("INVITE without SDP message: exit")
 			return
 
 		if headers["accept"] != "application/sdp":
-			logger.error("INVITE without SDP message: exit")
+			logger.warn("INVITE without SDP message: exit")
 			return
 
 		# Check for SDP body
 		if not body:
-			logger.error("INVITE without SDP message: exit")
+			logger.warn("INVITE without SDP message: exit")
 			return
 
 		# Parse SDP part of session invite
 		try:
 			sessionDescription, mediaDescriptions = parseSdpMessage(body)
 		except SdpParsingError as e:
-			logger.error("Error while parsing SDP message: {}".format(e))
+			logger.warn("Error while parsing SDP message: {}".format(e))
 			return
 
 		# Check for all necessary fields
 		sdpSessionOwnerParts = sessionDescription['o'].split(' ')
 		if len(sdpSessionOwnerParts) < 6:
-			logger.error("SDP session owner field to short: exit")
+			logger.warn("SDP session owner field to short: exit")
 			return
 
 		logger.debug("Parsed SDP message:")
-		logger.debug(sessionDescription)
-		logger.debug(mediaDescriptions)
+		for k, v in sessionDescription.items():
+			logger.debug("{}: {}".format(k, v))
+		for mediaDescription in mediaDescriptions:
+			for k, v in mediaDescription.items():
+				logger.debug("{}: {}".format(k, v))
 
 		# Get RTP port from SDP media description
 		if len(mediaDescriptions) < 1:
-			logger.error("SDP message has to include a media description: exit")
+			logger.warn("SDP message has to include a media description: exit")
 			return
 		
 		# TODO: look at other mediaDescriptions as well
 		mediaDescriptionParts = mediaDescriptions[0]['m'].split(' ')
 		if mediaDescriptionParts[0] != 'audio':
-			logger.error("SDP media description has to be of audio type: exit")
+			logger.warn("SDP media description has to be of audio type: exit")
 			return
 
 		rtpPort = mediaDescriptionParts[1]
@@ -754,9 +793,10 @@ class Sip(connection):
 		# Read Call-ID field and create new SipSession instance on first INVITE
 		# request received (remote host might send more than one because of time
 		# outs or because he wants to flood the honeypot)
+		logger.debug("Currently active sessions: {}".format(self.__sessions))
 		callId = headers["call-id"]
 		if callId in self.__sessions:
-			logger.error("SIP session with Call-ID {} already exists".format(
+			logger.warn("SIP session with Call-ID {} already exists".format(
 				callId))
 			return
 
@@ -764,9 +804,9 @@ class Sip(connection):
 		newSession = SipSession((self.remote.host, self.remote.port),
 			rtpPort, headers)
 		try:
-			newSession.handle_INVITE(headers)
+			r = newSession.handle_INVITE(headers)
 		except AuthenticationError:
-			logger.error("Authentication failed, not creating SIP session")
+			logger.warn("Authentication failed, not creating SIP session")
 			del newSession
 		else:
 			# Store session object in sessions dictionary
@@ -781,7 +821,7 @@ class Sip(connection):
 		callId = headers['call-id'] 
 
 		if callId not in self.__sessions:
-			logger.error("Given Call-ID does not belong to any session: exit")
+			logger.warn("Given Call-ID does not belong to any session: exit")
 			return
 
 		# Get SIP session for given Call-ID
@@ -822,7 +862,7 @@ class Sip(connection):
 		try:
 			s = self.__sessions[headers["call-id"]]
 		except KeyError:
-			logger.error("Given Call-ID does not belong to any session: exit")
+			logger.warn("Given Call-ID does not belong to any session: exit")
 			return
 		
 		# Handle incoming BYE request depending on current state
@@ -889,7 +929,7 @@ class Sip(connection):
 
 		for m in mandatoryHeaders:
 			if m not in headers:
-				logger.error("Mandatory header {} not in message".format(m))
+				logger.warn("Mandatory header {} not in message".format(m))
 				headerMissing = True
 
 		return headerMissing
