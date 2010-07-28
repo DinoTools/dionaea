@@ -29,7 +29,9 @@ from random import randint
 from glob import glob
 import logging
 
-from nose.tools import assert_equals
+# Check python version
+if sys.version_info[0] < 3:
+	raise Exception("Use python3.x for functional test")
 
 # Setup logger
 logger = logging.getLogger('test')
@@ -151,7 +153,7 @@ class VoipClient(object):
 def authenticate(data):
 	# Get nonce from received data
 	auth = getHeader(data, 'WWW-Authenticate').strip(' \n\r\t')
-	assert_equals(auth.split(' ', 1)[0], 'Digest')
+	assert auth.split(' ', 1)[0] == 'Digest'
 	auth = auth.split(' ', 1)[1]
 	authLineParts = [x.strip(' \t\r\n') for x in auth.split(',')]
 	for x in authLineParts:
@@ -202,7 +204,7 @@ def runFunctionalTest():
 
 	# Expecting a 401 Unauthorized
 	data = c.recv()
-	assert_equals(data.split('\n')[0], "SIP/2.0 401 Unauthorized")
+	assert data.split('\n')[0] == "SIP/2.0 401 Unauthorized"
 	logger.warning("Received 401 Unauthorized")
 
 	# Calculate authentication response
@@ -214,13 +216,13 @@ def runFunctionalTest():
 
 	# Expecting a 180 Ringing first
 	data = c.recv()
-	assert_equals(data.split('\n')[0], "SIP/2.0 180 Ringing")
+	assert data.split('\n')[0] == "SIP/2.0 180 Ringing"
 	logging.info("Received 180 Ringing")
 
 	# Expecting a 200 OK with the server's SDP message
 	data = c.recv().split('\n')
-	assert_equals(data[0], "SIP/2.0 200 OK")
-	assert_equals(data[5], "Call-ID: {}".format(c.getCallId()))
+	assert data[0] == "SIP/2.0 200 OK"
+	assert data[5] == "Call-ID: {}".format(c.getCallId())
 
 	logging.info("Received 200 OK")
 
@@ -231,7 +233,7 @@ def runFunctionalTest():
 			sdpMedia = d[2:]
 			break
 	assert sdpMedia
-	assert_equals(sdpMedia.split(' ')[0], "audio")
+	assert sdpMedia.split(' ')[0] == "audio"
 	rtpPort = int(sdpMedia.split(' ')[1])
 	logger.debug("SDP port: {}".format(rtpPort))
 
@@ -241,7 +243,7 @@ def runFunctionalTest():
 
 	# Expecting 401
 	data = c.recv()
-	assert_equals(data.split('\n')[0], "SIP/2.0 401 Unauthorized")
+	assert data.split('\n')[0] == "SIP/2.0 401 Unauthorized"
 	logger.warning("Received 401 Unauthorized")
 
 	# Calculate authentication response
@@ -251,7 +253,7 @@ def runFunctionalTest():
 
 	# Expecting 200 OK
 	data = c.recv().split('\n')
-	assert_equals(data[0], "SIP/2.0 200 OK")
+	assert data[0] == "SIP/2.0 200 OK"
 	logging.info("Received 200 OK")
 
 	# Active session goes here ...
@@ -269,7 +271,7 @@ def runFunctionalTest():
 
 	# Expecting 401
 	data = c.recv()
-	assert_equals(data.split('\n')[0], "SIP/2.0 401 Unauthorized")
+	assert data.split('\n')[0] == "SIP/2.0 401 Unauthorized"
 	logger.warning("Received 401 Unauthorized")
 
 	# Calculate authentication response
@@ -281,7 +283,7 @@ def runFunctionalTest():
 
 	# Expecting a 200 OK
 	data = c.recv().split('\n')
-	assert_equals(data[0], "SIP/2.0 200 OK")
+	assert data[0] == "SIP/2.0 200 OK"
 	logging.info("Received 200 OK")
 
 	# Check if stream dump file has been created
@@ -295,7 +297,7 @@ def runFunctionalTest():
 		streamFile = open(streamFile, "r")
 		streamData = streamFile.read()
 		streamFile.close()
-		assert_equals(streamData, "Hello World")
+		assert streamData == "Hello World"
 
 def main():
 	try:
