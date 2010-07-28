@@ -523,34 +523,34 @@ class SipSession(object):
 		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 		self.send('\n'.join(msgLines))
 
-		def timer_cb(watcher, events):
-			# Send our RTP port to the remote host as a 200 OK response to the
-			# remote host's INVITE request
-			logger.debug("getsockname SipSession: {}".format(
-				self.__rtpStream.local.port))
-			localRtpPort = self.__rtpStream.local.port
-			
-			msgLines = []
-			msgLines.append("SIP/2.0 " + RESPONSE[OK])
-			msgLines.append("Via: " + self.__sipVia)
-			msgLines.append("Max-Forwards: 70")
-			msgLines.append("To: " + self.__sipTo)
-			msgLines.append("From: " + self.__sipFrom)
-			msgLines.append("Call-ID: {}".format(self.__callId))
-			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipFrom)
-			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-			msgLines.append("Content-Type: application/sdp")
-			msgLines.append("\nv=0")
-			msgLines.append("o=... 0 0 IN IP4 localhost")
-			msgLines.append("t=0 0")
-			msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
-			self.send('\n'.join(msgLines))
+		#def timer_cb(watcher, events):
+		# Send our RTP port to the remote host as a 200 OK response to the
+		# remote host's INVITE request
+		logger.debug("getsockname SipSession: {}".format(
+			self.__rtpStream.local.port))
+		localRtpPort = self.__rtpStream.local.port
+		
+		msgLines = []
+		msgLines.append("SIP/2.0 " + RESPONSE[OK])
+		msgLines.append("Via: " + self.__sipVia)
+		msgLines.append("Max-Forwards: 70")
+		msgLines.append("To: " + self.__sipTo)
+		msgLines.append("From: " + self.__sipFrom)
+		msgLines.append("Call-ID: {}".format(self.__callId))
+		msgLines.append("CSeq: " + headers['cseq'])
+		msgLines.append("Contact: " + self.__sipFrom)
+		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+		msgLines.append("Content-Type: application/sdp")
+		msgLines.append("\nv=0")
+		msgLines.append("o=... 0 0 IN IP4 localhost")
+		msgLines.append("t=0 0")
+		msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
+		self.send('\n'.join(msgLines))
 
 		# Delay between 180 and 200 response with pyev callback timer
-		loop = pyev.default_loop()
-		timer = pyev.Timer(3, 0, loop, timer_cb)
-		timer.start()
+		#loop = pyev.default_loop()
+		#timer = pyev.Timer(3, 0, loop, timer_cb)
+		#timer.start()
 
 		return 0
 
@@ -567,6 +567,19 @@ class SipSession(object):
 
 			# Set current state to active (ready for multimedia stream)
 			self.__state = SipSession.ACTIVE_SESSION
+
+			# Send 200 OK response
+			msgLines = []
+			msgLines.append("SIP/2.0 " + RESPONSE[OK])
+			msgLines.append("Via: " + self.__sipVia)
+			msgLines.append("Max-Forwards: 70")
+			msgLines.append("To: " + self.__sipTo)
+			msgLines.append("From: " + self.__sipFrom)
+			msgLines.append("Call-ID: {}".format(self.__callId))
+			msgLines.append("CSeq: " + headers['cseq'])
+			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+			self.send('\n'.join(msgLines))
 
 	def handle_CANCEL(self, headers, body):
 		self.__authenticate(headers)
@@ -629,6 +642,8 @@ class SipSession(object):
 					g_sipconfig['ip']) + \
 				'nonce="{}"'.format(nonce))
 			self.send('\n'.join(msgLines))
+
+			raise AuthenticationError("Request was unauthenticated")
 
 		else:
 			# Check against config file
