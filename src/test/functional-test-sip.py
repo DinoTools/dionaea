@@ -60,6 +60,7 @@ class VoipClient(object):
 		self.__callId = randint(1000, 9999)
 
 	def send(self, msg):
+		msg += "\n\n"
 		self.__s.sendto(msg.encode('utf-8'), ('localhost', 5060))
 
 	def recv(self):

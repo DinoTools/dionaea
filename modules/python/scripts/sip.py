@@ -498,6 +498,7 @@ class SipSession(object):
 			g_sipconfig['port'])
 
 	def send(self, s):
+		s += '\n\n'
 		SipSession.sipConnection.sendto(s,
 			(self.__remoteAddress, self.__remoteSipPort))
 
