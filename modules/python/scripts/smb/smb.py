@@ -294,7 +294,7 @@ class smbd(connection):
 			if h.Path == b'nmap-share-test\0':
 				r = SMB_Treeconnect_AndX_Response2()
 				rstatus = 0xc00000cc #STATUS_BAD_NETWORK_NAME
-			elif h.Path == b'test\0' or h.Path == b'test2\0':
+			elif h.Path == b'ADMIN$\0' or h.Path == b'C$\0':
 				r = SMB_Treeconnect_AndX_Response2()
 				rstatus = 0xc0000022 #STATUS_ACCESS_DENIED
 		elif Command == SMB_COM_TREE_DISCONNECT:
@@ -427,7 +427,6 @@ class smbd(connection):
 				else:
 					smblog.critical('dcerpc processing failed. bailing out.')
 				return rp
-
 			self.outbuf = outpacket.build()
 			dceplen = len(self.outbuf)
 			r = SMB_Trans_Response()
@@ -441,6 +440,11 @@ class smbd(connection):
 			r /= rdata
 		elif p.getlayer(SMB_Header).Command == SMB_COM_TRANSACTION2:
 			r = SMB_Trans2_Response()
+		elif Command == SMB_COM_DELETE:
+			# specific for NMAP smb-enum-shares.nse support
+			h = p.getlayer(SMB_Delete_Request)
+			if h.FileName == b'nmap-test-file\0':
+				r = SMB_Delete_Response()
 		else:
 			smblog.critical('...unknown SMB Command. bailing out.')
 			p.show()

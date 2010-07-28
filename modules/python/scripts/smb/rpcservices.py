@@ -33,6 +33,15 @@ from dionaea import ndrlib
 from .include.smbfields import DCERPC_Header, DCERPC_Response
 
 rpclog = logging.getLogger('rpcservices')
+smbshare_name1 = 'ADMIN$\0'
+smbshare_name2 = 'C$\0'
+smbshare_name3 = 'IPC$\0'
+smbshare_name1_comment = 'Remote Admin\0'
+smbshare_name2_comment = 'Default Share\0'
+smbshare_name3_comment = 'Remote IPC\0'
+smbshare_name1_path = 'C:\Windows\0'
+smbshare_name2_path = 'C:\\\0'
+smbshare_name3_path = "\0"
 
 
 class DCERPCValueError(Exception):
@@ -2458,19 +2467,19 @@ class SRVSVC(RPCService):
 		
 		if infostruct_share == 0:
 			s = SRVSVC.SHARE_INFO_0_CONTAINER(r)
-			s.Data = ['test\0','test2\0']
+			s.Data = [smbshare_name1, smbshare_name2,smbshare_name3]
 			s.EntriesRead = int(len(s.Data))
 			s.pack()
 
 		elif infostruct_share == 1:
 			s = SRVSVC.SHARE_INFO_1_CONTAINER(r)
-			s.Data = ['test\0','es geht test\0','test2\0','es geht test\0']
+			s.Data = [smbshare_name1, smbshare_name1_comment, smbshare_name2, smbshare_name2_comment,smbshare_name3, smbshare_name3_comment]
 			s.EntriesRead = int(len(s.Data)/2)
 			s.pack()
 		
 		elif infostruct_share == 502:
 			s = SRVSVC.SHARE_INFO_502_CONTAINER(r)
-			s.Data = ['test\0','es geht test\0','C:\0','test2\0','es geht test\0','C:\WINDOWS\0']
+			s.Data = [smbshare_name1, smbshare_name1_comment,smbshare_name1_path, smbshare_name2, smbshare_name2_comment, smbshare_name2_path,smbshare_name3, smbshare_name3_comment,smbshare_name3_path]
 			s.EntriesRead = int(len(s.Data)/3)
 			s.pack()
 
@@ -2606,7 +2615,12 @@ class SRVSVC(RPCService):
 		
 		if Level == 2:
 			s = SRVSVC.SHARE_INFO_2_CONTAINER(r)
-			s.Data = [NetName.decode('utf16'),'es geht test\0','C:\0']
+			if NetName == 'ADMIN$\0'.encode('utf16')[2:]:
+				s.Data = [smbshare_name1, smbshare_name1_comment, smbshare_name1_path] 
+			elif NetName == 'C$\0'.encode('utf16')[2:]:
+				s.Data = [smbshare_name2, smbshare_name2_comment, smbshare_name2_path]
+			else:
+				s.Data = [smbshare_name3, smbshare_name3_comment, smbshare_name3_path]
 			s.EntriesRead = int(len(s.Data)/3)
 			s.pack()
 

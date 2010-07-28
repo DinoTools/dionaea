@@ -1314,6 +1314,25 @@ class SMB_Echo(Packet):
 		StrLenField("Buffer", "\xff", length_from=lambda x:x.ByteCount),
 	]
 
+# page 89
+class SMB_Delete_Request(Packet):
+	name = "SMB Delete Request"
+	smb_cmd = SMB_COM_DELETE #0x06
+	fields_desc = [
+		ByteField("WordCount",1),
+		FlagsField("SearchAttributes", 0, -16, SMB_FileAttributes),
+		FieldLenField("ByteCount", 1, fmt='<H', length_of="FileName"),
+		ByteField("BufferFormat",1),
+		StrLenField("FileName", "\xff", length_from=lambda x:x.ByteCount),
+	]
+
+class SMB_Delete_Response(Packet):
+	name = "SMB Delete Response"
+	smb_cmd = SMB_COM_DELETE
+	fields_desc = [
+		ByteField("WordCount",0),
+		LEShortField("ByteCount",0),
+	]
 
 class DCERPC_Header(Packet):
 	name = "DCERPC Header"
@@ -1441,6 +1460,7 @@ bind_bottom_up(SMB_Header, SMB_Open_AndX_Request, Command=lambda x: x==0x2d, Fla
 bind_bottom_up(SMB_Header, SMB_Close, Command=lambda x: x==SMB_COM_CLOSE)
 bind_bottom_up(SMB_Header, SMB_Logoff_AndX, Command=lambda x: x==SMB_COM_LOGOFF_ANDX)
 bind_bottom_up(SMB_Header, SMB_Echo, Command=lambda x: x==SMB_COM_ECHO)
+bind_bottom_up(SMB_Header, SMB_Delete_Request, Command=lambda x: x==SMB_COM_DELETE, Flags=lambda x: not x&0x80)
 
 #bind_bottom_up(SMB_Write_AndX_Request, SMB_Data)
 bind_bottom_up(SMB_Read_AndX_Response, SMB_Data)
