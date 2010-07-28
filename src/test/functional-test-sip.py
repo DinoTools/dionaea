@@ -217,14 +217,14 @@ def runFunctionalTest():
 	# Expecting a 180 Ringing first
 	data = c.recv()
 	assert data.split('\n')[0] == "SIP/2.0 180 Ringing"
-	logging.info("Received 180 Ringing")
+	logger.info("Received 180 Ringing")
 
 	# Expecting a 200 OK with the server's SDP message
 	data = c.recv().split('\n')
 	assert data[0] == "SIP/2.0 200 OK"
 	assert data[5] == "Call-ID: {}".format(c.getCallId())
 
-	logging.info("Received 200 OK")
+	logger.info("Received 200 OK")
 
 	# Get SDP port of server
 	sdpMedia = None
@@ -254,7 +254,7 @@ def runFunctionalTest():
 	# Expecting 200 OK
 	data = c.recv().split('\n')
 	assert data[0] == "SIP/2.0 200 OK"
-	logging.info("Received 200 OK")
+	logger.info("Received 200 OK")
 
 	# Active session goes here ...
 	sleep(2)
@@ -284,7 +284,7 @@ def runFunctionalTest():
 	# Expecting a 200 OK
 	data = c.recv().split('\n')
 	assert data[0] == "SIP/2.0 200 OK"
-	logging.info("Received 200 OK")
+	logger.info("Received 200 OK")
 
 	# Check if stream dump file has been created
 	#for channel in ["in", "out"]:
