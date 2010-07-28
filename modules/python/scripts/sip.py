@@ -503,15 +503,7 @@ class SipSession(object):
 
 	def handle_INVITE(self, headers):
 		# Check authentication
-		if g_sipconfig['use_authentication']:
-			logger.debug("Starting challenge response mechanism")
-			r = self.__challengeINVITE(headers)
-			if not r:
-				raise AuthenticationError()
-		else:
-			logger.debug("Skipping authentication")
-
-		# From now on, client's INVITE request is authenticated
+		self.__authenticate(headers)
 
 		# Create RTP stream instance and pass address and port of listening
 		# remote RTP host
@@ -563,40 +555,56 @@ class SipSession(object):
 		return 0
 
 	def handle_ACK(self, headers, body):
-		if self.__state == SipSession.SESSION_SETUP:
-			logger.debug(
-				"Waiting for ACK after INVITE -> got ACK -> active session")
+		if self.__state != SipSession.SESSION_SETUP:
+			logger.warn("ACK received but not in session setup mode")
+
+		else:
+			# Authenticate ACK
+			self.__authenticate(headers)
+
 			logger.info("SIP session established (session {})".format(
 				self.__callId))
 
 			# Set current state to active (ready for multimedia stream)
 			self.__state = SipSession.ACTIVE_SESSION
 
+	def handle_CANCEL(self, headers, body):
+		self.__authenticate(headers)
+
 	def handle_BYE(self, headers, body):
 		global g_sipconfig
 
-		# Only close down RTP stream if session is active
-		if self.__state == SipSession.ACTIVE_SESSION:
+		if self.__state != SipSession.ACTIVE_SESSION:
+			logger.warn("BYE received but not in active session mode")
+
+		else:
+			self.__authenticate(headers)
+
+			# Close RTP channel
 			self.__rtpStream.close()
 
-		# A BYE ends the session immediately
-		self.__state = SipSession.NO_SESSION
+			# A BYE ends the session immediately
+			self.__state = SipSession.NO_SESSION
 
-		# Send OK response to other client
-		msgLines = []
-		msgLines.append("SIP/2.0 200 OK")
-		msgLines.append("Via: " + self.__sipVia)
-		msgLines.append("Max-Forwards: 70")
-		msgLines.append("To: " + self.__sipTo)
-		msgLines.append("From: " + self.__sipFrom)
-		msgLines.append("Call-ID: {}".format(self.__callId))
-		msgLines.append("CSeq: 1 BYE")
-		msgLines.append("Contact: " + self.__sipFrom)
-		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-		self.send('\n'.join(msgLines))
+			# Send OK response to other client
+			msgLines = []
+			msgLines.append("SIP/2.0 200 OK")
+			msgLines.append("Via: " + self.__sipVia)
+			msgLines.append("Max-Forwards: 70")
+			msgLines.append("To: " + self.__sipTo)
+			msgLines.append("From: " + self.__sipFrom)
+			msgLines.append("Call-ID: {}".format(self.__callId))
+			msgLines.append("CSeq: " + headers['cseq'])
+			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+			self.send('\n'.join(msgLines))
 
-	def __challengeINVITE(self, headers):
+	def __authenticate(self, headers):
 		global g_sipconfig
+
+		if not g_sipconfig['use_authentication']:
+			logger.debug("Skipping authentication")
+			return
 
 		logger.debug("'Authorization' in SIP headers: {}".format(
 			'authorization' in headers))
@@ -613,7 +621,7 @@ class SipSession(object):
 			msgLines.append("To: " + self.__sipTo)
 			msgLines.append("From: " + self.__sipFrom)
 			msgLines.append("Call-ID: {}".format(self.__callId))
-			msgLines.append("CSeq: 1 INVITE")
+			msgLines.append("CSeq: " + headers['cseq'])
 			msgLines.append("Contact: " + self.__sipFrom)
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			msgLines.append('WWW-Authenticate: Digest ' + \
@@ -627,7 +635,7 @@ class SipSession(object):
 			authMethod, authLine = headers['authorization'].split(' ', 1)
 			if authMethod != 'Digest':
 				logger.warn("Authorization method is not Digest")
-				return
+				raise AuthenticationError("Method is not Digest")
 
 			# Get Authorization header parts (a="a", b="b", c="c", ...) and put
 			# them in a dictionary for easy lookup
@@ -641,11 +649,11 @@ class SipSession(object):
 
 			if 'nonce' not in authLineDict:
 				logger.warn("Nonce missing from authorization header")
-				return
+				raise AuthenticationError("Nonce missing")
 
 			if 'response' not in authLineDict:
 				logger.warn("Response missing from authorization header")
-				return
+				raise AuthenticationError("Response missing")
 
 			# The calculation of the expected response is taken from
 			# Sipvicious (c) Sandro Gaucci
@@ -662,10 +670,9 @@ class SipSession(object):
 
 			if expected != authLineDict['response']:
 				logger.warn("Authorization failed")
-				return
+				raise AuthenticationError("Authorization failed")
 
 			logger.info("Authorization succeeded")
-			return expected
 
 class Sip(connection):
 	"""Only UDP connections are supported at the moment"""
@@ -820,17 +827,16 @@ class Sip(connection):
 		if self.__checkForMissingHeaders(headers):
 			return
 
+		# Check if session (identified by Call-ID) exists
 		callId = headers['call-id'] 
-
 		if callId not in self.__sessions:
 			logger.warn("Given Call-ID does not belong to any session: exit")
-			return
-
-		# Get SIP session for given Call-ID
-		s = self.__sessions[callId]
-		
-		# Handle incoming ACKs depending on current state
-		s.handle_ACK(headers, body)
+		else:
+			try:
+				# Handle incoming ACKs depending on current state
+				self.__sessions[callId].handle_ACK(headers, body)
+			except AuthenticationError:
+				logger.warn("Authentication failed for ACK request")
 
 	def sip_OPTIONS(self, requestLine, headers, body):
 		logger.info("Received OPTIONS")
@@ -859,16 +865,20 @@ class Sip(connection):
 
 		if self.__checkForMissingHeaders(headers):
 			return
-
-		# Get SIP session for given Call-ID
-		try:
-			s = self.__sessions[headers["call-id"]]
-		except KeyError:
-			logger.warn("Given Call-ID does not belong to any session: exit")
-			return
 		
-		# Handle incoming BYE request depending on current state
-		s.handle_BYE(headers, body)
+		# Check if session (identified by Call-ID) exists
+		callId = headers['call-id'] 
+		if callId not in self.__sessions:
+			logger.warn("Given Call-ID does not belong to any session: exit")
+		else:
+			try:
+				# Handle incoming BYE request depending on current state
+				self.__sessions[callId].handle_BYE(headers, body)
+			except AuthenticationError:
+				logger.warn("Authentication failed for BYE request")
+			else:
+				# Delete session instance
+				del self.__sessions[callId]
 
 	def sip_CANCEL(self, requestLine, headers, body):
 		logger.info("Received CANCEL")
@@ -887,13 +897,19 @@ class Sip(connection):
 		if cseqMethod == "INVITE" or cseqMethod == "ACK":
 			# Find SipSession and delete it
 			if callId not in self.__sessions:
-				logger.info(
+				logger.warn(
 					"CANCEL request does not match any existing SIP session")
 				return
 
-			# No RTP connection has been made yet so deleting the session
-			# instance is sufficient
-			del self.__session[callId]
+			try:
+				self.__session[callId].handle_CANCEL(headers)
+			except AuthenticationError:
+				logger.warn("Authentication failed for CANCEL request")
+				return
+			else:
+				# No RTP connection has been made yet so deleting the session
+				# instance is sufficient
+				del self.__session[callId]
 		
 		# Construct CANCEL response
 		global g_sipconfig
