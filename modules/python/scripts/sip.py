@@ -36,6 +36,8 @@ import hashlib
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from dionaea import pyev
 
+g_default_loop = pyev.default_loop()
+
 logger = logging.getLogger('sip')
 logger.setLevel(logging.DEBUG)
 
@@ -524,34 +526,34 @@ class SipSession(object):
 		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 		self.send('\n'.join(msgLines))
 
-		#def timer_cb(watcher, events):
-		# Send our RTP port to the remote host as a 200 OK response to the
-		# remote host's INVITE request
-		logger.debug("getsockname SipSession: {}".format(
-			self.__rtpStream.local.port))
-		localRtpPort = self.__rtpStream.local.port
-		
-		msgLines = []
-		msgLines.append("SIP/2.0 " + RESPONSE[OK])
-		msgLines.append("Via: " + self.__sipVia)
-		msgLines.append("Max-Forwards: 70")
-		msgLines.append("To: " + self.__sipTo)
-		msgLines.append("From: " + self.__sipFrom)
-		msgLines.append("Call-ID: {}".format(self.__callId))
-		msgLines.append("CSeq: " + headers['cseq'])
-		msgLines.append("Contact: " + self.__sipFrom)
-		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-		msgLines.append("Content-Type: application/sdp")
-		msgLines.append("\nv=0")
-		msgLines.append("o=... 0 0 IN IP4 localhost")
-		msgLines.append("t=0 0")
-		msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
-		self.send('\n'.join(msgLines))
+		def timer_cb(watcher, events):
+			# Send our RTP port to the remote host as a 200 OK response to the
+			# remote host's INVITE request
+			logger.debug("getsockname SipSession: {}".format(
+				self.__rtpStream.local.port))
+			localRtpPort = self.__rtpStream.local.port
+			
+			msgLines = []
+			msgLines.append("SIP/2.0 " + RESPONSE[OK])
+			msgLines.append("Via: " + self.__sipVia)
+			msgLines.append("Max-Forwards: 70")
+			msgLines.append("To: " + self.__sipTo)
+			msgLines.append("From: " + self.__sipFrom)
+			msgLines.append("Call-ID: {}".format(self.__callId))
+			msgLines.append("CSeq: " + headers['cseq'])
+			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+			msgLines.append("Content-Type: application/sdp")
+			msgLines.append("\nv=0")
+			msgLines.append("o=... 0 0 IN IP4 localhost")
+			msgLines.append("t=0 0")
+			msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
+			self.send('\n'.join(msgLines))
 
 		# Delay between 180 and 200 response with pyev callback timer
-		#loop = pyev.default_loop()
-		#timer = pyev.Timer(3, 0, loop, timer_cb)
-		#timer.start()
+		global g_default_loop
+		self.timer = pyev.Timer(3, 0, g_default_loop, timer_cb)
+		self.timer.start()
 
 		return 0
 
