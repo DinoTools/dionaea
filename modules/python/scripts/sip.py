@@ -50,6 +50,11 @@ if g_sipconfig['use_authentication'].lower() == 'no':
 else:
 	g_sipconfig['use_authentication'] = True
 
+if g_sipconfig['record_rtp'].lower() == 'no':
+	g_sipconfig['record_rtp'] = False
+else:
+	g_sipconfig['record_rtp'] = True
+
 # Shortcut hashing function
 def hash(s):
 	return hashlib.md5(s.encode('utf-8')).hexdigest()
@@ -411,24 +416,29 @@ class RtpUdpStream(connection):
 
 		# Create a stream dump file with date and time and random ID in case of
 		# flooding attacks
-		dumpDateTime = time.strftime("%Y%m%d_%H:%M:%S")
-		dumpId = random.randint(1000, 9999)
-		streamDumpFileIn = "var/dionaea/stream_{0}_{1}_in.rtpdump".format(
-			dumpDateTime, dumpId)
-		streamDumpFileOut = "var/dionaea/stream_{0}_{1}_out.rtpdump".format(
-			dumpDateTime, dumpId)
+		global g_sipconfig
+		if g_sipconfig['record_rtp']:
+			dumpDateTime = time.strftime("%Y%m%d_%H:%M:%S")
+			dumpId = random.randint(1000, 9999)
+			streamDumpFileIn = "var/dionaea/stream_{0}_{1}_in.rtpdump".format(
+				dumpDateTime, dumpId)
+			streamDumpFileOut = "var/dionaea/stream_{0}_{1}_out.rtpdump".format(
+				dumpDateTime, dumpId)
 
-		# Catch IO errors
-		try:
-			self.__streamDumpIn = open(streamDumpFileIn, "wb")
-		except IOError as e:
-			logger.warn("RtpStream: Could not open stream dump file: {}".format(e))
+			# Catch IO errors
+			try:
+				self.__streamDumpIn = open(streamDumpFileIn, "wb")
+			except IOError as e:
+				logger.warn("RtpStream: Could not open stream dump file: {}".format(e))
+				self.__streamDumpIn = None
+
+			try:
+				self.__streamDumpOut = open(streamDumpFileOut, "wb")
+			except IOError as e:
+				logger.warn("RtpStream: Could not open stream dump file: {}".format(e))
+				self.__streamDumpOut = None
+		else:
 			self.__streamDumpIn = None
-
-		try:
-			self.__streamDumpOut = open(streamDumpFileOut, "wb")
-		except IOError as e:
-			logger.warn("RtpStream: Could not open stream dump file: {}".format(e))
 			self.__streamDumpOut = None
 
 		logger.info("Created RTP channel on ports :{} <-> :{}".format(
@@ -495,9 +505,9 @@ class SipSession(object):
 		global g_sipconfig
 		self.__sipTo = inviteHeaders['from']
 		self.__sipFrom = "{0} <sip:{0}@{1}>".format(g_sipconfig['user'],
-			g_sipconfig['ip'])
-		self.__sipVia = "SIP/2.0/UDP {}:{}".format(g_sipconfig['ip'],
-			g_sipconfig['port'])
+			SipSession.sipConnection.local.host)
+		self.__sipVia = "SIP/2.0/UDP {}:{}".format(
+			SipSession.sipConnection.local.host, g_sipconfig['port'])
 
 	def send(self, s):
 		s += '\n\n'
@@ -645,7 +655,7 @@ class SipSession(object):
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			msgLines.append('WWW-Authenticate: Digest ' + \
 				'realm="{}@{}",'.format(g_sipconfig['user'],
-					g_sipconfig['ip']) + \
+					SipSession.sipConnection.local.host) + \
 				'nonce="{}"'.format(nonce))
 			self.send('\n'.join(msgLines))
 
@@ -678,7 +688,8 @@ class SipSession(object):
 
 			# The calculation of the expected response is taken from
 			# Sipvicious (c) Sandro Gaucci
-			realm = "{}@{}".format(g_sipconfig['user'], g_sipconfig['ip'])
+			realm = "{}@{}".format(g_sipconfig['user'],
+				SipSession.sipConnection.local.host)
 			uri = "sip:" + realm
 			a1 = hash("{}:{}:{}".format(
 				g_sipconfig['user'], realm, g_sipconfig['secret']))
@@ -866,15 +877,15 @@ class Sip(connection):
 		global g_sipconfig
 		msgLines = []
 		msgLines.append("SIP/2.0 " + RESPONSE[OK])
-		msgLines.append("Via: SIP/2.0/UDP {}:{}".format(g_sipconfig['ip'],
-			g_sipconfig['port']))
+		msgLines.append("Via: SIP/2.0/UDP {}:{}".format(
+			self.local.host, g_sipconfig['port']))
 		msgLines.append("To: " + headers['from'])
-		msgLines.append("From: {0} <sip:{0}@{1}>".format(g_sipconfig['user'],
-			g_sipconfig['ip']))
+		msgLines.append("From: {0} <sip:{0}@{1}>".format(
+			g_sipconfig['user'], self.local.host))
 		msgLines.append("Call-ID: " + headers['call-id'])
 		msgLines.append("CSeq: " + headers['cseq'])
-		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(g_sipconfig['user'],
-			g_sipconfig['ip']))
+		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(
+			g_sipconfig['user'], self.local.host))
 		msgLines.append("Allow: INVITE, ACK, CANCEL, OPTIONS, BYE")
 		msgLines.append("Accept: application/sdp")
 		msgLines.append("Accept-Language: en")
@@ -937,15 +948,15 @@ class Sip(connection):
 		global g_sipconfig
 		msgLines = []
 		msgLines.append("SIP/2.0 " + RESPONSE[OK])
-		msgLines.append("Via: SIP/2.0/UDP {}:{}".format(g_sipconfig['ip'],
-			g_sipconfig['port']))
+		msgLines.append("Via: SIP/2.0/UDP {}:{}".format(
+			self.local.host, g_sipconfig['port']))
 		msgLines.append("To: " + headers['from'])
-		msgLines.append("From: {0} <sip:{0}@{1}>".format(g_sipconfig['user'],
-			g_sipconfig['ip']))
+		msgLines.append("From: {0} <sip:{0}@{1}>".format(
+			g_sipconfig['user'], self.local.host))
 		msgLines.append("Call-ID: " + headers['call-id'])
 		msgLines.append("CSeq: " + headers['cseq'])
-		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(g_sipconfig['user'],
-			g_sipconfig['ip']))
+		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(
+			g_sipconfig['user'], self.local.host))
 
 		self.send('\n'.join(msgLines))
 

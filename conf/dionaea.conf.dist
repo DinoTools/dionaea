@@ -209,11 +209,11 @@ modules = {
 		}
         sip = {
             use_authentication = "yes"
-            ip = "localhost"
             port = "5060"
             user = "100"
             useragent = "softphone"
             secret = "F2DS13G5"
+			record_rtp = "yes"
         }
 		surfids = {
 			sslmode = "require"
