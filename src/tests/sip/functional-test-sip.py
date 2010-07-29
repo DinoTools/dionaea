@@ -179,7 +179,7 @@ def authenticate(data):
 
 	return challengeResponse, nonce
 
-def runFunctionalTest():
+def runFunctionalTest1():
 	c = VoipClient()
 	logger.info("VoIP test client created")
 
@@ -299,9 +299,26 @@ def runFunctionalTest():
 		streamFile.close()
 		assert streamData == "Hello World"
 
+def runFunctionalTest2():
+	c = VoipClient()
+	logger.info("VoIP test client created")
+
+	logger.info("Sending INVITE")
+	c.invite()
+
+	data = c.recv()
+	assert data.split('\n', 1)[0] == "SIP/2.0 401 Unauthorized"
+	logger.warn("Received 401 Unauthorized")
+
+	r, n = authenticate(data)
+	for i in range(2):
+		logger.info("Sending INVITE with challenge response")
+		c.invite(r, n)
+
 def main():
 	try:
-		runFunctionalTest()
+		#runFunctionalTest1()
+		runFunctionalTest2()
 	except AssertionError as e:
 		logger.critical("Functional test failed (assertion error)")
 		logger.critical(e)
