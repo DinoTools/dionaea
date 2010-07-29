@@ -499,6 +499,8 @@ class SipSession(object):
 		self.__sipVia = "SIP/2.0/UDP {}:{}".format(g_sipconfig['ip'],
 			g_sipconfig['port'])
 
+		self.__timers = {}
+
 	def send(self, s):
 		s += '\n\n'
 		SipSession.sipConnection.sendto(s,
@@ -550,10 +552,14 @@ class SipSession(object):
 			msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
 			self.send('\n'.join(msgLines))
 
+			# Delete timer reference
+			del self.__timers[watcher]
+
 		# Delay between 180 and 200 response with pyev callback timer
 		global g_default_loop
-		self.timer = pyev.Timer(3, 0, g_default_loop, timer_cb)
-		self.timer.start()
+		timer = pyev.Timer(3, 0, g_default_loop, timer_cb)
+		timer.start()
+		self.__timers[timer] = True
 
 		return 0
 
