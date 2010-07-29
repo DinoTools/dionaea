@@ -60,6 +60,7 @@ class VoipClient(object):
 		self.__s.bind(('', 0))
 		self.__port = self.__s.getsockname()[1]
 		self.__callId = randint(1000, 9999)
+		self.__cseq = 1
 
 	def send(self, msg):
 		msg += "\n\n"
@@ -69,6 +70,10 @@ class VoipClient(object):
 		data, _ = self.__s.recvfrom(1024)
 		data = data.decode('utf-8')
 		return data
+
+	def getCseq(self):
+		self.__cseq += 1
+		return self.__cseq - 1
 
 	def invite(self, challengeResponse=None, nonce=None):
 		sdpMsg = []
@@ -86,7 +91,7 @@ class VoipClient(object):
 		sipMsg.append("From: socketHelper")
 		sipMsg.append("To: 100@localhost")
 		sipMsg.append("Call-ID: {}".format(self.__callId))
-		sipMsg.append("CSeq: 1 INVITE")
+		sipMsg.append("CSeq: {} INVITE".format(self.getCseq()))
 		sipMsg.append("Contact: socketHelper")
 		sipMsg.append("Accept: application/sdp")
 		sipMsg.append("Content-Type: application/sdp")
@@ -108,7 +113,7 @@ class VoipClient(object):
 		msg.append("From: socketHelper")
 		msg.append("To: 100@localhost")
 		msg.append("Call-ID: {}".format(self.__callId))
-		msg.append("CSeq: 1 OPTIONS")
+		msg.append("CSeq: {} OPTIONS".format(self.getCseq()))
 		msg.append("Contact: socketHelper")
 		self.send('\n'.join(msg))
 
@@ -119,7 +124,7 @@ class VoipClient(object):
 		msg.append("From: socketHelper")
 		msg.append("To: 100@localhost")
 		msg.append("Call-ID: {}".format(self.__callId))
-		msg.append("CSeq: 1 ACK")
+		msg.append("CSeq: {} ACK".format(self.getCseq()))
 		msg.append("Contact: socketHelper")
 
 		if challengeResponse:
@@ -137,7 +142,7 @@ class VoipClient(object):
 		msg.append("From: socketHelper")
 		msg.append("To: 100@localhost")
 		msg.append("Call-ID: {}".format(self.__callId))
-		msg.append("CSeq: 1 BYE")
+		msg.append("CSeq: {} BYE".format(self.getCseq()))
 		msg.append("Contact: socketHelper")
 
 		if challengeResponse:
@@ -317,8 +322,8 @@ def runFunctionalTest2():
 
 def main():
 	try:
-		#runFunctionalTest1()
-		runFunctionalTest2()
+		runFunctionalTest1()
+		#runFunctionalTest2()
 	except AssertionError as e:
 		logger.critical("Functional test failed (assertion error)")
 		logger.critical(e)
