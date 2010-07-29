@@ -878,6 +878,7 @@ class Sip(connection):
 		msgLines.append("Allow: INVITE, ACK, CANCEL, OPTIONS, BYE")
 		msgLines.append("Accept: application/sdp")
 		msgLines.append("Accept-Language: en")
+		msgLines.append('\n')
 
 		self.send('\n'.join(msgLines))
 
