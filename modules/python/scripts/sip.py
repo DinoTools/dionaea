@@ -638,11 +638,7 @@ class SipSession(object):
 		logger.debug("'Authorization' in SIP headers: {}".format(
 			'authorization' in headers))
 
-		if "authorization" not in headers:
-			# Calculate new nonce for authentication based on current time
-			nonce = hash("{}".format(time.time()))
-
-			# Send 401 Unauthorized response
+		def sendUnauthorized(nonce):
 			msgLines = []
 			msgLines.append('SIP/2.0 ' + RESPONSE[UNAUTHORIZED])
 			msgLines.append("Via: " + self.__sipVia)
@@ -658,6 +654,13 @@ class SipSession(object):
 					SipSession.sipConnection.local.host) + \
 				'nonce="{}"'.format(nonce))
 			self.send('\n'.join(msgLines))
+
+		if "authorization" not in headers:
+			# Calculate new nonce for authentication based on current time
+			nonce = hash("{}".format(time.time()))
+
+			# Send 401 Unauthorized response
+			sendUnauthorized(nonce)
 
 			raise AuthenticationError("Request was unauthenticated")
 
@@ -701,7 +704,7 @@ class SipSession(object):
 			logger.debug("expected: {}".format(expected))
 
 			if expected != authLineDict['response']:
-				logger.warn("Authorization failed")
+				sendUnauthorized(authLineDict['nonce'])
 				raise AuthenticationError("Authorization failed")
 
 			logger.info("Authorization succeeded")
