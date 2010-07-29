@@ -431,6 +431,8 @@ class RtpUdpStream(connection):
 			except IOError as e:
 				logger.warn("RtpStream: Could not open stream dump file: {}".format(e))
 				self.__streamDumpIn = None
+			else:
+				self.__streamDumpIn.write(b"Hello from honeypot\n")
 
 			try:
 				self.__streamDumpOut = open(streamDumpFileOut, "wb")
@@ -456,6 +458,8 @@ class RtpUdpStream(connection):
 			self.local.port, self.remote.port))
 
 	def handle_io_in(self, data):
+		logger.debug("Incoming RTP data (length {})".format(len(data)))
+
 		# Write incoming data to disk
 		if self.__streamDumpIn:
 			self.__streamDumpIn.write(data)
@@ -463,6 +467,8 @@ class RtpUdpStream(connection):
 		return len(data)
 
 	def handle_io_out(self):
+		logger.debug("Outdoing RTP data (length {})".format(len(data)))
+
 		# TODO: Only necessary to set once in __init__?
 		self.remote.host = self.__address
 		self.remote.port = self.__port
@@ -477,6 +483,7 @@ class RtpUdpStream(connection):
 
 	def close(self):
 		if self.__streamDumpIn:
+			logger.debug("Closing stream dump (in)")
 			self.__streamDumpIn.close()
 
 		if self.__streamDumpOut:
