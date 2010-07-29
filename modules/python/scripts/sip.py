@@ -504,10 +504,10 @@ class SipSession(object):
 		# Generate static values for SIP messages
 		global g_sipconfig
 		self.__sipTo = inviteHeaders['from']
-		self.__sipFrom = "{0} <sip:{0}@{1}>".format(g_sipconfig['user'],
-			SipSession.sipConnection.local.host)
+		self.__sipFrom = "{0} <sip:{0}@{1}>".format(
+				g_sipconfig['user'], g_sipconfig['domain'])
 		self.__sipVia = "SIP/2.0/UDP {}:{}".format(
-			SipSession.sipConnection.local.host, g_sipconfig['port'])
+			g_sipconfig['domain'], g_sipconfig['port'])
 
 	def send(self, s):
 		s += '\n\n'
@@ -651,7 +651,7 @@ class SipSession(object):
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			msgLines.append('WWW-Authenticate: Digest ' + \
 				'realm="{}@{}",'.format(g_sipconfig['user'],
-					SipSession.sipConnection.local.host) + \
+					g_sipconfig['domain']) + \
 				'nonce="{}"'.format(nonce))
 			self.send('\n'.join(msgLines))
 
@@ -691,8 +691,7 @@ class SipSession(object):
 
 			# The calculation of the expected response is taken from
 			# Sipvicious (c) Sandro Gaucci
-			realm = "{}@{}".format(g_sipconfig['user'],
-				SipSession.sipConnection.local.host)
+			realm = "{}@{}".format(g_sipconfig['user'], g_sipconfig['domain'])
 			uri = "sip:" + realm
 			a1 = hash("{}:{}:{}".format(
 				g_sipconfig['user'], realm, g_sipconfig['secret']))
@@ -881,14 +880,14 @@ class Sip(connection):
 		msgLines = []
 		msgLines.append("SIP/2.0 " + RESPONSE[OK])
 		msgLines.append("Via: SIP/2.0/UDP {}:{}".format(
-			self.local.host, g_sipconfig['port']))
+			g_sipconfig['domain'], g_sipconfig['port']))
 		msgLines.append("To: " + headers['from'])
 		msgLines.append("From: {0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], self.local.host))
+			g_sipconfig['user'], g_sipconfig['domain']))
 		msgLines.append("Call-ID: " + headers['call-id'])
 		msgLines.append("CSeq: " + headers['cseq'])
 		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], self.local.host))
+			g_sipconfig['user'], g_sipconfig['domain']))
 		msgLines.append("Allow: INVITE, ACK, CANCEL, OPTIONS, BYE")
 		msgLines.append("Accept: application/sdp")
 		msgLines.append("Accept-Language: en")
@@ -952,14 +951,14 @@ class Sip(connection):
 		msgLines = []
 		msgLines.append("SIP/2.0 " + RESPONSE[OK])
 		msgLines.append("Via: SIP/2.0/UDP {}:{}".format(
-			self.local.host, g_sipconfig['port']))
+			g_sipconfig['domain'], g_sipconfig['port']))
 		msgLines.append("To: " + headers['from'])
 		msgLines.append("From: {0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], self.local.host))
+			g_sipconfig['user'], g_sipconfig['domain']))
 		msgLines.append("Call-ID: " + headers['call-id'])
 		msgLines.append("CSeq: " + headers['cseq'])
 		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], self.local.host))
+			g_sipconfig['user'], g_sipconfig['domain']))
 
 		self.send('\n'.join(msgLines))
 

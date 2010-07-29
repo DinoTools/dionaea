@@ -209,6 +209,7 @@ modules = {
 		}
         sip = {
             use_authentication = "yes"
+			domain = "localhost"
             port = "5060"
             user = "100"
             useragent = "softphone"
