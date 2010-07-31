@@ -33,6 +33,15 @@ from dionaea import ndrlib
 from .include.smbfields import DCERPC_Header, DCERPC_Response
 
 rpclog = logging.getLogger('rpcservices')
+smbshare_name1 = 'ADMIN$\0'
+smbshare_name2 = 'C$\0'
+smbshare_name3 = 'IPC$\0'
+smbshare_name1_comment = 'Remote Admin\0'
+smbshare_name2_comment = 'Default Share\0'
+smbshare_name3_comment = 'Remote IPC\0'
+smbshare_name1_path = 'C:\Windows\0'
+smbshare_name2_path = 'C:\\\0'
+smbshare_name3_path = "\0"
 
 
 class DCERPCValueError(Exception):
@@ -94,6 +103,71 @@ class RPCService:
 
 class ATSVC(RPCService):
 	uuid = UUID('1ff70682-0a51-30e8-076d-740be8cee98b').hex
+
+	ops = {
+		0x02: "NetrJobEnum",
+		
+	}
+	
+	class ATSVC_HANDLE:
+		# 2.3.2 ATSVC_HANDLE
+		#
+		# http://msdn.microsoft.com/en-us/library/cc248473%28PROT.13%29.aspx
+		#
+		#typedef [handle] const wchar_t* ATSVC_HANDLE; 
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Pointer = p.unpack_pointer()
+				self.Handle = p.unpack_string()
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+
+	#this function have not tested for the moment
+	@classmethod
+	def handle_NetrJobEnum(cls,p):
+		# 3.2.5.2.3 NetrJobEnum (Opnum 2)
+		#
+		# http://msdn.microsoft.com/en-us/library/cc248425%28PROT.10%29.aspx
+		#
+		#NET_API_STATUS NetrJobEnum(
+		#  [in, string, unique] ATSVC_HANDLE ServerName,
+		#  [in, out] LPAT_ENUM_CONTAINER pEnumContainer,
+		#  [in] DWORD PreferedMaximumLength,
+		#  [out] LPDWORD pTotalEntries,
+		#  [in, out, unique] LPDWORD pResumeHandle
+		#);
+
+		x = ndrlib.Unpacker(p.StubData)
+		ServerName = ATSVC.ATSVC_HANDLE(x)
+		
+		Pad = x.unpack_short()
+		# pEnumContainer
+		EntriesRead = x.unpack_long()
+		pEntries = x.unpack_pointer()
+		# PreferedMaximumLength
+		PreferedMaxLength = x.unpack_long()
+		# pResumeHandle
+		Pointer = x.unpack_pointer()
+		ResumeHandle = x.unpack_long()
+		
+		r = ndrlib.Packer()
+		# pEnumContainer
+		r.pack_long(0)		# EntriesRead
+		r.pack_pointer(0)	# pEntries
+		# pTotalEntries
+		r.pack_long(0)
+		# pResumeHandle
+		r.pack_pointer(0x0016c918)
+		r.pack_long(0)
+
+		# return 
+		r.pack_long(0)
+
+		return r.get_buffer()
 
 
 class AudioSrv(RPCService):
@@ -2393,19 +2467,19 @@ class SRVSVC(RPCService):
 		
 		if infostruct_share == 0:
 			s = SRVSVC.SHARE_INFO_0_CONTAINER(r)
-			s.Data = ['test\0','test2\0']
+			s.Data = [smbshare_name1, smbshare_name2,smbshare_name3]
 			s.EntriesRead = int(len(s.Data))
 			s.pack()
 
 		elif infostruct_share == 1:
 			s = SRVSVC.SHARE_INFO_1_CONTAINER(r)
-			s.Data = ['test\0','es geht test\0','test2\0','es geht test\0']
+			s.Data = [smbshare_name1, smbshare_name1_comment, smbshare_name2, smbshare_name2_comment,smbshare_name3, smbshare_name3_comment]
 			s.EntriesRead = int(len(s.Data)/2)
 			s.pack()
 		
 		elif infostruct_share == 502:
 			s = SRVSVC.SHARE_INFO_502_CONTAINER(r)
-			s.Data = ['test\0','es geht test\0','C:\0','test2\0','es geht test\0','C:\WINDOWS\0']
+			s.Data = [smbshare_name1, smbshare_name1_comment,smbshare_name1_path, smbshare_name2, smbshare_name2_comment, smbshare_name2_path,smbshare_name3, smbshare_name3_comment,smbshare_name3_path]
 			s.EntriesRead = int(len(s.Data)/3)
 			s.pack()
 
@@ -2541,7 +2615,12 @@ class SRVSVC(RPCService):
 		
 		if Level == 2:
 			s = SRVSVC.SHARE_INFO_2_CONTAINER(r)
-			s.Data = [NetName.decode('utf16'),'es geht test\0','C:\0']
+			if NetName == 'ADMIN$\0'.encode('utf16')[2:]:
+				s.Data = [smbshare_name1, smbshare_name1_comment, smbshare_name1_path] 
+			elif NetName == 'C$\0'.encode('utf16')[2:]:
+				s.Data = [smbshare_name2, smbshare_name2_comment, smbshare_name2_path]
+			else:
+				s.Data = [smbshare_name3, smbshare_name3_comment, smbshare_name3_path]
 			s.EntriesRead = int(len(s.Data)/3)
 			s.pack()
 
