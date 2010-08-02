@@ -418,30 +418,11 @@ class RtpUdpStream(connection):
 		# flooding attacks
 		global g_sipconfig
 		if g_sipconfig['record_rtp']:
-			dumpDateTime = time.strftime("%Y%m%d_%H:%M:%S")
-			dumpId = random.randint(1000, 9999)
-			streamDumpFileIn = "var/dionaea/stream_{0}_{1}_in.rtpdump".format(
-				dumpDateTime, dumpId)
-			streamDumpFileOut = "var/dionaea/stream_{0}_{1}_out.rtpdump".format(
-				dumpDateTime, dumpId)
-
-			# Catch IO errors
-			try:
-				self.__streamDumpIn = open(streamDumpFileIn, "wb")
-			except IOError as e:
-				logger.warn("RtpStream: Could not open stream dump file: {}".format(e))
-				self.__streamDumpIn = None
-			else:
-				self.__streamDumpIn.write(b"Hello from honeypot\n")
-
-			try:
-				self.__streamDumpOut = open(streamDumpFileOut, "wb")
-			except IOError as e:
-				logger.warn("RtpStream: Could not open stream dump file: {}".format(e))
-				self.__streamDumpOut = None
-		else:
 			self.__streamDumpIn = None
-			self.__streamDumpOut = None
+			dumpDate = time.strftime('%Y-%m-%d')
+			dumpTime = time.strftime('%H:%M:%S')
+			self.__streamDumpFileIn = 'var/dionaea/rtp/{d}/{t}_{h}_{p}_%IO%.rtp'.format(
+				d=dumpDate, t=dumpTime, h=self.__address, p=self.__port)
 
 		logger.info("Created RTP channel on ports :{} <-> :{}".format(
 			self.local.port, self.__port))
@@ -460,8 +441,17 @@ class RtpUdpStream(connection):
 	def handle_io_in(self, data):
 		logger.debug("Incoming RTP data (length {})".format(len(data)))
 
-		# Write incoming data to disk
-		if self.__streamDumpIn:
+		# Create stream dump file only if not previously failed
+		if not self.__streamDumpIn and self.__streamDumpFileIn:
+			# Catch IO errors
+			try:
+				self.__streamDumpIn = open(self.__streamDumpFileIn, "wb")
+			except IOError as e:
+				logger.error("RtpStream: Could not open stream dump file: {}".format(e))
+				self.__streamDumpIn = None
+				self.__streamDumpFileIn = None
+		elif self.__streamDumpIn:
+			# Write incoming data to disk
 			self.__streamDumpIn.write(data)
 
 		return len(data)
@@ -474,10 +464,6 @@ class RtpUdpStream(connection):
 		self.remote.port = self.__port
 		bytesSent = self.send(self.__sendBuffer)
 
-		# Write the sent part of the buffer to the stream dump file
-		if self.__streamDumpOut:
-			self.__streamDumpOut.write(self.__sendBuffer[:bytesSent])
-
 		# Shift sending window for next send operation
 		self.__sendBuffer = self.__sendBuffer[bytesSent:]
 
@@ -485,9 +471,6 @@ class RtpUdpStream(connection):
 		if self.__streamDumpIn:
 			logger.debug("Closing stream dump (in)")
 			self.__streamDumpIn.close()
-
-		if self.__streamDumpOut:
-			self.__streamDumpOut.close()
 
 		connection.close(self)
 
