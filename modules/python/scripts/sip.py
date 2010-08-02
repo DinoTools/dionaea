@@ -407,6 +407,7 @@ class RtpUdpStream(connection):
 
 		# Bind to free random port for incoming RTP traffic
 		self.bind('0.0.0.0', 0)
+		self.connect(address, int(port))
 
 		# The address and port of the remote host
 		self.__address = address
@@ -458,11 +459,13 @@ class RtpUdpStream(connection):
 			# Catch IO errors
 			try:
 				self.__streamDumpIn = open(self.__streamDumpFileIn, "wb")
+				logger.debug("Created RTP dump file")
 			except IOError as e:
 				logger.error("RtpStream: Could not open stream dump file: {}".format(e))
 				self.__streamDumpIn = None
 				self.__streamDumpFileIn = None
-		elif self.__streamDumpIn:
+
+		if self.__streamDumpIn:
 			# Write incoming data to disk
 			self.__streamDumpIn.write(data)
 
