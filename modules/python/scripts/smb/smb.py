@@ -204,10 +204,10 @@ class smbd(connection):
 						ntlmnegotiate = ntlmssp.getlayer(NTLM_Negotiate)
 						rntlmssp = NTLMSSP_Header(MessageType=2)
 						rntlmchallenge = NTLM_Challenge(NegotiateFlags=ntlmnegotiate.NegotiateFlags)
-						if ntlmnegotiate.NegotiateFlags & NTLMSSP_REQUEST_TARGET:
-							rntlmchallenge.TargetNameFields.Offset = 0x38
-							rntlmchallenge.TargetNameFields.Len = 0x1E
-							rntlmchallenge.TargetNameFields.MaxLen = 0x1E
+#						if ntlmnegotiate.NegotiateFlags & NTLMSSP_REQUEST_TARGET:
+#							rntlmchallenge.TargetNameFields.Offset = 0x38
+#							rntlmchallenge.TargetNameFields.Len = 0x1E
+#							rntlmchallenge.TargetNameFields.MaxLen = 0x1E
 						
 						rntlmchallenge.ServerChallenge = b"\xa4\xdf\xe8\x0b\xf5\xc6\x1e\x3a"
 						rntlmssp = rntlmssp / rntlmchallenge
@@ -249,10 +249,11 @@ class smbd(connection):
 							ntlmnegotiate = ntlmssp.getlayer(NTLM_Negotiate)
 							rntlmssp = NTLMSSP_Header(MessageType=2)
 							rntlmchallenge = NTLM_Challenge(NegotiateFlags=ntlmnegotiate.NegotiateFlags)
-							if ntlmnegotiate.NegotiateFlags & NTLMSSP_REQUEST_TARGET:
-								rntlmchallenge.TargetNameFields.Offset = 0x38
-								rntlmchallenge.TargetNameFields.Len = 0x1E
-								rntlmchallenge.TargetNameFields.MaxLen = 0x1E
+							rntlmchallenge.TargetInfoFields.Offset = rntlmchallenge.TargetNameFields.Offset = 0x30
+#							if ntlmnegotiate.NegotiateFlags & NTLMSSP_REQUEST_TARGET:
+#								rntlmchallenge.TargetNameFields.Offset = 0x38
+#								rntlmchallenge.TargetNameFields.Len = 0x1E
+#								rntlmchallenge.TargetNameFields.MaxLen = 0x1E
 							rntlmchallenge.ServerChallenge = b"\xa4\xdf\xe8\x0b\xf5\xc6\x1e\x3a"
 							rntlmssp = rntlmssp / rntlmchallenge
 							rntlmssp.show()
