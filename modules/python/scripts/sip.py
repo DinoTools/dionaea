@@ -433,7 +433,7 @@ class RtpUdpStream(connection):
 					raise e
 
 			# Construct dump file name
-			self.__streamDumpFileIn = dumpDir + '{t}_{h}_{p}_%IO%.rtp'.format(
+			self.__streamDumpFileIn = dumpDir + '{t}_{h}_{p}_in.rtp'.format(
 				t=dumpTime, h=self.__address, p=self.__port)
 
 		logger.info("Created RTP channel on ports :{} <-> :{}".format(
