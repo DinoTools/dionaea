@@ -32,6 +32,8 @@ import logging
 import time
 import random
 import hashlib
+import os
+import errno
 
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from dionaea import pyev
@@ -404,7 +406,6 @@ class RtpUdpStream(connection):
 		connection.__init__(self, 'udp')
 
 		# Bind to free random port for incoming RTP traffic
-		# TODO: Address from config file?
 		self.bind('0.0.0.0', 0)
 
 		# The address and port of the remote host
@@ -421,8 +422,19 @@ class RtpUdpStream(connection):
 			self.__streamDumpIn = None
 			dumpDate = time.strftime('%Y-%m-%d')
 			dumpTime = time.strftime('%H:%M:%S')
-			self.__streamDumpFileIn = 'var/dionaea/rtp/{d}/{t}_{h}_{p}_%IO%.rtp'.format(
-				d=dumpDate, t=dumpTime, h=self.__address, p=self.__port)
+			dumpDir = 'var/dionaea/rtp/{}/'.format(dumpDate)
+
+			# Create directories if necessary
+			try:
+				os.mkdir(dumpDir)
+			except OSError as e:
+				# If directory didn't exist already, rethrow exception
+				if e.errno != errno.EEXIST:
+					raise e
+
+			# Construct dump file name
+			self.__streamDumpFileIn = dumpDir + '{t}_{h}_{p}_%IO%.rtp'.format(
+				t=dumpTime, h=self.__address, p=self.__port)
 
 		logger.info("Created RTP channel on ports :{} <-> :{}".format(
 			self.local.port, self.__port))
