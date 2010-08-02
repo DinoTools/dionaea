@@ -478,7 +478,8 @@ while True:
 		c.disconnect()
 		print u"exiting..."
 		break
-	except:
+	except Exception,e:
+		print(e)
 		continue
 	
 

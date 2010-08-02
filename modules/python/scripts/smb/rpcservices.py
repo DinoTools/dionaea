@@ -34,7 +34,6 @@ from .include.smbfields import DCERPC_Header, DCERPC_Response
 
 rpclog = logging.getLogger('rpcservices')
 
-
 class DCERPCValueError(Exception):
 	"""Raised when an a value is passed to a dcerpc operation which is invalid"""
 
@@ -94,6 +93,71 @@ class RPCService:
 
 class ATSVC(RPCService):
 	uuid = UUID('1ff70682-0a51-30e8-076d-740be8cee98b').hex
+
+	ops = {
+		0x02: "NetrJobEnum",
+		
+	}
+	
+	class ATSVC_HANDLE:
+		# 2.3.2 ATSVC_HANDLE
+		#
+		# http://msdn.microsoft.com/en-us/library/cc248473%28PROT.13%29.aspx
+		#
+		#typedef [handle] const wchar_t* ATSVC_HANDLE; 
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Pointer = p.unpack_pointer()
+				self.Handle = p.unpack_string()
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+
+	#this function have not tested for the moment
+	@classmethod
+	def handle_NetrJobEnum(cls,p):
+		# 3.2.5.2.3 NetrJobEnum (Opnum 2)
+		#
+		# http://msdn.microsoft.com/en-us/library/cc248425%28PROT.10%29.aspx
+		#
+		#NET_API_STATUS NetrJobEnum(
+		#  [in, string, unique] ATSVC_HANDLE ServerName,
+		#  [in, out] LPAT_ENUM_CONTAINER pEnumContainer,
+		#  [in] DWORD PreferedMaximumLength,
+		#  [out] LPDWORD pTotalEntries,
+		#  [in, out, unique] LPDWORD pResumeHandle
+		#);
+
+		x = ndrlib.Unpacker(p.StubData)
+		ServerName = ATSVC.ATSVC_HANDLE(x)
+		
+		Pad = x.unpack_short()
+		# pEnumContainer
+		EntriesRead = x.unpack_long()
+		pEntries = x.unpack_pointer()
+		# PreferedMaximumLength
+		PreferedMaxLength = x.unpack_long()
+		# pResumeHandle
+		Pointer = x.unpack_pointer()
+		ResumeHandle = x.unpack_long()
+		
+		r = ndrlib.Packer()
+		# pEnumContainer
+		r.pack_long(0)		# EntriesRead
+		r.pack_pointer(0)	# pEntries
+		# pTotalEntries
+		r.pack_long(0)
+		# pResumeHandle
+		r.pack_pointer(0x0016c918)
+		r.pack_long(0)
+
+		# return 
+		r.pack_long(0)
+
+		return r.get_buffer()
 
 
 class AudioSrv(RPCService):
@@ -1965,6 +2029,32 @@ class spoolss(RPCService):
 			
 		return r.get_buffer()
 
+STYPE_DISKTREE = 0x00000000 # Disk drive
+STYPE_PRINTQ   = 0x00000001 # Print queue
+STYPE_DEVICE   = 0x00000002 # Communication device
+STYPE_IPC      = 0x00000003 # Interprocess communication (IPC)
+STYPE_SPECIAL  = 0x80000000 # Special share reserved for interprocess communication (IPC$) or remote administration of the server (ADMIN$). Can also refer to administrative shares such as C$, D$, E$, and so forth.
+STYPE_TEMPORARY= 0x40000000 # A temporary share that is not persisted for creation each time the file server initializes.
+
+__shares__ = {
+	'ADMIN$' : { 
+		'type': STYPE_DISKTREE, 
+		'comment' : 'Remote Admin', 
+		'path': 'C:\\Windows' 
+	},
+	'C$' : { 
+		'type': STYPE_DISKTREE|STYPE_SPECIAL, 
+		'comment' : 'Default Share', 
+		'path': 'C:\\'
+	},
+	'IPC$' : { 
+		'type': STYPE_IPC, 
+		'comment' : 'Remote IPC', 
+		'path': '' 
+	},
+}
+
+
 
 class SRVSVC(RPCService):
 	""" [MS-SRVS]: Server Service Remote Protocol Specification
@@ -2033,6 +2123,7 @@ class SRVSVC(RPCService):
 		def pack(self):
 			if isinstance(self.__packer,ndrlib.Packer):
 				# EntriesRead
+				self.EntriesRead = len(self.Data)
 				self.__packer.pack_long(self.EntriesRead)
 				# LPSHARE_INFO_0 Buffer
 				b = SRVSVC.SHARE_INFO_0(self.__packer)
@@ -2054,7 +2145,7 @@ class SRVSVC(RPCService):
 			self.__packer = p
 			if isinstance(self.__packer,ndrlib.Packer):
 				self.EntriesRead = 0
-				self.Data = []
+				self.Data = {}
 				self.Pointer = 0x23456
 			elif isinstance(self.__packer,ndrlib.Unpacker):
 				self.Ptr = self.__packer.unpack_pointer()
@@ -2063,11 +2154,11 @@ class SRVSVC(RPCService):
 		def pack(self):
 			if isinstance(self.__packer,ndrlib.Packer):
 				# EntriesRead
+				self.EntriesRead = len(self.Data)
 				self.__packer.pack_long(self.EntriesRead)
 				# LPSHARE_INFO_1 Buffer
 				b = SRVSVC.SHARE_INFO_1(self.__packer)
 				b.Data = self.Data
-				b.MaxCount = self.EntriesRead
 				b.pack()
 
 
@@ -2086,7 +2177,7 @@ class SRVSVC(RPCService):
 			self.__packer = p
 			if isinstance(self.__packer,ndrlib.Packer):
 				self.EntriesRead = 0
-				self.Data = []
+				self.Data = {}
 				self.Pointer = 0x23456
 			elif isinstance(self.__packer,ndrlib.Unpacker):
 				self.Ptr = self.__packer.unpack_pointer()
@@ -2094,12 +2185,11 @@ class SRVSVC(RPCService):
 				self.Buffer = self.__packer.unpack_pointer()
 		def pack(self):
 			if isinstance(self.__packer,ndrlib.Packer):
-				# EntriesRead
-				#self.__packer.pack_long(self.EntriesRead)
+				self.EntriesRead = len(self.Data)
+#				self.__packer.pack_long(self.EntriesRead)
 				# LPSHARE_INFO_2 Buffer
 				b = SRVSVC.SHARE_INFO_2(self.__packer)
 				b.Data = self.Data
-				b.MaxCount = self.EntriesRead
 				b.pack()
 
 	class SHARE_INFO_502_CONTAINER:
@@ -2115,7 +2205,7 @@ class SRVSVC(RPCService):
 			self.__packer = p
 			if isinstance(self.__packer,ndrlib.Packer):
 				self.EntriesRead = 0
-				self.Data = []
+				self.Data = {}
 				self.Pointer = 0x23456
 			elif isinstance(self.__packer,ndrlib.Unpacker):
 				self.Ctr = self.__packer.unpack_pointer()
@@ -2124,12 +2214,11 @@ class SRVSVC(RPCService):
 				self.Buffer = self.__packer.unpack_pointer()
 		def pack(self):
 			if isinstance(self.__packer,ndrlib.Packer):
-				# EntriesRead
+				self.EntriesRead = len(self.Data)
 				self.__packer.pack_long(self.EntriesRead)
 				# SHARE_INFO_502_I Buffer
 				b = SRVSVC.SHARE_INFO_502(self.__packer)
 				b.Data = self.Data
-				b.MaxCount = self.EntriesRead
 				b.pack()
 
 	class SHARE_INFO_0:
@@ -2145,7 +2234,7 @@ class SRVSVC(RPCService):
 		def __init__(self, p):
 			self.__packer = p
 			if isinstance(self.__packer,ndrlib.Packer):
-				self.Data = []
+				self.Data = {}
 				self.Pointer = 0x99999
 				self.MaxCount = 0
 				self.Netname_pointer = 0x34567
@@ -2155,12 +2244,15 @@ class SRVSVC(RPCService):
 			if isinstance(self.__packer,ndrlib.Packer):
 				self.__packer.pack_pointer(self.Pointer)
 				# MaxCount, needed as the NDR array
+				self.MaxCount = len(self.Data)
 				self.__packer.pack_long(self.MaxCount)
 
 				for i in range(self.MaxCount): 				
 					self.__packer.pack_pointer(self.Netname_pointer) # netname
-				for j in range(len(self.Data)):
-					self.__packer.pack_string_fix(self.Data[j].encode('utf16')[2:])
+				for j in self.Data:
+					data = self.Data[j]
+					self.__packer.pack_string_fix(str(j+'\0').encode('utf16')[2:])
+
 
 	class SHARE_INFO_1:
 		# 2.2.4.23 SHARE_INFO_1
@@ -2180,7 +2272,7 @@ class SRVSVC(RPCService):
 		def __init__(self, p):
 			self.__packer = p
 			if isinstance(self.__packer,ndrlib.Packer):
-				self.Data = []
+				self.Data = {}
 				self.Pointer = 0x99999
 				self.MaxCount = 0
 				self.Netname_pointer = 0x34567
@@ -2192,15 +2284,19 @@ class SRVSVC(RPCService):
 			if isinstance(self.__packer,ndrlib.Packer):
 				self.__packer.pack_pointer(self.Pointer)
 				# MaxCount, needed as the NDR array
+				self.MaxCount = len(self.Data)
 				self.__packer.pack_long(self.MaxCount)
 
-				for i in range(self.MaxCount): 				
+				for i in self.Data:
+					data = self.Data[i]
 					self.__packer.pack_pointer(self.Netname_pointer) # netname
-					self.__packer.pack_long(self.Type) # type
+					self.__packer.pack_long(data['type']) # type
 					self.__packer.pack_pointer(self.Remark_pointer) # remark
 
-				for j in range(len(self.Data)):
-					self.__packer.pack_string(self.Data[j].encode('utf16')[2:])
+				for j in self.Data:
+					data = self.Data[j]
+					self.__packer.pack_string_fix(str(j+'\0').encode('utf16')[2:])
+					self.__packer.pack_string_fix(str(data['comment']+'\0').encode('utf16')[2:])
 
 	class SHARE_INFO_502:
 		# 2.2.4.26 SHARE_INFO_502_I
@@ -2242,11 +2338,14 @@ class SRVSVC(RPCService):
 		def pack(self):
 			if isinstance(self.__packer,ndrlib.Packer):
 				self.__packer.pack_pointer(self.Pointer)
+
+				self.MaxCount = len(self.Data)
 				self.__packer.pack_long(self.MaxCount)
 
-				for i in range(self.MaxCount): 				
+				for i in self.Data:
+					data = self.Data[i] 				
 					self.__packer.pack_pointer(self.Netname_pointer) # netname
-					self.__packer.pack_long(self.Type) # STYPE_DISKTREE
+					self.__packer.pack_long(data['type']) # STYPE_DISKTREE
 					self.__packer.pack_pointer(self.Remark_pointer) # remark
 					self.__packer.pack_long(self.Permissions)		# permissions
 					self.__packer.pack_long(self.Max_uses) # max_uses
@@ -2256,9 +2355,11 @@ class SRVSVC(RPCService):
 					self.__packer.pack_long(self.Reserved) # reserved
 					self.__packer.pack_pointer(self.Security_descriptor)	# security descriptor
 
-				for j in range(len(self.Data)):
-					self.__packer.pack_string_fix(self.Data[j].encode('utf16')[2:])
-				
+				for j in self.Data:
+					data = self.Data[i]
+					self.__packer.pack_string_fix(str(j+'\0').encode('utf16')[2:])
+					self.__packer.pack_string_fix(str(data['path']+'\0').encode('utf16')[2:])
+					self.__packer.pack_string_fix(str(data['comment']+'\0').encode('utf16')[2:])
 
 	class SHARE_INFO_2:
 		#2.2.4.24 SHARE_INFO_2
@@ -2278,7 +2379,7 @@ class SRVSVC(RPCService):
 		def __init__(self, p):
 			self.__packer = p
 			if isinstance(self.__packer,ndrlib.Packer):
-				self.Data = []
+				self.Data = {}
 				self.Pointer = 0x99999
 				self.MaxCount = 0
 				self.Netname_pointer = 0x34567
@@ -2287,8 +2388,8 @@ class SRVSVC(RPCService):
 				self.Permissions = 0
 				self.Max_uses = 0xffffffff
 				self.Current_uses = 1
-				self.Path_pointer = 0x87654
-				self.Passwd_pointer = 0		
+				self.Path_pointer = 0x6789
+				self.Passwd_pointer = 0x0		
 			elif isinstance(self.__packer,ndrlib.Unpacker):
 				self.ref = self.__packer.unpack_pointer()
 				self.netname = self.__packer.unpack_pointer()
@@ -2304,17 +2405,34 @@ class SRVSVC(RPCService):
 				self.share_path = self.__packer.unpack_string()
 		def pack(self):
 			if isinstance(self.__packer,ndrlib.Packer):
-				self.__packer.pack_pointer(self.Netname_pointer) # netname
-				self.__packer.pack_long(self.Type) # STYPE_DISKTREE
-				self.__packer.pack_pointer(self.Remark_pointer) # remark
-				self.__packer.pack_long(self.Permissions) # permissions
-				self.__packer.pack_long(self.Max_uses) # max_uses
-				self.__packer.pack_long(self.Current_uses) # current_uses
-				self.__packer.pack_pointer(self.Path_pointer) # path
-				self.__packer.pack_pointer(self.Passwd_pointer) # passwd
+#				self.__packer.pack_pointer(self.Pointer)
+#				self.MaxCount = len(self.Data)
+#				self.__packer.pack_long(self.MaxCount)
 
-				for j in range(len(self.Data)):
-					self.__packer.pack_string_fix(self.Data[j].encode('utf16')[2:])
+				rpclog.warn("%s" % self.Data)
+#				raise Exception()
+
+				for i in self.Data:
+					data = self.Data[i] 				
+					self.__packer.pack_pointer(self.Netname_pointer) # netname
+					self.__packer.pack_long(data['type']) # STYPE_DISKTREE
+					self.__packer.pack_pointer(self.Remark_pointer) # remark
+					self.__packer.pack_long(self.Permissions) # permissions
+					self.__packer.pack_long(self.Max_uses) # max_uses
+					self.__packer.pack_long(self.Current_uses) # current_uses
+					self.__packer.pack_pointer(self.Path_pointer) # path
+					self.__packer.pack_pointer(self.Passwd_pointer) # passwd
+
+				for j in self.Data:
+					data = self.Data[i]
+					# NetName
+					self.__packer.pack_string_fix(str(j+'\0').encode('utf16')[2:])
+					# Remark
+					self.__packer.pack_string_fix(str(data['comment']+'\0').encode('utf16')[2:])
+					# Path
+					self.__packer.pack_string_fix(str(data['path']+'\0').encode('utf16')[2:])
+					
+
 
 	@classmethod
 	def handle_NetShareEnum(cls, p):
@@ -2369,7 +2487,6 @@ class SRVSVC(RPCService):
 			buffer = SRVSVC.SHARE_INFO_0_CONTAINER(x)
 		elif infostruct_share == 1:
 			buffer = SRVSVC.SHARE_INFO_1_CONTAINER(x)
-
 		elif infostruct_share == 502:
 			buffer = SRVSVC.SHARE_INFO_502_CONTAINER(x)
 		
@@ -2393,21 +2510,13 @@ class SRVSVC(RPCService):
 		
 		if infostruct_share == 0:
 			s = SRVSVC.SHARE_INFO_0_CONTAINER(r)
-			s.Data = ['test\0','test2\0']
-			s.EntriesRead = int(len(s.Data))
-			s.pack()
-
 		elif infostruct_share == 1:
 			s = SRVSVC.SHARE_INFO_1_CONTAINER(r)
-			s.Data = ['test\0','es geht test\0','test2\0','es geht test\0']
-			s.EntriesRead = int(len(s.Data)/2)
-			s.pack()
-		
 		elif infostruct_share == 502:
 			s = SRVSVC.SHARE_INFO_502_CONTAINER(r)
-			s.Data = ['test\0','es geht test\0','C:\0','test2\0','es geht test\0','C:\WINDOWS\0']
-			s.EntriesRead = int(len(s.Data)/3)
-			s.pack()
+
+		s.Data = __shares__
+		s.pack()
 
 		# total entries
 		r.pack_long(s.EntriesRead)
@@ -2541,8 +2650,15 @@ class SRVSVC(RPCService):
 		
 		if Level == 2:
 			s = SRVSVC.SHARE_INFO_2_CONTAINER(r)
-			s.Data = [NetName.decode('utf16'),'es geht test\0','C:\0']
-			s.EntriesRead = int(len(s.Data)/3)
+			NetName = NetName.decode('UTF-16')[:-1]
+
+			if NetName in __shares__:
+				data = __shares__[NetName]
+				s.Data = {NetName:data}
+			else:
+				rpclog.warn("FIXME: this code has to be written, lame workaround for now")
+				data = __shares__['C$']
+				s.Data = {NetName:data}
 			s.pack()
 
 		r.pack_long(0)

@@ -175,6 +175,9 @@ class nfqhandler(ihandler):
 			now = int(time())
 			nmt = now % self.throttle_window
 
+#			for i in range(self.throttle_window)
+#				if self.window[(now-i)%self.throttle_window] is None or self.window[(now-i)%self.throttle_window][0] != now-i:
+#					self.window[nmt] = [now-i,0]
 
 			if self.window[nmt] is None or self.window[nmt][0] != now:
 				self.window[nmt] = [now,0]
