@@ -507,9 +507,11 @@ class SipSession(object):
 		global g_sipconfig
 		self.__sipTo = inviteHeaders['from']
 		self.__sipFrom = "{0} <sip:{0}@{1}>".format(
-				g_sipconfig['user'], g_sipconfig['domain'])
+			g_sipconfig['user'], g_sipconfig['domain'])
 		self.__sipVia = "SIP/2.0/UDP {}:{}".format(
 			g_sipconfig['domain'], g_sipconfig['port'])
+		self.__sipContact = "{0} <sip:{0}@{1}>".format(
+			g_sipconfig['user'], SipSession.sipConnection.local.host)
 
 	def send(self, s):
 		s += '\n\n'
@@ -534,7 +536,7 @@ class SipSession(object):
 		msgLines.append("From: " + self.__sipFrom)
 		msgLines.append("Call-ID: {}".format(self.__callId))
 		msgLines.append("CSeq: " + headers['cseq'])
-		msgLines.append("Contact: " + self.__sipFrom)
+		msgLines.append("Contact: " + self.__sipContact)
 		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 		self.send('\n'.join(msgLines))
 
@@ -553,7 +555,7 @@ class SipSession(object):
 			msgLines.append("From: " + self.__sipFrom)
 			msgLines.append("Call-ID: {}".format(self.__callId))
 			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("Contact: " + self.__sipContact)
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			msgLines.append("Content-Type: application/sdp")
 			msgLines.append("\nv=0")
@@ -595,7 +597,7 @@ class SipSession(object):
 			msgLines.append("From: " + self.__sipFrom)
 			msgLines.append("Call-ID: {}".format(self.__callId))
 			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("Contact: " + self.__sipContact)
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			self.send('\n'.join(msgLines))
 
@@ -626,7 +628,7 @@ class SipSession(object):
 			msgLines.append("From: " + self.__sipFrom)
 			msgLines.append("Call-ID: {}".format(self.__callId))
 			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("Contact: " + self.__sipContact)
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			self.send('\n'.join(msgLines))
 
@@ -649,7 +651,7 @@ class SipSession(object):
 			msgLines.append("From: " + self.__sipFrom)
 			msgLines.append("Call-ID: {}".format(self.__callId))
 			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("Contact: " + self.__sipContact)
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			msgLines.append('WWW-Authenticate: Digest ' + \
 				'realm="{}@{}",'.format(g_sipconfig['user'],
@@ -889,7 +891,7 @@ class Sip(connection):
 		msgLines.append("Call-ID: " + headers['call-id'])
 		msgLines.append("CSeq: " + headers['cseq'])
 		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], g_sipconfig['domain']))
+			g_sipconfig['user'], self.local.host))
 		msgLines.append("Allow: INVITE, ACK, CANCEL, OPTIONS, BYE")
 		msgLines.append("Accept: application/sdp")
 		msgLines.append("Accept-Language: en")
@@ -960,7 +962,7 @@ class Sip(connection):
 		msgLines.append("Call-ID: " + headers['call-id'])
 		msgLines.append("CSeq: " + headers['cseq'])
 		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], g_sipconfig['domain']))
+			g_sipconfig['user'], self.local.host))
 
 		self.send('\n'.join(msgLines))
 
