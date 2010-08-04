@@ -73,6 +73,22 @@ PyObject *PyInit_core(void);
 
 struct protocol *trace_proto;
 
+
+void python_processor_bistream_create(struct connection *con);
+bool python_processor_bistream_accept(struct connection *con, void *config);
+void python_processor_bistream_io_in(struct connection *con, struct processor_data *pd, void *data, int size);
+void python_processor_bistream_io_out(struct connection *con, struct processor_data *pd, void *data, int size);
+void python_processor_bistream_free(void *data);
+
+struct processor proc_python_bistream =
+{
+	.name = "python",
+	.process = python_processor_bistream_accept,
+	.free = python_processor_bistream_free,
+	.io_in = python_processor_bistream_io_in,
+	.io_out = python_processor_bistream_io_out,
+};
+
 static struct python_runtime
 {
 	struct lcfgx_tree_node *config;
@@ -415,6 +431,8 @@ static bool new(struct dionaea *dionaea)
 	}
 
 	runtime.mkshell_ihandler = ihandler_new("dionaea.*.mkshell", python_mkshell_ihandler_cb, NULL);
+
+	g_hash_table_insert(g_dionaea->processors->names, (void *)proc_python_bistream.name, &proc_python_bistream);
 	return true;
 }
 
@@ -777,44 +795,23 @@ void set_processor(struct processor *p)
 	memcpy(&runtime.traceables.processor, p, sizeof(struct processor));
 }
 
-void python_processor_bistream_create(struct connection *con);
-void python_processor_bistream_remove(struct connection *con);
-void python_processor_bistream_io_in(struct connection *con, struct processor_data *pd, void *data, int size);
-void python_processor_bistream_io_out(struct connection *con, struct processor_data *pd, void *data, int size);
-void python_processor_bistream_free(void *data);
-
-struct processor proc_python_bistream =
-{
-	.name = "python-processor-bistream",
-	.free = python_processor_bistream_free,
-	.io_in = python_processor_bistream_io_in,
-	.io_out = python_processor_bistream_io_out,
-};
-
 struct processor_data proc_python_bistream_processor_data = 
 {
 	.processor = &proc_python_bistream,
 };
 
-void python_processor_bistream_create(struct connection *con)
+bool python_processor_bistream_accept(struct connection *con, void *config)
 {
-
-	struct processor_data *pd = processor_data_new();
-	pd->processor = &proc_python_bistream;
-	con->processor_data->filters = g_list_append(con->processor_data->filters, pd);
-}
-
-void python_processor_bistream_remove(struct connection *con)
-{
-	GList *it;
-	for( it = g_list_first(con->processor_data->filters); it != NULL; it = g_list_next(it) )
+	g_debug("%s con %p config %p",  __PRETTY_FUNCTION__, con, config);
+	if( con->protocol.ctx_new == traceable_ctx_new_cb )
 	{
-		if( it->data == &proc_python_bistream_processor_data )
-		{
-			con->processor_data->filters = g_list_remove(con->processor_data->filters, it);
-			return;
-		}
+		runtime.traceables.processor.process(con, NULL);
+		return true;
 	}
+
+	g_warning("the python bistream only works for python protocols, check your bistream filters");
+
+	return false;
 }
 
 
