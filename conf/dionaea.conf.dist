@@ -59,7 +59,6 @@ processors =
 			allow = [
 				{ type = ["accept"] }
 				{ type = ["connect"] protocol=["ftpctrl"] }
-				{ type = ["foobar"] protocol=["baz"] }
 			]
 			deny = [
 				{ protocol = ["ftpdata", "ftpdatacon","xmppclient"] }
