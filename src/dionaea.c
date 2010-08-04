@@ -653,11 +653,13 @@ int main (int argc, char *argv[])
 	// maybe a little late, but want to avoid having dups of the fd in the child
 	g_log_set_default_handler(log_multiplexer, NULL);
 
+	modules_new();
+
 	// processors continued, create tree
 	g_hash_table_insert(d->processors->names, (void *)proc_streamdumper.name, &proc_streamdumper);
 //	g_hash_table_insert(d->processors->names, (void *)proc_emu.name, &proc_emu);
 	g_hash_table_insert(d->processors->names, (void *)proc_filter.name, &proc_filter);
-	g_hash_table_insert(d->processors->names, (void *)proc_unicode.name, &proc_unicode);
+//	g_hash_table_insert(d->processors->names, (void *)proc_unicode.name, &proc_unicode);
 //	struct lcfgx_tree_node *n;
 	g_debug("Creating processors tree");
 	d->processors->tree = g_node_new(NULL);
@@ -673,7 +675,7 @@ int main (int argc, char *argv[])
 	processors_tree_dump(d->processors->tree, 0);
 
 
-	modules_new();
+
 
 
 	// threads ...
