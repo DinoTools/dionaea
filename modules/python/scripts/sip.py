@@ -456,17 +456,10 @@ class RtpUdpStream(connection):
 
 		# Create stream dump file only if not previously failed
 		if not self.__streamDumpIn and self.__streamDumpFileIn:
-			# Catch IO errors
-			try:
-				self.__streamDumpIn = open(self.__streamDumpFileIn, "wb")
-				logger.debug("Created RTP dump file")
-			except IOError as e:
-				logger.error("RtpStream: Could not open stream dump file: {}".format(e))
-				self.__streamDumpIn = None
-				self.__streamDumpFileIn = None
+			self.__startRecording()
 
+		# Write incoming data to disk
 		if self.__streamDumpIn:
-			# Write incoming data to disk
 			self.__streamDumpIn.write(data)
 
 		return len(data)
@@ -488,6 +481,23 @@ class RtpUdpStream(connection):
 			self.__streamDumpIn.close()
 
 		connection.close(self)
+
+	def __startRecording(self):
+		# Catch IO errors
+		try:
+			self.__streamDumpIn = open(self.__streamDumpFileIn, "wb")
+		except IOError as e:
+			logger.error("RtpStream: Could not open stream dump file: {}".format(e))
+			self.__streamDumpIn = None
+			self.__streamDumpFileIn = None
+		else:
+			logger.debug("Created RTP dump file")
+
+			# Report incident
+			i = incident("dionaea.download.offer")
+			i.con = self
+			i.url = "rtp://%s:%s" % (self.remote.host, self.remote.port)
+			i.report()
 
 class SipSession(object):
 	"""Usually, a new SipSession instance is created when the SIP server
