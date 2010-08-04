@@ -410,8 +410,8 @@ class RtpUdpStream(connection):
 		self.connect(address, int(port))
 
 		# The address and port of the remote host
-		self.__address = address
-		self.__port = port
+		self.remote.host = address
+		self.remote.port = int(port)
 
 		# Send byte buffer
 		self.__sendBuffer = b''
@@ -435,10 +435,10 @@ class RtpUdpStream(connection):
 
 			# Construct dump file name
 			self.__streamDumpFileIn = dumpDir + '{t}_{h}_{p}_in.rtp'.format(
-				t=dumpTime, h=self.__address, p=self.__port)
+				t=dumpTime, h=self.remote.host, p=self.remote.port)
 
 		logger.info("Created RTP channel on ports :{} <-> :{}".format(
-			self.local.port, self.__port))
+			self.local.port, self.remote.port))
 
 	def handle_timeout_idle(self):
 		return False
@@ -467,9 +467,6 @@ class RtpUdpStream(connection):
 	def handle_io_out(self):
 		logger.debug("Outdoing RTP data (length {})".format(len(data)))
 
-		# TODO: Only necessary to set once in __init__?
-		self.remote.host = self.__address
-		self.remote.port = self.__port
 		bytesSent = self.send(self.__sendBuffer)
 
 		# Shift sending window for next send operation
