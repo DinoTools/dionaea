@@ -1,6 +1,6 @@
 #include <lcfg/lcfg.h>
 #include <lcfgx/lcfgx_tree.h>
-
+#include <ctype.h>
 
 #include "dionaea.h"
 #include "connection.h"
@@ -8,18 +8,27 @@
 #include "threads.h"
 
 #include "log.h"
+#include "util.h"
 
 #define D_LOG_DOMAIN "processor"
 
 bool processors_tree_create(GNode *tree, struct lcfgx_tree_node *node)
 {
 	g_debug("%s tree %p node %p key %s", __PRETTY_FUNCTION__, tree, node, node->key);
-	struct processor *p = g_hash_table_lookup(g_dionaea->processors->names, node->key);
+
+	char *key = g_strdup(node->key);
+	char *x;
+	if( (x = strstr(key,"-")) != NULL)
+		*x = '\0';
+
+	struct processor *p = g_hash_table_lookup(g_dionaea->processors->names, key);
 
 	if( p == NULL )
 	{
-		g_error("Could not find processor '%s'", node->key);
+		g_error("Could not find processor '%s' (%s)", node->key, key);
 	}
+
+	g_free(key);
 
 	struct processor *pt = g_malloc0(sizeof(struct processor));
 	memcpy(pt, p, sizeof(struct processor));
@@ -75,12 +84,16 @@ void processor_data_creation(struct connection *con, struct processor_data *pd, 
 	struct processor *p = node->data;
 
 	if( p->process && !p->process(con, p->config) )
+	{
+//		g_debug("skip %s", p->name);
 		return;
+	}
 
-	g_debug("creating %s", p->name);
+//	g_debug("creating %s", p->name);
 	struct processor_data *npd = processor_data_new();
 	npd->processor = p;
-	npd->ctx = npd->processor->new(p->config);
+	if( npd->processor->new )
+		npd->ctx = npd->processor->new(p->config);
 	pd->filters = g_list_append(pd->filters, npd);
 
 	GNode *it;
@@ -211,131 +224,202 @@ void processors_io_out_thread(void *data, void *userdata)
 	connection_unref(con);
 }
 
+void processor_io_single(struct connection *con,  struct processor_data *pd, void *data, int size, enum bistream_direction direction)
+{
+//	g_warning("%s con %p pd %p data %p size %i dir %i", __PRETTY_FUNCTION__, con, pd, data, size, direction);
+
+	processor_io io = NULL;
+	GFunc thread_io = NULL;
+
+	if( direction ==  bistream_in )
+	{
+		if( (io = pd->processor->io_in) == NULL)
+			thread_io = processors_io_in_thread;
+	}else
+	{
+		if( (io = pd->processor->io_out) == NULL)
+			thread_io = processors_io_out_thread;
+	}
+
+//	g_warning("processor %s io %p thread_io %p", pd->processor->name, io, thread_io);
+
+	if( thread_io != NULL )
+	{
+		struct bistream *bistream = pd->bistream;
+		bistream_data_add(bistream, direction, data, size);
+
+		g_mutex_lock(pd->queued.mutex);
+		if( pd->queued.refs == 0 )
+		{
+			pd->queued.refs++;
+			GError *thread_error;
+			struct thread *t = thread_new(con, pd, thread_io);
+
+			connection_ref(con);
+			g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
+		}
+		g_mutex_unlock(pd->queued.mutex);
+	}else
+	if( io != NULL )
+	{
+		io(con, pd, data, size);
+	}
+}
 
 
 void processors_io_in(struct connection *con, void *data, int size)
 {
-	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
-
+//	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 	GList *it;
 	for( it = g_list_first(con->processor_data->filters);  it != NULL; it = g_list_next(it) )
 	{
 		struct processor_data *pd = it->data;
-
-		if( pd->processor->io_in != NULL )
-		{
-			pd->processor->io_in(con, pd, data, size);
-		} else
-			if( pd->processor->thread_io_in != NULL )
-		{
-			struct bistream *bistream = pd->bistream;
-			bistream_data_add(bistream, bistream_in, data, size);
-
-			g_mutex_lock(pd->queued.mutex);
-			if( pd->queued.refs == 0 )
-			{
-				pd->queued.refs++;
-				GError *thread_error;
-				struct thread *t = thread_new(con, pd, processors_io_in_thread);
-
-				connection_ref(con);
-				g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
-			}
-			g_mutex_unlock(pd->queued.mutex);
-		}
+//		g_warning("doing %s",  pd->processor->name);
+		processor_io_single(con, pd, data, size, bistream_in);
 	}
 }
 
 void processors_io_out(struct connection *con, void *data, int size)
 {
-	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
-
+//	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
 	GList *it;
 	for( it = g_list_first(con->processor_data->filters);  it != NULL; it = g_list_next(it) )
 	{
 		struct processor_data *pd = it->data;
-
-		if( pd->processor->io_out != NULL )
-		{
-			pd->processor->io_out(con, pd, data, size);
-		} else
-			if( pd->processor->thread_io_out != NULL )
-		{
-			struct bistream *bistream = pd->bistream;
-			bistream_data_add(bistream, bistream_out, data, size);
-			g_mutex_lock(pd->queued.mutex);
-			if( pd->queued.refs == 0 )
-			{
-				pd->queued.refs++;
-				GError *thread_error;
-				struct thread *t = thread_new(con, pd, processors_io_out_thread);
-
-				connection_ref(con);
-				g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
-			}
-			g_mutex_unlock(pd->queued.mutex);
-		}
+		processor_io_single(con, pd, data, size, bistream_out);
 	}
 }
 
-
 void *proc_streamdumper_ctx_new(void *cfg);
 void proc_streamdumper_ctx_free(void *ctx);
-void proc_streamdumper_on_io_in(struct connection *con, struct processor_data *pd);
-void proc_streamdumper_on_io_out(struct connection *con, struct processor_data *pd);
+void proc_streamdumper_on_io_in(struct connection *con, struct processor_data *pd, void *data, int size);
+void proc_streamdumper_on_io_out(struct connection *con, struct processor_data *pd, void *data, int size);
 
 struct processor proc_streamdumper =
 {
 	.name = "streamdumper",
 	.new = proc_streamdumper_ctx_new,  
 	.free = proc_streamdumper_ctx_free,
-	.thread_io_in = proc_streamdumper_on_io_in,
-	.thread_io_out = proc_streamdumper_on_io_out,
+	.io_in = proc_streamdumper_on_io_in,
+	.io_out = proc_streamdumper_on_io_out,
 };
 
 
 struct streamdumper_ctx 
 {
-	bool in;
-	bool out;
+	struct tempfile *file;
+	enum bistream_direction last_was;
 };
 
 void *proc_streamdumper_ctx_new(void *cfg)
 {
 	struct streamdumper_ctx *ctx = g_malloc0(sizeof(struct streamdumper_ctx));
-	ctx->in = true;
-	ctx->out = true;
 	return ctx;
 }
 
-void proc_streamdumper_ctx_free(void *ctx)
+void proc_streamdumper_ctx_free(void *ctx0)
 {
-	free(ctx);
-}
-
-void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, enum bistream_direction dir)
-{
-	g_debug("%s con %p pd %p dir %i", __PRETTY_FUNCTION__, con, pd, dir);
-	struct bistream *bs = pd->bistream;
-	GList *it;
-	g_mutex_lock(bs->mutex);
-	for( it = g_list_first(bs->stream_sequence); it != NULL; it = g_list_next(it) )
+	struct streamdumper_ctx *ctx = ctx0;
+	if( ctx->file != NULL )
 	{
-//		if ( (dir == bistream_in && ctx->in) || 
-//			 (dir == bistream_out && ctx->out) )
-		print_stream_chunk2(it->data);
+		const char *close_stream = "')]";
+		fwrite(close_stream, strlen(close_stream), 1, ctx->file->fh);
+		tempfile_close(ctx->file);
+		tempfile_free(ctx->file);
 	}
-	g_mutex_unlock(bs->mutex);
+	g_free(ctx);
 }
 
-void proc_streamdumper_on_io_in(struct connection *con, struct processor_data *pd)
+void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, void *data, int size, enum bistream_direction dir)
 {
-	proc_streamdumper_on_io(con, pd, bistream_in);
+//	g_warning("%s con %p pd %p data %p size %i dir %i", __PRETTY_FUNCTION__, con, pd, data, size, dir);
+	struct streamdumper_ctx *ctx = pd->ctx;
+
+	char *direction_helper[] = 
+	{
+		"('in', ",
+		"('out', ",
+	};
+
+	const char * stream_start = "stream = [";
+	const char * new_data = "b'";
+
+	if( ctx->file == NULL )
+	{
+		time_t stamp;
+		if( g_dionaea != NULL && g_dionaea->loop != NULL )
+			stamp = ev_now(g_dionaea->loop);
+		else
+			stamp = time(NULL);
+		struct tm t;
+		localtime_r(&stamp, &t);
+		char path[128];
+		snprintf(path, sizeof(path), "var/dionaea/bistreams/%04i-%02i-%02i/", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+		char prefix[512];
+		snprintf(prefix, sizeof(prefix), "%s-%i-%s-",
+				 con->protocol.name,
+				 ntohs(con->local.port),
+				 con->remote.ip_string);
+
+		struct stat s;
+		if( stat(path, &s) != 0 &&
+			mkdir(path, S_IRWXU|S_IRUSR|S_IWUSR|S_IXUSR|S_IRWXG|S_IRGRP|S_IWGRP|S_IXGRP|S_IRWXO|S_IROTH|S_IWOTH|S_IXOTH) != 0 )
+		{
+			g_warning("Could not create %s %s",  path, strerror(errno));
+		}
+		ctx->file = tempfile_new(path, prefix);
+
+
+
+		fwrite(stream_start, strlen(stream_start), 1, ctx->file->fh);
+		fwrite(direction_helper[dir], strlen(direction_helper[dir]), 1, ctx->file->fh);
+		fwrite(new_data, strlen(new_data), 1, ctx->file->fh);
+		ctx->last_was = dir;
+	}
+	
+	if( ctx->last_was != dir )
+	{
+		const char *change_stream = "'),\n";
+		fwrite(change_stream, strlen(change_stream), 1, ctx->file->fh);
+		fwrite(direction_helper[dir], strlen(direction_helper[dir]), 1, ctx->file->fh);
+		fwrite(new_data, strlen(new_data), 1, ctx->file->fh);
+
+		ctx->last_was = dir;
+	}
+
+	char *cdata = data;
+	char xdata[size*4];
+	memset(xdata, 0, size*4);
+	char conv[] = "0123456789abcdef";
+	int writesize = 0;
+	for( int i=0; i<size;i++ )
+	{
+		if( isprint(cdata[i]) && cdata[i] != '\'' && cdata[i] != '\\' )
+		{
+			xdata[writesize++] = cdata[i];
+		}else
+		{
+			xdata[writesize++] = '\\';
+			xdata[writesize++] = 'x';
+			xdata[writesize++] = conv[((cdata[i] & 0xFF) >> 4)];
+			xdata[writesize++] = conv[((cdata[i] & 0xff) & 0x0F)];
+		}
+	}
+	fwrite(xdata, 1, writesize, ctx->file->fh);
+
 }
 
-void proc_streamdumper_on_io_out(struct connection *con, struct processor_data *pd)
+           
+
+
+void proc_streamdumper_on_io_in(struct connection *con, struct processor_data *pd, void *data, int size)
 {
-	proc_streamdumper_on_io(con, pd, bistream_out);
+	proc_streamdumper_on_io(con, pd, data, size, bistream_in);
+}
+
+void proc_streamdumper_on_io_out(struct connection *con, struct processor_data *pd, void *data, int size)
+{
+	proc_streamdumper_on_io(con, pd, data, size, bistream_out);
 }
 
 
@@ -347,13 +431,13 @@ void proc_unicode_on_io_out(struct connection *con, struct processor_data *pd);
 struct processor proc_unicode =
 {
 	.name = "unicode",
-	.new = proc_unicode_ctx_new,  
+	.new = proc_unicode_ctx_new,
 	.free = proc_unicode_ctx_free,
 	.thread_io_in = proc_unicode_on_io_in,
 	.thread_io_out = proc_unicode_on_io_out,
 };
 
-struct proc_unicode_ctx 
+struct proc_unicode_ctx
 {
 	int io_in_offset;
 };
@@ -396,8 +480,8 @@ void *proc_filter_cfg(struct lcfgx_tree_node *node);
 bool proc_filter_accept(struct connection *con, void *config);
 void *proc_filter_ctx_new(void *data);
 void proc_filter_ctx_free(void *ctx);
-void proc_filter_on_io_in(struct connection *con, struct processor_data *pd);
-void proc_filter_on_io_out(struct connection *con, struct processor_data *pd);
+void proc_filter_on_io_in(struct connection *con, struct processor_data *pd, void *data, int size);
+void proc_filter_on_io_out(struct connection *con, struct processor_data *pd, void *data, int size);
 
 struct processor proc_filter =
 {
@@ -406,29 +490,213 @@ struct processor proc_filter =
 	.process = proc_filter_accept,
 	.new = proc_filter_ctx_new,  
 	.free = proc_filter_ctx_free,
-	.thread_io_in = proc_filter_on_io_in,
-	.thread_io_out = proc_filter_on_io_out,
+	.io_in = proc_filter_on_io_in,
+	.io_out = proc_filter_on_io_out,
+};
+
+struct proc_filter_config_rule
+{
+	GList *types;
+	GList *protocols;
 };
 
 struct proc_filter_config
 {
-	void *bar;
+	GList *allow;
+	GList *deny;
 };
 
 struct proc_filter_ctx
 {
 	struct proc_filter_config *config;
-	int io_in_offset;
-	int io_out_offset;
 };
+
+void proc_filter_dump_rules(struct proc_filter_config *cfg)
+{
+	struct 
+	{
+		char *mode;
+		int offset;
+	} cfg_iter_help[] = 
+	{
+		{ "allow", offsetof(struct proc_filter_config, allow) },
+		{ "deny", offsetof(struct proc_filter_config, deny) },
+		{}
+	};
+
+	struct
+	{
+		char *type;
+		int offset;
+	} rule_iter_help[] =
+	{
+		{ "protocol", offsetof(struct proc_filter_config_rule, protocols) },
+		{ "type", offsetof(struct proc_filter_config_rule, types) },
+		{}
+	};
+
+	for( int i=0; cfg_iter_help[i].mode != NULL; i++ )
+	{
+		GList **list = (((void *)cfg) + cfg_iter_help[i].offset);
+//		g_warning("mode %s offset %i list %p %p %p",  cfg_iter_help[i].mode, cfg_iter_help[i].offset, cfg, list, cfg->deny);
+
+		if( *list == NULL )
+			continue;
+
+		printf("%s\n\t",  cfg_iter_help[i].mode);
+
+
+		for( GList *it = g_list_first((void *)*list); it != NULL; it = g_list_next(it) )
+		{
+			for( int j=0; rule_iter_help[j].type != NULL; j++ )
+			{
+				printf(" # %s  ", rule_iter_help[j].type);
+
+				struct proc_filter_config_rule *rule = it->data;
+//				g_warning("################");
+				GList **rules = (((void *)rule) + rule_iter_help[j].offset);
+				for( GList *jt = g_list_first(*rules); jt != NULL; jt = g_list_next(jt) )
+				{
+					char *p = jt->data;
+//					g_warning("%s %s %s", cfg_iter_help[i].mode, rule_iter_help[j].type, p);
+					printf("%s ",  p);
+				}
+//				g_warning("################");
+			}
+			if( g_list_next(it) != NULL )
+				printf("\n\t");
+			else
+				printf("\n");
+		}
+		printf("\n");
+	}
+//	exit(0);
+}
 
 void *proc_filter_cfg(struct lcfgx_tree_node *node)
 {
-	return NULL;
+	struct proc_filter_config *cfg = g_malloc0(sizeof(struct proc_filter_config));
+
+	char *mode = NULL;
+	char *what = NULL;
+
+	for( struct lcfgx_tree_node *n = node->value.elements; n != NULL; n = n->next)
+	{
+//		g_warning("found %s", mode);
+		if( n->type != lcfgx_list )
+			continue;
+
+		for( struct lcfgx_tree_node *it = n->value.elements; it != NULL; it = it->next )
+		{
+//			g_warning("found %s %s",  mode,  it->key);
+			if( it->type == lcfgx_map )
+			{
+				struct proc_filter_config_rule *rule = g_malloc0(sizeof(struct proc_filter_config_rule));
+
+				if( strcmp(n->key,"allow") == 0 )
+				{
+					mode = "allow";
+					cfg->allow = g_list_append(cfg->allow, rule);
+				}else
+				if( strcmp(n->key,"deny") == 0 )
+				{
+					mode = "deny";
+					cfg->deny = g_list_append(cfg->deny, rule);
+				}else
+				{
+					g_free(rule);
+					continue;
+				}
+				for( struct lcfgx_tree_node *jt = it->value.elements; jt != NULL; jt = jt->next )
+				{
+//					g_warning("found %s %s %s",  mode,  it->key, jt->key);
+
+					GList **l;
+					if( strcmp(jt->key, "protocol") == 0 )
+					{
+						what = "protocol";
+						l = &rule->protocols;
+					}else
+					if( strcmp(jt->key, "type") == 0 )
+					{
+						what = "type";
+						l = &rule->types;
+					}else
+						continue;
+		
+					for( struct lcfgx_tree_node *kt = jt->value.elements; kt != NULL; kt = kt->next )
+					{
+						if( kt->type == lcfgx_string )
+						{
+//							g_warning("%s %s %s", mode, what, (char *)kt->value.string.data);
+							*l = g_list_append(*l, g_strdup((char *)kt->value.string.data));
+						}
+					}
+				}
+			}
+    	}
+	}
+	proc_filter_dump_rules(cfg);
+	return cfg;
 }
+
+bool proc_filter_accept_match(struct connection *con, GList *list)
+{
+	bool match = false;
+
+	for(GList *it = g_list_first(list); it != NULL; it = g_list_next(it) )
+	{
+		struct proc_filter_config_rule *rule = it->data;
+		bool protocol = rule->protocols ? false : true;
+		bool type = rule->types ? false : true;
+		for( GList *jt = g_list_first(rule->protocols); jt != NULL; jt = g_list_next(jt) )
+		{
+			char *p = jt->data;
+			if( strcmp(p, con->protocol.name) == 0)
+			{
+				protocol = true;
+				break;
+			}
+		}
+
+		for( GList *jt = g_list_first(rule->types); jt != NULL; jt = g_list_next(jt) )
+		{
+			char *p = jt->data;
+			if( strcmp(p, connection_type_to_string(con->type)) == 0)
+			{
+				type = true;
+				break;
+			}
+		}
+
+		if( protocol && type )
+		{
+			match = true;
+			break;
+		}
+	}
+	return match;
+}
+
 
 bool proc_filter_accept(struct connection *con, void *config)
 {
+//	g_debug("%s con %p config %p",  __PRETTY_FUNCTION__, con, config);
+	
+	struct proc_filter_config *cfg = config;
+
+	bool allow = false;
+	bool deny = false;
+
+	allow = proc_filter_accept_match(con, cfg->allow);
+	if( allow == false )
+		return false;
+
+	deny = proc_filter_accept_match(con, cfg->deny);
+
+	if( deny == true )
+		return false;
+
 	return true;
 }
 
@@ -444,44 +712,27 @@ void proc_filter_ctx_free(void *ctx)
 	g_free(ctx);
 }
 
-void proc_filter_on_io_in(struct connection *con, struct processor_data *pd)
+void proc_filter_on_io(struct connection *con, struct processor_data *pd, void *data, int size, enum bistream_direction direction)
 {
-	struct proc_filter_ctx *ctx = pd->ctx;
-	g_debug("%s con %p pd %p io_in_offset %i proto %s", __PRETTY_FUNCTION__, con, pd, ctx->io_in_offset, con->protocol.name);
+//	g_debug("%s con %p pd %p data %p size %i direction %i", __PRETTY_FUNCTION__, con, pd, data, size, direction);
 
-	void *streamdata = NULL;
-	int32_t size = bistream_get_stream(pd->bistream, bistream_in, ctx->io_in_offset, -1, &streamdata);
-
-	if( size == -1 )
-		return;
-
-	ctx->io_in_offset += size;
-	for( GList *it = g_list_first(pd->filters); it != NULL; it = g_list_next(it) )
+	GList *it;
+	for( it = pd->filters; it != NULL; it = g_list_next(it) )
 	{
-		struct processor_data *filter = it->data;
-		struct bistream *bs = filter->bistream;
-		bistream_data_add(bs, bistream_in, streamdata, size);
+		struct processor_data *pd = it->data;
+		processor_io_single(con, pd, data, size, direction);
 	}
-	g_free(streamdata);
 }
 
-void proc_filter_on_io_out(struct connection *con, struct processor_data *pd)
+void proc_filter_on_io_in(struct connection *con, struct processor_data *pd, void *data, int size)
 {
-	g_debug("%s con %p pd %p", __PRETTY_FUNCTION__, con, pd);
-	struct proc_filter_ctx *ctx = pd->ctx;
-	void *streamdata = NULL;
-	int32_t size = bistream_get_stream(pd->bistream, bistream_out, ctx->io_out_offset, -1, &streamdata);
+//	g_debug("%s con %p pd %p data %p size %i", __PRETTY_FUNCTION__, con, pd, data, size);
+	proc_filter_on_io(con,pd,data,size,bistream_in);
+}
 
-	if( size == -1 )
-		return;
-
-	ctx->io_out_offset += size;
-	for( GList *it = g_list_first(pd->filters); it != NULL; it = g_list_next(it) )
-	{
-		struct processor_data *filter = it->data;
-		struct bistream *bs = filter->bistream;
-		bistream_data_add(bs, bistream_out, streamdata, size);
-	}
-	g_free(streamdata);
+void proc_filter_on_io_out(struct connection *con, struct processor_data *pd, void *data, int size)
+{
+//	g_debug("%s con %p pd %p data %p size %i", __PRETTY_FUNCTION__, con, pd, data, size);
+	proc_filter_on_io(con,pd,data,size,bistream_out);
 }
 
