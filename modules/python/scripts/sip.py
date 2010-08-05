@@ -402,15 +402,15 @@ def parseSipMessage(msg):
 class RtpUdpStream(connection):
 	"""RTP stream that can send data and writes the whole conversation to a
 	file"""
-	def __init__(self, address, port):
+	def __init__(self, localAddress, remoteAddress, port):
 		connection.__init__(self, 'udp')
 
 		# Bind to free random port for incoming RTP traffic
-		self.bind('0.0.0.0', 0)
-		self.connect(address, int(port))
+		self.bind(localAddress, 0)
+		self.connect(remoteAddress, int(port))
 
 		# The address and port of the remote host
-		self.remote.host = address
+		self.remote.host = remoteAddress
 		self.remote.port = int(port)
 
 		# Send byte buffer
@@ -534,8 +534,8 @@ class SipSession(object):
 
 		# Create RTP stream instance and pass address and port of listening
 		# remote RTP host
-		self.__rtpStream = RtpUdpStream(self.__remoteAddress,
-			self.__remoteRtpPort)
+		self.__rtpStream = RtpUdpStream(self.local.host,
+			self.__remoteAddress, self.__remoteRtpPort)
 
 		# Send 180 Ringing to make honeypot appear more human-like
 		msgLines = []
