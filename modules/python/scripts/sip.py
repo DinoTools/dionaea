@@ -534,7 +534,7 @@ class SipSession(object):
 
 		# Create RTP stream instance and pass address and port of listening
 		# remote RTP host
-		self.__rtpStream = RtpUdpStream(self.local.host,
+		self.__rtpStream = RtpUdpStream(SipSession.sipConnection.local.host,
 			self.__remoteAddress, self.__remoteRtpPort)
 
 		# Send 180 Ringing to make honeypot appear more human-like
