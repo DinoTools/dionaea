@@ -548,16 +548,6 @@ class smbd(connection):
 			if self.fids[i] is not None:
 				self.fids[i].close()
 				self.fids[i].unlink(self.fids[i].name)
-
-		now = datetime.datetime.now()
-		dirname = "%04i-%02i-%02i" % (now.year, now.month, now.day)
-		dir = os.path.join(g_dionaea.config()['bistreams']['python']['dir'], dirname)
-		if not os.path.exists(dir):
-			os.makedirs(dir)
-		self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix=self.bistream_prefix + self.remote.host + ":" + str(self.remote.port) + "-", suffix=".py", dir=dir)
-		self.fileobj.write(b"stream = ")
-		self.fileobj.write(str(self.bistream).encode())
-		self.fileobj.close()
 		return 0
 
 class epmapper(smbd):
