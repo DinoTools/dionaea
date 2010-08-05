@@ -718,6 +718,15 @@ class SipSession(object):
 			logger.debug("a2: {}".format(a2))
 			logger.debug("expected: {}".format(expected))
 
+			# Report authentication incident
+			i = incident("dionaea.modules.python.sip.authentication")
+			i.authenticationSuccessful = expected == authLineDict['response']
+			i.realm = realm
+			i.uri = uri
+			i.challengeResponse = authLineDict['response']
+			i.expected = expected
+			i.report()
+
 			if expected != authLineDict['response']:
 				sendUnauthorized(authLineDict['nonce'])
 				raise AuthenticationError("Authorization failed")
@@ -750,6 +759,13 @@ class Sip(connection):
 		"""
 		logger.debug('Sending message "{}" to ({}:{})'.format(
 			s, con[0], con[1]))
+
+		# SIP response incident
+		i = incident("dionaea.modules.python.sip")
+		i.con = self
+		i.msgType = "RESPONSE"
+		i.message = s
+		i.report()
 		
 		# Set remote host and port before UDP send
 		self.remote.host = con[0]
@@ -766,6 +782,15 @@ class Sip(connection):
 		except SipParsingError as e:
 			logger.warn("Error while parsing SIP message: {}".format(e))
 			return len(data)
+
+		# SIP message incident
+		i = incident("dionaea.modules.python.sip")
+		i.con = self
+		i.msgType = msgType
+		i.firstLine = firstLine
+		i.sipHeaders = headers
+		i.sipBody = body
+		i.report()
 
 		if msgType == 'INVITE':
 			self.sip_INVITE(firstLine, headers, body)
