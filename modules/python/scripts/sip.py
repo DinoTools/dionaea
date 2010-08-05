@@ -419,23 +419,20 @@ class RtpUdpStream(connection):
 		# Create a stream dump file with date and time and random ID in case of
 		# flooding attacks
 		global g_sipconfig
-		if g_sipconfig['record_rtp']:
-			self.__streamDumpIn = None
-			dumpDate = time.strftime('%Y-%m-%d')
-			dumpTime = time.strftime('%H:%M:%S')
-			dumpDir = 'var/dionaea/rtp/{}/'.format(dumpDate)
+		self.__streamDumpIn = None
+		dumpDate = time.strftime('%Y-%m-%d')
+		dumpTime = time.strftime('%H:%M:%S')
+		dumpDir = 'var/dionaea/rtp/{}/'.format(dumpDate)
 
-			# Create directories if necessary
-			try:
-				os.mkdir(dumpDir)
-			except OSError as e:
-				# If directory didn't exist already, rethrow exception
-				if e.errno != errno.EEXIST:
-					raise e
+		# Construct dump file name
+		self.__streamDumpFileIn = dumpDir + '{t}_{h}_{p}_in.rtp'.format(
+			t=dumpTime, h=self.remote.host, p=self.remote.port)
 
-			# Construct dump file name
-			self.__streamDumpFileIn = dumpDir + '{t}_{h}_{p}_in.rtp'.format(
-				t=dumpTime, h=self.remote.host, p=self.remote.port)
+		# Report incident
+		i = incident("dionaea.modules.python.sip.rtp")
+		i.con = self
+		i.dumpfile = self.__streamDumpFileIn
+		i.report()
 
 		logger.info("Created RTP channel on ports :{} <-> :{}".format(
 			self.local.port, self.remote.port))
@@ -454,13 +451,14 @@ class RtpUdpStream(connection):
 	def handle_io_in(self, data):
 		logger.debug("Incoming RTP data (length {})".format(len(data)))
 
-		# Create stream dump file only if not previously failed
-		if not self.__streamDumpIn and self.__streamDumpFileIn:
-			self.__startRecording()
+		if g_sipconfig['record_rtp']:
+			# Create stream dump file only if not previously failed
+			if not self.__streamDumpIn and self.__streamDumpFileIn:
+				self.__startRecording()
 
-		# Write incoming data to disk
-		if self.__streamDumpIn:
-			self.__streamDumpIn.write(data)
+			# Write incoming data to disk
+			if self.__streamDumpIn:
+				self.__streamDumpIn.write(data)
 
 		return len(data)
 
@@ -480,6 +478,16 @@ class RtpUdpStream(connection):
 		connection.close(self)
 
 	def __startRecording(self):
+		dumpDir = self.__streamDumpFileIn.rsplit('/', 1)[0]
+
+		# Create directories if necessary
+		try:
+			os.mkdir(dumpDir)
+		except OSError as e:
+			# If directory didn't exist already, rethrow exception
+			if e.errno != errno.EEXIST:
+				raise e
+
 		# Catch IO errors
 		try:
 			self.__streamDumpIn = open(self.__streamDumpFileIn, "wb")
@@ -489,12 +497,6 @@ class RtpUdpStream(connection):
 			self.__streamDumpFileIn = None
 		else:
 			logger.debug("Created RTP dump file")
-
-			# Report incident
-			i = incident("dionaea.download.offer")
-			i.con = self
-			i.url = "rtp://%s:%s" % (self.remote.host, self.remote.port)
-			i.report()
 
 class SipSession(object):
 	"""Usually, a new SipSession instance is created when the SIP server
