@@ -761,8 +761,9 @@ class Sip(connection):
 			s, con[0], con[1]))
 
 		# SIP response incident
-		i = incident("dionaea.modules.python.sip")
+		i = incident("dionaea.modules.python.sip.out")
 		i.con = self
+		i.direction = "out"
 		i.msgType = "RESPONSE"
 		i.message = s
 		i.report()
@@ -784,8 +785,9 @@ class Sip(connection):
 			return len(data)
 
 		# SIP message incident
-		i = incident("dionaea.modules.python.sip")
+		i = incident("dionaea.modules.python.sip.in")
 		i.con = self
+		i.direction = "in"
 		i.msgType = msgType
 		i.firstLine = firstLine
 		i.sipHeaders = headers
