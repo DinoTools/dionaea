@@ -198,8 +198,8 @@ class NTLM_Challenge(Packet):
 		PacketField("TargetInfoFields",NTLM_Value(),NTLM_Value),
 #		PacketField("Version",0,NTLM_Version),
 		ConditionalField(PacketField("Version",NTLM_Version(),NTLM_Version), lambda x: x.NegotiateFlags & NTLMSSP_NEGOTIATE_VERSION),
-		ConditionalField(StrFixedLenField("TargetFieldString","HOMEUSER-3AF6FE".encode('utf16')[2:],30), lambda x: x.NegotiateFlags & NTLMSSP_REQUEST_TARGET),
-		#StrField("Payload","")
+#		ConditionalField(StrFixedLenField("TargetFieldString","HOMEUSER-3AF6FE".encode('utf16')[2:],30), lambda x: x.NegotiateFlags & NTLMSSP_REQUEST_TARGET),
+		StrField("Payload","")
 		#PacketField("AVPair1",AV_PAIR(),AV_PAIR),
 		#PacketField("AVPair2",AV_PAIR(),AV_PAIR),
 		#PacketField("AVPair3",AV_PAIR(),AV_PAIR),

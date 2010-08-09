@@ -204,10 +204,10 @@ class smbd(connection):
 						ntlmnegotiate = ntlmssp.getlayer(NTLM_Negotiate)
 						rntlmssp = NTLMSSP_Header(MessageType=2)
 						rntlmchallenge = NTLM_Challenge(NegotiateFlags=ntlmnegotiate.NegotiateFlags)
-						if ntlmnegotiate.NegotiateFlags & NTLMSSP_REQUEST_TARGET:
-							rntlmchallenge.TargetNameFields.Offset = 0x38
-							rntlmchallenge.TargetNameFields.Len = 0x1E
-							rntlmchallenge.TargetNameFields.MaxLen = 0x1E
+#						if ntlmnegotiate.NegotiateFlags & NTLMSSP_REQUEST_TARGET:
+#							rntlmchallenge.TargetNameFields.Offset = 0x38
+#							rntlmchallenge.TargetNameFields.Len = 0x1E
+#							rntlmchallenge.TargetNameFields.MaxLen = 0x1E
 						
 						rntlmchallenge.ServerChallenge = b"\xa4\xdf\xe8\x0b\xf5\xc6\x1e\x3a"
 						rntlmssp = rntlmssp / rntlmchallenge
@@ -249,10 +249,11 @@ class smbd(connection):
 							ntlmnegotiate = ntlmssp.getlayer(NTLM_Negotiate)
 							rntlmssp = NTLMSSP_Header(MessageType=2)
 							rntlmchallenge = NTLM_Challenge(NegotiateFlags=ntlmnegotiate.NegotiateFlags)
-							if ntlmnegotiate.NegotiateFlags & NTLMSSP_REQUEST_TARGET:
-								rntlmchallenge.TargetNameFields.Offset = 0x38
-								rntlmchallenge.TargetNameFields.Len = 0x1E
-								rntlmchallenge.TargetNameFields.MaxLen = 0x1E
+							rntlmchallenge.TargetInfoFields.Offset = rntlmchallenge.TargetNameFields.Offset = 0x30
+#							if ntlmnegotiate.NegotiateFlags & NTLMSSP_REQUEST_TARGET:
+#								rntlmchallenge.TargetNameFields.Offset = 0x38
+#								rntlmchallenge.TargetNameFields.Len = 0x1E
+#								rntlmchallenge.TargetNameFields.MaxLen = 0x1E
 							rntlmchallenge.ServerChallenge = b"\xa4\xdf\xe8\x0b\xf5\xc6\x1e\x3a"
 							rntlmssp = rntlmssp / rntlmchallenge
 							rntlmssp.show()
@@ -547,16 +548,6 @@ class smbd(connection):
 			if self.fids[i] is not None:
 				self.fids[i].close()
 				self.fids[i].unlink(self.fids[i].name)
-
-		now = datetime.datetime.now()
-		dirname = "%04i-%02i-%02i" % (now.year, now.month, now.day)
-		dir = os.path.join(g_dionaea.config()['bistreams']['python']['dir'], dirname)
-		if not os.path.exists(dir):
-			os.makedirs(dir)
-		self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix=self.bistream_prefix + self.remote.host + ":" + str(self.remote.port) + "-", suffix=".py", dir=dir)
-		self.fileobj.write(b"stream = ")
-		self.fileobj.write(str(self.bistream).encode())
-		self.fileobj.close()
 		return 0
 
 class epmapper(smbd):
