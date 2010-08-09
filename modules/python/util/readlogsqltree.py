@@ -111,7 +111,7 @@ def print_connection(c, indent):
 			c['connection_transport'], c['connection_type'], c['local_host'],
 			c['local_port']), end='')
 
-	print(' ({:s} {:s})'.format(c['connection_root'], c['connection_parent'])
+	print(' ({:d} {:s})'.format(c['connection_root'], c['connection_parent']))
 
 def recursive_print(cursor, connection, indent):
 	result = cursor.execute("SELECT * from connections WHERE connection_parent = ?", (connection, ))
