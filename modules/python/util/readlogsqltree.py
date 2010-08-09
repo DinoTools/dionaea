@@ -91,6 +91,15 @@ def print_dcerpcrequests(cursor, connection, indent):
 			dcerpcrequest['dcerpcserviceop_name'], 
 			dcerpcrequest['dcerpcserviceop_vuln']) )
 
+def print_siprequest(cursor, connection, indent):
+	pass
+
+def print_sipresponse(cursor, connection, indent):
+	pass
+
+def print_rtpstream(cursor, connection, indent):
+	pass
+
 def print_connection(c, indent):
 	indentStr = ' ' * (indent + 1)
 
@@ -111,7 +120,7 @@ def print_connection(c, indent):
 			c['connection_transport'], c['connection_type'], c['local_host'],
 			c['local_port']), end='')
 
-	print(' ({:s} {:s})'.format(c['connection_root'], c['connection_parent'])
+	print(' ({:d} {:s})'.format(c['connection_root'], c['connection_parent']))
 
 def recursive_print(cursor, connection, indent):
 	result = cursor.execute("SELECT * from connections WHERE connection_parent = ?", (connection, ))

@@ -723,6 +723,7 @@ class SipSession(object):
 			i.authenticationSuccessful = expected == authLineDict['response']
 			i.realm = realm
 			i.uri = uri
+			i.nonce = authLineDict['nonce']
 			i.challengeResponse = authLineDict['response']
 			i.expected = expected
 			i.report()
