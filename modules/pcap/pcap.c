@@ -174,9 +174,11 @@ static void pcap_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents)
 		return;
 #endif
 
+#ifdef DEBUG
 	char lname[128];
 	char rname[128];
 	g_debug("%s:%i -> %s:%i", inet_ntop(family, local, lname, 128), ntohs(tcp->th_sport), inet_ntop(family, remote, rname, 128), ntohs(tcp->th_dport));
+#endif
 
 	struct connection *con = connection_new(connection_transport_tcp);
 	con->protocol.name = g_strdup("pcap");
@@ -356,9 +358,8 @@ static bool pcap_new(struct dionaea *d)
 	g_hash_table_iter_init (&iter, pcap_runtime.devices);
 	while( g_hash_table_iter_next (&iter, &key, &value) )
 	{
-		char *name = key;
 		struct pcap_device *dev = value;
-		g_debug("starting pcap_device %s %p", name, dev);
+		g_debug("starting pcap_device %s %p", (char *)key, dev);
 		ev_io_init(&dev->io_in, pcap_io_in_cb, pcap_get_selectable_fd(dev->pcap), EV_READ);
 		ev_io_start(g_dionaea->loop, &dev->io_in);
 	}
@@ -374,9 +375,8 @@ static bool pcap_free(void)
 	g_hash_table_iter_init (&iter, pcap_runtime.devices);
 	while( g_hash_table_iter_next (&iter, &key, &value) )
 	{
-		char *name = key;
 		struct pcap_device *dev = value;
-		g_debug("stopping %s", name);
+		g_debug("stopping %s", (char *)key);
 		ev_io_stop(g_dionaea->loop, &dev->io_in);
 	}
 

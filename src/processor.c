@@ -67,11 +67,13 @@ void processors_tree_dump(GNode *tree, int indent)
 {
 	for( GNode *it = g_node_first_sibling(tree); it != NULL; it = it->next )
 	{
+#ifdef DEBUG
 		if( it->data )
 		{
 			struct processor *p = it->data;
 			g_debug("%*s %s", indent*4, " ", p->name);
-		}
+    	}
+#endif 
 
 		if( it->children )
 			processors_tree_dump(g_node_first_child(it), indent+1);
@@ -85,11 +87,11 @@ void processor_data_creation(struct connection *con, struct processor_data *pd, 
 
 	if( p->process && !p->process(con, p->config) )
 	{
-//		g_debug("skip %s", p->name);
+		g_debug("skip %s", p->name);
 		return;
 	}
 
-//	g_debug("creating %s", p->name);
+	g_debug("creating %s", p->name);
 	struct processor_data *npd = processor_data_new();
 	npd->processor = p;
 	if( npd->processor->new )

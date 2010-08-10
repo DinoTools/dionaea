@@ -46,6 +46,20 @@
 
 #define g_info(...) g_log(G_LOG_DOMAIN,	G_LOG_LEVEL_INFO, __VA_ARGS__)
 
+#ifdef NDEBUG
+#undef g_debug
+#define g_debug(...)
+#endif
+
+#ifdef PERFORMANCE
+#undef g_info
+#define g_info(...)
+#undef g_message
+#define g_message(...)
+#undef g_warning
+#define g_warning(...)
+#endif
+
 
 struct logging
 {
