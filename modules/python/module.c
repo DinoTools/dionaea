@@ -292,7 +292,7 @@ static bool freepy(void)
 	{
 		struct import *imp = value;
 		PyObject *module = imp->module;
-		g_info("stop %s %p %p", key, imp, imp->module);
+		g_info("stop %s %p %p", (char *)key, imp, imp->module);
 
 		PyObject *func = PyObject_GetAttrString(module, "stop");
 		if( func != NULL )
