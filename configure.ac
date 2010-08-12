@@ -761,8 +761,20 @@ AM_CONDITIONAL([BUILD_PCAP_MODULE], [ test x$enable_pcap = "xyes" ])
 
 
 dnl **************************************************
-dnl * debug                                          *
+dnl * debug & performance                            *
 dnl **************************************************
+
+AC_MSG_CHECKING(whether you are looking for 'performance')
+AC_ARG_ENABLE([performance],
+		[AS_HELP_STRING(--enable-performance, tries to kill all logging activity to save some cycles [[default=no]])],
+		[enable_performance=${enableval}], [enable_performance="no"])
+if test x"$enable_performance" = "xyes"; then
+	AC_DEFINE([PERFORMANCE], 1, [I'm looking for performance])
+else
+	AC_DEFINE([NPERFORMANCE], 1, [I'm ... capacity instead of spoiler])
+fi
+AC_MSG_RESULT($enable_performance)
+
 
 AC_SUBST([CFLAGS_DEBUG])
 
@@ -770,10 +782,11 @@ AC_MSG_CHECKING(whether debug code generation should be enabled)
 AC_ARG_ENABLE([debug],
 		[AS_HELP_STRING(--enable-debug, enable debug code generation [[default=yes]])],
 		[enable_debug=${enableval}], [enable_debug="yes"])
-if test x"$enable_debug" = "xyes"; then
+if test x"$enable_debug" = "xyes" && test x"$enable_performance" = "xno"; then
 	AC_DEFINE([DEBUG], 1, [enable debug code generation])
 	CFLAGS_DEBUG="-g"
 else
+	enable_debug="no"
 	AC_DEFINE([NDEBUG], 1, [don't enable debug code generation])
 	CFLAGS_DEBUG=""
 fi
@@ -865,6 +878,7 @@ echo
 echo "*** dionaea configuration ***"
 echo ""
 echo "debug                              : $enable_debug"
+echo "performance                        : $enable_performance"
 echo "werror                             : $enable_werror"
 echo "ipv4 mapped                        : $enable_ipv4_mapped"
 echo ""

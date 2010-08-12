@@ -414,9 +414,11 @@ cdef extern from "modules.h":
 
 cdef extern from "processor.h":
 	ctypedef void (*processor_io)(c_connection *con, c_processor_data *pd, void *data, int size)
+	ctypedef c_bool (*processor_process)(c_connection *con, void *config)
 	ctypedef struct c_processor "struct processor":
 		processor_io io_in
 		processor_io io_out
+		processor_process process
 	void c_python_processor_bistream_create "python_processor_bistream_create"(c_connection *con)
 
 
@@ -626,8 +628,8 @@ cdef class connection:
 		if self.thisptr == NULL:
 			raise ReferenceError(u'the object requested does not exist')
 		c_connection_process(self.thisptr)
-		c_python_processor_bistream_create(self.thisptr)
-		self.bistream = []
+#		c_python_processor_bistream_create(self.thisptr)
+#		self.bistream = []
 
 
 
@@ -806,6 +808,10 @@ cdef void process_io_out(c_connection *con, c_processor_data *pd, void *data, in
 			instance.bistream.append((u'out',bdata))
 	return
 
+cdef c_bool process_process(c_connection *con, void *config) except *:
+	cdef connection instance
+	instance = <connection>c_connection_protocol_ctx_get(con)
+	instance.bistream = []
 
 def dlhfn(name, number, path, line, msg):
 	if isinstance(name, unicode):
@@ -1011,6 +1017,7 @@ def init_traceables():
 	cdef c_processor p
 	p.io_in = <processor_io>process_io_in
 	p.io_out = <processor_io>process_io_out
+	p.process = <processor_process>process_process
 	c_set_processor(&p)
 	
 ###

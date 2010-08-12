@@ -506,7 +506,6 @@ int main (int argc, char *argv[])
 			if( it->type != lcfgx_map )
 				continue;
 
-			char *alias = it->key;
 			char *file = NULL;
 			char *domains = NULL;
 			char *levels = NULL;
@@ -522,7 +521,7 @@ int main (int argc, char *argv[])
 			if( lcfgx_get_string(it, &f, "levels") == LCFGX_PATH_FOUND_TYPE_OK )
 				levels = f->value.string.data;
 
-			g_debug("Logfile (handle %s) %s %s %s", alias, file, domains, levels);
+			g_debug("Logfile (handle %s) %s %s %s", it->key, file, domains, levels);
 
 			if( file == NULL )
 				continue;
@@ -653,11 +652,13 @@ int main (int argc, char *argv[])
 	// maybe a little late, but want to avoid having dups of the fd in the child
 	g_log_set_default_handler(log_multiplexer, NULL);
 
+	modules_new();
+
 	// processors continued, create tree
 	g_hash_table_insert(d->processors->names, (void *)proc_streamdumper.name, &proc_streamdumper);
 //	g_hash_table_insert(d->processors->names, (void *)proc_emu.name, &proc_emu);
 	g_hash_table_insert(d->processors->names, (void *)proc_filter.name, &proc_filter);
-	g_hash_table_insert(d->processors->names, (void *)proc_unicode.name, &proc_unicode);
+//	g_hash_table_insert(d->processors->names, (void *)proc_unicode.name, &proc_unicode);
 //	struct lcfgx_tree_node *n;
 	g_debug("Creating processors tree");
 	d->processors->tree = g_node_new(NULL);
@@ -673,7 +674,7 @@ int main (int argc, char *argv[])
 	processors_tree_dump(d->processors->tree, 0);
 
 
-	modules_new();
+
 
 
 	// threads ...
@@ -691,6 +692,7 @@ int main (int argc, char *argv[])
 	}
 
 	// umask
+#ifdef DEBUG
 	mode_t newu = S_IWGRP | S_IWOTH;
 	mode_t oldu = umask(newu);
 
@@ -709,7 +711,7 @@ int main (int argc, char *argv[])
 	print_umask("old umask", oldu);
 	print_umask("new umask", newu);
 #undef print_umask
-
+#endif
 
 
 	// drop

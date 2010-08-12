@@ -320,8 +320,10 @@ void emulate_thread(gpointer data, gpointer user_data)
 
 	g_mutex_unlock(ctx->mutex);
 
+#ifdef DEBUG
 	double elapsed = g_timer_elapsed(ctx->time, NULL);
 	g_debug("shellcode took %f seconds on cpu, %li steps", elapsed, ctx->steps);
+#endif
 
 	GAsyncQueue *aq = g_async_queue_ref(g_dionaea->threads->cmds);
 	g_async_queue_push(aq, async_cmd_new(emulate_ctx_free, ctx));

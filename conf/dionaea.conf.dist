@@ -16,34 +16,75 @@ logging = {
 
 processors = 
 { 
-	emu = 
+	filter-emu = 
 	{
 		config = {
-			emulation = {
-				limits = {
-					files = "3"
-					filesize = "524288" // 512 * 1024
-					sockets = "3"
-					sustain = "120"
-					idle = "30"
-					cpu = "120"
-					steps = "1073741824" // 1024 * 1024 * 1024
-				}
+			allow = [{ protocol = ["smbd","epmapper","nfqmirrord"] }]
+		}
+		next = {
+			emu = 
+			{
+				config = {
+					emulation = {
+						limits = {
+							files = "3"
+							filesize = "524288" // 512 * 1024
+							sockets = "3"
+							sustain = "120"
+							idle = "30"
+							cpu = "120"
+							steps = "1073741824" // 1024 * 1024 * 1024
+						}
 
-				/**
-				 * api default arguments for development 
-				 * disabled by default
-				 * not working yet 
-				 */
-				api = {
-					connect = {
-						host = "127.0.0.1"
-						port = "4444"
+						/**
+						 * api default arguments for development 
+						 * disabled by default
+						 * not working yet 
+						 */
+						api = {
+							connect = {
+								host = "127.0.0.1"
+								port = "4444"
+							}
+						}
 					}
 				}
 			}
 		}
 	}
+
+	filter-streamdumper = 
+	{
+		config = {
+			allow = [
+				{ type = ["accept"] }
+				{ type = ["connect"] protocol=["ftpctrl"] }
+			]
+			deny = [
+				{ protocol = ["ftpdata", "ftpdatacon","xmppclient"] }
+			]
+		}
+		next = {
+			streamdumper = {
+				config = {
+					path = "var/dionaea/bistreams/"
+				}
+			}
+		}
+	}
+
+/*	filter-sessions = 
+	{
+		config = {
+			allow = [ { protocol = ["ftpctrl","remoteshell"] } ]
+		}
+		next = {
+			python = {
+				incident = "true"
+			}
+		}
+	}
+*/
 }
 
 downloads =

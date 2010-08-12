@@ -292,9 +292,12 @@ static int curl_socketfunction_cb(CURL *easy, curl_socket_t s, int action, void 
 	struct session *session;
 	curl_easy_getinfo(easy, CURLOPT_PRIVATE, &session);
 
+#ifdef DEBUG
 	const char *action_str[]={ "none", "IN", "OUT", "INOUT", "REMOVE"};
+#endif
 
 	g_debug("socket callback: s=%d e=%p what=%s ", s, easy, action_str[action]);
+
 	if( action == CURL_POLL_REMOVE )
 	{
 		session_info_free(info);
@@ -333,11 +336,13 @@ static size_t curl_writefunction_cb(void *ptr, size_t size, size_t nmemb, void *
 /* CURLOPT_PROGRESSFUNCTION */
 static int curl_progressfunction_cb (void *p, double dltotal, double dlnow, double ult, double uln)
 {
+#ifdef DEBUG
 	struct session *session = (struct session *)p;
 	(void)ult;
 	(void)uln;
 
 	g_debug("Progress: %s (%g/%g)", session->url, dlnow, dltotal);
+#endif
 	return 0;
 }
 
