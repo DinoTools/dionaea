@@ -290,10 +290,9 @@ static bool freepy(void)
 	g_hash_table_iter_init (&iter, runtime.imports);
 	while( g_hash_table_iter_next (&iter, &key, &value) )
 	{
-		char *name = key;
 		struct import *imp = value;
 		PyObject *module = imp->module;
-		g_info("stop %s %p %p", name, imp, imp->module);
+		g_info("stop %s %p %p", (char *)key, imp, imp->module);
 
 		PyObject *func = PyObject_GetAttrString(module, "stop");
 		if( func != NULL )
@@ -438,6 +437,9 @@ static bool new(struct dionaea *dionaea)
 
 void log_wrap(char *name, int number, char *file, int line, char *msg)
 {
+#ifdef PERFORMANCE
+	return;
+#else
 	char *log_domain;
 	GLogLevelFlags log_level = G_LOG_LEVEL_DEBUG;
 	int x = 0;
@@ -454,18 +456,21 @@ void log_wrap(char *name, int number, char *file, int line, char *msg)
 	if( number == 0 || number == 10 )
 		log_level = G_LOG_LEVEL_DEBUG;
 	else
-		if( number == 20 )
+	if( number == 20 )
 		log_level = G_LOG_LEVEL_INFO;
+	else
 	if( number == 30 )
 		log_level = G_LOG_LEVEL_WARNING;
+	else
 	if( number == 40 )
 		log_level = G_LOG_LEVEL_ERROR;
+	else
 	if( number == 50 )
 		log_level = G_LOG_LEVEL_CRITICAL;
 
 	g_log(log_domain, log_level, "%s", msg);
 	free(log_domain);
-
+#endif
 }
 
 

@@ -2016,6 +2016,9 @@ void connection_tcp_disconnect(struct connection *con)
 	connection_set_state(con, connection_state_close);
 	connection_disconnect(con);
 
+	g_string_erase(con->transport.tcp.io_in, 0, -1);
+	g_string_erase(con->transport.tcp.io_out, 0, -1);
+
 	if( con->protocol.disconnect != NULL && 
 		(state != connection_state_none &&
 		 state != connection_state_connecting ) )
@@ -3034,6 +3037,12 @@ void connection_tls_disconnect(struct connection *con)
 	connection_set_state(con, connection_state_close);
 
 	connection_disconnect(con);
+
+	g_string_erase(con->transport.tls.io_in, 0, -1);
+	g_string_erase(con->transport.tls.io_out, 0, -1);
+	g_string_erase(con->transport.tls.io_out_again, 0, -1);
+	con->transport.tls.io_out_again_size = 0;
+
 
 	if( con->protocol.disconnect != NULL && 
 		(state != connection_state_none &&

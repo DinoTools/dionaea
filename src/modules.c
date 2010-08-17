@@ -140,10 +140,12 @@ void modules_load(struct lcfgx_tree_node *node)
 		g_dionaea->modules->modules = g_list_append(g_dionaea->modules->modules, m);
 	}
 
+#ifdef NPERFORMANCE
 	GList *lit;
 	for( lit = g_list_first(g_dionaea->modules->modules); lit != NULL; lit = g_list_next(lit) )
 	{
 		struct module *m = lit->data;
+
 		g_message("loaded module %s name %s module %p gmodule %p config %p prepare %p new %p free %p", 
 				  g_module_name(m->module),
 				  m->name,
@@ -154,6 +156,7 @@ void modules_load(struct lcfgx_tree_node *node)
 				  m->api.new,
 				  m->api.free);
 	}
+#endif
 }
 
 void modules_unload(void)
