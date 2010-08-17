@@ -34,6 +34,13 @@ from .include.smbfields import DCERPC_Header, DCERPC_Response
 
 rpclog = logging.getLogger('rpcservices')
 
+# Set the operating system of Dionaea by changing the value
+# Default value is 2
+# 1:"Windows XP Service Pack 0/1",
+# 2:"Windows XP Service Pack 2",
+# 3:"Windows XP Service Pack 3",
+OS_TYPE = 2
+
 class DCERPCValueError(Exception):
 	"""Raised when an a value is passed to a dcerpc operation which is invalid"""
 
@@ -77,9 +84,9 @@ class RPCService:
 					data = b''
 				
 				#for metasploit OS type 'Windows XP Service Pack 2+" 
-				#comment 2 lines belows if want to be detected as 'SP 0/1'
-				if opname == "NetNameCanonicalize":
-					r.PacketType = 3
+				if OS_TYPE == 2 or OS_TYPE == 3:
+					if opname == "NetNameCanonicalize":
+						r.PacketType = 3
 					
 				r.StubData = data
 				r.AllocHint = len(data)
@@ -2693,15 +2700,15 @@ class SRVSVC(RPCService):
 		#https://www.metasploit.com/redmine/projects/framework/repository/revisions/8941/entry/lib/msf/core/exploit/smb.rb#L324
 		
 		# for 'Windows XP Service Pack 0 / 1'
-		# to enable this, simply uncomment the 3 lines below and comment part SP2
-		#r.pack_pointer(0)
-		#r.pack_string(Name)
-		#r.pack_long(0)
+		if OS_TYPE == 1:
+			r.pack_pointer(0)
+			r.pack_string(Name)
+			r.pack_long(0)
 		
 		# for 'Windows XP Service Pack 2+'
-		# to disable this, comment the 2 lines below and 2 lines at processrequest()
-		r.pack_pointer(0x000006f7)
-		r.pack_long(0)
+		if OS_TYPE == 2 or OS_TYPE == 3:
+			r.pack_pointer(0x000006f7)
+			r.pack_long(0)
 		
 		return r.get_buffer()
 
@@ -2721,7 +2728,12 @@ class SRVSVC(RPCService):
 		r = ndrlib.Packer()
 
 		# pointer to the LPTIME_OF_DAY_INFO* BufferPtr
-		r.pack_pointer(0x23456)
+		# Metasploit smb fingerprinting for OS type
+		# for 'Windows XP Service Pack 3'
+		if OS_TYPE == 3:
+			r.pack_pointer(0x00020000)
+		else :
+			r.pack_pointer(0x23456)
 		
 		#typedef struct TIME_OF_DAY_INFO {
 		#  DWORD tod_elapsedt;
