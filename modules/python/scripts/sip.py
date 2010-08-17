@@ -32,6 +32,8 @@ import logging
 import time
 import random
 import hashlib
+import os
+import errno
 
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from dionaea import pyev
@@ -400,16 +402,16 @@ def parseSipMessage(msg):
 class RtpUdpStream(connection):
 	"""RTP stream that can send data and writes the whole conversation to a
 	file"""
-	def __init__(self, address, port):
+	def __init__(self, localAddress, remoteAddress, port):
 		connection.__init__(self, 'udp')
 
 		# Bind to free random port for incoming RTP traffic
-		# TODO: Address from config file?
-		self.bind('0.0.0.0', 0)
+		self.bind(localAddress, 0)
+		self.connect(remoteAddress, int(port))
 
 		# The address and port of the remote host
-		self.__address = address
-		self.__port = port
+		self.remote.host = remoteAddress
+		self.remote.port = int(port)
 
 		# Send byte buffer
 		self.__sendBuffer = b''
@@ -417,34 +419,23 @@ class RtpUdpStream(connection):
 		# Create a stream dump file with date and time and random ID in case of
 		# flooding attacks
 		global g_sipconfig
-		if g_sipconfig['record_rtp']:
-			dumpDateTime = time.strftime("%Y%m%d_%H:%M:%S")
-			dumpId = random.randint(1000, 9999)
-			streamDumpFileIn = "var/dionaea/stream_{0}_{1}_in.rtpdump".format(
-				dumpDateTime, dumpId)
-			streamDumpFileOut = "var/dionaea/stream_{0}_{1}_out.rtpdump".format(
-				dumpDateTime, dumpId)
+		self.__streamDumpIn = None
+		dumpDate = time.strftime('%Y-%m-%d')
+		dumpTime = time.strftime('%H:%M:%S')
+		dumpDir = 'var/dionaea/rtp/{}/'.format(dumpDate)
 
-			# Catch IO errors
-			try:
-				self.__streamDumpIn = open(streamDumpFileIn, "wb")
-			except IOError as e:
-				logger.warn("RtpStream: Could not open stream dump file: {}".format(e))
-				self.__streamDumpIn = None
-			else:
-				self.__streamDumpIn.write(b"Hello from honeypot\n")
+		# Construct dump file name
+		self.__streamDumpFileIn = dumpDir + '{t}_{h}_{p}_in.rtp'.format(
+			t=dumpTime, h=self.remote.host, p=self.remote.port)
 
-			try:
-				self.__streamDumpOut = open(streamDumpFileOut, "wb")
-			except IOError as e:
-				logger.warn("RtpStream: Could not open stream dump file: {}".format(e))
-				self.__streamDumpOut = None
-		else:
-			self.__streamDumpIn = None
-			self.__streamDumpOut = None
+		# Report incident
+		i = incident("dionaea.modules.python.sip.rtp")
+		i.con = self
+		i.dumpfile = self.__streamDumpFileIn
+		i.report()
 
 		logger.info("Created RTP channel on ports :{} <-> :{}".format(
-			self.local.port, self.__port))
+			self.local.port, self.remote.port))
 
 	def handle_timeout_idle(self):
 		return False
@@ -460,23 +451,21 @@ class RtpUdpStream(connection):
 	def handle_io_in(self, data):
 		logger.debug("Incoming RTP data (length {})".format(len(data)))
 
-		# Write incoming data to disk
-		if self.__streamDumpIn:
-			self.__streamDumpIn.write(data)
+		if g_sipconfig['record_rtp']:
+			# Create stream dump file only if not previously failed
+			if not self.__streamDumpIn and self.__streamDumpFileIn:
+				self.__startRecording()
+
+			# Write incoming data to disk
+			if self.__streamDumpIn:
+				self.__streamDumpIn.write(data)
 
 		return len(data)
 
 	def handle_io_out(self):
 		logger.debug("Outdoing RTP data (length {})".format(len(data)))
 
-		# TODO: Only necessary to set once in __init__?
-		self.remote.host = self.__address
-		self.remote.port = self.__port
 		bytesSent = self.send(self.__sendBuffer)
-
-		# Write the sent part of the buffer to the stream dump file
-		if self.__streamDumpOut:
-			self.__streamDumpOut.write(self.__sendBuffer[:bytesSent])
 
 		# Shift sending window for next send operation
 		self.__sendBuffer = self.__sendBuffer[bytesSent:]
@@ -486,10 +475,28 @@ class RtpUdpStream(connection):
 			logger.debug("Closing stream dump (in)")
 			self.__streamDumpIn.close()
 
-		if self.__streamDumpOut:
-			self.__streamDumpOut.close()
-
 		connection.close(self)
+
+	def __startRecording(self):
+		dumpDir = self.__streamDumpFileIn.rsplit('/', 1)[0]
+
+		# Create directories if necessary
+		try:
+			os.mkdir(dumpDir)
+		except OSError as e:
+			# If directory didn't exist already, rethrow exception
+			if e.errno != errno.EEXIST:
+				raise e
+
+		# Catch IO errors
+		try:
+			self.__streamDumpIn = open(self.__streamDumpFileIn, "wb")
+		except IOError as e:
+			logger.error("RtpStream: Could not open stream dump file: {}".format(e))
+			self.__streamDumpIn = None
+			self.__streamDumpFileIn = None
+		else:
+			logger.debug("Created RTP dump file")
 
 class SipSession(object):
 	"""Usually, a new SipSession instance is created when the SIP server
@@ -512,9 +519,11 @@ class SipSession(object):
 		global g_sipconfig
 		self.__sipTo = inviteHeaders['from']
 		self.__sipFrom = "{0} <sip:{0}@{1}>".format(
-				g_sipconfig['user'], g_sipconfig['domain'])
+			g_sipconfig['user'], g_sipconfig['domain'])
 		self.__sipVia = "SIP/2.0/UDP {}:{}".format(
 			g_sipconfig['domain'], g_sipconfig['port'])
+		self.__sipContact = "{0} <sip:{0}@{1}>".format(
+			g_sipconfig['user'], SipSession.sipConnection.local.host)
 
 	def send(self, s):
 		s += '\n\n'
@@ -527,8 +536,8 @@ class SipSession(object):
 
 		# Create RTP stream instance and pass address and port of listening
 		# remote RTP host
-		self.__rtpStream = RtpUdpStream(self.__remoteAddress,
-			self.__remoteRtpPort)
+		self.__rtpStream = RtpUdpStream(SipSession.sipConnection.local.host,
+			self.__remoteAddress, self.__remoteRtpPort)
 
 		# Send 180 Ringing to make honeypot appear more human-like
 		msgLines = []
@@ -539,7 +548,7 @@ class SipSession(object):
 		msgLines.append("From: " + self.__sipFrom)
 		msgLines.append("Call-ID: {}".format(self.__callId))
 		msgLines.append("CSeq: " + headers['cseq'])
-		msgLines.append("Contact: " + self.__sipFrom)
+		msgLines.append("Contact: " + self.__sipContact)
 		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 		self.send('\n'.join(msgLines))
 
@@ -558,7 +567,7 @@ class SipSession(object):
 			msgLines.append("From: " + self.__sipFrom)
 			msgLines.append("Call-ID: {}".format(self.__callId))
 			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("Contact: " + self.__sipContact)
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			msgLines.append("Content-Type: application/sdp")
 			msgLines.append("\nv=0")
@@ -600,7 +609,7 @@ class SipSession(object):
 			msgLines.append("From: " + self.__sipFrom)
 			msgLines.append("Call-ID: {}".format(self.__callId))
 			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("Contact: " + self.__sipContact)
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			self.send('\n'.join(msgLines))
 
@@ -631,7 +640,7 @@ class SipSession(object):
 			msgLines.append("From: " + self.__sipFrom)
 			msgLines.append("Call-ID: {}".format(self.__callId))
 			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("Contact: " + self.__sipContact)
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			self.send('\n'.join(msgLines))
 
@@ -654,7 +663,7 @@ class SipSession(object):
 			msgLines.append("From: " + self.__sipFrom)
 			msgLines.append("Call-ID: {}".format(self.__callId))
 			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipFrom)
+			msgLines.append("Contact: " + self.__sipContact)
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			msgLines.append('WWW-Authenticate: Digest ' + \
 				'realm="{}@{}",'.format(g_sipconfig['user'],
@@ -709,6 +718,16 @@ class SipSession(object):
 			logger.debug("a2: {}".format(a2))
 			logger.debug("expected: {}".format(expected))
 
+			# Report authentication incident
+			i = incident("dionaea.modules.python.sip.authentication")
+			i.authenticationSuccessful = expected == authLineDict['response']
+			i.realm = realm
+			i.uri = uri
+			i.nonce = authLineDict['nonce']
+			i.challengeResponse = authLineDict['response']
+			i.expected = expected
+			i.report()
+
 			if expected != authLineDict['response']:
 				sendUnauthorized(authLineDict['nonce'])
 				raise AuthenticationError("Authorization failed")
@@ -741,6 +760,14 @@ class Sip(connection):
 		"""
 		logger.debug('Sending message "{}" to ({}:{})'.format(
 			s, con[0], con[1]))
+
+		# SIP response incident
+		i = incident("dionaea.modules.python.sip.out")
+		i.con = self
+		i.direction = "out"
+		i.msgType = "RESPONSE"
+		i.message = s
+		i.report()
 		
 		# Set remote host and port before UDP send
 		self.remote.host = con[0]
@@ -757,6 +784,16 @@ class Sip(connection):
 		except SipParsingError as e:
 			logger.warn("Error while parsing SIP message: {}".format(e))
 			return len(data)
+
+		# SIP message incident
+		i = incident("dionaea.modules.python.sip.in")
+		i.con = self
+		i.direction = "in"
+		i.msgType = msgType
+		i.firstLine = firstLine
+		i.sipHeaders = headers
+		i.sipBody = body
+		i.report()
 
 		if msgType == 'INVITE':
 			self.sip_INVITE(firstLine, headers, body)
@@ -894,7 +931,7 @@ class Sip(connection):
 		msgLines.append("Call-ID: " + headers['call-id'])
 		msgLines.append("CSeq: " + headers['cseq'])
 		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], g_sipconfig['domain']))
+			g_sipconfig['user'], self.local.host))
 		msgLines.append("Allow: INVITE, ACK, CANCEL, OPTIONS, BYE")
 		msgLines.append("Accept: application/sdp")
 		msgLines.append("Accept-Language: en")
@@ -965,7 +1002,7 @@ class Sip(connection):
 		msgLines.append("Call-ID: " + headers['call-id'])
 		msgLines.append("CSeq: " + headers['cseq'])
 		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], g_sipconfig['domain']))
+			g_sipconfig['user'], self.local.host))
 
 		self.send('\n'.join(msgLines))
 

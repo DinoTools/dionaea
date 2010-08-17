@@ -266,6 +266,7 @@ def runFunctionalTest1():
 
 	sRtp = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
 	sRtp.bind(('localhost', 30123))
+	sRtp.connect(('localhost', rtpPort))
 	logger.debug("Sending 'Hello World' to :{}".format(rtpPort))
 	sRtp.sendto(b"Hello World", ('localhost', rtpPort))
 
