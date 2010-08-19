@@ -36,6 +36,7 @@
 #include <stdio.h>
 
 #include <unistd.h>
+#include <errno.h>
 
 #include <glib.h>
 
@@ -203,6 +204,13 @@ struct tempfile *tempfile_new(char *path, char *prefix)
 	else
 		tf->path = g_strdup_printf("%s/XXXXXX", path);
 	tf->fd = mkstemp(tf->path);
+	if( tf->fd == -1 )
+	{
+		g_warning("could not open path %s (%s)", path, strerror(errno));
+		g_free(tf);
+		return NULL;
+	}
+
 	tf->fh = fdopen(tf->fd, "w+");
 	return tf;
 }
