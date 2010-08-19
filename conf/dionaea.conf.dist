@@ -248,15 +248,15 @@ modules = {
 		http = {
 			root = "var/dionaea/wwwroot"
 		}
-        sip = {
-            use_authentication = "yes"
+		sip = {
+			use_authentication = "yes"
 			domain = "localhost"
-            port = "5060"
-            user = "100"
-            useragent = "softphone"
-            secret = "F2DS13G5"
+			port = "5060"
+			user = "100"
+			useragent = "softphone"
+			secret = "F2DS13G5"
 			record_rtp = "yes"
-        }
+		}
 		surfids = {
 			sslmode = "require"
 			host = "surfids.example.com" // change this
