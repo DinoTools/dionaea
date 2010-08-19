@@ -498,22 +498,33 @@ class RtpUdpStream(connection):
 		else:
 			logger.debug("Created RTP dump file")
 
-class SipSession(object):
+class SipCall(connection):
 	"""Usually, a new SipSession instance is created when the SIP server
 	receives an INVITE message"""
 	NO_SESSION, SESSION_SETUP, ACTIVE_SESSION, SESSION_TEARDOWN = range(4)
-	sipConnection = None
 
-	def __init__(self, conInfo, rtpPort, inviteHeaders):
-		if not SipSession.sipConnection:
-			logger.critical("SIP connection class variable not set")
+	def __init__(self, session, conInfo, rtpPort, inviteHeaders):
 
+		connection.__init__(self,'udp')
 		# Store incoming information of the remote host
-		self.__state = SipSession.SESSION_SETUP
+
+		self.__session = session
+		self.__state = SipCall.SESSION_SETUP
 		self.__remoteAddress = conInfo[0]
 		self.__remoteSipPort = conInfo[1]
 		self.__remoteRtpPort = rtpPort
 		self.__callId = inviteHeaders['call-id']
+
+		self.local.host = self.__session.local.host
+		self.local.port = self.__session.local.port
+
+		self.remote.host = self.__session.remote.host
+		self.remote.port = self.__session.remote.port
+
+		# fake a connection entry
+		i = incident("dionaea.connection.udp.connect")
+		i.con = self
+		i.report()
 
 		# Generate static values for SIP messages
 		global g_sipconfig
@@ -523,12 +534,11 @@ class SipSession(object):
 		self.__sipVia = "SIP/2.0/UDP {}:{}".format(
 			g_sipconfig['domain'], g_sipconfig['port'])
 		self.__sipContact = "{0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], SipSession.sipConnection.local.host)
+			g_sipconfig['user'], self.__session.local.host)
 
 	def send(self, s):
 		s += '\n\n'
-		SipSession.sipConnection.sendto(s,
-			(self.__remoteAddress, self.__remoteSipPort))
+		self.__session.send(s)
 
 	def handle_INVITE(self, headers):
 		# Check authentication
@@ -536,8 +546,15 @@ class SipSession(object):
 
 		# Create RTP stream instance and pass address and port of listening
 		# remote RTP host
-		self.__rtpStream = RtpUdpStream(SipSession.sipConnection.local.host,
+		self.__rtpStream = RtpUdpStream(self.__session.local.host,
 			self.__remoteAddress, self.__remoteRtpPort)
+		
+		i = incident("dionaea.connection.link")
+		i.parent = self
+		i.child = self.__rtpStream
+		i.report()
+
+
 
 		# Send 180 Ringing to make honeypot appear more human-like
 		msgLines = []
@@ -577,6 +594,7 @@ class SipSession(object):
 			self.send('\n'.join(msgLines))
 
 			# Delete timer reference
+			self.timer.stop()
 			del self.timer
 
 		# Delay between 180 and 200 response with pyev callback timer
@@ -587,7 +605,7 @@ class SipSession(object):
 		return 0
 
 	def handle_ACK(self, headers, body):
-		if self.__state != SipSession.SESSION_SETUP:
+		if self.__state != SipCall.SESSION_SETUP:
 			logger.warn("ACK received but not in session setup mode")
 
 		else:
@@ -598,7 +616,7 @@ class SipSession(object):
 				self.__callId))
 
 			# Set current state to active (ready for multimedia stream)
-			self.__state = SipSession.ACTIVE_SESSION
+			self.__state = SipCall.ACTIVE_SESSION
 
 			# Send 200 OK response
 			msgLines = []
@@ -619,7 +637,7 @@ class SipSession(object):
 	def handle_BYE(self, headers, body):
 		global g_sipconfig
 
-		if self.__state != SipSession.ACTIVE_SESSION:
+		if self.__state != SipCall.ACTIVE_SESSION:
 			logger.warn("BYE received but not in active session mode")
 
 		else:
@@ -629,7 +647,7 @@ class SipSession(object):
 			self.__rtpStream.close()
 
 			# A BYE ends the session immediately
-			self.__state = SipSession.NO_SESSION
+			self.__state = SipCall.NO_SESSION
 
 			# Send OK response to other client
 			msgLines = []
@@ -679,7 +697,6 @@ class SipSession(object):
 			sendUnauthorized(nonce)
 
 			raise AuthenticationError("Request was unauthenticated")
-
 		else:
 			# Check against config file
 			authMethod, authLine = headers['authorization'].split(' ', 1)
@@ -734,22 +751,45 @@ class SipSession(object):
 
 			logger.info("Authorization succeeded")
 
-class Sip(connection):
+class SipServer(connection):
 	"""Only UDP connections are supported at the moment"""
-
 	def __init__(self):
 		connection.__init__(self, 'udp')
-
-		# Dictionary with SIP sessions (key is Call-ID)
 		self.__sessions = {}
 
-		# Set SIP connection in session class variable
-		SipSession.sipConnection = self
+	def handle_io_in(self, data):
+		sessionkey = (self.local.host, self.local.port, self.remote.host, self.remote.port)
+		if sessionkey not in self.__sessions:
+			self.__sessions[sessionkey] = SipSession(self)
+
+		session = self.__sessions[sessionkey]
+		session.handle_io_in(data)
+		return len(data)
+
+class SipSession(connection):
+	def __init__(self, server):
+		connection.__init__(self, 'udp')
+		
+		# we send everything via the servers connection
+		self.server = server
+
+		self.remote.host = server.remote.host
+		self.remote.port = server.remote.port
+		self.local.host = server.local.host
+		self.local.port = server.local.port
+
+		# fake a connection entry
+		i = incident("dionaea.connection.udp.connect")
+		i.con = self
+		i.report()
+
+		# Dictionary with SIP sessions (key is Call-ID)
+		self.__callids = {}
 
 		# Test log entry
-		logger.info("SIP server created")
+		logger.info("SIP Session created")
 
-	def sendto(self, s, con):
+	def send(self, s):
 		"""
 		Since the dionaea connection class doesn't provide a sendto method it is
 		implemented here. It is needed to other classes (instances) send
@@ -759,20 +799,22 @@ class Sip(connection):
 		and self.remote.port are already set correctly.
 		"""
 		logger.debug('Sending message "{}" to ({}:{})'.format(
-			s, con[0], con[1]))
+			s, self.remote.host, self.remote.port))
 
 		# SIP response incident
-		i = incident("dionaea.modules.python.sip.out")
-		i.con = self
-		i.direction = "out"
-		i.msgType = "RESPONSE"
-		i.message = s
-		i.report()
+#		i = incident("dionaea.modules.python.sip.out")
+#		i.con = self
+#		i.direction = "out"
+#		i.msgType = "RESPONSE"
+#		i.message = s
+#		i.report()
 		
 		# Set remote host and port before UDP send
-		self.remote.host = con[0]
-		self.remote.port = con[1]
-		self.send(s.encode('utf-8'))
+		self.server.local.host = self.local.host
+		self.server.remote.port = self.local.port
+		self.server.remote.host = self.remote.host
+		self.server.remote.port = self.remote.port
+		self.server.send(s.encode('utf-8'))
 
 	def handle_io_in(self, data):
 		# Get byte data and decode to unicode string
@@ -877,27 +919,33 @@ class Sip(connection):
 
 		rtpPort = mediaDescriptionParts[1]
 
-		# Read Call-ID field and create new SipSession instance on first INVITE
+		# Read Call-ID field and create new SipCall instance on first INVITE
 		# request received (remote host might send more than one because of time
 		# outs or because he wants to flood the honeypot)
-		logger.debug("Currently active sessions: {}".format(self.__sessions))
+		logger.debug("Currently active sessions: {}".format(self.__callids))
 		callId = headers["call-id"]
-		if callId in self.__sessions:
+		if callId in self.__callids:
 			logger.warn("SIP session with Call-ID {} already exists".format(
 				callId))
 			return
 
-		# Establish a new SIP session
-		newSession = SipSession((self.remote.host, self.remote.port),
+		# Establish a new SIP Call
+		newCall = SipCall(self, (self.remote.host, self.remote.port),
 			rtpPort, headers)
+
+		i = incident("dionaea.connection.link")
+		i.parent = self
+		i.child = newCall
+		i.report()
+
 		try:
-			r = newSession.handle_INVITE(headers)
+			r = newCall.handle_INVITE(headers)
 		except AuthenticationError:
 			logger.warn("Authentication failed, not creating SIP session")
-			del newSession
+			del newCall
 		else:
 			# Store session object in sessions dictionary
-			self.__sessions[callId] = newSession
+			self.__callids[callId] = newCall
 
 	def sip_ACK(self, requestLine, headers, body):
 		logger.info("Received ACK")
@@ -907,12 +955,12 @@ class Sip(connection):
 
 		# Check if session (identified by Call-ID) exists
 		callId = headers['call-id'] 
-		if callId not in self.__sessions:
+		if callId not in self.__callids:
 			logger.warn("Given Call-ID does not belong to any session: exit")
 		else:
 			try:
 				# Handle incoming ACKs depending on current state
-				self.__sessions[callId].handle_ACK(headers, body)
+				self.__callids[callId].handle_ACK(headers, body)
 			except AuthenticationError:
 				logger.warn("Authentication failed for ACK request")
 
@@ -947,17 +995,17 @@ class Sip(connection):
 		
 		# Check if session (identified by Call-ID) exists
 		callId = headers['call-id'] 
-		if callId not in self.__sessions:
+		if callId not in self.__callids:
 			logger.warn("Given Call-ID does not belong to any session: exit")
 		else:
 			try:
 				# Handle incoming BYE request depending on current state
-				self.__sessions[callId].handle_BYE(headers, body)
+				self.__callids[callId].handle_BYE(headers, body)
 			except AuthenticationError:
 				logger.warn("Authentication failed for BYE request")
 			else:
 				# Delete session instance
-				del self.__sessions[callId]
+				del self.__callids[callId]
 
 	def sip_CANCEL(self, requestLine, headers, body):
 		logger.info("Received CANCEL")
@@ -975,7 +1023,7 @@ class Sip(connection):
 
 		if cseqMethod == "INVITE" or cseqMethod == "ACK":
 			# Find SipSession and delete it
-			if callId not in self.__sessions:
+			if callId not in self.__callids:
 				logger.warn(
 					"CANCEL request does not match any existing SIP session")
 				return
