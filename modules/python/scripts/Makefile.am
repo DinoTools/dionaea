@@ -2,7 +2,8 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-PYSCRIPTS = tftp.py
+PYSCRIPTS = sip.py
+PYSCRIPTS += tftp.py
 PYSCRIPTS += echo.py
 PYSCRIPTS += ftp.py
 PYSCRIPTS += services.py

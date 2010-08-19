@@ -11,6 +11,7 @@ import dionaea.tftp
 import dionaea.ftp
 import dionaea.mirror
 from dionaea.smb import smb
+import dionaea.sip
 
 # reload service imports
 #imp.reload(dionaea.http)
@@ -145,6 +146,16 @@ class epmapservice(service):
 	def stop(self, daemon):
 		daemon.close()
 
+class sipservice(service):
+	def start(self, addr, iface=None):
+		port = int(g_dionaea.config()['modules']['python']['sip']['port'])
+		daemon = dionaea.sip.Sip()
+		daemon.bind(addr, port, iface=iface)
+		return daemon
+
+	def stop(self, daemon):
+		daemon.close()
+
 #mode = 'getifaddrs'
 #mode = 'manual'
 #addrs = { 'eth0' : ['127.0.0.1', '192.168.47.11'] }
@@ -197,6 +208,9 @@ def start():
 
 	if "epmap" in g_dionaea.config()['modules']['python']['services']['serve']:
 		g_slave.services.append(epmapservice)
+
+	if "sip" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(sipservice)
 
 	g_slave.start(addrs)
 

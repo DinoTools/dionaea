@@ -314,6 +314,26 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 		g_debug("ip '%s' node '%s'", con->local.ip_string, con->local.node_string);
 
+		{
+			int sockopt=1;
+			int level = 0;
+			int optname = 0;
+
+			if( socket_domain == PF_INET )
+			{
+				level = SOL_IP;
+				optname = IP_PKTINFO;
+			}else
+			if( socket_domain == PF_INET6 )
+			{
+				level = SOL_IPV6;
+				optname = IPV6_PKTINFO;
+			}
+
+			if( setsockopt(con->socket, level, optname, &sockopt, sizeof(sockopt)) != 0 )
+				g_warning("con %p setsockopt fail %s", con, strerror(errno));
+		}
+
 		connection_set_nonblocking(con);
 		ev_io_init(&con->events.io_in, connection_udp_io_in_cb, con->socket, EV_READ);
 		if( port != 0 )
@@ -1150,6 +1170,7 @@ void connection_send(struct connection *con, const void *data, uint32_t size)
 			struct udp_packet *packet = g_malloc0(sizeof(struct udp_packet));
 			packet->data = g_string_new_len(data, size);
 			memcpy(&packet->to, &con->remote.addr, sizeof(struct sockaddr_storage));
+			memcpy(&packet->from, &con->local.addr, sizeof(struct sockaddr_storage));
 			con->transport.udp.io_out = g_list_append(con->transport.udp.io_out, packet);
 			connection_udp_io_out_cb(g_dionaea->loop, &con->events.io_out, 0);
 		}
@@ -2015,6 +2036,9 @@ void connection_tcp_disconnect(struct connection *con)
 	enum connection_state state = con->state;
 	connection_set_state(con, connection_state_close);
 	connection_disconnect(con);
+
+	g_string_erase(con->transport.tcp.io_in, 0, -1);
+	g_string_erase(con->transport.tcp.io_out, 0, -1);
 
 	if( con->protocol.disconnect != NULL && 
 		(state != connection_state_none &&
@@ -3035,6 +3059,12 @@ void connection_tls_disconnect(struct connection *con)
 
 	connection_disconnect(con);
 
+	g_string_erase(con->transport.tls.io_in, 0, -1);
+	g_string_erase(con->transport.tls.io_out, 0, -1);
+	g_string_erase(con->transport.tls.io_out_again, 0, -1);
+	con->transport.tls.io_out_again_size = 0;
+
+
 	if( con->protocol.disconnect != NULL && 
 		(state != connection_state_none &&
 		 state != connection_state_connecting && 
@@ -3232,30 +3262,137 @@ void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
  */
 
 
+ssize_t recvfromto(int sockfd, void *buf, size_t len, int flags,
+				 const struct sockaddr *fromaddr, socklen_t *fromlen,
+				 const struct sockaddr *toaddr, socklen_t *tolen)
+{
+	struct iovec iov[1];
+	char cmsg[CMSG_SPACE(sizeof(struct in_pktinfo))];
+	struct cmsghdr *cmsgptr;
+	struct msghdr msg;
+	ssize_t rlen;
+
+	iov[0].iov_base = buf;
+	iov[0].iov_len = len;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_name = (void *)fromaddr;
+	msg.msg_namelen = *fromlen;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+	msg.msg_control = &cmsg;
+	msg.msg_controllen = sizeof(cmsg);
+
+	if( (rlen = recvmsg(sockfd, &msg, 0)) == -1 )
+		return -1;
+
+
+	for( cmsgptr = CMSG_FIRSTHDR(&msg); cmsgptr != NULL; cmsgptr = CMSG_NXTHDR(&msg, cmsgptr) )
+	{
+		if( fromaddr->sa_family == PF_INET && cmsgptr->cmsg_level == SOL_IP && cmsgptr->cmsg_type == IP_PKTINFO )
+		{ /* IPv4 */
+			if( *fromlen < sizeof(struct sockaddr_in) )
+			{
+				errno = EINVAL;
+				return -1;
+			}
+			void *addr = ADDROFFSET(toaddr);
+			void *t = &((struct in_pktinfo *)(CMSG_DATA(cmsgptr)))->ipi_addr;
+			memcpy(addr, t, sizeof(struct in_addr));
+			break;
+		}else
+		if( fromaddr->sa_family == PF_INET6 && cmsgptr->cmsg_level == SOL_IPV6 && cmsgptr->cmsg_type == IPV6_PKTINFO )
+		{ /* IPv6 */
+			if( *fromlen < sizeof(struct sockaddr_in6) )
+			{
+				errno = EINVAL;
+				return -1;
+			}
+			void *addr = ADDROFFSET(toaddr);
+			void *t = &((struct in6_pktinfo *)(CMSG_DATA(cmsgptr)))->ipi6_addr;
+			memcpy(addr, t, sizeof(struct in6_addr));
+			break;
+		}
+	}
+	return rlen;
+}
+
+ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to, socklen_t tolen, struct sockaddr *from, socklen_t fromlen)
+{
+	struct iovec iov[1];
+	struct msghdr msg;
+	
+	struct cmsghdr* cmsgptr;
+
+	iov[0].iov_base = buf;
+	iov[0].iov_len = len;
+
+	memset(&msg, 0, sizeof(msg));
+	msg.msg_name = (void *) to;
+	msg.msg_namelen = tolen;
+	msg.msg_iov = iov;
+	msg.msg_iovlen = 1;
+	msg.msg_flags = flags;
+
+
+	if( getsockname(fd, from, &fromlen) != 0)
+	{
+		g_warning("sendtofrom: getsockname failed %s", strerror(errno) );
+		return -1;
+	}
+
+	if( from->sa_family == PF_INET )
+	{ /* IPv4 */
+		char cbuf[CMSG_SPACE(sizeof(struct in_pktinfo))];
+		memset(cbuf, 0, sizeof(cbuf));
+		msg.msg_control = cbuf;
+		msg.msg_controllen = sizeof(cbuf);
+
+		cmsgptr = CMSG_FIRSTHDR(&msg);
+		cmsgptr->cmsg_level = SOL_IP;
+		cmsgptr->cmsg_type = IP_PKTINFO;
+		cmsgptr->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
+		memcpy(&((struct in_pktinfo *)(CMSG_DATA(cmsgptr)))->ipi_addr.s_addr, ADDROFFSET(from),  sizeof(struct in_addr) );
+	}else
+	if( from->sa_family == PF_INET6 )
+	{ /* IPv6 */
+		char cbuf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
+		memset(cbuf, 0, sizeof(cbuf));
+		msg.msg_control = cbuf;
+		msg.msg_controllen = sizeof(cbuf);
+
+		cmsgptr = CMSG_FIRSTHDR(&msg);
+		cmsgptr->cmsg_level = SOL_IPV6;
+		cmsgptr->cmsg_type = IPV6_PKTINFO;
+		cmsgptr->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
+		memcpy(&((struct in6_pktinfo *)(CMSG_DATA(cmsgptr)))->ipi6_addr, ADDROFFSET(from),  sizeof(struct in6_addr) );
+	}else
+	{
+		errno = EINVAL;
+		return -1;
+	}
+	return sendmsg(fd, &msg, 0);
+}
+
 
 void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 {
 	struct connection *con = CONOFF_IO_IN(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
-	struct sockaddr_storage sa;
 	socklen_t sizeof_sa = sizeof(struct sockaddr_storage);
+	socklen_t sizeof_sb = sizeof(struct sockaddr_storage);
 	unsigned char buf[64*1024];
 	memset(buf, 0, 64*1024);
 	int ret;
-	while( (ret = recvfrom(con->socket, buf, 64*1024, 0,  (struct sockaddr *)&sa, &sizeof_sa)) > 0 )
+	while( (ret = recvfromto(con->socket, buf, 64*1024, 0,  (struct sockaddr *)&con->remote.addr, &sizeof_sa, (struct sockaddr *)&con->local.addr, &sizeof_sb)) > 0 )
 	{
-		memcpy(&con->remote.addr, &sa, sizeof(struct sockaddr_storage));
-		node_info_set(&con->remote, &sa);
+		node_info_set(&con->remote, &con->remote.addr);
+		node_info_set(&con->local, &con->local.addr);
 //		g_debug("%s -> %s %.*s", con->remote.node_string, con->local.node_string, ret, buf);
 		con->protocol.io_in(con, con->protocol.ctx, buf, ret);
 		memset(buf, 0, 64*1024);
 	}
-/*	if( ret == -1 )
-	{
-		g_debug("error %s", strerror(errno));
- 	}
-*/ 
 }
 
 void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
@@ -3265,38 +3402,42 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 
 	GList *elem;
 
-//	g_debug("sending ");
 	while( (elem = g_list_first(con->transport.udp.io_out)) != NULL )
 	{
-//		g_debug(".");
 		struct udp_packet *packet = elem->data;
-
 		socklen_t size = ((struct sockaddr *)&packet->to)->sa_family == PF_INET ? sizeof(struct sockaddr_in) : 
 						 ((struct sockaddr *)&packet->to)->sa_family == PF_INET6 ? sizeof(struct sockaddr_in6) : 
 						 ((struct sockaddr *)&packet->to)->sa_family == AF_UNIX ? sizeof(struct sockaddr_un) : -1;
 
-		int ret = sendto(con->socket, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size);
+		int ret = sendtofrom(con->socket, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size, (struct sockaddr *)&packet->from, size);
 
 		if( ret == -1 )
 		{
 			if( errno == EAGAIN )
 			{
-
+				break;
 			} else
 			{
 				g_debug("domain %i size %i", ((struct sockaddr *)&packet->to)->sa_family, size);
-				perror("sendto");
+				g_warning("sendtofrom failed %s",  strerror(errno));
+				g_string_free(packet->data, TRUE);
+				g_free(packet);
+				con->transport.udp.io_out = g_list_delete_link(con->transport.udp.io_out, elem);
 			}
 			break;
 		} else
-			if( ret == packet->data->len )
+		if( ret == packet->data->len )
 		{
 			g_string_free(packet->data, TRUE);
 			g_free(packet);
 			con->transport.udp.io_out = g_list_delete_link(con->transport.udp.io_out, elem);
 		} else
 		{
-			perror("sendto");
+			g_warning("sendtofrom failed %s",  strerror(errno));
+			g_string_free(packet->data, TRUE);
+			g_free(packet);
+			con->transport.udp.io_out = g_list_delete_link(con->transport.udp.io_out, elem);
+			break;
 		}
 	}
 //	g_debug(" done");

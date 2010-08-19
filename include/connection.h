@@ -92,6 +92,7 @@ struct connection;
 
 struct udp_packet
 {
+	struct sockaddr_storage from;
 	struct sockaddr_storage to;
 	GString *data;
 };

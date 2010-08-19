@@ -369,8 +369,10 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 		{
 			g_warning("Could not create %s %s",  path, strerror(errno));
 		}
-		ctx->file = tempfile_new(path, prefix);
+		
 
+		if( (ctx->file = tempfile_new(path, prefix)) == NULL )
+			return;
 
 
 		fwrite(stream_start, strlen(stream_start), 1, ctx->file->fh);
