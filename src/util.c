@@ -50,7 +50,7 @@
 
 #define D_LOG_DOMAIN "util"
 
-void *ADDROFFSET(void *x)
+void *ADDROFFSET(const void *x)
 {
 	if( x == NULL )
 		return NULL;
