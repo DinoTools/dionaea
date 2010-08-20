@@ -36,7 +36,7 @@ def print_services(cursor, connection, indent):
 	services = resolve_result(r)
 	for service in services:
 		print("{:s} service: {:s}".format(
-			' ' * intent, service['emu_service_url']))
+			' ' * indent, service['emu_service_url']))
 
 def print_p0fs(cursor, connection, indent):
 	r = cursor.execute("SELECT * from p0fs WHERE connection = ?", (connection, ))
