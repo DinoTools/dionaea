@@ -128,12 +128,15 @@ def recursive_print(cursor, connection, indent):
 	for c in connections:
 		if c['connection'] == connection:
 			continue
-		print_connection(c, indent)
+		print_connection(c, 1)
 		print_p0fs(cursor, c['connection'], indent+2)
+		print_dcerpcbinds(cursor, c['connection'], indent+2)
+		print_dcerpcrequests(cursor, c['connection'], indent+2)
+		print_profiles(cursor, c['connection'], indent+2)
 		print_offers(cursor, c['connection'], indent+2)
 		print_downloads(cursor, c['connection'], indent+2)
+		print_services(cursor, c['connection'], indent+2)
 		recursive_print(cursor, c['connection'], indent+2)
-		
 
 def print_db(opts, args):
 	dbh = sqlite3.connect(args[0])
@@ -150,7 +153,7 @@ SELECT DISTINCT
 	connection_type,
 	connection_protocol,
 	connection_transport,
-    datetime(connection_timestamp, 'unixepoch') AS connection_timestamp,
+	datetime(connection_timestamp, 'unixepoch', 'localtime') AS connection_timestamp,
 	local_host,
 	local_port,
 	remote_host,
