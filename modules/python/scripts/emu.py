@@ -57,6 +57,8 @@ class emuprofilehandler(ihandler):
 					state = "CONNECT"
 					host = api['args'][1]['sin_addr']['s_addr']
 					port = api['args'][1]['sin_port']
+				elif api['call'] == 'CreateProcess':
+					state = "CREATEPROCESS"
 
 			elif state == "BIND": 
 				if api['call'] == 'listen':
@@ -84,4 +86,19 @@ class emuprofilehandler(ihandler):
 					if con is not None:
 						i.set("con", con)
 					i.report()
+
+			elif state == "CREATEPROCESS":
+				if api['call'] == 'connect':
+					host = api['args'][1]['sin_addr']['s_addr']
+					port = api['args'][1]['sin_port']
+					logger.debug("connectbackshell host %s port %s"  % (host, port) )
+					i = incident("dionaea.service.shell.connect")
+					i.set("port", int(port))
+					i.set("host", host)
+					if con is not None:
+						i.set("con", con)
+					i.report()
+					state = "DONE"
+
+
 
