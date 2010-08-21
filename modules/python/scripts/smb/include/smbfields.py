@@ -718,7 +718,7 @@ class SMB_Sessionsetup_ESEC_AndX_Request(Packet):
 		LEShortField("MaxMPXCount",50),
 		LEShortField("VCNumber",0),
 		LEIntField("SessionKey",0),
-		FieldLenField("SecurityBlobLength", None, fmt='<H', length_of="SecurityBlob"),
+		FieldLenField("SecurityBlobLength", 0, fmt='<H', length_of="SecurityBlob"),
 		LEIntField("Reserved",0),
 #		XLEIntField("Capabilities",0x05),
 		FlagsField("Capabilties", 0x8000e3fd, -32, SMB_Negotiate_Capabilities),
@@ -750,7 +750,7 @@ class SMB_Sessionsetup_ESEC_AndX_Response(Packet):
 		ByteField("AndXReserved",0),
 		LEShortField("AndXOffset",0),
 		XLEShortField("Action",1),
-		FieldLenField("SecurityBlobLength", None, fmt='<H', length_of="SecurityBlob"),
+		FieldLenField("SecurityBlobLength", 0, fmt='<H', length_of="SecurityBlob"),
 		MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Padding","NativeOS", "NativeLanManager", "PrimaryDomain","SecurityBlob")),
 		StrLenField("SecurityBlob", "", length_from=lambda x:x.SecurityBlobLength),
 		ConditionalField(StrFixedLenField("Padding", "\x00", length_from=lambda x:(len(x.SecurityBlob)+1)%2), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
@@ -817,8 +817,8 @@ class SMB_Sessionsetup_AndX_Request2(Packet):
 		LEShortField("MaxMPXCount",50),
 		LEShortField("VCNumber",0),
 		LEIntField("SessionKey",0),
-		FieldLenField("PasswordLength", None, fmt='<H', length_of="Password"),
-		FieldLenField("UnicodePasswordLength", None, fmt='<H', length_of="UnicodePassword"),
+		FieldLenField("PasswordLength", 0, fmt='<H', length_of="Password"),
+		FieldLenField("UnicodePasswordLength", 0, fmt='<H', length_of="UnicodePassword"),
 		LEIntField("Reserved2",0),
 #		XLEIntField("Capabilities",0),
 		FlagsField("Capabilties", 0x8000e3fd, -32, SMB_Negotiate_Capabilities),
@@ -1314,7 +1314,7 @@ class SMB_Echo(Packet):
 		ByteField("WordCount",1),
 		LEShortField("EchoCount", 0),
 		FieldLenField("ByteCount", 1, fmt='<H', length_of="Buffer"),
-		StrLenField("Buffer", "\xff", length_from=lambda x:x.ByteCount),
+		StrLenField("Buffer", b"\xff", length_from=lambda x:x.ByteCount),
 	]
 
 # page 89
@@ -1326,7 +1326,7 @@ class SMB_Delete_Request(Packet):
 		FlagsField("SearchAttributes", 0, -16, SMB_FileAttributes),
 		FieldLenField("ByteCount", 1, fmt='<H', length_of="FileName"),
 		ByteField("BufferFormat",1),
-		StrLenField("FileName", "\xff", length_from=lambda x:x.ByteCount),
+		StrLenField("FileName", b"\xff", length_from=lambda x:x.ByteCount),
 	]
 
 class SMB_Delete_Response(Packet):
