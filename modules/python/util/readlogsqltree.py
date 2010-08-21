@@ -128,7 +128,7 @@ def recursive_print(cursor, connection, indent):
 	for c in connections:
 		if c['connection'] == connection:
 			continue
-		print_connection(c, 1)
+		print_connection(c, indent+1)
 		print_p0fs(cursor, c['connection'], indent+2)
 		print_dcerpcbinds(cursor, c['connection'], indent+2)
 		print_dcerpcrequests(cursor, c['connection'], indent+2)
