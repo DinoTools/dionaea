@@ -46,6 +46,9 @@ logger.setLevel(logging.DEBUG)
 # Shortcut to sip config
 g_sipconfig = g_dionaea.config()['modules']['python']['sip']
 
+_SipSession_sustain_timeout = 20
+_SipCall_sustain_timeout = 20
+
 # Make "yes"/"no" from config file into boolean value
 if g_sipconfig['use_authentication'].lower() == 'no':
 	g_sipconfig['use_authentication'] = False
@@ -437,16 +440,18 @@ class RtpUdpStream(connection):
 		logger.info("Created RTP channel on ports :{} <-> :{}".format(
 			self.local.port, self.remote.port))
 
+	def close(self):
+		if self.__streamDumpIn:
+			logger.debug("Closing stream dump (in)")
+			self.__streamDumpIn.close()
+
+		connection.close(self)
+
 	def handle_timeout_idle(self):
-		return False
+		return True
 
 	def handle_timeout_sustain(self):
-		return False
-
-	def handle_close(self):
-		self.close()
-		logger.info("Closed RTP channel on ports :{} <-> :{}".format(
-			self.local.port, self.remote.port))
+		return True
 
 	def handle_io_in(self, data):
 		logger.debug("Incoming RTP data (length {})".format(len(data)))
@@ -469,13 +474,6 @@ class RtpUdpStream(connection):
 
 		# Shift sending window for next send operation
 		self.__sendBuffer = self.__sendBuffer[bytesSent:]
-
-	def close(self):
-		if self.__streamDumpIn:
-			logger.debug("Closing stream dump (in)")
-			self.__streamDumpIn.close()
-
-		connection.close(self)
 
 	def __startRecording(self):
 		dumpDir = self.__streamDumpFileIn.rsplit('/', 1)[0]
@@ -504,7 +502,7 @@ class SipCall(connection):
 	NO_SESSION, SESSION_SETUP, ACTIVE_SESSION, SESSION_TEARDOWN = range(4)
 
 	def __init__(self, session, conInfo, rtpPort, inviteHeaders):
-
+		logger.debug("SipCall {} session {} ".format(self, session))
 		connection.__init__(self,'udp')
 		# Store incoming information of the remote host
 
@@ -514,12 +512,14 @@ class SipCall(connection):
 		self.__remoteSipPort = conInfo[1]
 		self.__remoteRtpPort = rtpPort
 		self.__callId = inviteHeaders['call-id']
+		self._rtpStream = None
 
 		self.local.host = self.__session.local.host
 		self.local.port = self.__session.local.port
 
 		self.remote.host = self.__session.remote.host
 		self.remote.port = self.__session.remote.port
+
 
 		# fake a connection entry
 		i = incident("dionaea.connection.udp.connect")
@@ -536,9 +536,74 @@ class SipCall(connection):
 		self.__sipContact = "{0} <sip:{0}@{1}>".format(
 			g_sipconfig['user'], self.__session.local.host)
 
+		global _SipCall_sustain_timeout
+		self.timers = [ pyev.Timer(5, 0, g_default_loop, self.__handle_idle_timeout), # idle
+			pyev.Timer(_SipCall_sustain_timeout, 0, g_default_loop, self.__handle_sustain_timeout), # sustain
+			pyev.Timer(3, 0, g_default_loop, self.__handle_invite_timeout) # invite
+		]
+
+		self.timers[1].start()
+		
 	def send(self, s):
 		s += '\n\n'
 		self.__session.send(s)
+
+	def close(self):
+		logger.debug("SipCall.close {} Session {}".format(self, self.__session))
+		# remove Call from Session
+		if self.__callId in self.__session._callids:
+			del self.__session._callids[self.__callId]
+
+		# close rtpStream
+		if self._rtpStream != None:
+			self._rtpStream.close()
+			self._rtpStream = None
+
+		# stop timers
+		for t in self.timers:
+			logger.debug("SipCall timer {} active {} pending {}".format(t,t.active,t.pending))
+			if t.active == True or t.pending == True:
+#				logger.warn("SipCall Stopping {}".format(t))
+				t.stop()
+		
+		# close connection
+		connection.close(self)
+		
+	def __handle_idle_timeout(self, watcher, events):
+#		logger.warn("self {} IDLE TIMEOUT watcher {}".format(self, watcher))
+		pass
+
+	def __handle_sustain_timeout(self, watcher, events):
+		logger.debug("SipCall.__handle_sustain_timeout self {} watcher {}".format(self, watcher))
+		self.close()
+
+	def __handle_invite_timeout(self, watcher, events):
+		# Send our RTP port to the remote host as a 200 OK response to the
+		# remote host's INVITE request
+		logger.debug("SipCall: {} CallID {}".format(self, self.__callId))
+		headers = watcher.data
+		localRtpPort = self._rtpStream.local.port
+
+		msgLines = []
+		msgLines.append("SIP/2.0 " + RESPONSE[OK])
+		msgLines.append("Via: " + self.__sipVia)
+		msgLines.append("Max-Forwards: 70")
+		msgLines.append("To: " + self.__sipTo)
+		msgLines.append("From: " + self.__sipFrom)
+		msgLines.append("Call-ID: {}".format(self.__callId))
+		msgLines.append("CSeq: " + headers['cseq'])
+		msgLines.append("Contact: " + self.__sipContact)
+		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+		msgLines.append("Content-Type: application/sdp")
+		msgLines.append("\nv=0")
+		msgLines.append("o=... 0 0 IN IP4 localhost")
+		msgLines.append("t=0 0")
+		msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
+		self.send('\n'.join(msgLines))
+
+		# Stop timer
+		self.timers[2].stop()
+
 
 	def handle_INVITE(self, headers):
 		# Check authentication
@@ -546,12 +611,12 @@ class SipCall(connection):
 
 		# Create RTP stream instance and pass address and port of listening
 		# remote RTP host
-		self.__rtpStream = RtpUdpStream(self.__session.local.host,
+		self._rtpStream = RtpUdpStream(self.__session.local.host,
 			self.__remoteAddress, self.__remoteRtpPort)
 		
 		i = incident("dionaea.connection.link")
 		i.parent = self
-		i.child = self.__rtpStream
+		i.child = self._rtpStream
 		i.report()
 
 
@@ -569,39 +634,9 @@ class SipCall(connection):
 		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 		self.send('\n'.join(msgLines))
 
-		def timer_cb(watcher, events):
-			# Send our RTP port to the remote host as a 200 OK response to the
-			# remote host's INVITE request
-			logger.debug("getsockname SipSession: {}".format(
-				self.__rtpStream.local.port))
-			localRtpPort = self.__rtpStream.local.port
-			
-			msgLines = []
-			msgLines.append("SIP/2.0 " + RESPONSE[OK])
-			msgLines.append("Via: " + self.__sipVia)
-			msgLines.append("Max-Forwards: 70")
-			msgLines.append("To: " + self.__sipTo)
-			msgLines.append("From: " + self.__sipFrom)
-			msgLines.append("Call-ID: {}".format(self.__callId))
-			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipContact)
-			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-			msgLines.append("Content-Type: application/sdp")
-			msgLines.append("\nv=0")
-			msgLines.append("o=... 0 0 IN IP4 localhost")
-			msgLines.append("t=0 0")
-			msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
-			self.send('\n'.join(msgLines))
-
-			# Delete timer reference
-			self.timer.stop()
-			del self.timer
-
-		# Delay between 180 and 200 response with pyev callback timer
-		global g_default_loop
-		self.timer = pyev.Timer(3, 0, g_default_loop, timer_cb)
-		self.timer.start()
-
+		# Start timer for INVITE response
+		self.timers[2].data = headers
+		self.timers[2].start()
 		return 0
 
 	def handle_ACK(self, headers, body):
@@ -639,15 +674,8 @@ class SipCall(connection):
 
 		if self.__state != SipCall.ACTIVE_SESSION:
 			logger.warn("BYE received but not in active session mode")
-
 		else:
 			self.__authenticate(headers)
-
-			# Close RTP channel
-			self.__rtpStream.close()
-
-			# A BYE ends the session immediately
-			self.__state = SipCall.NO_SESSION
 
 			# Send OK response to other client
 			msgLines = []
@@ -661,6 +689,11 @@ class SipCall(connection):
 			msgLines.append("Contact: " + self.__sipContact)
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			self.send('\n'.join(msgLines))
+
+			# A BYE ends the session immediately
+			self.__state = SipCall.NO_SESSION
+			self._rtpStream.close()
+			self._rtpStream = None
 
 	def __authenticate(self, headers):
 		global g_sipconfig
@@ -755,24 +788,26 @@ class SipServer(connection):
 	"""Only UDP connections are supported at the moment"""
 	def __init__(self):
 		connection.__init__(self, 'udp')
-		self.__sessions = {}
+		self._sessions = {}
 
 	def handle_io_in(self, data):
 		sessionkey = (self.local.host, self.local.port, self.remote.host, self.remote.port)
-		if sessionkey not in self.__sessions:
-			self.__sessions[sessionkey] = SipSession(self)
+		if sessionkey not in self._sessions:
+			self._sessions[sessionkey] = SipSession(self, sessionkey)
 
-		session = self.__sessions[sessionkey]
+		session = self._sessions[sessionkey]
+		logger.debug("{}: {}".format(sessionkey, data))
 		session.handle_io_in(data)
 		return len(data)
 
+
 class SipSession(connection):
-	def __init__(self, server):
+	def __init__(self, server, sessionkey):
 		connection.__init__(self, 'udp')
 		
 		# we send everything via the servers connection
 		self.server = server
-
+		self.sessionkey = sessionkey
 		self.remote.host = server.remote.host
 		self.remote.port = server.remote.port
 		self.local.host = server.local.host
@@ -784,10 +819,51 @@ class SipSession(connection):
 		i.report()
 
 		# Dictionary with SIP sessions (key is Call-ID)
-		self.__callids = {}
+		self._callids = {}
 
 		# Test log entry
 		logger.info("SIP Session created")
+
+		# Setup timers
+		global g_default_loop
+
+		global _SipSession_sustain_timeout
+		self.timers = [ pyev.Timer(3, 0, g_default_loop, self.__handle_idle_timeout), # idle
+			pyev.Timer(_SipSession_sustain_timeout, 0, g_default_loop, self.__handle_sustain_timeout) # sustain
+		]
+
+		# start sustain timer
+		self.timers[1].start()
+
+
+	def __handle_idle_timeout(self, watcher, events):
+#		logger.warn("self {} SipSession IDLE TIMEOUT watcher".format(self))
+		pass
+
+	def __handle_sustain_timeout(self, watcher, events):
+		logger.debug("SipSession.__handle_sustain_timeout self {} watcher {}".format(self, watcher))
+		self.close()
+
+	def close(self):
+		logger.debug("SipSession.close {}".format(self))
+		# remove session from server
+		if self.sessionkey in self.server._sessions:
+			del self.server._sessions[self.sessionkey]
+
+		# close all calls
+		for callid in [x for x in self._callids]:
+#			logger.debug("closing callid {} call {}".format(callid, self._callids[callid]))
+			self._callids[callid].close()
+		self._callids = None
+		
+		# stop timers
+		for t in self.timers:
+			logger.debug("SipSession timer {} active {} pending {}".format(t,t.active,t.pending))
+			if t.active == True or t.pending == True:
+#				logger.debug("SipSession Stopping {}".format(t))
+				t.stop()
+
+		connection.close(self)
 
 	def send(self, s):
 		"""
@@ -828,14 +904,14 @@ class SipSession(connection):
 			return len(data)
 
 		# SIP message incident
-		i = incident("dionaea.modules.python.sip.in")
-		i.con = self
-		i.direction = "in"
-		i.msgType = msgType
-		i.firstLine = firstLine
-		i.sipHeaders = headers
-		i.sipBody = body
-		i.report()
+#		i = incident("dionaea.modules.python.sip.in")
+#		i.con = self
+#		i.direction = "in"
+#		i.msgType = msgType
+#		i.firstLine = firstLine
+#		i.sipHeaders = headers
+#		i.sipBody = body
+#		i.report()
 
 		if msgType == 'INVITE':
 			self.sip_INVITE(firstLine, headers, body)
@@ -922,9 +998,9 @@ class SipSession(connection):
 		# Read Call-ID field and create new SipCall instance on first INVITE
 		# request received (remote host might send more than one because of time
 		# outs or because he wants to flood the honeypot)
-		logger.debug("Currently active sessions: {}".format(self.__callids))
+		logger.debug("Currently active sessions: {}".format(self._callids))
 		callId = headers["call-id"]
-		if callId in self.__callids:
+		if callId in self._callids:
 			logger.warn("SIP session with Call-ID {} already exists".format(
 				callId))
 			return
@@ -932,6 +1008,9 @@ class SipSession(connection):
 		# Establish a new SIP Call
 		newCall = SipCall(self, (self.remote.host, self.remote.port),
 			rtpPort, headers)
+
+		# Store session object in sessions dictionary
+		self._callids[callId] = newCall
 
 		i = incident("dionaea.connection.link")
 		i.parent = self
@@ -942,10 +1021,8 @@ class SipSession(connection):
 			r = newCall.handle_INVITE(headers)
 		except AuthenticationError:
 			logger.warn("Authentication failed, not creating SIP session")
+			newCall.close()
 			del newCall
-		else:
-			# Store session object in sessions dictionary
-			self.__callids[callId] = newCall
 
 	def sip_ACK(self, requestLine, headers, body):
 		logger.info("Received ACK")
@@ -955,12 +1032,12 @@ class SipSession(connection):
 
 		# Check if session (identified by Call-ID) exists
 		callId = headers['call-id'] 
-		if callId not in self.__callids:
+		if callId not in self._callids:
 			logger.warn("Given Call-ID does not belong to any session: exit")
 		else:
 			try:
 				# Handle incoming ACKs depending on current state
-				self.__callids[callId].handle_ACK(headers, body)
+				self._callids[callId].handle_ACK(headers, body)
 			except AuthenticationError:
 				logger.warn("Authentication failed for ACK request")
 
@@ -995,17 +1072,14 @@ class SipSession(connection):
 		
 		# Check if session (identified by Call-ID) exists
 		callId = headers['call-id'] 
-		if callId not in self.__callids:
+		if callId not in self._callids:
 			logger.warn("Given Call-ID does not belong to any session: exit")
 		else:
 			try:
 				# Handle incoming BYE request depending on current state
-				self.__callids[callId].handle_BYE(headers, body)
+				self._callids[callId].handle_BYE(headers, body)
 			except AuthenticationError:
 				logger.warn("Authentication failed for BYE request")
-			else:
-				# Delete session instance
-				del self.__callids[callId]
 
 	def sip_CANCEL(self, requestLine, headers, body):
 		logger.info("Received CANCEL")
@@ -1023,20 +1097,19 @@ class SipSession(connection):
 
 		if cseqMethod == "INVITE" or cseqMethod == "ACK":
 			# Find SipSession and delete it
-			if callId not in self.__callids:
+			if callId not in self._callids:
 				logger.warn(
 					"CANCEL request does not match any existing SIP session")
 				return
-
 			try:
-				self.__session[callId].handle_CANCEL(headers)
+				self._callids[callId].handle_CANCEL(headers)
 			except AuthenticationError:
 				logger.warn("Authentication failed for CANCEL request")
 				return
 			else:
 				# No RTP connection has been made yet so deleting the session
 				# instance is sufficient
-				del self.__session[callId]
+				self.__session[callId].close()
 		
 		# Construct CANCEL response
 		global g_sipconfig
