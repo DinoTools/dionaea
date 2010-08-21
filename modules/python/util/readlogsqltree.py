@@ -170,7 +170,7 @@ WHERE
 """
 
 	if options.remote_host:
-		query = query + "\tAND remote_host = {:s} \n".format(options.remote_host)
+		query = query + "\tAND remote_host = '{:s}' \n".format(options.remote_host)
 
 	if options.connection:
 		query = query + "\tAND c.connection = {:d} \n".format(options.connection)
