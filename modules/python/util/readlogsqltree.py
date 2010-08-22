@@ -36,7 +36,7 @@ def print_services(cursor, connection, indent):
 	services = resolve_result(r)
 	for service in services:
 		print("{:s} service: {:s}".format(
-			' ' * intent, service['emu_service_url']))
+			' ' * indent, service['emu_service_url']))
 
 def print_p0fs(cursor, connection, indent):
 	r = cursor.execute("SELECT * from p0fs WHERE connection = ?", (connection, ))
@@ -120,7 +120,7 @@ def print_connection(c, indent):
 			c['connection_transport'], c['connection_type'], c['local_host'],
 			c['local_port']), end='')
 
-	print(' ({:d} {:s})'.format(c['connection_root'], c['connection_parent']))
+	print(' ({:d} {})'.format(c['connection_root'], c['connection_parent']))
 
 def recursive_print(cursor, connection, indent):
 	result = cursor.execute("SELECT * from connections WHERE connection_parent = ?", (connection, ))
@@ -128,12 +128,15 @@ def recursive_print(cursor, connection, indent):
 	for c in connections:
 		if c['connection'] == connection:
 			continue
-		print_connection(c, indent)
+		print_connection(c, indent+1)
 		print_p0fs(cursor, c['connection'], indent+2)
+		print_dcerpcbinds(cursor, c['connection'], indent+2)
+		print_dcerpcrequests(cursor, c['connection'], indent+2)
+		print_profiles(cursor, c['connection'], indent+2)
 		print_offers(cursor, c['connection'], indent+2)
 		print_downloads(cursor, c['connection'], indent+2)
+		print_services(cursor, c['connection'], indent+2)
 		recursive_print(cursor, c['connection'], indent+2)
-		
 
 def print_db(opts, args):
 	dbh = sqlite3.connect(args[0])
@@ -150,7 +153,7 @@ SELECT DISTINCT
 	connection_type,
 	connection_protocol,
 	connection_transport,
-    datetime(connection_timestamp, 'unixepoch') AS connection_timestamp,
+	datetime(connection_timestamp, 'unixepoch', 'localtime') AS connection_timestamp,
 	local_host,
 	local_port,
 	remote_host,
@@ -167,7 +170,7 @@ WHERE
 """
 
 	if options.remote_host:
-		query = query + "\tAND remote_host = {:s} \n".format(options.remote_host)
+		query = query + "\tAND remote_host = '{:s}' \n".format(options.remote_host)
 
 	if options.connection:
 		query = query + "\tAND c.connection = {:d} \n".format(options.connection)

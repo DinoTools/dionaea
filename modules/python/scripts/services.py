@@ -149,7 +149,7 @@ class epmapservice(service):
 class sipservice(service):
 	def start(self, addr, iface=None):
 		port = int(g_dionaea.config()['modules']['python']['sip']['port'])
-		daemon = dionaea.sip.Sip()
+		daemon = dionaea.sip.SipServer()
 		daemon.bind(addr, port, iface=iface)
 		return daemon
 
