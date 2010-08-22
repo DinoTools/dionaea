@@ -34,6 +34,8 @@ import random
 import hashlib
 import os
 import errno
+import datetime
+import tempfile
 
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from dionaea import pyev
@@ -835,6 +837,10 @@ class SipSession(connection):
 		# start sustain timer
 		self.timers[1].start()
 
+		# we have to create a 'special' bistream for this
+		# as all sip traffic shares a single connection
+		self.bistream = []
+
 
 	def __handle_idle_timeout(self, watcher, events):
 #		logger.warn("self {} SipSession IDLE TIMEOUT watcher".format(self))
@@ -843,6 +849,20 @@ class SipSession(connection):
 	def __handle_sustain_timeout(self, watcher, events):
 		logger.debug("SipSession.__handle_sustain_timeout self {} watcher {}".format(self, watcher))
 		self.close()
+
+	def handle_disconnect(self):
+		logger.debug("SipSession.handle_disconnect {}".format(self))
+		if len(self.bistream) > 0:
+			now = datetime.datetime.now()
+			dirname = "%04i-%02i-%02i" % (now.year, now.month, now.day)
+			dir = os.path.join(g_dionaea.config()['bistreams']['python']['dir'], dirname)
+			if not os.path.exists(dir):
+				os.makedirs(dir)
+			self.fileobj = tempfile.NamedTemporaryFile(delete=False, prefix="Sipsession-" + str(self.local.port) + '-' + self.remote.host + ":" + str(self.remote.port) + "-", dir=dir)
+			self.fileobj.write(b"stream = ")
+			self.fileobj.write(str(self.bistream).encode())
+			self.fileobj.close()
+		return False
 
 	def close(self):
 		logger.debug("SipSession.close {}".format(self))
@@ -877,6 +897,9 @@ class SipSession(connection):
 		logger.debug('Sending message "{}" to ({}:{})'.format(
 			s, self.remote.host, self.remote.port))
 
+		# feed bistream
+		self.bistream.append(('out', s.encode('utf-8')))
+
 		# SIP response incident
 #		i = incident("dionaea.modules.python.sip.out")
 #		i.con = self
@@ -893,6 +916,10 @@ class SipSession(connection):
 		self.server.send(s.encode('utf-8'))
 
 	def handle_io_in(self, data):
+
+		# feed bistream
+		self.bistream.append(('in', data))
+
 		# Get byte data and decode to unicode string
 		data = data.decode('utf-8')
 
