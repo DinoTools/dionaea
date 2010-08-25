@@ -163,6 +163,8 @@ class mssqlservice(service):
 		daemon.bind(addr, 1433, iface=iface)
 		daemon.listen()
 		return daemon
+	def stop(self, daemon):
+		daemon.close()
 
 #mode = 'getifaddrs'
 #mode = 'manual'
