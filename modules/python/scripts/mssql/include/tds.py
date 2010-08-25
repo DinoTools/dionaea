@@ -272,8 +272,7 @@ class TDS_Login7_Request(Packet):
 		LEShortField("cchLanguage",0),
 		LEShortField("ibDatabase",0),
 		LEShortField("cchDatabase",0),
-		LEIntField("ClientID",0), 		# "ClientID" total 6 bytes
-		LEShortField("ClientID2",0),		# FIXME: better way parse 6 bytes?
+		StrFixedLenField("ClientID", "012345", 6),
 		LEShortField("ibSSPI",0),
 		LEShortField("cbSSPI",0),
 		LEShortField("ibAtchDBFile",0),
