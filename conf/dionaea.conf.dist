@@ -19,7 +19,7 @@ processors =
 	filter-emu = 
 	{
 		config = {
-			allow = [{ protocol = ["smbd","epmapper","nfqmirrord"] }]
+			allow = [{ protocol = ["smbd","epmapper","nfqmirrord","mssqld"] }]
 		}
 		next = {
 			emu = 
@@ -375,7 +375,7 @@ modules = {
 		}
 
 		services = {
-			serve = ["http", "https", "tftp", "ftp", "mirror", "smb", "epmap", "sip"]
+			serve = ["http", "https", "tftp", "ftp", "mirror", "smb", "epmap", "sip","mssql"]
 		}
 
 	}

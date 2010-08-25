@@ -12,6 +12,7 @@ import dionaea.ftp
 import dionaea.mirror
 from dionaea.smb import smb
 import dionaea.sip
+from dionaea.mssql import mssql
 
 # reload service imports
 #imp.reload(dionaea.http)
@@ -156,6 +157,13 @@ class sipservice(service):
 	def stop(self, daemon):
 		daemon.close()
 
+class mssqlservice(service):
+	def start(self, addr,  iface=None):
+		daemon = mssql.mssqld()
+		daemon.bind(addr, 1433, iface=iface)
+		daemon.listen()
+		return daemon
+
 #mode = 'getifaddrs'
 #mode = 'manual'
 #addrs = { 'eth0' : ['127.0.0.1', '192.168.47.11'] }
@@ -212,6 +220,9 @@ def start():
 	if "sip" in g_dionaea.config()['modules']['python']['services']['serve']:
 		g_slave.services.append(sipservice)
 
+	if "mssql" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(mssqlservice)
+		
 	g_slave.start(addrs)
 
 

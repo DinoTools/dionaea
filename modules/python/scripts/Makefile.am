@@ -39,6 +39,10 @@ PYSCRIPTS += surfids.py
 PYSCRIPTS += ndrlib.py
 PYSCRIPTS += logxmpp.py
 PYSCRIPTS += __init__.py
+PYSCRIPTS += mssql/__init__.py
+PYSCRIPTS += mssql/mssql.py
+PYSCRIPTS += mssql/include/tds.py
+PYSCRIPTS += mssql/include/__init__.py
 
 all: $(PYSCRIPTS)
 	
