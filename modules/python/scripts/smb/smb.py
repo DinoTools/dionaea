@@ -379,6 +379,7 @@ class smbd(connection):
 #				self.process_dcerpc_packet(p.getlayer(SMB_Write_AndX_Request).Data)
 				if len(self.buf) >= 10:
 					# we got the dcerpc header
+					inpacket = DCERPC_Header(self.buf[:10])
 					smblog.info("got header")
 					inpacket = DCERPC_Header(self.buf)
 					smblog.info("FragLen %i len(self.buf) %i" % (inpacket.FragLen, len(self.buf)))
