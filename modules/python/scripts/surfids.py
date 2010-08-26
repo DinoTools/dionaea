@@ -23,6 +23,7 @@ AS_DOWNLOAD_SUCCESS                = 0x00020
 DT_PROTOCOL_NAME                   = 80
 DT_EMULATION_PROFILE               = 81
 DT_SHELLCODE_ACTION                = 82
+DT_DCERPC_REQUEST                  = 83
 
 class surfidshandler(ihandler):
 	def __init__(self, path):
@@ -125,13 +126,10 @@ class surfidshandler(ihandler):
 		logger.info("connect shell for attackid %i" % attackid)
 		self.stmt_detail_add(attackid, con.local.host, DT_SHELLCODE_ACTION, "connectbackshell://"+str(icd.host)+":"+str(icd.port) )
 		
-
-	def _handle_incident_dionaea_detect_attack(self, icd):
+	def _handle_incident_dionaea_modules_python_smb_dcerpc_request(self, icd):
 		con=icd.con
 		attackid = self.attacks[con]
-
-
-
-
+		logger.info("dcerpc request for attackid %i" % attackid)
+		self.stmt_detail_add(attackid, con.local.host, DT_DCERPC_REQUEST, icd.uuid + ":" + str(icd.opnum))
 
 
