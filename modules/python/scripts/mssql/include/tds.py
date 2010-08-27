@@ -145,18 +145,25 @@ TDS_ColFlags = [
 	"BINARY",
 ]
 
-TDS_Status = [
-	"DONE_MORE",
-	"DONE_ERROR",
-	"DONE_INXACT",
-	"none",
-	"DONE_COUNT",
-	"DONE_ATTN",
-	"none"
-	"none",
-	"DONE_SRVERROR",
-		
-]
+# page 78
+TDS_TOKEN_STATUS_DONE_FINAL		= 0x000
+TDS_TOKEN_STATUS_DONE_MORE		= 0x001
+TDS_TOKEN_STATUS_DONE_ERROR		= 0x002
+TDS_TOKEN_STATUS_DONE_INXACT	= 0x004
+TDS_TOKEN_STATUS_DONE_COUNT		= 0x010
+TDS_TOKEN_STATUS_DONE_ATTN		= 0x020
+TDS_TOKEN_STATUS_DONE_SRVERROR	= 0x100
+
+
+TDS_Token_Status = {
+	TDS_TOKEN_STATUS_DONE_FINAL    :"FINAL",
+	TDS_TOKEN_STATUS_DONE_MORE     :"MORE",
+	TDS_TOKEN_STATUS_DONE_ERROR    :"ERROR",
+	TDS_TOKEN_STATUS_DONE_INXACT   :"INXACT",
+	TDS_TOKEN_STATUS_DONE_COUNT    :"COUNT",
+	TDS_TOKEN_STATUS_DONE_ATTN     :"ATTN",
+	TDS_TOKEN_STATUS_DONE_SRVERROR :"SRVERROR",
+}
 
 TDS_ColMetaData_Flags = [
 	"Nullable",
@@ -414,7 +421,7 @@ class TDS_Token_Done(Packet):
 	name="TDS Token DONE"
 	fields_desc =[
 #		ByteField("TokenType",0xfd),
-		FlagsField("Status", 0, -16, TDS_Status),
+		FlagsField("Status", 0, -16, TDS_Token_Status),
 		LEShortField("CurCmd",0),
 		LEIntField("DoneRowCount",0),
 	]
@@ -488,7 +495,7 @@ class TDS_Token_DoneProc(Packet):
 	name="TDS Token DONEPROC"
 	fields_desc =[
 #		ByteField("TokenType",0xfe),
-		FlagsField("Status", 0, -16, TDS_Status),
+		FlagsField("Status", 0, -16, TDS_Token_Status),
 		LEShortField("CurCmd",0xE0),
 		LEIntField("DoneRowCount",0),
 	]
