@@ -37,9 +37,10 @@ TDS_TYPES_TABULAR_RESULT	= 0x04
 TDS_TYPES_ATTENTION		= 0x06
 TDS_TYPES_BULK_LOAD_DATA	= 0x07
 TDS_TYPES_TRANS_MANAGER_REQ	= 0x0E
+TDS_TYPES_TDS5_QUERY		= 0x0f
 TDS_TYPES_TDS7_LOGIN		= 0x10	# used for TDS7 or later version login
 TDS_TYPES_SSPI_MESG		= 0x11
-TDS_TYPE_PRE_LOGIN		= 0x12
+TDS_TYPES_PRE_LOGIN		= 0x12
 
 TDS_HeaderTypes = {
 	TDS_TYPES_SQL_BATCH		:"TDS_TYPES_SQL_BATCH ",
@@ -51,7 +52,45 @@ TDS_HeaderTypes = {
 	TDS_TYPES_TRANS_MANAGER_REQ	:"TDS_TYPES_TRANS_MANAGER_REQ",
 	TDS_TYPES_TDS7_LOGIN		:"TDS_TYPES_TDS7_LOGIN",
 	TDS_TYPES_SSPI_MESG		:"TDS_TYPES_SSPI_MESG",
-	TDS_TYPE_PRE_LOGIN		:"TDS_TYPE_PRE_LOGIN",
+	TDS_TYPES_PRE_LOGIN		:"TDS_TYPES_PRE_LOGIN",
+	TDS_TYPES_TDS5_QUERY	:"TDS_TYPES_TDS5_QUERY",
+}
+
+TDS_STATUS_NORMAL			= 0x00
+TDS_STATUS_EOM				= 0x01
+TDS_STATUS_C2S				= 0x02
+TDS_STATUS_RESET_CON		= 0x08
+TDS_STATUS_RESET_CON_TRAN	= 0x10
+
+TDS_Status = {
+	TDS_STATUS_NORMAL         :"Normal Message",       
+	TDS_STATUS_EOM            :"End Of Message",        
+	TDS_STATUS_C2S            :"From Client to Server", 
+	TDS_STATUS_RESET_CON      :"RESETCONNECTION",       
+	TDS_STATUS_RESET_CON_TRAN :"RESETCONNECTIONSKIPTRAN"
+}
+
+
+TDS_TOKEN_LANGUAGE 		= 0x21
+TDS_TOKEN_RETURNSTATUS 	= 0x79
+TDS_TOKEN_COLMETADATA 	= 0x81
+TDS_TOKEN_INFO 			= 0xAB
+TDS_TOKEN_LOGINACK 		= 0xAD
+TDS_TOKEN_ROW 			= 0xD1
+TDS_TOKEN_ENVCHANGE 	= 0xE3
+TDS_TOKEN_DONE 			= 0xFD
+TDS_TOKEN_DONEPROC 		= 0xFE
+
+TDS_TokenTypes = {
+	TDS_TOKEN_LANGUAGE     :"TDS_TOKEN_LANGUAGE",
+	TDS_TOKEN_RETURNSTATUS :"TDS_TOKEN_RETURNSTATUS",
+	TDS_TOKEN_COLMETADATA  :"TDS_TOKEN_COLMETADATA",
+	TDS_TOKEN_INFO         :"TDS_TOKEN_INFO",
+	TDS_TOKEN_LOGINACK     :"TDS_TOKEN_LOGINACK",
+	TDS_TOKEN_ROW          :"TDS_TOKEN_ROW",
+	TDS_TOKEN_ENVCHANGE    :"TDS_TOKEN_ENVCHANGE",
+	TDS_TOKEN_DONE         :"TDS_TOKEN_DONE",
+	TDS_TOKEN_DONEPROC     :"TDS_TOKEN_DONEPROC",
 }
 
 TDS_OptionFlags1 = [
@@ -160,27 +199,31 @@ class TDS_Value(Packet):
 		ShortField("Len",0),
 	]
 
+
+class TDS_Token(Packet):
+	name = "TDS Token"
+#	tds_type = TDS_TYPES_TABULAR_RESULT
+	fields_desc = [
+		XByteEnumField("TokenType",0,TDS_TokenTypes),
+	]
+
 # Page 19-22
 class TDS_Header(Packet):
 	name="TDS Header"
 	fields_desc = [
-		XByteEnumField("Type",TDS_TYPE_PRE_LOGIN,TDS_HeaderTypes),
-		ByteEnumField("Status",0,
-			{0x00:"Normal Message",
-			0x01:"End Of Message",
-			0x02:"From Client to Server",
-			0x08:"RESETCONNECTION",
-			0x10:"RESETCONNECTIONSKIPTRAN"}),
+		XByteEnumField("Type",TDS_TYPES_PRE_LOGIN,TDS_HeaderTypes),
+		ByteEnumField("Status",0, TDS_Status),
 		ShortField("Length",0),
 		LEShortField("SPID",0),
 		ByteField("PacketID",0),
 		ByteField("Window",0),
+		ConditionalField(PacketListField("Tokens", None, TDS_Token), lambda x: x.Type == TDS_TYPES_TABULAR_RESULT),
 	]
 
 # Page 58-61
 class TDS_Prelogin_Request(Packet):
 	name="TDS Prelogin Request"
-	tds_type = TDS_TYPE_PRE_LOGIN
+	tds_type = TDS_TYPES_PRE_LOGIN
 	fields_desc =[
 		PacketField("VersionToken",TDS_Value(),TDS_Value),
 		PacketField("EncryptionToken",TDS_Value(),TDS_Value),
@@ -194,7 +237,7 @@ class TDS_Prelogin_Request(Packet):
 		XByteField("MARSTokenOrTerminator",0),
 		ConditionalField(ShortField("MARSOffset",0), lambda x: x.MARSTokenOrTerminator == 0x04),
 		ConditionalField(ShortField("MARSLen",0), lambda x: x.MARSTokenOrTerminator == 0x04),
-		ConditionalField(ByteField("Terminator",0), lambda x: x.MARSTokenOrTerminator == 0x04),
+		ConditionalField(XByteField("Terminator",0), lambda x: x.MARSTokenOrTerminator == 0x04),
 		
 		LEIntField("Version",0),
 		LEShortField("SubBuild",0x0),
@@ -214,7 +257,7 @@ class TDS_Prelogin_Response(Packet):
 		PacketField("InstanceToken",TDS_Value(),TDS_Value),
 		PacketField("ThreadIDToken",TDS_Value(),TDS_Value),
 		PacketField("MARSToken",TDS_Value(),TDS_Value),
-		ByteField("Terminator",0xFF),
+		XByteField("Terminator",0xFF),
 		
 		# From the observation, the value for Version field
 		# MS SQLServer 2005:	1996816393
@@ -229,6 +272,34 @@ class TDS_Prelogin_Response(Packet):
 		ByteField("InstanceOpt",0),
 		#LEIntField("ThreadID",0),
 		ByteField("MARS",0),
+	]
+
+# TDS_TYPES_PRETDS7_LOGIN
+class TDS_PreTDS7_Login_Request(Packet):
+	name="TDS Login PreTDS7 Request"
+	fields_desc =[
+		StrFixedLenField("ClientHostName", "", 30),
+		ByteField("ClientHostNameLen", 0),
+		StrFixedLenField("Username", "", 30),
+		ByteField("UsernameLen", 0),
+		StrFixedLenField("Password", "", 30),
+		ByteField("PasswordLen", 0),
+		StrFixedLenField("Junk", "", 31),
+		StrFixedLenField("Magic", "", 16),
+		StrFixedLenField("AppName", "", 30),
+		ByteField("AppNameLen", 0),
+		StrFixedLenField("ServerName", "", 30),
+		ByteField("ServerNameLen", 0),
+		StrFixedLenField("Password2", "", 256),
+		XLEShortField("Version", 0),
+		XLEShortField("UnusedProtocolField", 0),
+		StrFixedLenField("LoginLibrary", "", 11),
+		XLEIntField("ProgramVersion", 0),
+		StrFixedLenField("Magic2", "", 3),
+		StrFixedLenField("Language", "", 31),
+		StrFixedLenField("Magic3", "", 3),
+		StrFixedLenField("Charset", "", 31),
+		StrFixedLenField("BlockSize", "", 6),
 	]
 
 # Page 51-58
@@ -257,7 +328,7 @@ class TDS_Login7_Request(Packet):
 		LEShortField("ibHostName",0),
 		LEShortField("cchHostName",0),
 		LEShortField("ibUserName",0),
-		LEShortField("cchUerName",0),
+		LEShortField("cchUserName",0),
 		LEShortField("ibPassword",0),
 		LEShortField("cchPassword",0),
 		LEShortField("ibAppName",0),
@@ -285,12 +356,12 @@ class TDS_Login7_Request(Packet):
 		StrField("Payload",""),
 	]
 
-# PAge 82
+# Page 82
 class TDS_Token_EnvChange(Packet):
 	name="TDS Token ENVCHANGE"
-	tds_type = TDS_TYPES_TABULAR_RESULT
+#	tds_type = TDS_TYPES_TABULAR_RESULT
 	fields_desc =[
-		ByteField("TokenType",0xE3),
+#		ByteField("TokenType",0xE3),
 		LEShortField("Length",27),	#FIXME: make a dynamic count?
 		ByteField("Type",1),		# 1 = Database
 		FieldLenField("NewValueLen", 6, fmt='B', length_of="NewValue"),
@@ -304,7 +375,7 @@ class TDS_Token_EnvChange(Packet):
 class TDS_Token_Info(Packet):
 	name="TDS Token INFO"
 	fields_desc =[
-		ByteField("TokenType",0xAB),
+#		ByteField("TokenType",0xAB),
 		LEShortField("Length",118),	#FIXME: make a dynamic count?
 		LEIntField("Number",5701),
 		ByteField("State",2),
@@ -323,10 +394,10 @@ class TDS_Token_Info(Packet):
 # Page 89
 class TDS_Token_LoginACK(Packet):
 	name="TDS Token LOGINACK"
-	tds_type = TDS_TYPES_TABULAR_RESULT
+#	tds_type = TDS_TYPES_TABULAR_RESULT
 	fields_desc =[
-		ByteField("TokenType",0xad),
-		LEShortField("Length",56),	#FIXME: make a dynamic count?
+#		ByteField("TokenType",0xad),
+		LEShortField("Length",54),	#FIXME: make a dynamic count?
 		ByteField("Interface",1),
 		#IntField("TDSVersion",0x730a0003),
 		IntField("TDSVersion",0x04020000),
@@ -336,14 +407,13 @@ class TDS_Token_LoginACK(Packet):
 		ByteField("MinorVer",0),
 		ByteField("BuildNumHi",5),
 		ByteField("BuildNumLow",119),
-	
 	]
 
 # Page 78
 class TDS_Token_Done(Packet):
 	name="TDS Token DONE"
 	fields_desc =[
-		ByteField("TokenType",0xfd),
+#		ByteField("TokenType",0xfd),
 		FlagsField("Status", 0, -16, TDS_Status),
 		LEShortField("CurCmd",0),
 		LEIntField("DoneRowCount",0),
@@ -370,16 +440,17 @@ class TDS_Token_AllHeader(Packet):
 class TDS_SQLBatchData(Packet):
 	name="TDS SQL Batch Data"
 	fields_desc=[
-		
+#		StrLenField("SQLBatchData","", length_from=lambda x: x.underlayer.Length-8),
 		StrField("SQLBatchData",""),
 	]
+
 
 # Page 75/76
 class TDS_Token_ColMetaData(Packet):
 	name="TDS Token COLMETADATA"
-	tds_type = TDS_TYPES_TABULAR_RESULT
+#	tds_type = TDS_TYPES_TABULAR_RESULT
 	fields_desc=[
-		ByteField("TokenType",0x81),
+#		ByteField("TokenType",0x81),
 		LEShortField("Count", 1),
 		
 		# SQL Server 2005 is LEIntField
@@ -398,7 +469,7 @@ class TDS_Token_ColMetaData(Packet):
 class TDS_Token_Row(Packet):
 	name="TDS Token ROW"
 	fields_desc=[
-		ByteField("TokenType",0xd1),
+#		ByteField("TokenType",0xd1),
 		
 		# the value obtained with MS SQLServer 2005 client and server
 		LEShortField("Data",0xFFFF),
@@ -408,7 +479,7 @@ class TDS_Token_Row(Packet):
 class TDS_Token_ReturnStatus(Packet):
 	name="TDS Token RETURNSTATUS"
 	fields_desc=[
-		ByteField("TokenType",0x79),
+#		ByteField("TokenType",0x79),
 		LEIntField("Value",0),
 	]
 
@@ -416,19 +487,48 @@ class TDS_Token_ReturnStatus(Packet):
 class TDS_Token_DoneProc(Packet):
 	name="TDS Token DONEPROC"
 	fields_desc =[
-		ByteField("TokenType",0xfe),
+#		ByteField("TokenType",0xfe),
 		FlagsField("Status", 0, -16, TDS_Status),
 		LEShortField("CurCmd",0xE0),
 		LEIntField("DoneRowCount",0),
 	]
 
+class TDS_Token_Language(Packet):
+	name = "TDS5 Token Language"
+	fields_desc = [
+#		XByteField("TokenType", 0x21),
+		FieldLenField("Length", None, fmt="<I", length_of="Language"),
+		ByteField("Status", 0),
+		StrLenField("Language", "", length_from=lambda x:x.Length),
+	]
+
+
+# http://web.cecs.pdx.edu/~kirkenda/tdsserver.html
+class TDS_TDS5_Query_Request(Packet):
+	name = "TDS5 Query Request"
+	fields_desc =[
+		PacketListField("Queries", None, TDS_Token)
+	]
+
+
 bind_bottom_up(TDS_Header, TDS_Prelogin_Request, Type=lambda x: x==0x12)
 bind_bottom_up(TDS_Header, TDS_Prelogin_Response, Type=lambda x: x==0x04)
 bind_bottom_up(TDS_Header, TDS_Login7_Request, Type=lambda x:x ==0x10)
+bind_bottom_up(TDS_Header, TDS_PreTDS7_Login_Request, Type=lambda x:x ==0x02)
 #bind_bottom_up(TDS_Header, TDS_Token_AllHeader, Type=lambda x:x == 0x01)
 bind_bottom_up(TDS_Header, TDS_SQLBatchData, Type=lambda x:x == 0x01)
 
+bind_bottom_up(TDS_Token, TDS_Token_Language, TokenType=lambda x:x == TDS_TOKEN_LANGUAGE)
+bind_bottom_up(TDS_Token, TDS_Token_ReturnStatus, TokenType=lambda x:x == TDS_TOKEN_RETUNSTATUS)
+
+
 bind_top_down(TDS_Header, TDS_Prelogin_Request, Type=0x12)
 bind_top_down(TDS_Header, TDS_Prelogin_Response, Type=0x04)
-bind_top_down(TDS_Header, TDS_Token_LoginACK, Status=0x01)
-bind_top_down(TDS_Header, TDS_Token_ColMetaData, Status=0x01)
+bind_top_down(TDS_Header, TDS_Token, Status=0x01)
+
+bind_top_down(TDS_Token, TDS_Token_Done, TokenType=TDS_TOKEN_DONE)
+bind_top_down(TDS_Token, TDS_Token_Row, TokenType=TDS_TOKEN_ROW)
+bind_top_down(TDS_Token, TDS_Token_ReturnStatus, TokenType=TDS_TOKEN_RETURNSTATUS)
+bind_top_down(TDS_Token, TDS_Token_DoneProc, TokenType=TDS_TOKEN_DONEPROC)
+bind_top_down(TDS_Token, TDS_Token_LoginACK, TokenType=TDS_TOKEN_LOGINACK)
+bind_top_down(TDS_Token, TDS_Token_ColMetaData, TokenType=TDS_TOKEN_COLMETADATA)
