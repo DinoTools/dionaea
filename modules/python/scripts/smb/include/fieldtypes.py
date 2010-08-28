@@ -1000,7 +1000,7 @@ class FlagsField(BitField):
             if 0 in self.names:
                 return self.names[0]
             else:
-                return "0x{:0{}x}".format(0, self._size/4)
+                return "0x{:0{}x}".format(0, int(self._size/4) )
 
         r = []
         i=0
@@ -1010,7 +1010,7 @@ class FlagsField(BitField):
                 if v in self.names:
                     r.append(self.names[v])
                 else:
-                    r.append("0x{:0{}x}".format(v, self._size/4))
+                    r.append("0x{:0{}x}".format(v, int(self._size/4) ) )
         r = "+".join(r)
         return r
 
