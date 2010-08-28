@@ -298,6 +298,47 @@ class logsqlhandler(ihandler):
 			self.cursor.execute("""CREATE INDEX IF NOT EXISTS p0fs_%s_idx 
 			ON p0fs (p0f_%s)""" % (idx, idx))
 
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			logins (
+				login INTEGER PRIMARY KEY,
+				connection INTEGER,
+				login_username TEXT,
+				login_password TEXT
+				-- CONSTRAINT logins_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
+			)""")
+
+		for idx in ["username","password"]:
+			self.cursor.execute("""CREATE INDEX IF NOT EXISTS logins_%s_idx 
+			ON logins (login_%s)""" % (idx, idx))
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			mssql_fingerprints (
+				mssql_fingerprint INTEGER PRIMARY KEY,
+				connection INTEGER,
+				mssql_fingerprint_hostname TEXT,
+				mssql_fingerprint_appname TEXT,
+				mssql_fingerprint_cltintname TEXT
+				-- CONSTRAINT mssql_fingerprints_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
+			)""")
+
+		for idx in ["hostname","appname","cltintname"]:
+			self.cursor.execute("""CREATE INDEX IF NOT EXISTS mssql_fingerprints_%s_idx 
+			ON mssql_fingerprints (mssql_fingerprint_%s)""" % (idx, idx))
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			mssql_commands (
+				mssql_command INTEGER PRIMARY KEY,
+				connection INTEGER,
+				mssql_command_status TEXT,
+				mssql_command_cmd TEXT
+				-- CONSTRAINT mssql_commands_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
+			)""")
+
+		for idx in ["status"]:
+			self.cursor.execute("""CREATE INDEX IF NOT EXISTS mssql_commands_%s_idx 
+			ON mssql_commands (mssql_command_%s)""" % (idx, idx))
+
+
 #		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 #			httpheaders (
 #				httpheader INTEGER PRIMARY KEY,
@@ -313,7 +354,7 @@ class logsqlhandler(ihandler):
 
 
 		# connection index for all 
-		for idx in ["dcerpcbinds", "dcerpcrequests", "emu_profiles", "emu_services", "offers", "downloads", "p0fs"]:
+		for idx in ["dcerpcbinds", "dcerpcrequests", "emu_profiles", "emu_services", "offers", "downloads", "p0fs", "logins", "mssql_fingerprints", "mssql_commands"]:
 			self.cursor.execute("""CREATE INDEX IF NOT EXISTS %s_connection_idx	ON %s (connection)""" % (idx, idx))
 
 
@@ -545,5 +586,27 @@ class logsqlhandler(ihandler):
 			self.cursor.execute("INSERT INTO dcerpcbinds (connection, dcerpcbind_uuid, dcerpcbind_transfersyntax) VALUES (?,?,?)",
 				(attackid, icd.uuid, icd.transfersyntax))
 			self.dbh.commit()
+
+	def handle_incident_dionaea_modules_python_mssql_login(self, icd):
+		con = icd.con
+		if con in self.attacks:
+			attackid = self.attacks[con][1]
+			self.cursor.execute("INSERT INTO logins (connection, login_username, login_password) VALUES (?,?,?)",
+				(attackid, icd.username, icd.password))
+			self.cursor.execute("INSERT INTO mssql_fingerprints (connection, mssql_fingerprint_hostname, mssql_fingerprint_appname, mssql_fingerprint_cltintname) VALUES (?,?,?,?)", 
+				(attackid, icd.hostname, icd.appname, icd.cltintname))
+			self.dbh.commit()
+
+	def handle_incident_dionaea_modules_python_mssql_cmd(self, icd):
+		logger.warn("fuck")
+		con = icd.con
+		if con in self.attacks:
+			attackid = self.attacks[con][1]
+			self.cursor.execute("INSERT INTO mssql_commands (connection, mssql_command_status, mssql_command_cmd) VALUES (?,?,?)", 
+				(attackid, icd.status, icd.cmd))
+			self.dbh.commit()
+
+
+
 
 

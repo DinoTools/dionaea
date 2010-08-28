@@ -100,6 +100,54 @@ def print_sipresponse(cursor, connection, indent):
 def print_rtpstream(cursor, connection, indent):
 	pass
 
+def print_logins(cursor, connection, indent):
+	r = cursor.execute("""
+		SELECT 
+			login_username,
+			login_password
+		FROM 
+			logins
+		WHERE connection = ?""", (connection, ))
+	logins = resolve_result(r)
+	for login in logins:
+		print("{:s} login - user:'{:s}' password:'{:s}'".format(
+			' ' * indent,
+			login['login_username'],
+			login['login_password']))
+
+def print_mssql_fingerprints(cursor, connection, indent):
+	r = cursor.execute("""
+		SELECT 
+			mssql_fingerprint_hostname,
+			mssql_fingerprint_appname,
+			mssql_fingerprint_cltintname
+		FROM 
+			mssql_fingerprints
+		WHERE connection = ?""", (connection, ))
+	fingerprints = resolve_result(r)
+	for fingerprint in fingerprints:
+		print("{:s} mssql fingerprint - hostname:'{:s}' cltintname:'{:s}' appname:'{:s}'".format(
+			' ' * indent,
+			fingerprint['mssql_fingerprint_hostname'],
+			fingerprint['mssql_fingerprint_appname'],
+			fingerprint['mssql_fingerprint_cltintname']))
+
+def print_mssql_commands(cursor, connection, indent):
+	r = cursor.execute("""
+		SELECT 
+			mssql_command_status,
+			mssql_command_cmd
+		FROM 
+			mssql_commands
+		WHERE connection = ?""", (connection, ))
+	commands = resolve_result(r)
+	for cmd in commands:
+		print("{:s} mssql command - status:{:s} cmd:'{:s}'".format(
+			' ' * indent,
+			cmd['mssql_command_status'],
+			cmd['mssql_command_cmd']))
+
+
 def print_connection(c, indent):
 	indentStr = ' ' * (indent + 1)
 
@@ -222,6 +270,9 @@ WHERE
 			print_offers(cursor, c['connection'], 2)
 			print_downloads(cursor, c['connection'], 2)
 			print_services(cursor, c['connection'], 2)
+			print_logins(cursor, c['connection'], 2)
+			print_mssql_fingerprints(cursor, c['connection'], 2)
+			print_mssql_commands(cursor, c['connection'], 2)
 			recursive_print(cursor, c['connection'], 2)
 
 		offset += limit

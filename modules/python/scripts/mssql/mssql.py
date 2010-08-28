@@ -50,7 +50,7 @@ class mssqld(connection):
 		self.processors()
 
 		
-		if True:
+		if False:
 			# FIXME SESSIONDUMP remove at some point
 			# useful to dump sessions which are _large_
 			self.session = tempfile.NamedTemporaryFile(delete=False, prefix='mssql_session-', dir="/tmp/")
@@ -161,6 +161,7 @@ class mssqld(connection):
 			l = p.getlayer(TDS_Login7_Request)
 
 			# we can gather some values from the client, maybe use for fingerprinting clients
+			fields = {}
 			for i in ["HostName","UserName", "Password","AppName","ServerName", "CltIntName", "Language", "Database"]:
 				ib = 8 + l.getfieldval("ib" + i)
 				cch = l.getfieldval("cch" + i)*2
@@ -168,8 +169,20 @@ class mssqld(connection):
 				xfield = field.decode('utf-16')
 				if i == "Password":
 					xfield = self.decode_password(xfield)
-				logger.info("Field {} {} {}".format(i,field, xfield))
-			
+#				logger.info("Field {} {} {}".format(i,field, xfield))
+				fields[i] = xfield
+
+			i = incident("dionaea.modules.python.mssql.login")
+			i.con = self
+			i.username = fields['UserName']
+			i.password = fields['Password']
+
+			i.cltintname = fields['CltIntName']
+			i.hostname = fields['HostName']
+			i.appname = fields['AppName']
+
+			i.report()
+
 			r = [TDS_Token()/TDS_Token_LoginACK(),TDS_Token()/TDS_Token_Done()]
 
 		elif PacketType == TDS_TYPES_PRETDS7_LOGIN:
@@ -192,6 +205,12 @@ class mssqld(connection):
 				self.session.write(b"COMMAND:\n")
 				self.session.write(cmd)
 				self.session.write(b"\n")
+
+			i = incident("dionaea.modules.python.mssql.cmd")
+			i.con = self
+			i.status = "complete"
+			i.cmd = cmd
+			i.report()
 
 			# FIXME this reply is wrong too
 			# proper replies require parsing the SQLBatchData into statement and compiling a TDS_Token per statement
