@@ -971,36 +971,47 @@ class LEFieldLenField(FieldLenField):
 
 class FlagsField(BitField):
     def __init__(self, name, default, size, names):
-        self.multi = type(names) is list
-        if self.multi:
-            self.names = [[x] for x in names]
+        if type(names) is list:
+            self.names = {}
+            self.rnames = {}
+            for i in range(0,len(names)):
+                self.names[1<<i] = names[i]
         else:
-            self.names = names
+            self.names  = names
+        # create reverse mapping on if required
+        self.rnames = None
         BitField.__init__(self, name, default, size)
     def any2i(self, pkt, x):
         if type(x) is str:
-            if self.multi:
-                x = [[y] for y in x.split("+")]
+            if self.rnames == None:
+                for i in self.names:
+                    self.rnames[self.names[i]] = i
+            x = x.split("+")
             y = 0
             for i in x:
-                y |= 1 << self.names.index(i)
+                y |= self.rnames[i]
             x = y
         return x
     def i2repr(self, pkt, x):
         if type(x) is list or type(x) is tuple:
             return repr(x)
-        if self.multi:
-            r = []
-        else:
-            r = ""
+
+        if x == 0:
+            if 0 in self.names:
+                return self.names[0]
+            else:
+                return "0x{:0{}x}".format(0, self._size/4)
+
+        r = []
         i=0
-        while x:
-            if x & 1:
-                r += self.names[i]
-            i += 1
-            x >>= 1
-        if self.multi:
-            r = "+".join(r)
+        for i in range(0,self._size):
+            v = 1 << i
+            if x & v:
+                if v in self.names:
+                    r.append(self.names[v])
+                else:
+                    r.append("0x{:0{}x}".format(v, self._size/4))
+        r = "+".join(r)
         return r
 
 

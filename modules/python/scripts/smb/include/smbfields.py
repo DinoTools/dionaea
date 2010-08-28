@@ -45,71 +45,39 @@ CAP_NT_SMBS            = 0x0010 # The server supports the SMBs particular to the
 CAP_RPC_REMOTE_APIS    = 0x0020 # The server supports remote admin API requests via DCE RPC
 CAP_STATUS32           = 0x0040 # The server can respond with 32 bit status codes in Status.Status
 CAP_LEVEL_II_OPLOCKS   = 0x0080 # The server supports level 2 oplocks	
-								# 
 CAP_LOCK_AND_READ      = 0x0100 # The server supports the SMB,SMB_COM_LOCK_AND_READ
 CAP_NT_FIND            = 0x0200 # Reserved
-CAP_NOT_USED		   = 0x0400
-CAP_NOT_USED		   = 0x0800
 CAP_DFS                = 0x1000 # The server is DFS aware
 CAP_INFOLEVEL_PASSTHRU = 0x2000 # The server supports NT information level requests passing	through
 CAP_LARGE_READX        = 0x4000 # The server supports large SMB_COM_READ_ANDX (up to 64k)
 CAP_LARGE_WRITEX       = 0x8000 # The server supports large SMB_COM_WRITE_ANDX (up to 64k)
-
-CAP_NOT_USED		   = 0x00010000
-CAP_NOT_USED		   = 0x00020000
-CAP_NOT_USED		   = 0x00040000
-CAP_NOT_USED		   = 0x00080000
-CAP_NOT_USED		   = 0x00100000
-CAP_NOT_USED		   = 0x00200000
-CAP_NOT_USED		   = 0x00400000
 CAP_UNIX               = 0x00800000 # The server supports CIFS Extensions for UNIX. (See Appendix D for more detail)
-
-CAP_NOT_USED		   = 0x01000000
 CAP_RESERVED           = 0x02000000 # Reserved for future use 
-CAP_NOT_USED		   = 0x04000000
-CAP_NOT_USED		   = 0x08000000
-CAP_NOT_USED		   = 0x10000000
 CAP_BULK_TRANSFER      = 0x20000000 # The server supports SMB_BULK_READ,	SMB_BULK_WRITE (should be 0, no known implementations)
 CAP_COMPRESSED_DATA    = 0x40000000 # The server supports compressed data transfer	(BULK_TRANSFER capability is required to support compressed data transfer).
 CAP_EXTENDED_SECURITY  = 0x80000000 # The server supports extended security exchanges
 
-SMB_Negotiate_Capabilities = [
-	"RAW_MODE",
-	"MPX_MODE",
-	"UNICODE",
-	"LARGE_FILES",
-	"NT_SMBS",
-	"RPC_REMOTE_APIS",
-	"STATUS32",
-	"LEVEL_II_OPLOCKS",
-
-	"LOCK_AND_READ",
-	"NT_FIND",
-	"0x0400",
-	"0x0800",
-	"DFS",
-	"INFOLEVEL_PASSTHRU",
-	"LARGE_READX",
-	"LARGE_WRITEX",
-
-	"0x00010000",
-	"0x00020000",
-	"0x00040000",
-	"0x00080000",
-	"0x00100000",
-	"0x00200000",
-	"0x00400000",
-	"UNIX",
-
-	"0x01000000",
-	"0x02000000",
-	"0x04000000",
-	"0x08000000",
-	"0x10000000",
-	"BULK_TRANSFER",
-	"COMPRESSED_DATA",
-	"EXTENDED_SECURITY",
-]
+SMB_Negotiate_Capabilities = {
+	CAP_RAW_MODE           :'RAW_MODE',
+	CAP_MPX_MODE           :'MPX_MODE',
+	CAP_UNICODE            :'UNICODE',
+	CAP_LARGE_FILES        :'LARGE_FILES',
+	CAP_NT_SMBS            :'NT_SMBS',
+	CAP_RPC_REMOTE_APIS    :'RPC_REMOTE_APIS',
+	CAP_STATUS32           :'STATUS32',
+	CAP_LEVEL_II_OPLOCKS   :'LEVEL_II_OPLOCKS',
+	CAP_LOCK_AND_READ      :'LOCK_AND_READ',
+	CAP_NT_FIND            :'NT_FIND',
+	CAP_DFS                :'DFS',
+	CAP_INFOLEVEL_PASSTHRU :'INFOLEVEL_PASSTHRU',
+	CAP_LARGE_READX        :'LARGE_READX',
+	CAP_LARGE_WRITEX       :'LARGE_WRITEX',
+	CAP_UNIX               :'UNIX',
+	CAP_RESERVED           :'RESERVED',
+	CAP_BULK_TRANSFER      :'BULK_TRANSFER',
+	CAP_COMPRESSED_DATA    :'COMPRESSED_DATA',
+	CAP_EXTENDED_SECURITY  :'EXTENDED_SECURITY',
+}
 
 # SMB_Header.Flags
 SMB_FLAGS_LOCK_AND_READ         = (1<<0) # Reserved for obsolescent requests LOCK_AND_READ, WRITE_AND_CLOSE LANMAN1.0
@@ -120,21 +88,20 @@ SMB_FLAGS_OPLOCKS               = (1<<5) #
 SMB_FLAGS_NOTIFY                = (1<<6) #
 SMB_FLAGS_REQUEST_RESPONSE      = (1<<7) # When on, this SMB is	being sent from the server in response to a client request. The	Command field usually contains the same value in a protocol	request from the client to the server as in the matching response from the server to the client. This bit unambiguously distinguishes the command request from the command response. 
 
-SMB_Header_Flags = [
-"LOCKANDREAD",
-"RECVBUF",
-"-",
-"CASE",
+SMB_Header_Flags = {
+	SMB_FLAGS_LOCK_AND_READ         :"LOCK_AND_READ",
+	SMB_FLAGS_RECEIVE_BUFFER_POSTED :"RECEIVE_BUFFER_POSTED",
+	SMB_FLAGS_CASES_ENSITIVITY      :"CASES_ENSITIVITY",
+	SMB_FLAGS_CANONICAL_PATHNAMES   :"CANONICAL_PATHNAMES",
+	SMB_FLAGS_OPLOCKS               :"OPLOCKS",
+	SMB_FLAGS_NOTIFY                :"NOTIFY",
+	SMB_FLAGS_REQUEST_RESPONSE      :"REQUEST_RESPONSE",
+}
 
-"CANON",
-"OPLOCKS",
-"NOTIFY",
-"REQ_RESP",
-]
 
 
 # SMB_Header.Flags2
-SMB_FLAGS2_KNOWS_LONG_NAMES    = (1)  # If set in a request, the server may return long components in path names in the response.	LM1.2X002
+SMB_FLAGS2_KNOWS_LONG_NAMES    = (1<<0)  # If set in a request, the server may return long components in path names in the response.	LM1.2X002
 SMB_FLAGS2_KNOWS_EAS           = (1<<1)  # If set, the client is aware of extended attributes (EAs).
 SMB_FLAGS2_SECURITY_SIGNATURE  = (1<<2)  # If set, the SMB is integrity checked.
 SMB_FLAGS2_RESERVED1           = (1<<3)  # Reserved for future use
@@ -145,27 +112,18 @@ SMB_FLAGS2_PAGING_IO           = (1<<13) # If set, indicates that a read will be
 SMB_FLAGS2_ERR_STATUS          = (1<<14) # If set, specifies that the returned error code is a 32 bit	error code in Status.Status. Otherwise the Status.DosError.ErrorClass and Status.DosError.Error	fields contain the DOS-style error information. When passing NT status codes is negotiated, this flag should be set for every SMB. NT LM 0.12
 SMB_FLAGS2_UNICODE             = (1<<15) # If set, any fields of datatype STRING in this SMB	message are encoded as UNICODE. Otherwise, they	are in ASCII. The character encoding for Unicode fields SHOULD be UTF-16 (little endian). NT LM 0.12
 
-SMB_Header_Flags2 = [
-"KNOWS_LONG_NAMES",
-"KNOWS_EAS",     
-"SECURITY_SIGNATURE",
-"RESERVED3",
-
-"RESERVED4",
-"RESERVED5",
-"IS_LONG_NAME",
-"RESERVED7",
-
-"RESERVED8",
-"RESERVED9",
-"RESERVED10",
-"EXT_SEC",      
-
-"DFS",                 
-"PAGING_IO",
-"ERR_STATUS",         
-"UNICODE",        
-]
+SMB_Header_Flags2 = {
+	SMB_FLAGS2_KNOWS_LONG_NAMES    :'KNOWS_LONG_NAMES',
+	SMB_FLAGS2_KNOWS_EAS           :'KNOWS_EAS',
+	SMB_FLAGS2_SECURITY_SIGNATURE  :'SECURITY_SIGNATURE',
+	SMB_FLAGS2_RESERVED1           :'RESERVED1',
+	SMB_FLAGS2_IS_LONG_NAME        :'IS_LONG_NAME',
+	SMB_FLAGS2_EXT_SEC             :'EXT_SEC',
+	SMB_FLAGS2_DFS                 :'DFS',
+	SMB_FLAGS2_PAGING_IO           :'PAGING_IO',
+	SMB_FLAGS2_ERR_STATUS          :'ERR_STATUS',
+	SMB_FLAGS2_UNICODE             :'UNICODE',
+}
 
 # SMB_Header.Command
 SMB_COM_CREATE_DIRECTORY       = 0x00
@@ -363,16 +321,17 @@ DCERPC_PacketTypes = {
 # NT Create AndX Flags 
 # page 76
 
+SMB_CF_NONE				= 0x00
 SMB_CF_REQ_OPLOCK       = 0x02 # Request an oplock
 SMB_CF_REQ_BATCH_OPLOCK = 0x04 # Request a batch oplock
 SMB_CF_TARGET_DIRECTORY = 0x08 # Target of open must be directory
 
-SMB_CreateFlags = [
-	"none",
-	"OPLOCK",       
-	"BATCH_OPLOCK",
-	"DIRECTORY", 
-]
+SMB_CreateFlags = {
+	SMB_CF_NONE				:'NONE',
+	SMB_CF_REQ_OPLOCK       :'REQ_OPLOCK',
+	SMB_CF_REQ_BATCH_OPLOCK :'REQ_BATCH_OPLOCK',
+	SMB_CF_TARGET_DIRECTORY :'TARGET_DIRECTORY',
+}
 
 # File Attribute Encoding
 SMB_FA_READONLY   = 0x0001 # Read only file
@@ -394,26 +353,26 @@ SMB_FA_OFFLINE    = 0x1000 # Offline
 SMB_FA_INDEX      = 0x2000 # Indexed
 SMB_FA_ENCRYPTED  = 0x4000 # Encrypted
 
-SMB_FileAttributes = [
-	"READONLY",
-	"HIDDEN",
-	"SYSTEM",
-	"VOLUME",
+SMB_FileAttributes = {
+	SMB_FA_READONLY  : "READONLY",
+	SMB_FA_HIDDEN    : "HIDDEN",
+	SMB_FA_SYSTEM    : "SYSTEM",
+	SMB_FA_VOLUME    : "VOLUME",
 
-	"DIRECTORY",
-	"ARCHIVE",
-	"DEVICE",
-	"NORMAL",
+	SMB_FA_DIRECTORY : "DIRECTORY",
+	SMB_FA_ARCHIVE   : "ARCHIVE",
+	SMB_FA_DEVICE    : "DEVICE",
+	SMB_FA_NORMAL    : "NORMAL",
 
-	"TEMP",
-	"SPARSE",
-	"REPARSE",
-	"COMPRESS",
+	SMB_FA_TEMP      : "TEMP",
+	SMB_FA_SPARSE    : "SPARSE",
+	SMB_FA_REPARSE   : "REPARSE",
+	SMB_FA_COMPRESS  : "COMPRESS",
 
-	"OFFLINE",
-	"INDEX",
-	"ENCRYPTED",
-]
+	SMB_FA_OFFLINE   : "OFFLINE",
+	SMB_FA_INDEX     : "INDEX",
+	SMB_FA_ENCRYPTED : "ENCRYPTED",
+}
 
 # Share Access
 SMB_FILE_NO_SHARE    = 0x00000000 # Prevents the file from being shared.
@@ -422,102 +381,131 @@ SMB_FILE_SHARE_WRITE = 0x00000002 # Other open operations can be performed on th
 SMB_FILE_SHARE_DELET = 0x00000004 # Other open operations can be performed on the file for delete access.
 
 
-SMB_ShareAccess = [
-	"READ",
-	"WRITE",
-	"DELETE"
-]
+SMB_ShareAccess = {
+	SMB_FILE_NO_SHARE     :"NO_SHARE",
+	SMB_FILE_SHARE_READ   :"READ",
+	SMB_FILE_SHARE_WRITE  :"WRITE",
+	SMB_FILE_SHARE_DELET  :"DELETE"
+}
 
 # CreateOptions
-SMB_CreateOptions = [
-	"DIRECTORY",
-	"WRITETHROUGH",
-	"SEQONLY",
-	"INTERMBUF",
+SMB_CREATOPT_NONE					=(0)
+SMB_CREATOPT_DIRECTORY				=(1<<0)
+SMB_CREATOPT_WRITETHROUGH			=(1<<1)
+SMB_CREATOPT_SEQONLY				=(1<<2)
+SMB_CREATOPT_INTERMBUF				=(1<<3)
+SMB_CREATOPT_SYNCIOALERT			=(1<<4)
+SMB_CREATOPT_SYNCIONOALERT			=(1<<5)
+SMB_CREATOPT_NONDIRECTORY			=(1<<6)
+SMB_CREATOPT_CREATETREECONN			=(1<<7)
+SMB_CREATOPT_COMPLETEIFOPLOCK		=(1<<8)
+SMB_CREATOPT_NOEAKNOWLEDGE			=(1<<9)
+SMB_CREATOPT_LONG_FILENAMES			=(1<<10)
+SMB_CREATOPT_RANDOMACCESS			=(1<<11)
+SMB_CREATOPT_DELETE_ON_CLOSE		=(1<<12)
+SMB_CREATOPT_OPEN_BY_ID				=(1<<13)
+SMB_CREATOPT_BACKUP_INTENT			=(1<<14)
+SMB_CREATOPT_NOCOMPRESSION			=(1<<15)
+SMB_CREATOPT_RESERVE_OPFILTER		=(1<<20)
+SMB_CREATOPT_OPEN_REPARSE_POINT		=(1<<21)
+SMB_CREATOPT_OPEN_NO_RECALL			=(1<<22)
+SMB_CREATOPT_OPEN_FOR_SPACE_QUERY	=(1<<23)
 
-	"SYNCIOALERT",
-	"SYNCIONOALERT",
-	"NONDIRECTORY",
-	"CREATETREECONN",
-
-	"COMPLETEIFOPLOCK",
-	"NOEAKNOWLEDGE",
-	"LONG_FILENAMES",
-	"RANDOMACCESS",
-
-	"DELETE_ON_CLOSE",
-	"OPEN_BY_ID",
-	"BACKUP_INTENT",
-	"NOCOMPRESSION",
-
-	"none",
-	"none",
-	"none",
-	"none",
-
-	"RESERVE_OPFILTER",
-	"OPEN_REPARSE_POINT",
-	"OPEN_NO_RECALL",
-	"OPEN_FOR_SPACE_QUERY",
-]
+SMB_CreateOptions = {
+	SMB_CREATOPT_NONE                   :"NONE",
+	SMB_CREATOPT_DIRECTORY              :"DIRECTORY",
+	SMB_CREATOPT_WRITETHROUGH           :"WRITETHROUGH",
+	SMB_CREATOPT_SEQONLY                :"SEQONLY",
+	SMB_CREATOPT_INTERMBUF              :"INTERMBUF",
+	SMB_CREATOPT_SYNCIOALERT            :"SYNCIOALERT",
+	SMB_CREATOPT_SYNCIONOALERT          :"SYNCIONOALERT",
+	SMB_CREATOPT_NONDIRECTORY           :"NONDIRECTORY",
+	SMB_CREATOPT_CREATETREECONN         :"CREATETREECONN",
+	SMB_CREATOPT_COMPLETEIFOPLOCK       :"COMPLETEIFOPLOCK",
+	SMB_CREATOPT_NOEAKNOWLEDGE          :"NOEAKNOWLEDGE",
+	SMB_CREATOPT_LONG_FILENAMES         :"LONG_FILENAMES",
+	SMB_CREATOPT_RANDOMACCESS           :"RANDOMACCESS",
+	SMB_CREATOPT_DELETE_ON_CLOSE        :"DELETE_ON_CLOSE",
+	SMB_CREATOPT_OPEN_BY_ID             :"OPEN_BY_ID",
+	SMB_CREATOPT_BACKUP_INTENT          :"BACKUP_INTENT",
+	SMB_CREATOPT_NOCOMPRESSION          :"NOCOMPRESSION",
+	SMB_CREATOPT_RESERVE_OPFILTER       :"RESERVE_OPFILTER",    
+	SMB_CREATOPT_OPEN_REPARSE_POINT     :"OPEN_REPARSE_POINT",  
+	SMB_CREATOPT_OPEN_NO_RECALL         :"OPEN_NO_RECALL",      
+	SMB_CREATOPT_OPEN_FOR_SPACE_QUERY   :"OPEN_FOR_SPACE_QUERY",
+}
 
 # CreateFlags
-SMB_CreateFlags = [
-	"none",
-	"EXCL_OPLOCK",
-	"BATCH_OPLOCK",
-	"CREATE_DIRECTORY",
-	"EXT_RESP",
-]
+SMB_CREATEFL_NONE				= (0)
+SMB_CREATEFL_EXCL_OPLOCK		= (1<<2)
+SMB_CREATEFL_BATCH_OPLOCK		= (1<<3)
+SMB_CREATEFL_CREATE_DIRECTORY	= (1<<4)
+SMB_CREATEFL_EXT_RESP			= (1<<5)
 
-# Access Mask
-SMB_AccessMask = [
-	"READ",
-	"WRITE",
-	"APPEND",
-	"READ_EA",
+SMB_CreateFlags = {
+	SMB_CREATEFL_NONE             : "NONE",
+	SMB_CREATEFL_EXCL_OPLOCK      : "EXCL_OPLOCK",
+	SMB_CREATEFL_BATCH_OPLOCK     : "BATCH_OPLOCK",
+	SMB_CREATEFL_CREATE_DIRECTORY : "CREATE_DIRECTORY",
+	SMB_CREATEFL_EXT_RESP         : "EXT_RESP",
+}
 
-	"WRITE_EA",
-	"EXECUTE",
-	"DELETE_CHILD",
-	"READ_ATTR",
+# Access Mask Flags
+SMB_AM_NONE				= (0)
+SMB_AM_READ				= (1<<0)
+SMB_AM_WRITE			= (1<<1)
+SMB_AM_APPEND			= (1<<2)
+SMB_AM_READ_EA			= (1<<3)
+SMB_AM_WRITE_EA			= (1<<4)
+SMB_AM_EXECUTE			= (1<<5)
+SMB_AM_DELETE_CHILD		= (1<<6)
+SMB_AM_READ_ATTR		= (1<<7)
+SMB_AM_WRITE_ATTR		= (1<<8)
+SMB_AM_DELETE			= (1<<16)
+SMB_AM_READ_CTRL		= (1<<17)
+SMB_AM_WRITE_DAC		= (1<<18)
+SMB_AM_WRITE_OWNER		= (1<<19)
+SMB_AM_SYNC				= (1<<20)
+SMB_AM_MAX_SEC			= (1<<24)
+SMB_AM_MAX_ALLOWED		= (1<<25)
+SMB_AM_GENERIC_ALL		= (1<<28)
+SMB_AM_GENERIC_EXECUTE	= (1<<29)
+SMB_AM_GENERIC_WRITE	= (1<<30)
+SMB_AM_GENERIC_READ		= (1<<31)
 
-	"WRITE_ATTR",
-	"none",
-	"none",
-	"none",
-	
-	"none",
-	"none",
-	"none",
-	"none",
-		
-	"DELETE",
-	"READ_CTRL",
-	"WRITE_DAC",
-	"WRITE_OWNER",
-
-	"SYNC",
-	"none",
-	"none",
-	"none",
-
-	"MAX_SEC",
-	"MAX_ALLOWED",
-	"none",
-	"none",
-
-	"GENERIC_ALL",
-	"GENERIC_EXECUTE",
-	"GENERIC_WRITE",
-	"GENERIC_READ",
-]
+SMB_AccessMask = {
+	SMB_AM_NONE           	:"NONE",
+	SMB_AM_READ           	:"READ",
+	SMB_AM_WRITE          	:"WRITE",
+	SMB_AM_APPEND         	:"APPEND",
+	SMB_AM_READ_EA        	:"READ_EA",
+	SMB_AM_WRITE_EA       	:"WRITE_EA",
+	SMB_AM_EXECUTE        	:"EXECUTE",
+	SMB_AM_DELETE_CHILD   	:"DELETE_CHILD",
+	SMB_AM_READ_ATTR      	:"READ_ATTR",
+	SMB_AM_WRITE_ATTR     	:"WRITE_ATTR",
+	SMB_AM_DELETE         	:"DELETE",
+	SMB_AM_READ_CTRL      	:"READ_CTRL",
+	SMB_AM_WRITE_DAC      	:"WRITE_DAC",
+	SMB_AM_WRITE_OWNER    	:"WRITE_OWNER",
+	SMB_AM_SYNC           	:"SYNC",
+	SMB_AM_MAX_SEC        	:"MAX_SEC",
+	SMB_AM_MAX_ALLOWED    	:"MAX_ALLOWED",
+	SMB_AM_GENERIC_ALL    	:"GENERIC_ALL",
+	SMB_AM_GENERIC_EXECUTE	:"GENERIC_EXECUTE",
+	SMB_AM_GENERIC_WRITE  	:"GENERIC_WRITE",
+	SMB_AM_GENERIC_READ   	:"GENERIC_READ",
+}
 
 # Security Flags
-SMB_SecurityFlags = [
-	"CTX_TRACKING",
-	"EFFECTIVE_ONLY",
-]
+
+SMB_SECFLAGS_CTX_TRACKING	= (1<<0)
+SMB_SECFLAGS_EFFECTIVE_ONLY	= (1<<1)
+
+SMB_SecurityFlags = {
+	SMB_SECFLAGS_CTX_TRACKING   :"CTX_TRACKING",
+	SMB_SECFLAGS_EFFECTIVE_ONLY :"EFFECTIVE_ONLY",
+}
 
 
 
@@ -528,12 +516,12 @@ SMB_WM_RETURNREMAINING	= 0x002
 SMB_WM_WRITERAW			= 0x004
 SMB_WM_MSGSTART			= 0x008
 
-SMB_WriteMode = [
-	"WRITETHROUGH",
-	"RETURNREMAINING",
-	"WRITERAW",
-	"MSGSTART",
-]
+SMB_WriteMode = {
+	SMB_WM_WRITETHROUGH   :"WRITETHROUGH",
+	SMB_WM_RETURNREMAINING:"RETURNREMAINING",
+	SMB_WM_WRITERAW       :"WRITERAW",
+	SMB_WM_MSGSTART       :"MSGSTART",
+}
 
 class SMBNullField(StrField):
 	def __init__(self, name, default, fmt="H", remain=0, utf16=True):

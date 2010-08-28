@@ -30,32 +30,34 @@ from dionaea.smb.include.fieldtypes import *
 
 # [MS-TDS].pdf v20100711
 
-TDS_TYPES_SQL_BATCH		= 0x01 
+# TDS HeaderTypes
+TDS_TYPES_SQL_BATCH			= 0x01 
 TDS_TYPES_PRETDS7_LOGIN		= 0x02	# only used for Pre-TDS7 Login 
-TDS_TYPES_RPC			= 0x03 
+TDS_TYPES_RPC				= 0x03 
 TDS_TYPES_TABULAR_RESULT	= 0x04 
-TDS_TYPES_ATTENTION		= 0x06
+TDS_TYPES_ATTENTION			= 0x06
 TDS_TYPES_BULK_LOAD_DATA	= 0x07
 TDS_TYPES_TRANS_MANAGER_REQ	= 0x0E
 TDS_TYPES_TDS5_QUERY		= 0x0f
 TDS_TYPES_TDS7_LOGIN		= 0x10	# used for TDS7 or later version login
-TDS_TYPES_SSPI_MESG		= 0x11
-TDS_TYPES_PRE_LOGIN		= 0x12
+TDS_TYPES_SSPI_MESG			= 0x11
+TDS_TYPES_PRE_LOGIN			= 0x12
 
 TDS_HeaderTypes = {
-	TDS_TYPES_SQL_BATCH		:"TDS_TYPES_SQL_BATCH ",
+	TDS_TYPES_SQL_BATCH			:"TDS_TYPES_SQL_BATCH ",
 	TDS_TYPES_PRETDS7_LOGIN		:"TDS_TYPES_PRETDS7_LOGIN",
-	TDS_TYPES_RPC			:"TDS_TYPES_RPC ",
+	TDS_TYPES_RPC				:"TDS_TYPES_RPC ",
 	TDS_TYPES_TABULAR_RESULT	:"TDS_TYPES_TABULAR_RESULT",
-	TDS_TYPES_ATTENTION		:"TDS_TYPES_ATTENTION",
+	TDS_TYPES_ATTENTION			:"TDS_TYPES_ATTENTION",
 	TDS_TYPES_BULK_LOAD_DATA	:"TDS_TYPES_BULK_LOAD_DATA",
 	TDS_TYPES_TRANS_MANAGER_REQ	:"TDS_TYPES_TRANS_MANAGER_REQ",
 	TDS_TYPES_TDS7_LOGIN		:"TDS_TYPES_TDS7_LOGIN",
-	TDS_TYPES_SSPI_MESG		:"TDS_TYPES_SSPI_MESG",
-	TDS_TYPES_PRE_LOGIN		:"TDS_TYPES_PRE_LOGIN",
-	TDS_TYPES_TDS5_QUERY	:"TDS_TYPES_TDS5_QUERY",
+	TDS_TYPES_SSPI_MESG			:"TDS_TYPES_SSPI_MESG",
+	TDS_TYPES_PRE_LOGIN			:"TDS_TYPES_PRE_LOGIN",
+	TDS_TYPES_TDS5_QUERY		:"TDS_TYPES_TDS5_QUERY",
 }
 
+# TDS Status
 TDS_STATUS_NORMAL			= 0x00
 TDS_STATUS_EOM				= 0x01
 TDS_STATUS_C2S				= 0x02
@@ -70,7 +72,7 @@ TDS_Status = {
 	TDS_STATUS_RESET_CON_TRAN :"RESETCONNECTIONSKIPTRAN"
 }
 
-
+# Token Types
 TDS_TOKEN_LANGUAGE 		= 0x21
 TDS_TOKEN_RETURNSTATUS 	= 0x79
 TDS_TOKEN_COLMETADATA 	= 0x81
@@ -93,59 +95,9 @@ TDS_TokenTypes = {
 	TDS_TOKEN_DONEPROC     :"TDS_TOKEN_DONEPROC",
 }
 
-TDS_OptionFlags1 = [
-	"BYTEORDER",
-	"CHAR",
-	"FLOAT",		# "FLOAT" flag need 2 bits
-	"FLOAT",
-	"DUMPLOAD",
-	"USEDB",
-	"DATABASE",
-	"SETLANG",
-]
-
-TDS_OptionFlags2 = [
-	"LANGUAGE",
-	"ODBC",
-	"TRANSBOUNDARY",	# removed in TDS 7.2
-	"CACHECONNECT",		# removed in TDS 7.2
-	"USERTYPE",		# "USERTYPE" flag need 3 bits
-	"USERTYPE",	
-	"USERTYPE"
-	"INTSECURITY",
-]
-
-TDS_TypesFlags = [
-	"SQLTYPE",		# "SQLTYPE" flag need 4 bits
-	"SQLTYPE",
-	"SQLTYPE",
-	"SQLTYPE",
-	"OLEDB",		# introduced in TDS 7.2
-	"none",
-	"none",
-	"none",
-	"none",
-]
-
-TDS_OptionFlags3 = [
-	"CHANGEPASSWORD",	# introduced in TDS 7.2
-	"SENDYUKONBINARYXML",	# introduced in TDS 7.2
-	"USERINSTANCE",		# introduced in TDS 7.2
-	"UNKNOWNCOLLATION"	# introduced in TDS 7.2
-	"none",
-	"none",
-	"none",
-	"none",
-]
-
-TDS_ColFlags = [
-	"IGNORECASE",
-	"IGNOREACCENT",
-	"IGNOREWIDTH",
-	"BINARY",
-]
 
 # page 78
+# TDS Token Status
 TDS_TOKEN_STATUS_DONE_FINAL		= 0x000
 TDS_TOKEN_STATUS_DONE_MORE		= 0x001
 TDS_TOKEN_STATUS_DONE_ERROR		= 0x002
@@ -165,32 +117,92 @@ TDS_Token_Status = {
 	TDS_TOKEN_STATUS_DONE_SRVERROR :"SRVERROR",
 }
 
+
+# TDS Option Flags1
+TDS_OptionFlags1 = [
+	"BYTEORDER",
+	"CHAR",
+	"FLOAT",		# "FLOAT" flag need 2 bits
+	"FLOAT",
+	"DUMPLOAD",
+	"USEDB",
+	"DATABASE",
+	"SETLANG",
+]
+
+# TDS Option Flags2
+TDS_OptionFlags2 = [
+	"LANGUAGE",
+	"ODBC",
+	"TRANSBOUNDARY",	# removed in TDS 7.2
+	"CACHECONNECT",		# removed in TDS 7.2
+	"USERTYPE",			# "USERTYPE" flag need 3 bits
+	"USERTYPE",	
+	"USERTYPE"
+	"INTSECURITY",
+]
+
+# TDS Option Flags3
+TDS_OptionFlags3 = [
+	"CHANGEPASSWORD",		# introduced in TDS 7.2
+	"SENDYUKONBINARYXML",	# introduced in TDS 7.2
+	"USERINSTANCE",			# introduced in TDS 7.2
+	"UNKNOWNCOLLATION"		# introduced in TDS 7.2
+	"none",
+	"none",
+	"none",
+	"none",
+]
+
+
+# TDS TypesFlags
+TDS_TypesFlags = [
+	"SQLTYPE",		# "SQLTYPE" flag need 4 bits
+	"SQLTYPE",
+	"SQLTYPE",
+	"SQLTYPE",
+	"OLEDB",		# introduced in TDS 7.2
+	"none",
+	"none",
+	"none",
+	"none",
+]
+
+# TDS ColumnFlags
+TDS_ColFlags = [
+	"IGNORECASE",
+	"IGNOREACCENT",
+	"IGNOREWIDTH",
+	"BINARY",
+]
+
+# TDS Column Metadata Flags
 TDS_ColMetaData_Flags = [
 	"Nullable",
 	"CaseSen",
 	"Updateable",		# this flag 2 bit
 	"None",
-	
+
 	"Identity",
-	"Computed",		# introduced in TDS 7.2 			
+	"Computed",			# introduced in TDS 7.2 			
 	"ReservedODBC",		# 2 bits,only exists in TDS 7.3A and below 
 	"ReservedODBC",
-	
+
 	"SparseColumnSet",	# introduce in TDS 7.3.B
 	"Reserved2",		# introduce in TDS 7.3.B
 	"Reserved2",
 	"FixedLenCLRType",	# introduce in TDS 7.2
-	
+
 	"none",
 	"none",
 	"none",
 	"none",
-	
-	"Hidden",		# introduce in TDS 7.2
-	"Key",			# introduce in TDS 7.2
+
+	"Hidden",			# introduce in TDS 7.2
+	"Key",				# introduce in TDS 7.2
 	"NullableUnknown",	# introduce in TDS 7.2
 ]
-	
+
 class TDS_Value(Packet):
 	name = "TDS Value"
 		
