@@ -402,13 +402,16 @@ class logsqlhandler(ihandler):
 
 		# maybe this was a early connection?
 		if con in self.pending:
+			# the connection was linked before we knew it
+			# that means we have to 
+			# - update the connection_root and connection_parent for all connections which had the pending
+			# - update the connection_root for all connections which had the 'childid' as connection_root
 			for i in self.pending[con]:
 				print("%s %s %s" % (attackid, attackid, i))
 				self.cursor.execute("UPDATE connections SET connection_root = ?, connection_parent = ? WHERE connection = ?",
 					(attackid, attackid, i ) )
 				self.cursor.execute("UPDATE connections SET connection_root = ? WHERE connection_root = ?",
 					(attackid, i ) )
-			del self.pending[con]
 			self.dbh.commit()
 
 		return attackid
@@ -470,6 +473,8 @@ class logsqlhandler(ihandler):
 			(con.remote.host, con.remote.port, con.local.host, con.local.port, attackid))
 
 	def handle_incident_dionaea_connection_link_early(self, icd):
+		# if we have to link a connection with a connection we do not know yet,
+		# we store the unknown connection in self.pending and associate the childs id with it
 		if icd.parent not in self.attacks:
 			if icd.parent not in self.pending:
 				self.pending[icd.parent] = {self.attacks[icd.child][1]: True}
@@ -494,6 +499,8 @@ class logsqlhandler(ihandler):
 			self.dbh.commit()
 
 		if icd.child in self.pending:
+			# if the new accepted connection was pending
+			# assign the connection_root to all connections which have been waiting for this connection
 			parentroot, parentid = self.attacks[icd.parent]
 			if icd.child in self.attacks:
 				childroot, childid = self.attacks[icd.child]
