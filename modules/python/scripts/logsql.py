@@ -408,7 +408,7 @@ class logsqlhandler(ihandler):
 					(attackid, attackid, i ) )
 				self.cursor.execute("UPDATE connections SET connection_root = ? WHERE connection_root = ?",
 					(attackid, i ) )
-
+			del self.pending[con]
 			self.dbh.commit()
 
 		return attackid
@@ -598,7 +598,6 @@ class logsqlhandler(ihandler):
 			self.dbh.commit()
 
 	def handle_incident_dionaea_modules_python_mssql_cmd(self, icd):
-		logger.warn("fuck")
 		con = icd.con
 		if con in self.attacks:
 			attackid = self.attacks[con][1]
