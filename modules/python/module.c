@@ -914,7 +914,7 @@ void traceback(void)
 
 	if( traceback == NULL )
 	{
-		g_warning("traceback is NULL, good luck!")
+		g_warning("traceback is NULL, good luck!");
 		return;
 	}
 
