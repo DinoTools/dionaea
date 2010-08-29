@@ -173,27 +173,29 @@ class nfqhandler(ihandler):
 
 			
 			now = int(time())
-			nmt = now % self.throttle_window
+			nmt = now % self.throttle_window			
 
-#			for i in range(self.throttle_window)
-#				if self.window[(now-i)%self.throttle_window] is None or self.window[(now-i)%self.throttle_window][0] != now-i:
-#					self.window[nmt] = [now-i,0]
-
-			if self.window[nmt] is None or self.window[nmt][0] != now:
-				self.window[nmt] = [now,0]
+			if self.window[nmt][0] != now:
+#				logger.debug("New Tick")
+				# we got a new tick
+				for i in range(self.throttle_window):
+					# for all other ticks
+					# check the tick is 'up2date'
+					# replace outdated ticks with 0
+					nmx = (now-i)%self.throttle_window
+					if self.window[nmx][0] != now-i:
+#						logger.debug("Reset window {:d} (was {:d}".format(i,self.window[nmx][1]))
+						self.window[nmx] = [now-i,0]
 
 			total = sum([ x[1] for x in self.window])
 			if total > self.throttle_total:
-				logger.warn("throttle total %i" % (total,))
+				logger.warn("throttle total %i %s" % (total,rhost))
 				icd.nfaction = self.throttle_nfaction
 				return
 			if self.window[nmt][1] > self.throttle_slot:
-				logger.warn("throttle client %s" % rhost)
+				logger.warn("throttle slot %i %s" % (self.window[nmt][1], rhost) )
 				icd.nfaction = self.throttle_nfaction
 				return
-
-			logger.info("doing nfq on port %i" % con.local.port)
-			self.window[nmt] = [now,self.window[nmt][1]+1]
 
 			# finally, start a service on the port
 			m = nfqmirrord('tcp')
@@ -202,7 +204,13 @@ class nfqhandler(ihandler):
 			m.timeouts.sustain = self.mirror_client_timeout_sustain
 
 			m.bind(lhost, con.local.port)
-			m.listen()
+			if m.listen() != True:
+				m.close()
+				return
+
+			logger.info("doing nfq on port %i" % con.local.port)
+			self.window[nmt] = [now,self.window[nmt][1]+1]
+
 
 			i = incident('dionaea.connection.link')
 			i.parent = con
