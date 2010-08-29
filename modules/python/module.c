@@ -912,6 +912,12 @@ void traceback(void)
 	g_free(type_string);
 	g_free(value_string);
 
+	if( traceback == NULL )
+	{
+		g_warning("traceback is NULL, good luck!")
+		return;
+	}
+
 	PyObject *args = PyTuple_Pack(1, traceback);
 	PyObject *res = PyObject_CallObject(runtime.traceback.export_tb, args);
 
