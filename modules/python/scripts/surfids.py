@@ -84,7 +84,19 @@ class surfidshandler(ihandler):
 			(con.remote.host, con.remote.port, con.local.host, con.local.port, attackid))
 		self.stmt_detail_add(attackid, con.local.host, DT_PROTOCOL_NAME, con.protocol)
 
-	def handle_incident_dionaea_connection_tcp_reject(self, icd):
+	def _handle_incident_dionaea_connection_tcp_connect(self, icd):
+		con=icd.con
+		attackid = 0
+		logger.info("connect connection to %s/%s:%i from %s:%i (id=%i)" %
+                        (con.remote.host, con.remote.hostname, con.remote.port, con.local.host, con.local.port, attackid))
+		r = self.stmt_attack_add(0, con.remote.hostname, con.remote.port, con.local.host, con.local.port, None, self.sensor_type)
+		attackid = r[0][0]
+		self.attacks[con] = attackid
+		logger.info("connect connection to %s/%s:%i from %s:%i (id=%i)" %
+			(con.remote.host, con.remote.hostname, con.remote.port, con.local.host, con.local.port, attackid))
+		self.stmt_detail_add(attackid, con.local.host, DT_PROTOCOL_NAME, con.protocol)
+
+	def _handle_incident_dionaea_connection_tcp_reject(self, icd):
 		con=icd.con
 		r = self.stmt_attack_add(0, con.remote.host, con.remote.port, con.local.host, con.local.port, None, self.sensor_type)
 		attackid = r[0][0]
