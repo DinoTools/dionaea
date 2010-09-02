@@ -29,6 +29,18 @@ from distutils.core import setup
 from distutils.extension import Extension
 from Cython.Distutils import build_ext
 
+from distutils import sysconfig
+
+# The SlackWare Diaries ...
+# we do not want python2.x to add its -lpython2.x to the linker 
+# even if Py_ENABLE_SHARED is 1
+# therefore we have to adjust the global Py_ENABLE_SHARED value in the 
+# distutils.sysconfig._config_vars dict
+# the proper fix would be not using py2 to build the module but py3 instead
+# thanks to pyllyukko for his incredible patience with me working this out
+if sysconfig.get_config_var('Py_ENABLE_SHARED') == 1:
+	sysconfig._config_vars['Py_ENABLE_SHARED'] = 0
+
 
 cflags=''
 cflags+='@LIB_GLIB_CFLAGS@' # glib
