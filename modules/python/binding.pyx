@@ -938,12 +938,12 @@ cdef extern from "module.h":
 ######
 cdef extern from "../../include/incident.h":
 
-	ctypedef void (*c_ihandler_cb) (c_incident *, void *ctx)
+	ctypedef void (*ihandler_cb) (c_incident *, void *ctx)
 	ctypedef struct c_ihandler "struct ihandler":
-		c_ihandler_cb cb
+		ihandler_cb cb
 
 
-	c_ihandler *c_ihandler_new "ihandler_new" (char *, c_ihandler_cb cb, void *ctx)
+	c_ihandler *c_ihandler_new "ihandler_new" (char *, ihandler_cb cb, void *ctx)
 	void c_ihandler_free "ihandler_free" (c_ihandler *)
 
 cdef extern from "module.h":
@@ -975,7 +975,7 @@ cdef class ihandler:
 	cdef c_ihandler *thisptr
 	def __init__(self, pattern):
 		pattern = pattern.encode(u'UTF-8')
-		self.thisptr = c_ihandler_new(pattern, <c_ihandler_cb> c_traceable_ihandler_cb, <void *>self)
+		self.thisptr = c_ihandler_new(pattern, <ihandler_cb> c_traceable_ihandler_cb, <void *>self)
 
 	def __dealloc__(self):
 		c_ihandler_free(self.thisptr)
@@ -1011,7 +1011,7 @@ def init_traceables():
 
 
 	cdef c_ihandler ih
-	ih.cb = <c_ihandler_cb>c_python_ihandler_cb
+	ih.cb = <ihandler_cb>c_python_ihandler_cb
 	c_set_ihandler(&ih);
 
 	cdef c_processor p
