@@ -42,7 +42,7 @@ def print_p0fs(cursor, connection, indent):
 	r = cursor.execute("SELECT * from p0fs WHERE connection = ?", (connection, ))
 	p0fs = resolve_result(r)
 	for p0f in p0fs:
-		print("{:s} p0f: genre:'{:s}' detail:'{:s}' uptime:'{:s}' tos:'{:s}' dist:'{:d}' nat:'{:d}' fw:'{:d}'".format(
+		print("{:s} p0f: genre:'{}' detail:'{}' uptime:'{}' tos:'{}' dist:'{}' nat:'{}' fw:'{}'".format(
 			' ' * indent, p0f['p0f_genre'], p0f['p0f_detail'],
 			p0f['p0f_uptime'], p0f['p0f_tos'], p0f['p0f_dist'], p0f['p0f_nat'],
 			p0f['p0f_fw'])) 
