@@ -315,6 +315,10 @@ class smbd(connection):
 		elif Command == SMB_COM_LOGOFF_ANDX:
 			r = SMB_Logoff_AndX()
 		elif Command == SMB_COM_NT_CREATE_ANDX:
+			# FIXME return NT_STATUS_OBJECT_NAME_NOT_FOUND=0xc0000034
+			# for writes on IPC$
+			# this is used to distinguish between file shares and devices by nmap smb-enum-shares
+			# requires mapping of TreeConnect ids to names/objects
 			r = SMB_NTcreate_AndX_Response()
 			h = p.getlayer(SMB_NTcreate_AndX_Request)
 			r.FID = 0x4000
