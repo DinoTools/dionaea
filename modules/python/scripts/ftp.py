@@ -195,7 +195,6 @@ class ftpd(connection):
 		self.dtp = None
 		self.dtf = None
 		self.limits = {}#{ '_out' : 8192 }
-#		self.process()
 
 	def chroot(self, p):
 		self.basedir = p
@@ -213,6 +212,7 @@ class ftpd(connection):
 		self.basedir = parent.basedir
 
 	def handle_established(self):
+		self.processors()
 		self.reply(WELCOME_MSG, "Welcome to the ftp service")
 
 	def handle_io_in(self, data):
