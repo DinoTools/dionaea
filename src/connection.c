@@ -287,8 +287,6 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 	con->local.domain = socket_domain;
 
-//	int val=1;
-
 	switch( con->trans )
 	{
 	case connection_transport_udp:
@@ -327,11 +325,11 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 			if( socket_domain == PF_INET6 )
 			{
 				level = SOL_IPV6;
-				optname = IPV6_PKTINFO;
+				optname = IPV6_RECVPKTINFO;
 			}
 
 			if( setsockopt(con->socket, level, optname, &sockopt, sizeof(sockopt)) != 0 )
-				g_warning("con %p setsockopt fail %s", con, strerror(errno));
+				g_warning("con %p setsockopt fail domain %i level %i optname %i %s", con, socket_domain, level, optname, strerror(errno));
 		}
 
 		connection_set_nonblocking(con);
