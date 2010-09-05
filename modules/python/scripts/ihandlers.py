@@ -86,7 +86,7 @@ def start():
 
 	if "virustotal" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
 		import dionaea.virustotal
-		g_handlers.append(dionaea.virustotal.virustotalhandler())
+		g_handlers.append(dionaea.virustotal.virustotalhandler('*'))
 
 
 def stop():
