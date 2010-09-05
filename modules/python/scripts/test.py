@@ -20,16 +20,18 @@ class uniquedownloadihandler(ihandler):
 			return
 
 		for to in tos:
-			if 'urls' not in g_dionaea.config()['submit'][to]:
+			if 'urls' not in tos[to]:
 				logger.warn("your configuration lacks urls to submit to %s" % to)
 				continue
-			for url in g_dionaea.config()['submit'][to]['urls']:
+			for url in tos[to]['urls']:
 				i = incident("dionaea.upload.request")
 				i.url = url
-				i.file = icd.file
 				# copy all values for this url
-				for key in g_dionaea.config()['submit'][to]:
+				for key in tos[to]:
 					if key == 'urls':
 						continue
-					i.set(key, g_dionaea.config()['submit'][to][key])
+					if key == 'file_fieldname':
+						i.set("file://" + tos[to][key], icd.file)
+						continue
+					i.set(key, tos[to][key])
 				i.report()
