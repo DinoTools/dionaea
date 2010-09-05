@@ -38,7 +38,7 @@ class virustotalhandler(ihandler):
 			logger.warn("something is wrong with your virustotal api key")
 
 		elif j['result'] == 0:
-			logger.warn("file %s is unknown to virus total, uploading" % md5hash)
+			logger.warn("file {} is unknown to virus total, uploading".format(md5hash) )
 
 			i = incident("dionaea.upload.request")
 			i.url = "http://www.virustotal.com/api/scan_file.json"
@@ -50,17 +50,7 @@ class virustotalhandler(ihandler):
 			i._userdata = md5hash
 			i.report()
 
-			i = incident("dionaea.upload.request")
-			i.url = "http://www.virustotal.com/api/make_comment.json"
-			i.key = self.apikey
-			i.file = md5hash
-			i.tags = "malware;networkworm"
-			i.comment = "This sample was captured in the wild and uploaded by the dionaea honeypot."
-			i._callback = "dionaea.modules.python.virustotal_make_comment"
-			i._userdata = md5hash
-			i.report()
-
-		if j['result'] == 1:
+		elif j['result'] == 1:
 			date = j['report'][0]
 			scans = j['report'][1]
 			for av in scans:
@@ -73,7 +63,21 @@ class virustotalhandler(ihandler):
 
 
 	def handle_incident_dionaea_modules_python_virustotal_scan_file(self, icd):
-		pass
+		f = open(icd.path, mode='r')
+		j = json.load(f)
+		logger.debug("scan_file {}".format(j))
+
+		md5hash = icd._userdata
+		if j['result'] == 1:
+			i = incident("dionaea.upload.request")
+			i.url = "http://www.virustotal.com/api/make_comment.json"
+			i.key = self.apikey
+			i.file = md5hash
+			i.tags = "malware;networkworm"
+			i.comment = "This sample was captured in the wild and uploaded by the dionaea honeypot."
+			i._callback = "dionaea.modules.python.virustotal_make_comment"
+			i._userdata = md5hash
+			i.report()
 
 	def handle_incident_dionaea_modules_python_virustotal_make_comment(self, icd):
 		pass
