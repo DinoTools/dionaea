@@ -2,6 +2,7 @@ from dionaea.core import ihandler, incident, g_dionaea
 
 import logging
 import json
+from dionaea import pyev
 
 logger = logging.getLogger('virustotal')
 logger.setLevel(logging.DEBUG)
@@ -12,6 +13,8 @@ class virustotalhandler(ihandler):
 		ihandler.__init__(self, path)
 		self.apikey = g_dionaea.config()['modules']['python']['virustotal']['apikey']
 		self.polling = {}
+		self.comments = {}
+		self.loop = pyev.default_loop()
 	
 	def handle_incident(self, icd):
 		pass
@@ -67,17 +70,25 @@ class virustotalhandler(ihandler):
 		j = json.load(f)
 		logger.debug("scan_file {}".format(j))
 
-		md5hash = icd._userdata
 		if j['result'] == 1:
-			i = incident("dionaea.upload.request")
-			i.url = "http://www.virustotal.com/api/make_comment.json"
-			i.key = self.apikey
-			i.file = md5hash
-			i.tags = "malware;networkworm"
-			i.comment = "This sample was captured in the wild and uploaded by the dionaea honeypot."
-			i._callback = "dionaea.modules.python.virustotal_make_comment"
-			i._userdata = md5hash
-			i.report()
+			timer = pyev.Timer(60, 0, self.loop, self.__handle_comment_timeout)
+			timer.data = icd._userdata
+			self.comments[timer] = True
+			timer.start()
+		
+	def __handle_comment_timeout(self, watcher, event):
+		md5hash = watcher.data
+		del self.comments[watcher] 
+
+		i = incident("dionaea.upload.request")
+		i.url = "http://www.virustotal.com/api/make_comment.json"
+		i.key = self.apikey
+		i.file = md5hash
+		i.tags = "malware;networkworm"
+		i.comment = "This sample was captured in the wild and uploaded by the dionaea honeypot."
+		i._callback = "dionaea.modules.python.virustotal_make_comment"
+		i._userdata = md5hash
+		i.report()
 
 	def handle_incident_dionaea_modules_python_virustotal_make_comment(self, icd):
 		pass
