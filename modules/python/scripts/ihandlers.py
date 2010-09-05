@@ -83,6 +83,12 @@ def start():
 		import dionaea.nfq
 		g_handlers.append(dionaea.nfq.nfqhandler())
 
+
+	if "virustotal" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import dionaea.virustotal
+		g_handlers.append(dionaea.virustotal.virustotalhandler())
+
+
 def stop():
 	global g_handlers
 	for i in g_handlers:

@@ -36,6 +36,7 @@ PYSCRIPTS += ihandlers.py
 PYSCRIPTS += util.py
 PYSCRIPTS += store.py
 PYSCRIPTS += surfids.py
+PYSCRIPTS += virustotal.py
 PYSCRIPTS += ndrlib.py
 PYSCRIPTS += logxmpp.py
 PYSCRIPTS += __init__.py

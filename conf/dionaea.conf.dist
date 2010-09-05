@@ -265,6 +265,9 @@ modules = {
 			password = "secret"          // and this
 			dbname = "idsserver"
 		}
+		virustotal = {
+			apikey = "........." // grab it from your virustotal account
+		}
 		logsql = {
 			mode = "sqlite" // so far there is only sqlite
 			sqlite = {
@@ -367,6 +370,7 @@ modules = {
 		ihandlers = {
 			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", 
 			"logsql",
+//			"virustotal",
 //			"logxmpp",
 //			"nfq",
 //			"p0f",
