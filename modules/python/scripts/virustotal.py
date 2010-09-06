@@ -84,7 +84,7 @@ class virustotalhandler(ihandler):
 		i.url = "http://www.virustotal.com/api/make_comment.json"
 		i.key = self.apikey
 		i.file = md5hash
-		i.tags = "malware;networkworm"
+		i.tags = "honeypot;malware;networkworm"
 		i.comment = "This sample was captured in the wild and uploaded by the dionaea honeypot."
 		i._callback = "dionaea.modules.python.virustotal_make_comment"
 		i._userdata = md5hash

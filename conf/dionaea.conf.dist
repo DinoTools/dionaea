@@ -266,7 +266,7 @@ modules = {
 			dbname = "idsserver"
 		}
 		virustotal = {
-			apikey = "........." // grab it from your virustotal account
+			apikey = "........." // grab it from your virustotal account at My account -> Inbox -> Public API
 		}
 		logsql = {
 			mode = "sqlite" // so far there is only sqlite
