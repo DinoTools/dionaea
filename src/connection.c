@@ -319,17 +319,29 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 			if( socket_domain == PF_INET )
 			{
-				level = SOL_IP;
-				optname = IP_PKTINFO;
+				if( setsockopt(con->socket, SOL_IP, IP_PKTINFO, &sockopt, sizeof(sockopt)) != 0 )
+					g_warning("con %p setsockopt fail domain %i level %i optname %i %s", con, socket_domain, level, optname, strerror(errno));
+
 			}else
 			if( socket_domain == PF_INET6 )
-			{
-				level = SOL_IPV6;
-				optname = IPV6_RECVPKTINFO;
-			}
+			{ /* sometimes it is better if you have a choice ...
+			   * I just hope the cmsg type stays IPV6_PKTINFO
+			   */
 
-			if( setsockopt(con->socket, level, optname, &sockopt, sizeof(sockopt)) != 0 )
-				g_warning("con %p setsockopt fail domain %i level %i optname %i %s", con, socket_domain, level, optname, strerror(errno));
+				int r = -1; errno = ENOPROTOOPT;
+#ifdef IPv6_RECVPKTINFO
+				r = setsockopt(con->socket, SOL_IPV6, IPV6_RECVPKTINFO, &sockopt, sizeof(sockopt));
+#endif
+#ifdef IPV6_2292PKTINFO
+				if( r < 0 && errno == ENOPROTOOPT )
+					r = setsockopt(con->socket, SOL_IPV6, IPV6_2292PKTINFO, &sockopt, sizeof(sockopt));
+#endif
+				if( r < 0 && errno == ENOPROTOOPT )
+					r = setsockopt(con->socket, SOL_IPV6, IPV6_PKTINFO, &sockopt, sizeof(sockopt));
+
+				if( r < 0 )
+					g_warning("con %p setsockopt fail %s", con, strerror(errno));
+			}
 		}
 
 		connection_set_nonblocking(con);
