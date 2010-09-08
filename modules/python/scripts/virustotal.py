@@ -2,6 +2,7 @@ from dionaea.core import ihandler, incident, g_dionaea
 
 import logging
 import json
+import os
 from dionaea import pyev
 
 logger = logging.getLogger('virustotal')
