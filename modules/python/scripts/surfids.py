@@ -1,4 +1,5 @@
 from dionaea.core import ihandler, incident, g_dionaea
+from dionaea.smb import smb
 
 import os
 import logging
@@ -24,6 +25,7 @@ DT_PROTOCOL_NAME                   = 80
 DT_EMULATION_PROFILE               = 81
 DT_SHELLCODE_ACTION                = 82
 DT_DCERPC_REQUEST                  = 83
+DT_VULN_NAME                       = 84
 
 class surfidshandler(ihandler):
 	def __init__(self, path):
@@ -150,6 +152,15 @@ class surfidshandler(ihandler):
 	def _handle_incident_dionaea_modules_python_smb_dcerpc_request(self, icd):
 		con=icd.con
 		attackid = self.attacks[con]
+   
+		myuuid = icd.uuid.replace('-', '')
+		try:
+				vuln = smb.registered_services[myuuid].vulns[icd.opnum]
+		except:
+				vuln = "SMBDialogue"
+#		logger.info("WATCHME: %s" % str(vuln))
+		self.stmt_detail_add(attackid, con.local.host, DT_VULN_NAME, str(vuln))
+   
 		logger.info("dcerpc request for attackid %i" % attackid)
 		self.stmt_detail_add(attackid, con.local.host, DT_DCERPC_REQUEST, icd.uuid + ":" + str(icd.opnum))
 
