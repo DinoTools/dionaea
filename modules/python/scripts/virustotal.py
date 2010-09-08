@@ -91,5 +91,14 @@ class virustotalhandler(ihandler):
 		i.report()
 
 	def handle_incident_dionaea_modules_python_virustotal_make_comment(self, icd):
-		pass
+		f = open(icd.path, mode='r')
+		try:
+			j = json.load(f)
+		except Exception as e:
+			f.seek(0, os.SEEK_SET)
+			msg = f.readline(1024)
+			logger.warn("posting comment failed, server returned '{}'".format(msg))
+			return
+		logger.debug("comment {}".format(j))
+
 
