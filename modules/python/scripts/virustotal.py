@@ -117,7 +117,7 @@ class virustotalhandler(ihandler):
 			msg = f.readline(1024)
 			logger.warn("posting comment failed, server returned '{}'".format(msg))
 			if vtr.comment_retries > 10:
-				logger.warn("posting comment failed {:i} times, giving up".format(vtr.comment_retries))
+				logger.warn("posting comment failed {} times, giving up".format(vtr.comment_retries))
 				del self.cookies[cookie]
 				return
 			
