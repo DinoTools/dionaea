@@ -421,9 +421,9 @@ void session_upload_new(struct incident *i)
 
 	session->type = session_type_upload;
 			
-	if (incident_value_string_get(i, "url", &gstemp) == false )
+	if (incident_value_string_get(i, "_url", &gstemp) == false )
 	{
-		g_debug("dionaea.upload.request got no url in incident!");
+		g_debug("dionaea.upload.request got no _url in incident!");
 		return;
 	}
 	url = gstemp->str;
@@ -445,9 +445,8 @@ void session_upload_new(struct incident *i)
 		if( d->type == opaque_type_string)
 		{
 			/* ignore help field values */
-			if( strstr(name, "_fieldname") != NULL || 
-				strstr(name, "_ct") != NULL ||
-				strcmp(name, "url") == 0)
+			if( strstr(name, "_ct") != NULL ||
+				strcmp(name, "_url") == 0)
 				continue;
 
 			if( strcmp(name, "_callback") == 0 )

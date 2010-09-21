@@ -33,7 +33,7 @@ class virustotalhandler(ihandler):
 		self.cookies[cookie] = vtreport(icd.md5hash, icd.file)
 
 		i = incident("dionaea.upload.request")
-		i.url = "http://www.virustotal.com/api/get_file_report.json"
+		i._url = "http://www.virustotal.com/api/get_file_report.json"
 		
 		i.resource = icd.md5hash
 		i.key = self.apikey
@@ -57,7 +57,7 @@ class virustotalhandler(ihandler):
 			logger.warn("file {} is unknown to virus total, uploading".format(vtr.md5hash) )
 
 			i = incident("dionaea.upload.request")
-			i.url = "http://www.virustotal.com/api/scan_file.json"
+			i._url = "http://www.virustotal.com/api/scan_file.json"
 			i.key = self.apikey
 
 			i.set('file://file', vtr.file)
@@ -96,7 +96,7 @@ class virustotalhandler(ihandler):
 		vtr.comment_retries += 1
 
 		i = incident("dionaea.upload.request")
-		i.url = "http://www.virustotal.com/api/make_comment.json"
+		i._url = "http://www.virustotal.com/api/make_comment.json"
 		i.key = self.apikey
 		i.file = vtr.md5hash
 		i.tags = "honeypot;malware;networkworm"

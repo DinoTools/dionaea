@@ -25,7 +25,7 @@ class uniquedownloadihandler(ihandler):
 				continue
 			for url in tos[to]['urls']:
 				i = incident("dionaea.upload.request")
-				i.url = url
+				i._url = url
 				# copy all values for this url
 				for key in tos[to]:
 					if key == 'urls':
