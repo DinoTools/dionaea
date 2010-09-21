@@ -32,7 +32,7 @@
 #include <stdint.h>
 #include <unistd.h>
 #include <dirent.h>
-
+#include <stddef.h>
 
 // set terminal to char mode
 #include <termios.h>
@@ -479,6 +479,45 @@ static int cmp_ifaddrs_by_ifa_name(const void *p1, const void *p2)
 	return strcmp((*(struct ifaddrs **)p1)->ifa_name, (*(struct ifaddrs **)p2)->ifa_name);
 }
 
+PyObject *pyversion(PyObject *self, PyObject *args)
+{
+#define DICT_SET_ITEM(d, k, v) \
+	{\
+	PyObject *x = PyUnicode_FromString( (char *)g_dionaea->version->k.v); \
+	PyDict_SetItemString(d, #v, x); \
+	Py_DECREF(x); }\
+
+
+
+	PyObject *result = PyDict_New();
+	PyObject *dionaea = PyDict_New();
+	DICT_SET_ITEM(dionaea, dionaea, version);
+
+	PyObject *compiler = PyDict_New();
+
+	DICT_SET_ITEM(compiler, compiler, os);
+	DICT_SET_ITEM(compiler, compiler, arch);
+	DICT_SET_ITEM(compiler, compiler, date);
+	DICT_SET_ITEM(compiler, compiler, time);
+	DICT_SET_ITEM(compiler, compiler, name);
+	DICT_SET_ITEM(compiler, compiler, version);
+
+	PyObject *info = PyDict_New();
+	DICT_SET_ITEM(info, info, node);
+	DICT_SET_ITEM(info, info, sys);
+	DICT_SET_ITEM(info, info, machine);
+	DICT_SET_ITEM(info, info, release);
+
+#undef DICT_SET_ITEM
+
+	PyDict_SetItemString(result, "dionaea", dionaea);
+	Py_DECREF(dionaea);
+	PyDict_SetItemString(result, "compiler", compiler);
+	Py_DECREF(compiler);
+	PyDict_SetItemString(result, "info", info);
+	Py_DECREF(info);
+	return result;
+}
 
 PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 {

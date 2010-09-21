@@ -71,7 +71,7 @@
 #include "threads.h"
 #include "processor.h"
 
-void show_version(void);
+void show_version(struct version *);
 void show_help(bool defaults);
 
 #define D_LOG_DOMAIN "dionaea"
@@ -194,7 +194,7 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			break;
 
 		case 'V':
-			show_version();
+			show_version(NULL);
 			exit(0);
 			break;
 
@@ -279,7 +279,7 @@ bool options_validate(struct options *opt)
 	return true;
 }
 
-void show_version(void)
+void show_version(struct version *ver)
 {
 
 #if defined(__GNUC__)
@@ -342,27 +342,55 @@ void show_version(void)
 	#define MY_ARCH "Unknown Architecture"
 #endif
 
+	struct version x;
+	if( ver == NULL )
+		ver = &x;
+
 	struct utsname sysinfo;
 	int i = uname(&sysinfo);
 
+	ver->dionaea.version = VERSION;
+	ver->compiler.os = MY_OS;
+	ver->compiler.arch = MY_ARCH;
+	ver->compiler.date = __DATE__;
+	ver->compiler.time = __TIME__;
+	ver->compiler.name = MY_COMPILER;
+	ver->compiler.version = __VERSION__;
+
+	ver->info.node = g_strdup(sysinfo.nodename);
+	ver->info.sys = g_strdup(sysinfo.sysname);
+	ver->info.machine = g_strdup(sysinfo.machine);
+	ver->info.release = g_strdup(sysinfo.release);
+
+
 	printf("\n");
-	printf("Dionaea Version %s \n",VERSION);
-	printf("Compiled on %s/%s at %s %s with %s %s \n",MY_OS,MY_ARCH,__DATE__, __TIME__,MY_COMPILER,__VERSION__);
+	printf("Dionaea Version %s \n", ver->dionaea.version);
+	printf("Compiled on %s/%s at %s %s with %s %s \n",
+		   ver->compiler.os,
+		   ver->compiler.arch,
+		   ver->compiler.date, 
+		   ver->compiler.time,
+		   ver->compiler.name,
+		   ver->compiler.version);
 
 	if( i == 0 )
 	{
 		printf("Started on %s running %s/%s release %s\n",
-			   sysinfo.nodename,
-			   sysinfo.sysname, 
-			   sysinfo.machine,
-			   sysinfo.release
+			   ver->info.node,
+			   ver->info.sys, 
+			   ver->info.machine,
+			   ver->info.release
 			  );
 	}
 
+	if( ver == &x )
+	{
+		g_free(ver->info.node);
+		g_free(ver->info.sys);
+		g_free(ver->info.machine);
+		g_free(ver->info.release);
+	}
 	printf("\n");
-#undef MY_OS
-#undef MY_ARCH
-#undef MY_COMPILER
 }
 
 void show_help(bool defaults)
@@ -393,7 +421,7 @@ void show_help(bool defaults)
 		{"V",   "version",              "show version",                         ""},
 		{"w",   "workingdir=DIR",       "set the process' working dir to DIR",          PREFIX},
 	};
-	show_version();
+	show_version(NULL);
 
 	for( int i=0;i<sizeof(myopts)/sizeof(help_info);i++ )
 	{
@@ -421,7 +449,8 @@ static void log_ev_fatal_error (const char *msg)
 
 int main (int argc, char *argv[])
 {
-	show_version();
+	struct version v;
+	show_version(&v);
 	g_log_set_default_handler(logger_stdout_log, NULL);
 
 	struct options *opt = malloc(sizeof(struct options));
@@ -472,7 +501,9 @@ int main (int argc, char *argv[])
 	}
 
 	struct dionaea *d = g_malloc0(sizeof(struct dionaea));
+	d->version = &v;
 	g_dionaea = d;
+
 
 	// config
 	if( (d->config.config = lcfg_new(opt->config)) == NULL )

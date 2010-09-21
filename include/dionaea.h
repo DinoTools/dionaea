@@ -38,6 +38,31 @@ struct logging;
 struct ihandlers;
 struct threads;
 
+struct version
+{
+	struct
+	{
+		char *version;
+	} dionaea;
+	struct
+	{
+		char *os;
+		char *arch;
+		char *date;
+		char *time;
+		char *name;
+		char *version;
+	} compiler;
+	struct
+	{
+		char *node;
+		char *sys;
+		char *machine;
+		char *release;
+	} info;
+};
+
+
 struct dionaea
 {
 	struct
@@ -51,6 +76,8 @@ struct dionaea
 	{
 		int fds;
 	} limits;
+
+	struct version *version;
 
 	struct dns *dns;
 

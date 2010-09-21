@@ -39,6 +39,7 @@ cdef extern from "module.h":
 	char * c_g_strdup "g_strdup" (char *)
 	cdef object c_pygetifaddrs "pygetifaddrs"(object self, object args)
 	cdef object c_pylcfg "pylcfg"(object self, object args)
+	cdef object c_version "pyversion"(object self, object args)
 	
 
 #cdef extern from "../../include/dionaea.h":
@@ -53,6 +54,9 @@ cdef class dionaea:
 		return c_pylcfg(<object> NULL, <object> NULL)
 	def getifaddrs(self):
 		return c_pygetifaddrs(<object> NULL, <object> NULL)
+	def version(self):
+		return c_version(<object> NULL, <object> NULL)
+	
 
 g_dionaea = dionaea() 
 
