@@ -268,6 +268,12 @@ modules = {
 		virustotal = {
 			apikey = "........." // grab it from your virustotal account at My account -> Inbox -> Public API
 		}
+		mwserv = {			// ask your mwserv backend provider for needed values
+			url = "" 		// the url to send the submission requests to
+			maintainer = ""	// username of the maintainer of this sensor
+			guid = "" 		// guid of this sensor, as generated serverside; typically 8 chars
+			secret = ""		// shared secret used for authentication aka password; typically 48 chars
+		}
 		logsql = {
 			mode = "sqlite" // so far there is only sqlite
 			sqlite = {

@@ -88,6 +88,9 @@ def start():
 		import dionaea.virustotal
 		g_handlers.append(dionaea.virustotal.virustotalhandler('*'))
 
+	if "mwserv" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import dionaea.mwserv
+		g_handlers.append(dionaea.mwserv.mwservhandler('*'))
 
 def stop():
 	global g_handlers
