@@ -44,7 +44,7 @@ void log_wrap(char *name, int number, char *file, int line, char *msg);
 void traceback(void);
 PyObject *pygetifaddrs(PyObject *self, PyObject *args);
 PyObject *pylcfg(PyObject *self, PyObject *args);
-
+PyObject *pyversion(PyObject *self, PyObject *args);
 
 struct ihandler;
 struct incident;
