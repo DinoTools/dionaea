@@ -47,6 +47,11 @@ struct dionaea
 		char *name;
 	} config;
 
+	struct
+	{
+		int fds;
+	} limits;
+
 	struct dns *dns;
 
 	struct ev_loop *loop;

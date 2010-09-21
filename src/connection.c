@@ -1736,6 +1736,16 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 			break;
 		}
 
+		if( accepted_socket > g_dionaea->limits.fds * 70/100 )
+		{
+			g_warning("Running out of fds, closing connection (fd %i limit %i applied limit %i)", 
+					  accepted_socket,
+					  g_dionaea->limits.fds,
+					  g_dionaea->limits.fds * 70/100);
+			close(accepted_socket);
+			continue;
+		}
+
 		struct connection *accepted = connection_new(connection_transport_tcp);
 		connection_set_type(accepted, connection_type_accept);
 		accepted->socket = accepted_socket;
@@ -2909,6 +2919,18 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 		if( accepted_socket == -1 && (errno == EAGAIN || errno == EWOULDBLOCK) )
 			break;
+
+
+		if( accepted_socket > g_dionaea->limits.fds * 70/100 )
+		{
+			g_warning("Running out of fds, closing connection (fd %i limit %i applied limit %i)", 
+					  accepted_socket,
+					  g_dionaea->limits.fds,
+					  g_dionaea->limits.fds * 70/100);
+			close(accepted_socket);
+			continue;
+		}
+
 
 		struct connection *accepted = connection_new(connection_transport_tls);
 		SSL_CTX_free(accepted->transport.tls.ctx);

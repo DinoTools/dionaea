@@ -43,6 +43,10 @@
 #include <stdlib.h>
 #include <ctype.h>
 
+#include <sys/time.h>
+#include <sys/resource.h>
+
+
 #include <lcfg/lcfg.h>
 #include <lcfgx/lcfgx_tree.h>
 
@@ -713,6 +717,18 @@ int main (int argc, char *argv[])
 #undef print_umask
 #endif
 
+	// getrlimit
+	struct rlimit rlim;
+	if( getrlimit(RLIMIT_NOFILE, &rlim) != 0)
+	{
+		g_warning("Could not get limit for fds (%s)",  strerror(errno));
+		g_dionaea->limits.fds = 1024;
+	}else
+	{
+		g_dionaea->limits.fds = rlim.rlim_cur;
+	}
+
+	g_info("Using %i as limit for fds", g_dionaea->limits.fds);
 
 	// drop
 	if( opt->group.name != NULL && 
