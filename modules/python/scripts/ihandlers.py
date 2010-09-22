@@ -96,6 +96,7 @@ def stop():
 	global g_handlers
 	for i in g_handlers:
 		logger.debug("deleting %s" % str(i))
+		i.stop()
 		del i
 	del g_handlers
 

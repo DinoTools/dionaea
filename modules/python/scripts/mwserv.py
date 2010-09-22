@@ -40,6 +40,12 @@ class mwservhandler(ihandler):
 		self.heartbeat_timer = pyev.Timer(5., 120, self.loop, self._heartbeat)
 		self.heartbeat_timer.start()
 
+	def stop(self):
+		self.heartbeat_timer.stop()
+		self.heartbeat_timer = None
+		self.loop = None
+
+
 	def _heartbeat(self, events, data):
 		logger.info("mwserv _heartbeat")
 		i = incident("dionaea.upload.request")

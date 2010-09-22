@@ -984,6 +984,12 @@ cdef class ihandler:
 	def __dealloc__(self):
 		c_ihandler_free(self.thisptr)
 
+	def start(self):
+		pass
+
+	def stop(self):
+		pass
+
 	def register(self):
 		pass
 

@@ -25,6 +25,13 @@ class virustotalhandler(ihandler):
 		self.cookies = {}
 		self.loop = pyev.default_loop()
 	
+	def stop(self):
+		for c in self.cookies:
+			cookie = self.cookies[c]
+			cookie.comment_timer.stop()
+		self.loop = None
+		self.cookies = None
+
 	def handle_incident(self, icd):
 		pass
 
@@ -100,7 +107,7 @@ class virustotalhandler(ihandler):
 		i.key = self.apikey
 		i.file = vtr.md5hash
 		i.tags = "honeypot;malware;networkworm"
-		i.comment = "This sample was captured in the wild and uploaded by the dionaea honeypot, still testing comments ..."
+		i.comment = "This sample was captured in the wild and uploaded by the dionaea honeypot."
 		i._callback = "dionaea.modules.python.virustotal_make_comment"
 		i._userdata = cookie
 		i.report()
