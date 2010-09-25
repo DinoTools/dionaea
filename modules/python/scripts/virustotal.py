@@ -55,7 +55,8 @@ class virustotalhandler(ihandler):
 	def stop(self):
 		for c in self.cookies:
 			cookie = self.cookies[c]
-			cookie.comment_timer.stop()
+			if cookie.comment_timer is not None:
+				cookie.comment_timer.stop()
 		self.loop = None
 		self.cookies = None
 
