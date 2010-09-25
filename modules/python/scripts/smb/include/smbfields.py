@@ -4,6 +4,7 @@
 #*
 #*
 #*
+#* Copyright (C) 2010  Markus Koetter & Tan Kean Siong
 #* Copyright (C) 2009  Paul Baecher & Markus Koetter & Mark Schloesser
 #* 
 #* This program is free software; you can redistribute it and/or
@@ -24,6 +25,7 @@
 #*             contact nepenthesdev@gmail.com  
 #*
 #*******************************************************************************/
+
 
 import datetime
 from uuid import UUID

@@ -25,17 +25,16 @@
 #*             contact nepenthesdev@gmail.com  
 #*
 #*******************************************************************************/
-
-#
-# The whole logic is taken from tftpy
-# http://tftpy.sourceforge.net/
-# tftpy is licensed using CNRI Python License
-# which is claimed to be incompatible with the gpl
-# http://www.gnu.org/philosophy/license-list.html
+#* The whole logic is taken from tftpy
+#* http://tftpy.sourceforge.net/
+#* tftpy is licensed using CNRI Python License
+#* which is claimed to be incompatible with the gpl
+#* http://www.gnu.org/philosophy/license-list.html
 # 
-# Nevertheless, the tftpy author Michael P. Soulier
-# gave us a non exclusive permission to use his code in 
-# our gpl project
+#* Nevertheless, the tftpy author Michael P. Soulier
+#* gave us a non exclusive permission to use his code in 
+#* our gpl project
+#*******************************************************************************
 
 from dionaea.core import connection, ihandler, g_dionaea, incident
 
