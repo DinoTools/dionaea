@@ -65,6 +65,7 @@ class RPCService:
 	def processrequest(cls, service, con, opnum, p):
 		if opnum in cls.ops:
 			opname = cls.ops[opnum]
+			
 			method = getattr(cls, "handle_" + opname, None)
 			if method != None:
 				if opnum in cls.vulns:
@@ -1938,9 +1939,43 @@ class spoolss(RPCService):
 	uuid = UUID('12345678-1234-abcd-ef00-0123456789ab').hex
 
 	ops = {
-		0x00: "EnumPrinters"
+		0x00: "EnumPrinters",
+		0x11: "StartDocPrinter",
+		0x13: "WritePrinter",
+		0x45: "OpenPrinter"		
 
 	}
+
+	class DOC_INFO_1:
+		# DOC_INFO_1 Structure
+		# 
+		# http://msdn.microsoft.com/en-us/library/dd162471%28v=VS.85%29.aspx
+		# 
+		#typedef struct _DOC_INFO_1 {
+		#  LPTSTR pDocName;
+		#  LPTSTR pOutputFile;
+		#  LPTSTR pDatatype;
+		#} DOC_INFO_1;
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Level = self.__packer.unpack_long()
+				self.Pointer = self.__packer.unpack_pointer()
+				self.pDocName = self.__packer.unpack_pointer()
+				self.pOutputFile = self.__packer.unpack_pointer()
+				self.pDatatype = self.__packer.unpack_pointer()
+				self.DocName = self.__packer.unpack_string()
+				self.OutputFile = self.__packer.unpack_string() 
+				#self.DataType = self.__packer.unpack_string()
+				
+				rpclog.debug("DocName %s OutputFile %s" %(self.DocName,self.OutputFile))
+				
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				pass
 
 	class PRINTER_INFO_1 :
 		# PRINTER_INFO_1 Structure
@@ -2036,6 +2071,123 @@ class spoolss(RPCService):
 			r.pack_long(0)
 			
 		return r.get_buffer()
+
+	@classmethod
+	def handle_OpenPrinter(cls, p):
+		#OpenPrinter Function		
+		#
+		#http://msdn.microsoft.com/en-us/library/dd162751%28v=VS.85%29.aspx
+		#
+		#BOOL OpenPrinter(
+		#  __in   LPTSTR pPrinterName,
+		#  __out  LPHANDLE phPrinter,
+		#  __in   LPPRINTER_DEFAULTS pDefault
+		#);
+
+		x = ndrlib.Unpacker(p.StubData)
+		pPrinterName = x.unpack_pointer()
+		PrinterName = x.unpack_string()
+		print("PrinterName %s" % PrinterName)
+		
+		pDatatype = x.unpack_pointer()
+		print("Datatype %s" % pDatatype)
+		
+		cbBuf = x.unpack_long()
+		pDevMode = x.unpack_pointer()
+		print("DevMode %s" % pDevMode)
+		
+		DesiredAccess = x.unpack_long()
+		print("DesiredAccess %x" % DesiredAccess)
+		
+		#Below is the ClientInfo structure which showed in
+		#Microsoft Network Monitor, but I cant find the correct doc to refer
+		Level = x.unpack_long()
+		SwitchValue = x.unpack_long()
+		Pointer = x.unpack_pointer()
+		Size = x.unpack_long()
+		Buff = x.unpack_raw(Size)
+		
+		print("Size %i Buff %s" % (Size, Buff))
+		
+		r = ndrlib.Packer()
+		# Returned Handle
+		r.pack_raw(b'\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0')
+		# Success
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_StartDocPrinter(cls, p):
+		#StartDocPrinter Function		
+		#
+		#http://msdn.microsoft.com/en-us/library/dd145115%28v=VS.85%29.aspx
+		#
+		#DWORD StartDocPrinter(
+		#  __in  HANDLE hPrinter,
+		#  __in  DWORD Level,
+		#  __in  LPBYTE pDocInfo
+		#);
+
+		x = ndrlib.Unpacker(p.StubData)
+		hPrinter = x.unpack_raw(20)
+		rpclog.debug("hPrinter %s" % hPrinter)
+		
+		Level = x.unpack_long()
+		rpclog.debug("Level %i" % Level)
+		
+		DocInfo = spoolss.DOC_INFO_1(x)
+		r = ndrlib.Packer()
+		# Job ID
+		r.pack_long(3)
+		# Success
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_WritePrinter(cls, p):
+		#WritePrinter Function		
+		#
+		#http://msdn.microsoft.com/en-us/library/dd145226%28v=VS.85%29.aspx
+		#
+		#BOOL WritePrinter(
+		#  __in   HANDLE hPrinter,
+		#  __in   LPVOID pBuf,
+		#  __in   DWORD cbBuf,
+		#  __out  LPDWORD pcWritten
+		#);
+
+
+
+		# For MS10-061 SPOOLSS exploit with metasploit,
+		# the payload has sent in packet fragment. 
+		# The packet dissection for the first and middle fragment is different, here the trick needed to make it work.
+		# Meaning of PacketFlags in dcerpc header:
+		# 0x00 : Middle fragment
+		# 0x01 : First fragment
+		# 0x02 : Last fragment
+		# 0x03 : No fragment needed
+
+		x = ndrlib.Unpacker(p.StubData)
+		hPrinter = x.unpack_raw(20)
+		rpclog.debug("hPrinter %s" % hPrinter)
+
+		cbBuf = x.unpack_long()
+		rpclog.debug("cbBuf %i" % cbBuf)
+
+		Buf = x.unpack_raw(cbBuf)
+		rpclog.debug("buf {}".format(Buf))
+		r = ndrlib.Packer()
+
+		if p.PacketFlags == 0:
+			return None
+		elif p.PacketFlags == 1:
+			return None
+		elif p.PacketFlags == 2:
+			return b""
+
+
 
 STYPE_DISKTREE = 0x00000000 # Disk drive
 STYPE_PRINTQ   = 0x00000001 # Print queue

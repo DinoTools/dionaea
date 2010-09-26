@@ -4,8 +4,7 @@
 #*
 #*
 #*
-#* Copyright (C) 2010  Markus Koetter & Tan Kean Siong
-#* Copyright (C) 2009  Paul Baecher & Markus Koetter & Mark Schloesser
+#* Copyright (C) 2009  Paul Baecher & Markus Koetter & Mark Schloesser & Tan Kean Siong
 #* 
 #* This program is free software; you can redistribute it and/or
 #* modify it under the terms of the GNU General Public License
