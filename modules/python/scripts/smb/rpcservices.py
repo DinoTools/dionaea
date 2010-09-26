@@ -2268,6 +2268,11 @@ __shares__ = {
 		'comment' : 'Remote IPC', 
 		'path': '' 
 	},
+	'Printer' : {
+		'type' : STYPE_PRINTQ,
+		'comment' : 'Microsoft XPS Document Writer',
+		'path': '',
+	}
 }
 
 
