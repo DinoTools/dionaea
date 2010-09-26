@@ -73,6 +73,7 @@ class smbd(connection):
 		self.outbuf = None
 		self.fids = {}
 		self.bistream_prefix = 'smb-'
+		self.printer = b'' # spoolss file "queue"
 
 	def handle_established(self):
 #		self.timeouts.sustain = 120

@@ -27,10 +27,13 @@
 #*******************************************************************************/
 
 import logging
+import tempfile
+
 from uuid import UUID
 from time import time, localtime, altzone
 
 from dionaea import ndrlib
+from dionaea.core import g_dionaea, incident
 from .include.smbfields import DCERPC_Header, DCERPC_Response
 
 rpclog = logging.getLogger('rpcservices')
@@ -1942,6 +1945,8 @@ class spoolss(RPCService):
 		0x00: "EnumPrinters",
 		0x11: "StartDocPrinter",
 		0x13: "WritePrinter",
+		0x17: "EndDocPrinter",
+		0x1d: "ClosePrinter",
 		0x45: "OpenPrinter"		
 
 	}
@@ -1971,7 +1976,7 @@ class spoolss(RPCService):
 				self.OutputFile = self.__packer.unpack_string() 
 				#self.DataType = self.__packer.unpack_string()
 				
-				rpclog.debug("DocName %s OutputFile %s" %(self.DocName,self.OutputFile))
+#				rpclog.debug("DocName %s OutputFile %s" %(self.DocName,self.OutputFile))
 				
 		def pack(self):
 			if isinstance(self.__packer, ndrlib.Packer):
@@ -2118,6 +2123,13 @@ class spoolss(RPCService):
 		return r.get_buffer()
 
 	@classmethod
+	def handle_ClosePrinter(cls, con, p):
+		r = ndrlib.Packer()
+		r.pack_long(0)
+		return r.get_buffer()
+		
+
+	@classmethod
 	def handle_StartDocPrinter(cls, con, p):
 		#StartDocPrinter Function		
 		#
@@ -2137,12 +2149,33 @@ class spoolss(RPCService):
 		rpclog.debug("Level %i" % Level)
 		
 		DocInfo = spoolss.DOC_INFO_1(x)
+		DocName = DocInfo.DocName.decode('UTF-16')[:-1]
+		OutputFile = DocInfo.OutputFile.decode('UTF-16')[:-1]
+
+		rpclog.debug("docname {} outputfile {}".format(DocName, OutputFile))
+
+		if OutputFile.startswith('\\') and OutputFile.endswith('\PIPE\ATSVC'):
+			# FIXME PIPE ATSVC COMMAND
+			pass
+		else:
+			i = incident("dionaea.download.offer")
+			i.con = con
+			i.url = "spoolss://" + con.remote.host + '/' + OutputFile
+			i.report()
+
+
 		r = ndrlib.Packer()
 		# Job ID
 		r.pack_long(3)
 		# Success
 		r.pack_long(0)
 
+		return r.get_buffer()
+
+	@classmethod
+	def handle_EndDocPrinter(cls, con, p):
+		r=ndrlib.Packer()
+		r.pack_long(0)
 		return r.get_buffer()
 
 	@classmethod
@@ -2168,24 +2201,47 @@ class spoolss(RPCService):
 		# 0x01 : First fragment
 		# 0x02 : Last fragment
 		# 0x03 : No fragment needed
-
-		x = ndrlib.Unpacker(p.StubData)
-		hPrinter = x.unpack_raw(20)
-		rpclog.debug("hPrinter %s" % hPrinter)
-
-		cbBuf = x.unpack_long()
-		rpclog.debug("cbBuf %i" % cbBuf)
-
-		Buf = x.unpack_raw(cbBuf)
-		rpclog.debug("buf {}".format(Buf))
-		r = ndrlib.Packer()
+		#
+		# FIXME actually this defragmentation should be in smbd.process_dcerpc_packet
 
 		if p.PacketFlags == 0:
+			con.printer += p.StubData
 			return None
 		elif p.PacketFlags == 1:
+			con.printer += p.StubData
 			return None
 		elif p.PacketFlags == 2:
-			return b""
+			con.printer += p.StubData
+			x = ndrlib.Unpacker(con.printer)
+			hPrinter = x.unpack_raw(20)
+			cbBuf = x.unpack_long()
+			Buf = x.unpack_raw(cbBuf)
+			x = tempfile.NamedTemporaryFile(delete=False, prefix="spoolss-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
+			x.write(Buf)
+			x.close()
+
+			i = incident("dionaea.download.complete")
+			i.path = x.name
+			i.url = "spoolss://" + con.remote.host
+			i.con = con
+			i.report()
+
+			r = ndrlib.Packer()
+			r.pack_long(len(Buf))
+			r.pack_long(0)
+			return r.get_buffer()
+
+		elif p.PacketFlags == 3:
+			x = ndrlib.Unpacker(p.StubData)
+			hPrinter = x.unpack_raw(20)
+			cbBuf = x.unpack_long()
+
+			r = ndrlib.Packer()
+			r.pack_long(cbBuf)
+			r.pack_long(0)
+			return r.get_buffer()
+
+
 
 
 
