@@ -100,7 +100,6 @@ class mwservhandler(ihandler):
 			i = incident("dionaea.upload.request")
 			i._url = self.backendurl + 'nepenthes/submit'
 
-			i.filepath = mr.filepath
 			i.sha512 = mr.sha512h
 			i.maintainer = self.maintainer
 			i.guid = self.guid
