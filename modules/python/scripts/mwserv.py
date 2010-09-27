@@ -1,3 +1,30 @@
+#********************************************************************************
+#*                               Dionaea
+#*                           - catches bugs -
+#*
+#*
+#*
+#* Copyright (C) 2010  Mark Schloesser
+#* 
+#* This program is free software; you can redistribute it and/or
+#* modify it under the terms of the GNU General Public License
+#* as published by the Free Software Foundation; either version 2
+#* of the License, or (at your option) any later version.
+#* 
+#* This program is distributed in the hope that it will be useful,
+#* but WITHOUT ANY WARRANTY; without even the implied warranty of
+#* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#* GNU General Public License for more details.
+#* 
+#* You should have received a copy of the GNU General Public License
+#* along with this program; if not, write to the Free Software
+#* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#* 
+#* 
+#*             contact nepenthesdev@gmail.com  
+#*
+#*******************************************************************************/
+
 from dionaea.core import ihandler, incident, g_dionaea
 from dionaea.util import md5file, sha512file
 from dionaea import pyev
@@ -39,6 +66,12 @@ class mwservhandler(ihandler):
 		self.loop = pyev.default_loop()
 		self.heartbeat_timer = pyev.Timer(5., 120, self.loop, self._heartbeat)
 		self.heartbeat_timer.start()
+
+	def stop(self):
+		self.heartbeat_timer.stop()
+		self.heartbeat_timer = None
+		self.loop = None
+
 
 	def _heartbeat(self, events, data):
 		logger.info("mwserv _heartbeat")

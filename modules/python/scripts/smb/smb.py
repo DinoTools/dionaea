@@ -4,6 +4,7 @@
 #*
 #*
 #*
+#* Copyright (C) 2010  Markus Koetter & Tan Kean Siong
 #* Copyright (C) 2009  Paul Baecher & Markus Koetter & Mark Schloesser
 #* 
 #* This program is free software; you can redistribute it and/or
@@ -72,6 +73,7 @@ class smbd(connection):
 		self.outbuf = None
 		self.fids = {}
 		self.bistream_prefix = 'smb-'
+		self.printer = b'' # spoolss file "queue"
 
 	def handle_established(self):
 #		self.timeouts.sustain = 120

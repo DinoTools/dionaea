@@ -1,3 +1,9 @@
+#********************************************************************************
+#*                               Dionaea
+#*                           - catches bugs -
+#*
+#*
+#*
 # Copyright (c) 2009 Markus Koetter
 # Copyright (c) 2001-2007 Twisted Matrix Laboratories.
 # Copyright (c) 2001-2009
@@ -53,6 +59,11 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+#*
+#*             contact nepenthesdev@gmail.com  
+#*
+#*******************************************************************************/
+
 
 
 # ftp server 

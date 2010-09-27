@@ -1,3 +1,30 @@
+#********************************************************************************
+#*                               Dionaea
+#*                           - catches bugs -
+#*
+#*
+#*
+#* Copyright (C) 2010  Markus Koetter
+#* 
+#* This program is free software; you can redistribute it and/or
+#* modify it under the terms of the GNU General Public License
+#* as published by the Free Software Foundation; either version 2
+#* of the License, or (at your option) any later version.
+#* 
+#* This program is distributed in the hope that it will be useful,
+#* but WITHOUT ANY WARRANTY; without even the implied warranty of
+#* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
+#* GNU General Public License for more details.
+#* 
+#* You should have received a copy of the GNU General Public License
+#* along with this program; if not, write to the Free Software
+#* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
+#* 
+#* 
+#*             contact nepenthesdev@gmail.com  
+#*
+#*******************************************************************************/
+
 from dionaea.core import ihandler, incident, g_dionaea
 
 import logging
@@ -25,6 +52,14 @@ class virustotalhandler(ihandler):
 		self.cookies = {}
 		self.loop = pyev.default_loop()
 	
+	def stop(self):
+		for c in self.cookies:
+			cookie = self.cookies[c]
+			if cookie.comment_timer is not None:
+				cookie.comment_timer.stop()
+		self.loop = None
+		self.cookies = None
+
 	def handle_incident(self, icd):
 		pass
 
@@ -100,7 +135,7 @@ class virustotalhandler(ihandler):
 		i.key = self.apikey
 		i.file = vtr.md5hash
 		i.tags = "honeypot;malware;networkworm"
-		i.comment = "This sample was captured in the wild and uploaded by the dionaea honeypot, still testing comments ..."
+		i.comment = "This sample was captured in the wild and uploaded by the dionaea honeypot."
 		i._callback = "dionaea.modules.python.virustotal_make_comment"
 		i._userdata = cookie
 		i.report()

@@ -4,6 +4,7 @@
 #*
 #*
 #*
+#* Copyright (C) 2010  Markus Koetter & Tan Kean Siong
 #* Copyright (C) 2009  Paul Baecher & Markus Koetter & Mark Schloesser
 #* 
 #* This program is free software; you can redistribute it and/or
@@ -26,10 +27,13 @@
 #*******************************************************************************/
 
 import logging
+import tempfile
+
 from uuid import UUID
 from time import time, localtime, altzone
 
 from dionaea import ndrlib
+from dionaea.core import g_dionaea, incident
 from .include.smbfields import DCERPC_Header, DCERPC_Response
 
 rpclog = logging.getLogger('rpcservices')
@@ -64,6 +68,7 @@ class RPCService:
 	def processrequest(cls, service, con, opnum, p):
 		if opnum in cls.ops:
 			opname = cls.ops[opnum]
+			
 			method = getattr(cls, "handle_" + opname, None)
 			if method != None:
 				if opnum in cls.vulns:
@@ -75,7 +80,7 @@ class RPCService:
 				r = DCERPC_Header() / DCERPC_Response()
 
 				try:
-					data = method(p)
+					data = method(con, p)
 				except DCERPCValueError as e:
 					rpclog.warn("DCERPCValueError %s" % e)
 					return None
@@ -125,7 +130,7 @@ class ATSVC(RPCService):
 
 	#this function have not tested for the moment
 	@classmethod
-	def handle_NetrJobEnum(cls,p):
+	def handle_NetrJobEnum(cls, con, p):
 		# 3.2.5.2.3 NetrJobEnum (Opnum 2)
 		#
 		# http://msdn.microsoft.com/en-us/library/cc248425%28PROT.10%29.aspx
@@ -190,7 +195,7 @@ class DCOM(RPCService):
 	}
 
 	@classmethod
-	def handle_RemoteActivation(cls, p):
+	def handle_RemoteActivation(cls,  con, p):
 		# MS03-026
 		pass
 
@@ -210,7 +215,7 @@ class DSSETUP(RPCService):
 	}
 
 	@classmethod
-	def handle_DsRolerUpgradeDownlevelServer(cls, p):
+	def handle_DsRolerUpgradeDownlevelServer(cls,  con, p):
 		# MS04-011
 		pass
 
@@ -262,7 +267,7 @@ class ISystemActivator(RPCService):
 	}
 
 	@classmethod
-	def handle_RemoteCreateInstance(cls, p):
+	def handle_RemoteCreateInstance(cls, con, p):
 		# MS04-012
 		pass
 
@@ -416,7 +421,7 @@ class IOXIDResolver(RPCService):
 			return 2 + 2 + len(self.PrincName.encode('utf16')[2:]) + 2
 
 	@classmethod
-	def handle_ServerAlive2(cls, dce):
+	def handle_ServerAlive2(cls, con, dce):
 
 		# http://msdn.microsoft.com/en-us/library/cc226953%28PROT.10%29.aspx
 		#
@@ -783,7 +788,7 @@ class lsarpc(RPCService):
 	}
 
 	@classmethod
-	def handle_OpenPolicy(cls,p):
+	def handle_OpenPolicy(cls, con, p):
 		# 3.1.4.4.1 LsarOpenPolicy2 (Opnum 44)
 		#
 		# http://msdn.microsoft.com/en-us/library/cc234337%28PROT.10%29.aspx
@@ -814,7 +819,7 @@ class lsarpc(RPCService):
 		return r.get_buffer()
 
 	@classmethod
-	def handle_LookupNames2(cls,p):
+	def handle_LookupNames2(cls, con, p):
 		# 3.1.4.7 LsarLookupNames2 (Opnum 58)
 		#
 		# http://msdn.microsoft.com/en-us/library/cc234494%28PROT.13%29.aspx
@@ -865,7 +870,7 @@ class lsarpc(RPCService):
 		return r.get_buffer()
 
 	@classmethod
-	def handle_LookupSids2(cls,p):
+	def handle_LookupSids2(cls, con, p):
 		# 3.1.4.10 LsarLookupSids2 (Opnum 57)
 		#
 		# http://msdn.microsoft.com/en-us/library/cc234487%28PROT.13%29.aspx
@@ -913,7 +918,7 @@ class lsarpc(RPCService):
 		return r.get_buffer()
 	
 	@classmethod
-	def handle_Close(cls,p):
+	def handle_Close(cls, con, p):
 		#3.1.4.3 LsarClose (Opnum 0)
 		#
 		#http://msdn.microsoft.com/en-us/library/cc234490%28v=PROT.13%29.aspx
@@ -951,12 +956,12 @@ class MSMQ(RPCService):
 	}
 
 	@classmethod
-	def handle_QMCreateObjectInternal(cls, p):
+	def handle_QMCreateObjectInternal(cls, con, p):
 		# MS07-065
 		pass
 
 	@classmethod
-	def handle_QMDeleteObject(cls, p):
+	def handle_QMDeleteObject(cls, con, p):
 		# MS05-017
 		pass
 
@@ -986,12 +991,12 @@ class NWWKS(RPCService):
 	}
 
 	@classmethod
-	def handle_NwOpenEnumNdsSubTrees(cls, p):
+	def handle_NwOpenEnumNdsSubTrees(cls, con, p):
 		# MS06-066
 		pass
 
 	@classmethod
-	def handle_NwChangePassword(cls, p):
+	def handle_NwChangePassword(cls, con, p):
 		# MS06-066
 		pass
 
@@ -1011,7 +1016,7 @@ class PNP(RPCService):
 	}
 
 	@classmethod
-	def handle_PNP_QueryResConfList(cls, p):
+	def handle_PNP_QueryResConfList(cls, con, p):
 		# MS05-39
 		pass
 
@@ -1131,7 +1136,7 @@ class MGMT(RPCService):
 			for i in self.if_id:
 				i.show()
 	@classmethod
-	def handle_inq_if_ids(cls, p):
+	def handle_inq_if_ids(cls, con, p):
 		# 
 		# void rpc__mgmt_inq_if_ids
 		# (
@@ -1149,19 +1154,19 @@ class MGMT(RPCService):
 		return r.get_buffer()
 
 	@classmethod
-	def handle_inq_stats(cls, p):
+	def handle_inq_stats(cls, con, p):
 		pass
 
 	@classmethod
-	def handle_is_server_listening(cls, p):
+	def handle_is_server_listening(cls, con, p):
 		pass
 
 	@classmethod
-	def handle_stop_server_listening(cls, p):
+	def handle_stop_server_listening(cls, con, p):
 		pass
 
 	@classmethod
-	def handle_inq_princ_name(cls, p):
+	def handle_inq_princ_name(cls, con, p):
 		# void rpc__mgmt_inq_princ_name
 		# (
 		#     [in]        handle_t                binding_handle,
@@ -1475,7 +1480,7 @@ class samr(RPCService):
 	}
 
 	@classmethod
-	def handle_Connect4(cls, p):
+	def handle_Connect4(cls, con, p):
 		# 3.1.5.1.2 SamrConnect4 (Opnum 62)
 		# 
 		# http://msdn.microsoft.com/en-us/library/cc245746%28PROT.10%29.aspx
@@ -1508,7 +1513,7 @@ class samr(RPCService):
 		return r.get_buffer()
 
 	@classmethod
-	def handle_Connect5(cls, p):
+	def handle_Connect5(cls, con, p):
 		# 3.1.5.1.1 SamrConnect5 (Opnum 64)
 		# 
 		# http://msdn.microsoft.com/en-us/library/cc245745%28PROT.10%29.aspx
@@ -1561,7 +1566,7 @@ class samr(RPCService):
 		return r.get_buffer()
 	
 	@classmethod
-	def handle_EnumDomains(cls,p):
+	def handle_EnumDomains(cls, con, p):
 		#3.1.5.2.1 SamrEnumerateDomainsInSamServer (Opnum 6)
 		#
 		#http://msdn.microsoft.com/en-us/library/cc245755%28v=PROT.10%29.aspx
@@ -1603,7 +1608,7 @@ class samr(RPCService):
 		return r.get_buffer()
 	
 	@classmethod
-	def handle_LookupDomain(cls,p):	
+	def handle_LookupDomain(cls, con, p):	
 		#3.1.5.11.1 SamrLookupDomainInSamServer (Opnum 5)
 		#
 		#http://msdn.microsoft.com/en-us/library/cc245711%28v=PROT.13%29.aspx
@@ -1635,7 +1640,7 @@ class samr(RPCService):
 		return r.get_buffer()
 	
 	@classmethod
-	def handle_OpenDomain(cls, p):
+	def handle_OpenDomain(cls, con, p):
 		# 3.1.5.1.5 SamrOpenDomain (Opnum 7)
 		# 
 		# http://msdn.microsoft.com/en-us/library/cc245748%28v=PROT.10%29.aspx
@@ -1666,7 +1671,7 @@ class samr(RPCService):
 		return r.get_buffer()
 	
 	@classmethod
-	def handle_EnumDomainUsers(cls, p):
+	def handle_EnumDomainUsers(cls, con, p):
 		#3.1.5.2.5 SamrEnumerateUsersInDomain (Opnum 13)
 		#
 		#http://msdn.microsoft.com/en-us/library/cc245759%28v=PROT.13%29.aspx
@@ -1711,7 +1716,7 @@ class samr(RPCService):
 		return r.get_buffer()
 
 	@classmethod
-	def handle_QueryDisplayInformation(cls,p):
+	def handle_QueryDisplayInformation(cls, con, p):
 		#3.1.5.3.3 SamrQueryDisplayInformation (Opnum 40)
 		#
 		#http://msdn.microsoft.com/en-us/library/cc245763%28PROT.10%29.aspx
@@ -1762,7 +1767,7 @@ class samr(RPCService):
 		return r.get_buffer()
 
 	@classmethod
-	def handle_QueryInformationDomain2(cls,p):
+	def handle_QueryInformationDomain2(cls, con, p):
 		#3.1.5.5.1 SamrQueryInformationDomain2 (Opnum 46)
 		#
 		#http://msdn.microsoft.com/en-us/library/cc245773%28PROT.13%29.aspx
@@ -1864,7 +1869,7 @@ class samr(RPCService):
 		return r.get_buffer()
 
 	@classmethod
-	def handle_EnumerateAliasesInDomain(cls, p):
+	def handle_EnumerateAliasesInDomain(cls, con, p):
 		#3.1.5.2.4 SamrEnumerateAliasesInDomain (Opnum 15)
 		#
 		#http://msdn.microsoft.com/en-us/library/cc245758%28PROT.10%29.aspx
@@ -1905,7 +1910,7 @@ class samr(RPCService):
 		return r.get_buffer()	
 
 	@classmethod
-	def handle_Close(cls, p):
+	def handle_Close(cls, con, p):
 		#3.1.5.13.1 SamrCloseHandle (Opnum 1)		
 		#
 		#http://msdn.microsoft.com/en-us/library/cc245722%28v=PROT.13%29.aspx
@@ -1937,9 +1942,45 @@ class spoolss(RPCService):
 	uuid = UUID('12345678-1234-abcd-ef00-0123456789ab').hex
 
 	ops = {
-		0x00: "EnumPrinters"
+		0x00: "EnumPrinters",
+		0x11: "StartDocPrinter",
+		0x13: "WritePrinter",
+		0x17: "EndDocPrinter",
+		0x1d: "ClosePrinter",
+		0x45: "OpenPrinter"		
 
 	}
+
+	class DOC_INFO_1:
+		# DOC_INFO_1 Structure
+		# 
+		# http://msdn.microsoft.com/en-us/library/dd162471%28v=VS.85%29.aspx
+		# 
+		#typedef struct _DOC_INFO_1 {
+		#  LPTSTR pDocName;
+		#  LPTSTR pOutputFile;
+		#  LPTSTR pDatatype;
+		#} DOC_INFO_1;
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				pass
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				self.Level = self.__packer.unpack_long()
+				self.Pointer = self.__packer.unpack_pointer()
+				self.pDocName = self.__packer.unpack_pointer()
+				self.pOutputFile = self.__packer.unpack_pointer()
+				self.pDatatype = self.__packer.unpack_pointer()
+				self.DocName = self.__packer.unpack_string()
+				self.OutputFile = self.__packer.unpack_string() 
+				#self.DataType = self.__packer.unpack_string()
+				
+#				rpclog.debug("DocName %s OutputFile %s" %(self.DocName,self.OutputFile))
+				
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				pass
 
 	class PRINTER_INFO_1 :
 		# PRINTER_INFO_1 Structure
@@ -1982,7 +2023,7 @@ class spoolss(RPCService):
 			return size
 
 	@classmethod
-	def handle_EnumPrinters (cls, p):
+	def handle_EnumPrinters (cls, con, p):
 		#EnumPrinters Function
 		#
 		#http://msdn.microsoft.com/en-us/library/dd162692%28VS.85%29.aspx
@@ -2036,6 +2077,174 @@ class spoolss(RPCService):
 			
 		return r.get_buffer()
 
+	@classmethod
+	def handle_OpenPrinter(cls, con, p):
+		#OpenPrinter Function		
+		#
+		#http://msdn.microsoft.com/en-us/library/dd162751%28v=VS.85%29.aspx
+		#
+		#BOOL OpenPrinter(
+		#  __in   LPTSTR pPrinterName,
+		#  __out  LPHANDLE phPrinter,
+		#  __in   LPPRINTER_DEFAULTS pDefault
+		#);
+
+		x = ndrlib.Unpacker(p.StubData)
+		pPrinterName = x.unpack_pointer()
+		PrinterName = x.unpack_string()
+		print("PrinterName %s" % PrinterName)
+		
+		pDatatype = x.unpack_pointer()
+		print("Datatype %s" % pDatatype)
+		
+		cbBuf = x.unpack_long()
+		pDevMode = x.unpack_pointer()
+		print("DevMode %s" % pDevMode)
+		
+		DesiredAccess = x.unpack_long()
+		print("DesiredAccess %x" % DesiredAccess)
+		
+		#Below is the ClientInfo structure which showed in
+		#Microsoft Network Monitor, but I cant find the correct doc to refer
+		Level = x.unpack_long()
+		SwitchValue = x.unpack_long()
+		Pointer = x.unpack_pointer()
+		Size = x.unpack_long()
+		Buff = x.unpack_raw(Size)
+		
+		print("Size %i Buff %s" % (Size, Buff))
+		
+		r = ndrlib.Packer()
+		# Returned Handle
+		r.pack_raw(b'\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0\0')
+		# Success
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_ClosePrinter(cls, con, p):
+		r = ndrlib.Packer()
+		r.pack_long(0)
+		return r.get_buffer()
+		
+
+	@classmethod
+	def handle_StartDocPrinter(cls, con, p):
+		#StartDocPrinter Function		
+		#
+		#http://msdn.microsoft.com/en-us/library/dd145115%28v=VS.85%29.aspx
+		#
+		#DWORD StartDocPrinter(
+		#  __in  HANDLE hPrinter,
+		#  __in  DWORD Level,
+		#  __in  LPBYTE pDocInfo
+		#);
+
+		x = ndrlib.Unpacker(p.StubData)
+		hPrinter = x.unpack_raw(20)
+		rpclog.debug("hPrinter %s" % hPrinter)
+		
+		Level = x.unpack_long()
+		rpclog.debug("Level %i" % Level)
+		
+		DocInfo = spoolss.DOC_INFO_1(x)
+		DocName = DocInfo.DocName.decode('UTF-16')[:-1]
+		OutputFile = DocInfo.OutputFile.decode('UTF-16')[:-1]
+
+		rpclog.debug("docname {} outputfile {}".format(DocName, OutputFile))
+
+		if OutputFile.startswith('\\') and OutputFile.endswith('\PIPE\ATSVC'):
+			# FIXME PIPE ATSVC COMMAND
+			pass
+		else:
+			i = incident("dionaea.download.offer")
+			i.con = con
+			i.url = "spoolss://" + con.remote.host + '/' + OutputFile
+			i.report()
+
+
+		r = ndrlib.Packer()
+		# Job ID
+		r.pack_long(3)
+		# Success
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_EndDocPrinter(cls, con, p):
+		r=ndrlib.Packer()
+		r.pack_long(0)
+		return r.get_buffer()
+
+	@classmethod
+	def handle_WritePrinter(cls, con, p):
+		#WritePrinter Function		
+		#
+		#http://msdn.microsoft.com/en-us/library/dd145226%28v=VS.85%29.aspx
+		#
+		#BOOL WritePrinter(
+		#  __in   HANDLE hPrinter,
+		#  __in   LPVOID pBuf,
+		#  __in   DWORD cbBuf,
+		#  __out  LPDWORD pcWritten
+		#);
+
+
+
+		# For MS10-061 SPOOLSS exploit with metasploit,
+		# the payload has sent in packet fragment. 
+		# The packet dissection for the first and middle fragment is different, here the trick needed to make it work.
+		# Meaning of PacketFlags in dcerpc header:
+		# 0x00 : Middle fragment
+		# 0x01 : First fragment
+		# 0x02 : Last fragment
+		# 0x03 : No fragment needed
+		#
+		# FIXME actually this defragmentation should be in smbd.process_dcerpc_packet
+
+		if p.PacketFlags == 0:
+			con.printer += p.StubData
+			return None
+		elif p.PacketFlags == 1:
+			con.printer += p.StubData
+			return None
+		elif p.PacketFlags == 2:
+			con.printer += p.StubData
+			x = ndrlib.Unpacker(con.printer)
+			hPrinter = x.unpack_raw(20)
+			cbBuf = x.unpack_long()
+			Buf = x.unpack_raw(cbBuf)
+			x = tempfile.NamedTemporaryFile(delete=False, prefix="spoolss-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
+			x.write(Buf)
+			x.close()
+
+			i = incident("dionaea.download.complete")
+			i.path = x.name
+			i.url = "spoolss://" + con.remote.host
+			i.con = con
+			i.report()
+
+			r = ndrlib.Packer()
+			r.pack_long(len(Buf))
+			r.pack_long(0)
+			return r.get_buffer()
+
+		elif p.PacketFlags == 3:
+			x = ndrlib.Unpacker(p.StubData)
+			hPrinter = x.unpack_raw(20)
+			cbBuf = x.unpack_long()
+
+			r = ndrlib.Packer()
+			r.pack_long(cbBuf)
+			r.pack_long(0)
+			return r.get_buffer()
+
+
+
+
+
 STYPE_DISKTREE = 0x00000000 # Disk drive
 STYPE_PRINTQ   = 0x00000001 # Print queue
 STYPE_DEVICE   = 0x00000002 # Communication device
@@ -2059,6 +2268,11 @@ __shares__ = {
 		'comment' : 'Remote IPC', 
 		'path': '' 
 	},
+	'Printer' : {
+		'type' : STYPE_PRINTQ,
+		'comment' : 'Microsoft XPS Document Writer',
+		'path': '',
+	}
 }
 
 
@@ -2442,7 +2656,7 @@ class SRVSVC(RPCService):
 
 
 	@classmethod
-	def handle_NetShareEnum(cls, p):
+	def handle_NetShareEnum(cls, con, p):
 
 		x = ndrlib.Unpacker(p.StubData)
 
@@ -2536,7 +2750,7 @@ class SRVSVC(RPCService):
 		return r.get_buffer()
 
 	@classmethod
-	def handle_NetPathCanonicalize(cls, p):
+	def handle_NetPathCanonicalize(cls, con, p):
 		# MS08-067
 		#	WERROR srvsvc_NetPathCanonicalize(
 		#		[in,unique]   [string,charset(UTF16)] uint16 *server_unc,
@@ -2574,7 +2788,7 @@ class SRVSVC(RPCService):
 		return r.get_buffer()
 
 	@classmethod
-	def handle_NetPathCompare(cls, p):
+	def handle_NetPathCompare(cls, con, p):
 		# MS08-067
 		#	WERROR srvsvc_NetPathCompare(
 		#		[in,unique]   [string,charset(UTF16)] uint16 *server_unc,
@@ -2601,7 +2815,7 @@ class SRVSVC(RPCService):
 		return r.get_buffer()
 
 	@classmethod
-	def handle_NetShareAdd(cls, p):
+	def handle_NetShareAdd(cls, con, p):
 		#3.1.4.7 NetrShareAdd (Opnum 14)
 		#
 		#http://msdn.microsoft.com/en-us/library/cc247275%28v=PROT.10%29.aspx
@@ -2632,7 +2846,7 @@ class SRVSVC(RPCService):
 		return r.get_buffer()
 		
 	@classmethod
-	def handle_NetrShareGetInfo(cls, p):
+	def handle_NetrShareGetInfo(cls, con, p):
 		#3.1.4.10 NetrShareGetInfo (Opnum 16)
 		#
 		#http://msdn.microsoft.com/en-us/library/cc247236%28PROT.13%29.aspx
@@ -2672,7 +2886,7 @@ class SRVSVC(RPCService):
 		return r.get_buffer()
 
 	@classmethod
-	def handle_NetNameCanonicalize (cls, p):
+	def handle_NetNameCanonicalize (cls, con, p):
 		#3.1.4.33 NetprNameCanonicalize (Opnum 34)
 		#
 		#http://msdn.microsoft.com/en-us/library/cc247261%28PROT.13%29.aspx
@@ -2713,7 +2927,7 @@ class SRVSVC(RPCService):
 		return r.get_buffer()
 
 	@classmethod
-	def handle_NetrRemoteTOD(cls, p):
+	def handle_NetrRemoteTOD(cls, con, p):
 		#3.1.4.21 NetrRemoteTOD (Opnum 28)
 		#
 		#http://msdn.microsoft.com/en-us/library/cc247248%28v=PROT.13%29.aspx
@@ -2792,14 +3006,14 @@ class SVCCTL(RPCService):
 	}
 
 	@classmethod
-	def handle_CloseServiceHandle(cls, p):
+	def handle_CloseServiceHandle(cls, con, p):
 		# DWORD RCloseServiceHandle(
 		# 	[in, out] LPSC_RPC_HANDLE hSCObject
 		# );
 		pass
 
 	@classmethod
-	def handle_CreateServiceA(cls, p):
+	def handle_CreateServiceA(cls, con, p):
 		# DWORD RCreateServiceA(
 		# 	[in] SC_RPC_HANDLE hSCManager,
 		# 	[in, string, range(0, SC_MAX_NAME_LENGTH)] LPSTR lpServiceName,
@@ -2822,7 +3036,7 @@ class SVCCTL(RPCService):
 
 
 	@classmethod
-	def handle_OpenSCManagerA(cls, p):
+	def handle_OpenSCManagerA(cls, con, p):
 		# DWORD ROpenSCManagerA(
 		# 	[in, string, unique, range(0, SC_MAX_COMPUTER_NAME_LENGTH)] SVCCTL_HANDLEA lpMachineName,
 		# 	[in, string, unique, range(0, SC_MAX_NAME_LENGTH)] LPSTR lpDatabaseName,
@@ -2874,7 +3088,7 @@ class WKSSVC(RPCService):
 	}
 
 	@classmethod
-	def handle_NetAddAlternateComputerName(cls, p):
+	def handle_NetAddAlternateComputerName(cls, con, p):
 		# MS04-011
 		pass
 
