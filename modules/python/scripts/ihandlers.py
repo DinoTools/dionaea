@@ -92,6 +92,10 @@ def start():
 		import dionaea.mwserv
 		g_handlers.append(dionaea.mwserv.mwservhandler('*'))
 
+	if "submit_http" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import dionaea.submit_http
+		g_handlers.append(dionaea.submit_http.handler('*'))
+
 def stop():
 	global g_handlers
 	for i in g_handlers:

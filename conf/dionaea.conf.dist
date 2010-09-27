@@ -274,6 +274,12 @@ modules = {
 			guid = "" 		// guid of this sensor, as generated serverside; typically 8 chars
 			secret = ""		// shared secret used for authentication aka password; typically 48 chars
 		}
+		submit_http = {			// ask your submit_http backend provider for needed values
+			url = "" 		// the url to send the submission requests to
+			email = ""		// optional
+			user = "" 		// username (optional)
+			pass = ""		// password (optional)
+		}
 		logsql = {
 			mode = "sqlite" // so far there is only sqlite
 			sqlite = {
@@ -378,6 +384,7 @@ modules = {
 			"logsql",
 //			"virustotal",
 //			"mwserv",
+//			"submit_http",
 //			"logxmpp",
 //			"nfq",
 //			"p0f",
