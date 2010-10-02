@@ -934,6 +934,6 @@ class ftpdownloadhandler(ihandler):
 			except AttributeError:
 				con = None
 			f = ftp()
-			f.download(con, p.username, p.password, p.hostname, p.port, p.path, 'binary', url)
+			f.download(con, p.username, p.password, p.hostname, p.port, p.path, icd.ftpmode, url)
 
 

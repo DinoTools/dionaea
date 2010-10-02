@@ -113,28 +113,31 @@ class cmdexe:
 		passwd = "guest"
 		fpath = ""
 		dfile = ""
+		ftpmode = ''
 		autoconnect = True
 		cmdfile = None
+		
 		for i in range(len(args)):
-			if args[i] == '-v':
-				continue
-			elif args[i] == '-d':
-				continue
-			elif args[i] == '-i':
-				continue
-			elif args[i] == '-n':
-				autoconnect = False
-			elif args[i] == '-g':
-				continue
-			elif args[i].startswith('-s:'):
-				cmdfile = args[i][3:]
-			elif args[i] == '-A':
-				continue
-			elif args[i].startswith('-w:'):
-				continue
-			elif args[i] == '-A':
-				user = 'anonymous'
-				passwd = 'guest'
+			if args[i][0] == '-':
+				for j in range(1,len(args[i])):
+					if args[i][j] == 'v':
+						continue
+					elif args[i][j] == 'd':
+						continue
+					elif args[i][j] == 'i':
+						continue
+					elif args[i][j] == 'n':
+						autoconnect = False
+					elif args[i][j] == 'g':
+						continue
+					elif args[i][j] == 's':
+						cmdfile = args[i][j+2:]
+						break
+					elif args[i][j] == 'w':
+						break
+					elif args[i][j] == 'A':
+						user = 'anonymous'
+						passwd = 'guest'
 			else:
 				if host != False:
 					host = args[i]
@@ -147,6 +150,7 @@ class cmdexe:
 		state = 'NEXT_IS_SOMETHING'
 		for i in range(len(lines)):
 			line = lines[i]
+			logger.debug("FTP PARSER STATE {}".format(state))
 			logger.debug("FTP CMD LINE: %s" % (line) )
 			args = line.split()
 			if len(args) == 0:
@@ -189,13 +193,16 @@ class cmdexe:
 						elif hasattr(self, 'con') and isinstance(self.con, connection):
 							i.con = self.con
 						i.url = "ftp://%s:%s@%s:%i/%s" % (user,passwd,host,port,dfile)
+						i.ftpmode = ftpmode
 						i.report()
 				elif args[0] == 'cd':
 					if len(args) == 1:
 						state = 'NEXT_IS_PATH'
 					elif len(args) == 2:
 						fpath = args[1]
-
+				elif args[0] == 'binary' or args[0] == 'bin':
+					ftpmode = 'binary'
+					
 			elif state == 'NEXT_IS_HOST':
 				if len(args) >= 2:
 					host = args[1]
@@ -230,9 +237,9 @@ class cmdexe:
 						i.con = self
 					elif hasattr(self, 'con') and isinstance(self.con, connection):
 						i.con = self.con
+					i.ftpmode = ftpmode
 					i.url = "ftp://%s:%s@%s:%i/%s" % (user,passwd,host,port,dfile)
 					i.report()
-
 
 			elif state == 'NEXT_IS_PATH':
 				if len(args) == 1:
