@@ -221,7 +221,7 @@ static void check_run_count(void)
 						g_info("UPLOAD DONE: %s => (%d) %s", eff_url, msg->data.result, session->error);
 
 						if( session->action.upload.callback == NULL )
-							return;
+							break;
 						
 						tempfile_close(session->action.upload.file);
 						// if we have a callback, call the callback
