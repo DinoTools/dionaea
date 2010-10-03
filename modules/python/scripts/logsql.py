@@ -676,7 +676,7 @@ class logsqlhandler(ihandler):
 			permalink = j['permalink']
 			date = j['report'][0]
 			self.cursor.execute("INSERT INTO virustotals (virustotal_md5_hash, virustotal_permalink, virustotal_timestamp) VALUES (?,?,strftime('%s',?))", 
-				(md5, permalink, 0))
+				(md5, permalink, date))
 			self.dbh.commit()
 
 			virustotal = self.cursor.lastrowid

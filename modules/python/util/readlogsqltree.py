@@ -26,17 +26,17 @@ def print_downloads(cursor, connection, indent):
 		print_virustotals(cursor, download['download_md5_hash'], indent + 2 )
 	
 def print_virustotals(cursor, md5_hash, indent):
-	r = cursor.execute("""SELECT virustotal_permalink, COUNT(*) AS scanners, 
+	r = cursor.execute("""SELECT datetime(virustotal_timestamp, 'unixepoch', 'localtime') as timestamp, virustotal_permalink, COUNT(*) AS scanners, 
 		(
-			SELECT COUNT(*) 
+			SELECT COUNT(virustotalscan) 
 			FROM virustotals 
 			NATURAL JOIN virustotalscans 
 			WHERE virustotal_md5_hash  = ? 
-			AND virustotalscan_result IS NULL ) AS not_detected 
+			AND virustotalscan_result IS NOT NULL ) AS detected 
 			FROM virustotals NATURAL JOIN virustotalscans WHERE virustotal_md5_hash  = ?""", (md5_hash, md5_hash))
 	virustotals = resolve_result(r)
 	for vt in virustotals:
-		print("{:s} virustotal {}/{} ({:.0f}%) {}".format(' ' * indent, vt['not_detected'], vt['scanners'], vt['not_detected']/vt['scanners']*100, vt['virustotal_permalink']))
+		print("{:s} virustotal {} {}/{} ({:.0f}%) {}".format(' ' * indent, vt['timestamp'], vt['detected'], vt['scanners'], vt['detected']/vt['scanners']*100, vt['virustotal_permalink']))
 
 
 	r = cursor.execute("SELECT DISTINCT virustotalscan_result from virustotals NATURAL JOIN virustotalscans WHERE virustotal_md5_hash  = ? AND virustotalscan_result IS NOT NULL", (md5_hash, ))
