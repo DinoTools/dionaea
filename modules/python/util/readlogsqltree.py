@@ -36,6 +36,8 @@ def print_virustotals(cursor, md5_hash, indent):
 			FROM virustotals NATURAL JOIN virustotalscans WHERE virustotal_md5_hash  = ?""", (md5_hash, md5_hash))
 	virustotals = resolve_result(r)
 	for vt in virustotals:
+		if vt['scanners'] is None:
+			continue
 		print("{:s} virustotal {} {}/{} ({:.0f}%) {}".format(' ' * indent, vt['timestamp'], vt['detected'], vt['scanners'], vt['detected']/vt['scanners']*100, vt['virustotal_permalink']))
 
 

@@ -156,6 +156,8 @@ class virustotalhandler(ihandler):
 			i.md5hash = vtr.md5hash
 			i.path = icd.path
 			i.report()
+		else:
+			logger.warn("virustotal reported {}".format(j))
 		del self.cookies[cookie]
 
 	def scan_file(self, backlogfile, md5_hash, path, status):
