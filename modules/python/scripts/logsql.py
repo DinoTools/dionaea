@@ -31,7 +31,7 @@ from dionaea.core import ihandler, incident, g_dionaea
 import os
 import logging
 import random
-
+import json
 import sqlite3
 import time
 
@@ -367,6 +367,33 @@ class logsqlhandler(ihandler):
 			ON mssql_commands (mssql_command_%s)""" % (idx, idx))
 
 
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS virustotals (
+				virustotal INTEGER PRIMARY KEY,
+				virustotal_md5_hash TEXT NOT NULL,
+				virustotal_timestamp INTEGER NOT NULL,
+				virustotal_permalink TEXT NOT NULL
+			)""")
+
+		for idx in ["md5_hash"]:
+			self.cursor.execute("""CREATE INDEX IF NOT EXISTS virustotals_%s_idx 
+			ON virustotals (virustotal_%s)""" % (idx, idx))
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS virustotalscans (
+			virustotalscan INTEGER PRIMARY KEY,
+			virustotal INTEGER NOT NULL,
+			virustotalscan_scanner TEXT NOT NULL,
+			virustotalscan_result TEXT
+		)""")
+
+
+		for idx in ["scanner","result"]:
+			self.cursor.execute("""CREATE INDEX IF NOT EXISTS virustotalscans_%s_idx 
+			ON virustotalscans (virustotalscan_%s)""" % (idx, idx))
+
+		self.cursor.execute("""CREATE INDEX IF NOT EXISTS virustotalscans_virustotal_idx 
+			ON virustotalscans (virustotal)""")
+
 #		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 #			httpheaders (
 #				httpheader INTEGER PRIMARY KEY,
@@ -639,6 +666,34 @@ class logsqlhandler(ihandler):
 			self.cursor.execute("INSERT INTO mssql_commands (connection, mssql_command_status, mssql_command_cmd) VALUES (?,?,?)", 
 				(attackid, icd.status, icd.cmd))
 			self.dbh.commit()
+
+	def handle_incident_dionaea_modules_python_virustotal_report(self, icd):
+		md5 = icd.md5hash
+		f = open(icd.path, mode='r')
+		j = json.load(f)
+
+		if j['result'] == 1: # file was known to virustotal
+			permalink = j['permalink']
+			date = j['report'][0]
+			self.cursor.execute("INSERT INTO virustotals (virustotal_md5_hash, virustotal_permalink, virustotal_timestamp) VALUES (?,?,strftime('%s',?))", 
+				(md5, permalink, 0))
+			self.dbh.commit()
+
+			virustotal = self.cursor.lastrowid
+
+			scans = j['report'][1]
+			for av in scans:
+				res = scans[av]
+				# not detected = '' -> NULL
+				if res == '':
+					res = None
+
+				self.cursor.execute("""INSERT INTO virustotalscans (virustotal, virustotalscan_scanner, virustotalscan_result) VALUES (?,?,?)""",
+					(virustotal, av, res))
+#				logger.debug("scanner {} result {}".format(av,scans[av]))
+			self.dbh.commit()
+
+
 
 
 

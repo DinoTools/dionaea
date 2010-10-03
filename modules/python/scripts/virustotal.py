@@ -107,7 +107,7 @@ class virustotalhandler(ihandler):
 			for av in scans:
 				logger.debug("scanner {} result {}".format(av,scans[av]))
 
-			i = incident("dionaea.module.python.modules.virustotal.report")
+			i = incident("dionaea.modules.python.virustotal.report")
 			i.md5hash = vtr.md5hash
 			i.path = icd.path
 			i.report()

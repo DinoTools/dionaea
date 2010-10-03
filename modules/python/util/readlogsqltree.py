@@ -23,7 +23,29 @@ def print_downloads(cursor, connection, indent):
 		print("{:s} download: {:s} {:s}".format(
 			' ' * indent, download['download_md5_hash'],
 			download['download_url']))
+		print_virustotals(cursor, download['download_md5_hash'], indent + 2 )
 	
+def print_virustotals(cursor, md5_hash, indent):
+	r = cursor.execute("""SELECT virustotal_permalink, COUNT(*) AS scanners, 
+		(
+			SELECT COUNT(*) 
+			FROM virustotals 
+			NATURAL JOIN virustotalscans 
+			WHERE virustotal_md5_hash  = ? 
+			AND virustotalscan_result IS NULL ) AS not_detected 
+			FROM virustotals NATURAL JOIN virustotalscans WHERE virustotal_md5_hash  = ?""", (md5_hash, md5_hash))
+	virustotals = resolve_result(r)
+	for vt in virustotals:
+		print("{:s} virustotal {}/{} ({:.0f}%) {}".format(' ' * indent, vt['not_detected'], vt['scanners'], vt['not_detected']/vt['scanners']*100, vt['virustotal_permalink']))
+
+
+	r = cursor.execute("SELECT DISTINCT virustotalscan_result from virustotals NATURAL JOIN virustotalscans WHERE virustotal_md5_hash  = ? AND virustotalscan_result IS NOT NULL", (md5_hash, ))
+	virustotals = resolve_result(r)
+	print("{:s} names ".format(' ' * (indent+2)), end='')
+	for vt in virustotals:
+		print("'{}' ".format(vt['virustotalscan_result']), end='')
+	print("")
+
 def print_profiles(cursor, connection, indent):
 	r = cursor.execute("SELECT * from emu_profiles WHERE connection = ?", (connection, ))
 	profiles = resolve_result(r)
@@ -168,7 +190,7 @@ def print_connection(c, indent):
 			c['connection_transport'], c['connection_type'], c['local_host'],
 			c['local_port']), end='')
 
-	print(' ({:d} {})'.format(c['connection_root'], c['connection_parent']))
+	print(' ({} {})'.format(c['connection_root'], c['connection_parent']))
 
 def recursive_print(cursor, connection, indent):
 	result = cursor.execute("SELECT * from connections WHERE connection_parent = ?", (connection, ))
