@@ -73,7 +73,8 @@ class virustotalhandler(ihandler):
 		logger.debug("backlog_timeout")
 
 		# try to comment on files
-		sfs = self.cursor.execute("""SELECT backlogfile, md5_hash, path FROM backlogfiles WHERE status = 'comment' LIMIT 1""")
+		# comment on files which were submitted at least 60 seconds ago
+		sfs = self.cursor.execute("""SELECT backlogfile, md5_hash, path FROM backlogfiles WHERE status = 'comment' AND submit_time < strftime("%s",'now')-1*60 LIMIT 1""")
 		for sf in sfs:
 			self.cursor.execute("UPDATE backlogfiles SET status = 'comment-' WHERE backlogfile = ?""", (sf[0],))
 			self.dbh.commit()
@@ -132,18 +133,18 @@ class virustotalhandler(ihandler):
 		cookie = icd._userdata
 		vtr = self.cookies[cookie]
 
-		if j['result'] == -1:
+		if j['result'] == -2:
+			logger.warn("api throttle")
+			self.cursor.execute("""UPDATE backlogfiles SET status = ? WHERE backlogfile = ?""", (vtr.status, vtr.backlogfile))
+			self.dbh.commit()
+		elif j['result'] == -1:
 			logger.warn("something is wrong with your virustotal api key")
-
 		elif j['result'] == 0: # file unknown, mark for submit
 			self.cursor.execute("""UPDATE backlogfiles SET status = 'submit', lastcheck_time = strftime("%s",'now') WHERE backlogfile = ?""", (vtr.backlogfile,))
 			self.dbh.commit()
 		elif j['result'] == 1: # file known
 #			self.cursor.execute("""UPDATE backlogfiles SET status = 'comment', lastcheck_time = strftime("%s",'now') WHERE backlogfile = ?""", (vtr.backlogfile,))
-			if vtr.status == 'new':
-				self.cursor.execute("""DELETE FROM backlogfiles WHERE backlogfile = ?""", (vtr.backlogfile,) )
-			elif vtr.status == 'query':
-				self.cursor.execute("""UPDATE backlogfiles SET status = 'comment' WHERE backlogfile = ?) """, (vtr.backlogfile, ))
+			self.cursor.execute("""DELETE FROM backlogfiles WHERE backlogfile = ?""", (vtr.backlogfile,) )
 			self.dbh.commit()
 
 			logger.debug("report {}".format(j) )
@@ -180,11 +181,16 @@ class virustotalhandler(ihandler):
 		cookie = icd._userdata
 		vtr = self.cookies[cookie]
 		
-
-		if j['result'] == 1:
+		if j['result'] == -2:
+			logger.warn("api throttle")
+			self.cursor.execute("""UPDATE backlogfiles SET status = ? WHERE backlogfile = ?""", (vtr.status, vtr.backlogfile))
+			self.dbh.commit()
+		elif j['result'] == -1:
+			logger.warn("something is wrong with your virustotal api key")
+		elif j['result'] == 1:
 			scan_id = j['scan_id']
 			# recycle this entry for the query
-			self.cursor.execute("""UPDATE backlogfiles SET scan_id = ?, status = 'query', submit_time = strftime("%s",'now') WHERE backlogfile = ?""", (scan_id, vtr.backlogfile,))
+			self.cursor.execute("""UPDATE backlogfiles SET scan_id = ?, status = 'comment', submit_time = strftime("%s",'now') WHERE backlogfile = ?""", (scan_id, vtr.backlogfile,))
 			self.dbh.commit()
 		del self.cookies[cookie]
 
@@ -208,8 +214,16 @@ class virustotalhandler(ihandler):
 		f = open(icd.path, mode='r')
 		try:
 			j = json.load(f)
-			self.cursor.execute("""DELETE FROM backlogfiles WHERE backlogfile = ?""", (vtr.backlogfile,))
-			self.dbh.commit()
+			if j['result'] == -2:
+				logger.warn("api throttle")
+				self.cursor.execute("""UPDATE backlogfiles SET status = ? WHERE backlogfile = ?""", (vtr.status, vtr.backlogfile))
+				self.dbh.commit()
+			elif j['result'] == -1:
+				logger.warn("something is wrong with your virustotal api key")
+			elif j['result'] == 1:
+				self.cursor.execute("""UPDATE backlogfiles SET status = 'query' WHERE backlogfile = ? """, (vtr.backlogfile, ))
+				self.dbh.commit()
+
 		except Exception as e:
 			pass
 		del self.cookies[cookie]
