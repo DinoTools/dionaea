@@ -267,6 +267,7 @@ modules = {
 		}
 		virustotal = {
 			apikey = "........." // grab it from your virustotal account at My account -> Inbox -> Public API
+			file = "var/dionaea/vtcache.sqlite"
 		}
 		mwserv = {			// ask your mwserv backend provider for needed values
 			url = "" 		// the url to send the submission requests to
