@@ -55,8 +55,8 @@ class virustotalhandler(ihandler):
 
 		self.backlog_timer = pyev.Timer(0, 20, self.loop, self.__handle_backlog_timeout)
 		self.backlog_timer.start()
-
-		self.dbh = sqlite3.connect('/opt/dionaea/var/dionaea/virustotal.sqlite')
+		p = g_dionaea.config()['modules']['python']['virustotal']['file']
+		self.dbh = sqlite3.connect(p)
 		self.cursor = self.dbh.cursor()
 		self.cursor.execute("""
 			CREATE TABLE IF NOT EXISTS backlogfiles (
@@ -108,6 +108,7 @@ class virustotalhandler(ihandler):
 
 	def stop(self):
 		self.backlog_timer.stop()
+		self.backlog_timer = None
 
 	def handle_incident(self, icd):
 		pass
@@ -140,8 +141,12 @@ class virustotalhandler(ihandler):
 			self.dbh.commit()
 		elif j['result'] == -1:
 			logger.warn("something is wrong with your virustotal api key")
-		elif j['result'] == 0: # file unknown, mark for submit
-			self.cursor.execute("""UPDATE backlogfiles SET status = 'submit', lastcheck_time = strftime("%s",'now') WHERE backlogfile = ?""", (vtr.backlogfile,))
+		elif j['result'] == 0: # file unknown
+			# mark for submit
+			if vtr.status == 'new':
+				self.cursor.execute("""UPDATE backlogfiles SET status = 'submit', lastcheck_time = strftime("%s",'now') WHERE backlogfile = ?""", (vtr.backlogfile,))
+			elif vtr.status == 'query':
+				self.cursor.execute("""UPDATE backlogfiles SET lastcheck_time = strftime("%s",'now') WHERE backlogfile = ?""", (vtr.backlogfile,))
 			self.dbh.commit()
 		elif j['result'] == 1: # file known
 #			self.cursor.execute("""UPDATE backlogfiles SET status = 'comment', lastcheck_time = strftime("%s",'now') WHERE backlogfile = ?""", (vtr.backlogfile,))
