@@ -976,6 +976,19 @@ class netlogon(RPCService):
 
 class nddeapi(RPCService):
 	uuid = UUID('2f5f3220-c126-1076-b549-074d078619da').hex
+	ops = {
+		0x0c: "NDdeSetTrustedShareW"
+	}
+
+	vulns = {
+		0x0c: "MS04-031"
+	}
+
+	@classmethod
+	def handle_NDdeSetTrustedShareW(cls, con, p):
+		# MS04-031
+		pass
+
 
 
 class NWWKS(RPCService):
