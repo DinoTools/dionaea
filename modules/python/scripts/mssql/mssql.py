@@ -198,7 +198,7 @@ class mssqld(connection):
 				cmd = cmd.encode()
 
 			# limit to 1024
-			logger.warn("SQL BATCH : {:.1024s}".format(cmd))
+			logger.debug("SQL BATCH : {:.1024s}".format(cmd))
 
 			# FIXME SESSIONDUMP remove at some point
 			if self.session != None:
