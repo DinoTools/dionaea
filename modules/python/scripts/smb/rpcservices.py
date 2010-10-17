@@ -3097,12 +3097,12 @@ class WKSSVC(RPCService):
 		0x1b: "NetAddAlternateComputerName"
 	}
 	vulns  = { 
-		0x1b: "MS04-11",
+		0x1b: "MS03-39",
 	}
 
 	@classmethod
 	def handle_NetAddAlternateComputerName(cls, con, p):
-		# MS04-011
+		# MS03-039
 		pass
 
 
