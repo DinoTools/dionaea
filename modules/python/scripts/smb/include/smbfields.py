@@ -889,9 +889,10 @@ class SMB_Treeconnect_AndX_Response(Packet):
 		ByteField("Reserved1",0),
 		LEShortField("AndXOffset",46), #windows xp gives senseless 46
 		XLEShortField("OptSupport",1),
-		LEShortField("ByteCount",5),
+#		LEShortField("ByteCount",5),
+		MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Service","NativeFileSystem")),
 		StrNullField("Service","IPC"),
-		StrNullField("NativeFilesystem",""),
+		StrNullField("NativeFileSystem",""),
 	]
 
 #[MS-SMB].pdf
@@ -907,7 +908,8 @@ class SMB_Treeconnect_AndX_Response_Extended(Packet):
 		XLEShortField("OptSupport",0x0001),
 		FlagsField("MaximalShareAccessRights", 0x01ff, -32, SMB_AccessMask),
 		FlagsField("GuestMaximalShareAccessRights", 0x01ff, -32, SMB_AccessMask),
-		LEShortField("ByteCount",7),
+#		LEShortField("ByteCount",7),
+		MultiFieldLenField("ByteCount", None, fmt='<H', length_of=("Service","Padding","NativeFileSystem")),
 		StrNullField("Service","IPC"),
 		ConditionalField(StrFixedLenField("Padding", b'\0', 2), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		StrNullField("NativeFileSystem",""),	

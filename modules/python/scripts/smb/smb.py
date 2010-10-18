@@ -287,11 +287,24 @@ class smbd(connection):
 		elif Command == SMB_COM_TREE_CONNECT_ANDX:
 			r = SMB_Treeconnect_AndX_Response()
 			h = p.getlayer(SMB_Treeconnect_AndX_Request)
-			print ("Service : %s" % h.Path)
+#			print ("Service : %s" % h.Path)
 			
 			# for SMB_Treeconnect_AndX_Request.Flags = 0x0008
-			if h.Flags == 0x08:
+			if h.Flags & 0x08:
 				r = SMB_Treeconnect_AndX_Response_Extended()
+
+			# get Path as ascii string 
+			f,v = h.getfield_and_val('Path')
+			Service = f.i2repr(h,v)
+
+			# compile Service from the last part of path
+			# remove \\
+			if Service.startswith('\\\\'):
+				Service = Service[1:] 
+			Service = Service.split('\\')[-1]
+			if Service[-1] == '$':
+				Service = Service[:-1]
+			r.Service = Service + '\x00'
 			
 			# specific for NMAP smb-enum-shares.nse support
 			if h.Path == b'nmap-share-test\0':
