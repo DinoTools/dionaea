@@ -72,7 +72,6 @@ class smbd(connection):
 		self.buf = b''
 		self.outbuf = None
 		self.fids = {}
-		self.bistream_prefix = 'smb-'
 		self.printer = b'' # spoolss file "queue"
 
 	def handle_established(self):
@@ -634,7 +633,6 @@ class epmapper(smbd):
 	def __init__ (self):
 		connection.__init__(self,"tcp")
 		smbd.__init__(self)
-		self.bistream_prefix = 'epmapper-'
 
 	def handle_io_in(self,data):
 		try:
