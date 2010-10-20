@@ -1224,6 +1224,22 @@ class SMB_Trans2_Response(Packet):
 		LEShortField("ByteCount",0),
 	]
 
+# [MS-CIFS].pdf - 2.2.5 Transaction Subcommands
+# http://msdn.microsoft.com/en-us/library/ee441557%28v=PROT.13%29.aspx
+TRANS_NMPIPE_SET_STATE		= 0x0001
+TRANS_NMPIPE_RAW_READ		= 0x0011
+TRANS_NMPIPE_QUERY_STATE	= 0x0021
+TRANS_NMPIPE_QUERY_INFO		= 0x0022
+TRANS_NMPIPE_PEEK			= 0x0023
+TRANS_NMPIPE_TRANSACT		= 0x0026
+TRANS_NMPIPE_RAW_WRITE		= 0x0031
+TRANS_NMPIPE_READ			= 0x0036
+TRANS_NMPIPE_WRITE			= 0x0037
+TRANS_NMPIPE_WAIT			= 0x0053
+TRANS_NMPIPE_CALL			= 0x0054
+TRANS_MAILSLOT_WRITE		= 0x0001
+
+
 # http://www.microsoft.com/about/legal/protocols/BSTD/CIFS/draft-leach-cifs-v1-spec-02.txt
 # 5.8  OPEN_ANDX:  Open File
 
@@ -1425,6 +1441,37 @@ class DCERPC_Bind_Ack(Packet):
 		StrLenField("FixGap", "\0"*3, length_from=lambda x:3),
 		PacketListField("CtxItems", 0, DCERPC_Ack_CtxItem, count_from=lambda pkt:pkt.NumCtxItems)
 	]
+
+RAP_OP_NETSHAREENUM = 0x00
+
+RAP_Opcodes = {
+	RAP_OP_NETSHAREENUM : "NetShareEnum"
+}
+
+class RAP_Request(Packet):
+	name = "RAP Request"
+	fields_desc = [
+		LEShortEnumField("Opcode",RAP_OP_NETSHAREENUM,RAP_Opcodes),
+		StrNullField("ParamDesc",""),
+		StrNullField("DataDesc", ""),
+		StrLenField("Params", "", length_from=lambda x: x.length_of_RAPParams()),
+		StrNullField("AuxDesc", ""),
+	]
+	def length_of_RAPParams(self):
+		if self.Opcode == 0x0000:
+			return 4
+		return 0
+
+# from dionaea.smb.include.smbfields import *
+class RAP_Response(Packet):
+	name = "RAP Response"
+	fields_desc = [
+		LEShortField("Win32ErrorCode", 0),
+		LEShortField("Converter",0),
+		StrField("OutParams",""),
+		StrField("OutData","")
+	]
+
 
 bind_bottom_up(NBTSession, NBTSession_Request, TYPE = lambda x: x==0x81)
 bind_bottom_up(NBTSession, SMB_Header, TYPE = lambda x: x==0)

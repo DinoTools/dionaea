@@ -37,7 +37,7 @@ import os
 from uuid import UUID
 
 from .include.smbfields import *
-
+from .rpcservices import __shares__
 from .include.gssapifields import GSSAPI,SPNEGO, NegTokenTarg
 from .include.ntlmfields import NTLMSSP_Header, NTLM_Negotiate, NTLM_Challenge, NTLMSSP_REQUEST_TARGET
 from .include.packet import Raw
@@ -440,23 +440,83 @@ class smbd(connection):
 			self.state['readcount'] = newreadcount
 
 		elif Command == SMB_COM_TRANSACTION:
-			outpacket = self.process_dcerpc_packet(p.getlayer(DCERPC_Header))
-
-			if not outpacket:
-				if self.state['stop']:
-					smblog.debug('drop dead!')
-				else:
-					smblog.critical('dcerpc processing failed. bailing out.')
-				return rp
-			self.outbuf = outpacket.build()
-			dceplen = len(self.outbuf)
+			h = p.getlayer(SMB_Trans_Request)
 			r = SMB_Trans_Response()
-			r.TotalDataCount = dceplen
-			r.DataCount = dceplen
-
 			rdata = SMB_Data()
-			rdata.ByteCount = dceplen
-			rdata.Bytes = self.outbuf
+
+			TransactionName = h.TransactionName
+			if type(TransactionName) == bytes:
+				if smbh.Flags2 & SMB_FLAGS2_UNICODE:
+					TransactionName = TransactionName.decode('utf-16')
+				else:
+					TransactionName = TransactionName.decode('ascii')
+
+			if TransactionName[-1] == '\0':
+				TransactionName = TransactionName[:-1]
+
+#			print("'{}' == '{}' => {} {} {}".format(TransactionName, '\\PIPE\\',TransactionName == '\\PIPE\\', type(TransactionName) == type('\\PIPE\\'), len(TransactionName)) )
+
+
+			if TransactionName == '\\PIPE\\LANMAN':
+				# [MS-RAP].pdf - Remote Administration Protocol
+				rapbuf = bytes(h.Param)
+				rap = RAP_Request(rapbuf)
+				rap.show()
+				rout = RAP_Response()
+				if rap.Opcode == RAP_OP_NETSHAREENUM:
+					(InfoLevel,ReceiveBufferSize) = struct.unpack("<HH",rap.Params)
+					print("InfoLevel {} ReceiveBufferSize {}".format(InfoLevel, ReceiveBufferSize) )
+					if InfoLevel == 1:
+						l = len(__shares__)
+						rout.OutParams = struct.pack("<HH", l, l)
+					rout.OutData = b""
+					comments = []
+					coff = 0
+					for i in __shares__:
+						rout.OutData += struct.pack("<13sxHHH", 
+							i, # NetworkName
+							# Pad
+							__shares__[i]['type'] & 0xff, # Type
+							coff + len(__shares__)*20, # RemarkOffsetLow
+							0x0101) # RemarkOffsetHigh
+						comments.append(__shares__[i]['comment'])
+						coff += len(__shares__[i]['comment']) + 1
+					rout.show()
+				outpacket = rout
+				self.outbuf = outpacket.build()
+				dceplen = len(self.outbuf) + coff
+
+				r.TotalParamCount = 8 # Status|Convert|Count|Available
+				r.TotalDataCount = dceplen
+
+				r.ParamCount = 8 # Status|Convert|Count|Available
+				r.ParamOffset = 56
+
+				r.DataCount = dceplen
+				r.DataOffset = 64
+
+				rdata.ByteCount = dceplen
+				rdata.Bytes = self.outbuf + b''.join(c.encode('ascii') + b'\x00' for c in comments)
+
+
+			elif TransactionName == '\\PIPE\\':
+				if socket.htons(h.Setup[0]) == TRANS_NMPIPE_TRANSACT:
+					outpacket = self.process_dcerpc_packet(p.getlayer(DCERPC_Header))
+	
+					if not outpacket:
+						if self.state['stop']:
+							smblog.debug('drop dead!')
+						else:
+							smblog.critical('dcerpc processing failed. bailing out.')
+						return rp
+					self.outbuf = outpacket.build()
+					dceplen = len(self.outbuf)
+					
+					r.TotalDataCount = dceplen
+					r.DataCount = dceplen
+	
+					rdata.ByteCount = dceplen
+					rdata.Bytes = self.outbuf
 			
 			r /= rdata
 		elif p.getlayer(SMB_Header).Command == SMB_COM_TRANSACTION2:
