@@ -1217,7 +1217,10 @@ BOOL WriteFile(
 
 	if( tf->fd != -1 )
 	{
-		fwrite(lpBuffer, nNumberOfBytesToWrite, 1, tf->fh);
+		if( fwrite(lpBuffer, nNumberOfBytesToWrite, 1, tf->fh) != nNumberOfBytesToWrite )
+		{
+			g_warning("fwrite failed %s",  strerror(errno));
+		}
 		long size;
 		if( (size = ftell(tf->fh)) >  conf->limits.filesize )
 		{
@@ -1481,7 +1484,10 @@ uint32_t user_hook__lwrite(struct emu_env *env, struct emu_env_hook *hook, ...)
 
 	if( tf->fd != -1 )
 	{
-		fwrite(lpBuffer, nNumberOfBytesToWrite, 1, tf->fh);
+		if( fwrite(lpBuffer, nNumberOfBytesToWrite, 1, tf->fh) != nNumberOfBytesToWrite )
+		{
+			g_warning("fwrite failed %s",  strerror(errno));
+		}
 		long size;
 		if( (size = ftell(tf->fh)) >  conf->limits.filesize )
 		{

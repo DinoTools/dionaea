@@ -603,7 +603,10 @@ int main (int argc, char *argv[])
 		}
 		char pidstr[16];
 		int len = snprintf(pidstr, 15, "%i", getpid());
-		fwrite(pidstr, len, 1, p);
+		if( fwrite(pidstr, len, 1, p) != len)
+		{
+			g_error("Could not write pid file to %s", opt->pidfile);
+		}
 		fclose(p);
 	}
 	g_message("glib version %i.%i.%i", glib_major_version, glib_minor_version, glib_micro_version);

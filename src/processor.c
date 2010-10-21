@@ -325,7 +325,10 @@ void proc_streamdumper_ctx_free(void *ctx0)
 	if( ctx->file != NULL )
 	{
 		const char *close_stream = "')]";
-		fwrite(close_stream, strlen(close_stream), 1, ctx->file->fh);
+		if( fwrite(close_stream, strlen(close_stream), 1, ctx->file->fh) != strlen(close_stream) )
+		{
+			g_warning("Could not write close_stream %s",  strerror(errno));
+		}
 		tempfile_close(ctx->file);
 		tempfile_free(ctx->file);
 	}
@@ -375,18 +378,49 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 			return;
 
 
-		fwrite(stream_start, strlen(stream_start), 1, ctx->file->fh);
-		fwrite(direction_helper[dir], strlen(direction_helper[dir]), 1, ctx->file->fh);
-		fwrite(new_data, strlen(new_data), 1, ctx->file->fh);
+		if( fwrite(stream_start, strlen(stream_start), 1, ctx->file->fh) != strlen(stream_start) )
+		{
+			g_warning("Could not write stream_start %s", strerror(errno));
+			return;
+		}
+		
+		if( fwrite(direction_helper[dir], strlen(direction_helper[dir]), 1, ctx->file->fh) != strlen(direction_helper[dir]) )
+		{
+			g_warning("Could not write direction %s", strerror(errno));
+			return;
+		}
+		
+
+		if( fwrite(new_data, strlen(new_data), 1, ctx->file->fh) != strlen(new_data))
+		{
+			g_warning("Could not write new_data %s",  strerror(errno));
+			return;
+		}
 		ctx->last_was = dir;
 	}
 	
 	if( ctx->last_was != dir )
 	{
 		const char *change_stream = "'),\n";
-		fwrite(change_stream, strlen(change_stream), 1, ctx->file->fh);
-		fwrite(direction_helper[dir], strlen(direction_helper[dir]), 1, ctx->file->fh);
-		fwrite(new_data, strlen(new_data), 1, ctx->file->fh);
+		
+		if( fwrite(change_stream, strlen(change_stream), 1, ctx->file->fh) != strlen(change_stream) )
+		{
+			g_warning("Could not write change_stream %s",  strerror(errno));
+			return;
+		}
+
+		if( fwrite(direction_helper[dir], strlen(direction_helper[dir]), 1, ctx->file->fh) != strlen(direction_helper[dir]) )
+		{
+			g_warning("Could not write direction %s",  strerror(errno));
+			return;
+		}
+
+
+		if( fwrite(new_data, strlen(new_data), 1, ctx->file->fh) != strlen(new_data))
+		{
+			g_warning("Could not write new_data %s", strerror(errno));
+			return;
+		}
 
 		ctx->last_was = dir;
 	}
@@ -409,8 +443,11 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 			xdata[writesize++] = conv[((cdata[i] & 0xff) & 0x0F)];
 		}
 	}
-	fwrite(xdata, 1, writesize, ctx->file->fh);
-
+	if( fwrite(xdata, 1, writesize, ctx->file->fh) != writesize )
+	{
+		g_warning("Could not write data %s",  strerror(errno));
+		return;
+	}
 }
 
            
