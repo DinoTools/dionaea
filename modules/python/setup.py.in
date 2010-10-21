@@ -45,7 +45,7 @@ if sysconfig.get_config_var('Py_ENABLE_SHARED') == 1:
 cflags=''
 cflags+='@LIB_GLIB_CFLAGS@' # glib
 cflags+=' '
-cflags+='@LIB_EV_CFLAGS@' # libev
+cflags+='@LIB_EV_CFLAGS@ -fno-strict-aliasing' # libev
 cflags+=' '
 cflags+='@LIB_LCFG_CFLAGS@' #liblcfg
 cflags+=' '
