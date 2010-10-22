@@ -26,6 +26,7 @@
  *******************************************************************************/
 
 #include <stdint.h>
+#include <ctype.h>
 
 #include <emu/emu.h>
 #include <emu/emu_memory.h>
@@ -119,6 +120,30 @@ static int json_escape_str(GString *target, char *str)
 	return 0;
 }
 
+static int json_escape_bytea(GString *target, unsigned char *str, unsigned int size)
+{
+	int pos = 0, start_offset = 0;
+	unsigned char c;
+	do
+	{
+		c = str[pos];
+
+		if( isprint(c) && c != '"' && c != '\\')
+			pos++;
+		else
+		{
+			if( pos - start_offset > 0 )
+				g_string_append_len(target, (char *)str + start_offset, pos - start_offset);
+			g_string_append_printf(target, "\\\\x%02x", c);
+			start_offset = ++pos;
+		}
+	} while( pos < size );
+	if( pos - start_offset > 0 )
+		g_string_append_len(target, (char *)str + start_offset, pos - start_offset);
+	
+	return 0;
+}
+
 void json_profile_argument_debug(struct emu_profile_argument *argument, int indent, bool has_name, GString *str)
 {
 	switch( argument->render )
@@ -207,6 +232,20 @@ void json_profile_argument_debug(struct emu_profile_argument *argument, int inde
 		break;
 
 	case render_bytea:
+		{
+			unsigned char *data = argument->value.bytea.data;
+			unsigned int size = argument->value.bytea.size;
+			GString *escaped = g_string_sized_new(size*5);
+			json_escape_bytea(escaped, data, size);
+
+			if( has_name )
+				g_string_append_printf(str, "%*s\"%s\" : \"%s\"", indent*4, " ", argument->argname, escaped->str);
+			//			printf("%*s\"%s\" : \"%s\"", indent*4, " ", argument->argname, argument->value.tchar);
+			else
+				g_string_append_printf(str, "%*s\"%s\"", indent*4, " ", escaped->str);
+			//			printf("%*s\"%s\"", indent*4, " ", argument->value.tchar);
+			g_string_free(escaped, TRUE);
+		}
 		break;
 
 	case render_ptr:
