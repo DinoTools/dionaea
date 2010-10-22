@@ -325,7 +325,7 @@ void proc_streamdumper_ctx_free(void *ctx0)
 	if( ctx->file != NULL )
 	{
 		const char *close_stream = "')]";
-		if( fwrite(close_stream, strlen(close_stream), 1, ctx->file->fh) != strlen(close_stream) )
+		if( fwrite(close_stream, strlen(close_stream), 1, ctx->file->fh) != 1 )
 		{
 			g_warning("Could not write close_stream %s",  strerror(errno));
 		}
@@ -378,20 +378,20 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 			return;
 
 
-		if( fwrite(stream_start, strlen(stream_start), 1, ctx->file->fh) != strlen(stream_start) )
+		if( fwrite(stream_start, strlen(stream_start), 1, ctx->file->fh) != 1 )
 		{
 			g_warning("Could not write stream_start %s", strerror(errno));
 			return;
 		}
 		
-		if( fwrite(direction_helper[dir], strlen(direction_helper[dir]), 1, ctx->file->fh) != strlen(direction_helper[dir]) )
+		if( fwrite(direction_helper[dir], strlen(direction_helper[dir]), 1, ctx->file->fh) != 1 )
 		{
 			g_warning("Could not write direction %s", strerror(errno));
 			return;
 		}
 		
 
-		if( fwrite(new_data, strlen(new_data), 1, ctx->file->fh) != strlen(new_data))
+		if( fwrite(new_data, strlen(new_data), 1, ctx->file->fh) != 1 )
 		{
 			g_warning("Could not write new_data %s",  strerror(errno));
 			return;
@@ -403,20 +403,20 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 	{
 		const char *change_stream = "'),\n";
 		
-		if( fwrite(change_stream, strlen(change_stream), 1, ctx->file->fh) != strlen(change_stream) )
+		if( fwrite(change_stream, strlen(change_stream), 1, ctx->file->fh) != 1 )
 		{
 			g_warning("Could not write change_stream %s",  strerror(errno));
 			return;
 		}
 
-		if( fwrite(direction_helper[dir], strlen(direction_helper[dir]), 1, ctx->file->fh) != strlen(direction_helper[dir]) )
+		if( fwrite(direction_helper[dir], strlen(direction_helper[dir]), 1, ctx->file->fh) != 1 )
 		{
 			g_warning("Could not write direction %s",  strerror(errno));
 			return;
 		}
 
 
-		if( fwrite(new_data, strlen(new_data), 1, ctx->file->fh) != strlen(new_data))
+		if( fwrite(new_data, strlen(new_data), 1, ctx->file->fh) != 1 )
 		{
 			g_warning("Could not write new_data %s", strerror(errno));
 			return;

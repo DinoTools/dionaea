@@ -603,7 +603,7 @@ int main (int argc, char *argv[])
 		}
 		char pidstr[16];
 		int len = snprintf(pidstr, 15, "%i", getpid());
-		if( fwrite(pidstr, len, 1, p) != len)
+		if( fwrite(pidstr, len, 1, p) != 1 )
 		{
 			g_error("Could not write pid file to %s", opt->pidfile);
 		}
