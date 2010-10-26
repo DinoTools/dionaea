@@ -505,6 +505,63 @@ fi
 
 
 dnl **************************************************
+dnl * libxmatch                                      *
+dnl **************************************************
+
+
+AC_SUBST([LIB_XMATCH_CFLAGS])
+AC_SUBST([LIB_XMATCH_LIBS])
+
+
+enable_xmatch="yes"
+
+AC_ARG_ENABLE(xmatch, [  --enable-xmatch      enable the xmatch plugin],
+			[enable_xmatch="$enableval"],[enable_xmatch="yes"])
+
+AC_ARG_WITH(xmatch-include,
+			[  --with-xmatch-include=DIR  libxmatch include dir],
+				      [xmatch_inc="$withval"],[xmatch_inc=no])
+AC_ARG_WITH(xmatch-lib,
+			[  --with-xmatch-lib=DIR  libxmatch library dir],
+			[xmatch_lib="$withval"],[xmatch_lib=no])
+
+
+if test x$enable_xmatch = "xyes" ; then
+	OLD_CPPFLAGS=${CPPFLAGS};
+	if test x$xmatch_inc != "xno"; then
+		CPPFLAGS="${CPPFLAGS} -I${xmatch_inc}"
+	fi
+	
+	AC_CHECK_HEADER(xmatch.h,[enable_xmatch=yes],[enable_xmatch=no])
+	
+	if test x$enable_xmatch = "xyes" ; then
+		OLD_LDFLAGS=${LDFLAGS}
+		if test x$xmatch_lib != "xno"; then
+			LDFLAGS="${LDFLAGS}  -L${xmatch_lib}"
+		fi
+	
+		AC_CHECK_LIB([xmatch],[xm_match],enable_xmatch="yes", enable_xmatch="no")
+	
+		if test x$enable_xmatch = "xyes" ; then
+			if test x$xmatch_lib != "xno"; then
+				LIB_NETFILTER_QUEUE_LIBS="-L$xmatch_lib -lxmatch"
+			else
+				LIB_NETFILTER_QUEUE_LIBS="-lxmatch"
+			fi
+			if test x$xmatch_inc != "xno"; then
+				LIB_NETFILTER_QUEUE_CFLAGS="-I$xmatch_inc"
+			else
+				LIB_NETFILTER_QUEUE_CFLAGS=""
+			fi
+			AC_DEFINE([HAVE_LIBNETFILTER_QUEUE], [1], [Define to 1 to compile with xmatch support])
+		fi
+	fi
+	CPPFLAGS=${OLD_CPPFLAGS}
+	LDFLAGS=${OLD_LDFLAGS}
+fi
+
+
+dnl **************************************************
 dnl * glib                                           *
 dnl **************************************************
 
@@ -752,6 +809,7 @@ dnl **************************************************
 AM_CONDITIONAL([BUILD_CSPM_MODULE], [ test x$enable_cspm = "xyes" ])
 AM_CONDITIONAL([BUILD_EMU_MODULE], [ test x$enable_emu = "xyes" ])
 AM_CONDITIONAL([BUILD_NFQ_MODULE], [ test x$enable_netfilter_queue = "xyes" ])
+AM_CONDITIONAL([BUILD_XMATCH_MODULE], [ test x$enable_xmatch = "xyes" ])
 AM_CONDITIONAL([BUILD_PCAP_MODULE], [ test x$enable_pcap = "xyes" ])
 AM_CONDITIONAL([BUILD_LOUDMOUTH_MODULE], [ test x$enable_loudmouth = "xyes" ])
 AM_CONDITIONAL([BUILD_PYTHON_MODULE], [ test x$enable_python = "xyes" && test x$enable_cython = "xyes" ])
@@ -869,6 +927,7 @@ AC_CONFIG_FILES([Makefile
 				modules/curl/Makefile
 				modules/nl/Makefile
 				modules/nfq/Makefile
+				modules/xmatch/Makefile
 				modules/pcap/Makefile])
 
                  
@@ -941,9 +1000,7 @@ echo ""
 echo "nl                                 : $enable_nl"
 echo " - cflags                          : $LIB_NL_CFLAGS"
 echo " - libs                            : $LIB_NL_LIBS"
-
-
-
-
-
-
+echo ""
+echo "xmatch                             : $enable_xmatch"
+echo " - cflags                          : $LIB_XMATCH_CFLAGS"
+echo " - libs                            : $LIB_XMATCH_LIBS"

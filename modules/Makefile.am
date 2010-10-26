@@ -26,6 +26,10 @@ if BUILD_NFQ_MODULE
 nfq_dir = nfq
 endif
 
+if BUILD_XMATCH_MODULE
+nfq_dir = xmatch
+endif
+
 
 SUBDIRS = nc $(python_dir) $(emu_dir) $(curl_dir) $(nl_dir) $(pcap_dir) $(nfq_dir)
-DIST_SUBDIRS = nc python emu curl nl pcap nfq
+DIST_SUBDIRS = nc python emu curl nl pcap nfq xmatch
