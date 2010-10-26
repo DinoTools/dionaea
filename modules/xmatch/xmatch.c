@@ -136,7 +136,9 @@ int xmatch_match_cb(void *pattern_p, int offset, void *input_p) {
 	xm_string_t *input = input_p;
 	xorkey_t *key = input->userdata;
 
-	g_debug("xmatch: found a match at offset 0x%08x\n", (unsigned int) input->offset + offset);
+	if (!pattern_p || !input_p) return -1;
+
+	g_message("found a match at offset 0x%08x\n", (unsigned int) input->offset + offset);
 
 	if ((key->data = malloc(pattern->len)) == NULL) {
 		g_warning("malloc failed: %s.", strerror(errno));
@@ -171,9 +173,9 @@ int xmatch_match_cb(void *pattern_p, int offset, void *input_p) {
 	return 0;
 }
 
-void *proc_xmatch_ctx_new(void *cfg)
+void *proc_xmatch_ctx_new(void *ctx)
 {
-	return NULL;
+	return ctx;
 }
 
 void proc_xmatch_ctx_free(void *ctx)
@@ -197,7 +199,7 @@ void proc_xmatch_on_io_in(struct connection *con, struct processor_data *pd)
 	key.len = 0;
 
 	// match input against the bfa of transformed patterns, if a match is found, the buffer is automatically decoded with the extracted key
-	int matches = xm_match(streamdata, size, ctx->fsm, ctx->maxlen, xmatch_match_cb, NULL, BREAK_ON_FIRST_MATCH);
+	int matches = xm_match(streamdata, size, ctx->fsm, ctx->maxlen, xmatch_match_cb, &key, BREAK_ON_FIRST_MATCH);
 
 	switch (matches) {
 	case -1:
@@ -205,7 +207,7 @@ void proc_xmatch_on_io_in(struct connection *con, struct processor_data *pd)
 		g_free(streamdata);
 		return;
 	case 0:
-		g_debug("xmatch did not find any matches.");
+		g_debug("did not find any matches.");
 		return;
 	}
 
@@ -215,7 +217,6 @@ void proc_xmatch_on_io_in(struct connection *con, struct processor_data *pd)
 	g_async_queue_push(aq, async_cmd_new(async_incident_report, ix));
 	g_async_queue_unref(aq);
 	ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
-	g_critical("xmatch found a matching pattern.");
 
 	// deal with match here
 

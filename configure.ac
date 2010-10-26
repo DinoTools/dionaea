@@ -544,16 +544,16 @@ if test x$enable_xmatch = "xyes" ; then
 	
 		if test x$enable_xmatch = "xyes" ; then
 			if test x$xmatch_lib != "xno"; then
-				LIB_NETFILTER_QUEUE_LIBS="-L$xmatch_lib -lxmatch"
+				LIB_XMATCH_LIBS="-L$xmatch_lib -lxmatch"
 			else
-				LIB_NETFILTER_QUEUE_LIBS="-lxmatch"
+				LIB_XMATCH_LIBS="-lxmatch"
 			fi
 			if test x$xmatch_inc != "xno"; then
-				LIB_NETFILTER_QUEUE_CFLAGS="-I$xmatch_inc"
+				LIB_XMATCH_CFLAGS="-I$xmatch_inc"
 			else
-				LIB_NETFILTER_QUEUE_CFLAGS=""
+				LIB_XMATCH_CFLAGS=""
 			fi
-			AC_DEFINE([HAVE_LIBNETFILTER_QUEUE], [1], [Define to 1 to compile with xmatch support])
+			AC_DEFINE([HAVE_XMATCH], [1], [Define to 1 to compile with xmatch support])
 		fi
 	fi
 	CPPFLAGS=${OLD_CPPFLAGS}

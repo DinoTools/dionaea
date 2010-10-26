@@ -27,7 +27,7 @@ nfq_dir = nfq
 endif
 
 if BUILD_XMATCH_MODULE
-nfq_dir = xmatch
+xmatch_dir = xmatch
 endif
 
 

@@ -36,7 +36,6 @@
 #include "modules.h"
 #include "connection.h"
 #include "dionaea.h"
-#include "processor.h"
 
 #include "nc.h"
 #include "log.h"
@@ -219,7 +218,6 @@ struct protocol proto_nc_redir =
 
 void proto_nc_established(struct connection *con)
 {
-	processors_init(con);
 	g_debug("%s con %p ctx %p",__PRETTY_FUNCTION__, con, con->protocol.ctx);
 }
 
