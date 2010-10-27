@@ -32,6 +32,7 @@ processors =
 							sockets = "3"
 							sustain = "120"
 							idle = "30"
+							listen = "30"
 							cpu = "120"
 							steps = "1073741824" // 1024 * 1024 * 1024
 						}

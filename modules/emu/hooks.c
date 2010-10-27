@@ -430,6 +430,9 @@ void async_connection_accept(void *data)
 {
 	g_debug("%s data %p", __PRETTY_FUNCTION__, data);
 	struct connection *con = data;
+	struct emu_emulate_ctx *ctx = con->data;
+	struct emu_config *conf = ctx->config;
+
 	switch( con->trans )
 	{
 	case connection_transport_tcp:
@@ -449,7 +452,7 @@ void async_connection_accept(void *data)
 		break;
 	}
 
-	con->events.listen_timeout.repeat = 15.0;
+	con->events.listen_timeout.repeat = conf->limits.listen;
 
 	if( con->events.listen_timeout.repeat > 0. )
 	{

@@ -88,6 +88,11 @@ void *proc_emu_ctx_cfg_new(struct lcfgx_tree_node *node)
 	else
 		goto err;
 
+	if( lcfgx_get_string(node, &n, "emulation.limits.listen") == LCFGX_PATH_FOUND_TYPE_OK )
+		conf->limits.listen = strtod(n->value.string.data, NULL);
+	else
+		goto err;
+
 	if( lcfgx_get_string(node, &n, "emulation.limits.sustain") == LCFGX_PATH_FOUND_TYPE_OK )
 		conf->limits.sustain = strtod(n->value.string.data, NULL);
 	else
@@ -98,14 +103,14 @@ void *proc_emu_ctx_cfg_new(struct lcfgx_tree_node *node)
 	else
 		goto err;
 
-	g_debug(" files %i filesize %i sockets %i steps %i idle %f sustain %f cpu %f ", conf->limits.files, conf->limits.filesize,
-			conf->limits.sockets, conf->limits.steps, conf->limits.idle, conf->limits.sustain, conf->limits.cpu);
+	g_debug(" files %i filesize %i sockets %i steps %i idle %f listen %f sustain %f cpu %f ", conf->limits.files, conf->limits.filesize,
+			conf->limits.sockets, conf->limits.steps, conf->limits.idle, conf->limits.listen, conf->limits.sustain, conf->limits.cpu);
 
 //	g_error("STOP");
 	return conf;
 
 	err:
-	g_warning("configuration incomplete");
+	g_warning("configuration for emulation is incomplete");
 	g_free(conf);
 	return NULL;
 }

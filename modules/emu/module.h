@@ -46,6 +46,7 @@ struct emu_config
 		int sockets;
 		double sustain;
 		double idle;
+		double listen;
 		int steps;
 		double cpu;
 	}limits;
