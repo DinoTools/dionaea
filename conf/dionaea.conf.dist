@@ -67,7 +67,7 @@ processors =
 		next = {
 			streamdumper = {
 				config = {
-					path = "var/dionaea/bistreams/"
+					path = "var/dionaea/bistreams/%Y-%m-%d/"
 				}
 			}
 		}

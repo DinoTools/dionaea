@@ -292,14 +292,21 @@ void processors_io_out(struct connection *con, void *data, int size)
 	}
 }
 
+void *proc_streamdumper_cfg_new(struct lcfgx_tree_node *node);
 void *proc_streamdumper_ctx_new(void *cfg);
 void proc_streamdumper_ctx_free(void *ctx);
 void proc_streamdumper_on_io_in(struct connection *con, struct processor_data *pd, void *data, int size);
 void proc_streamdumper_on_io_out(struct connection *con, struct processor_data *pd, void *data, int size);
 
+struct streamdumper_config
+{
+	char *path;
+};
+
 struct processor proc_streamdumper =
 {
 	.name = "streamdumper",
+	.cfg = proc_streamdumper_cfg_new,
 	.new = proc_streamdumper_ctx_new,  
 	.free = proc_streamdumper_ctx_free,
 	.io_in = proc_streamdumper_on_io_in,
@@ -313,9 +320,38 @@ struct streamdumper_ctx
 	enum bistream_direction last_was;
 };
 
+
+void *proc_streamdumper_cfg_new(struct lcfgx_tree_node *node)
+{
+	struct streamdumper_config *cfg = g_malloc0(sizeof(struct streamdumper_config));
+	struct lcfgx_tree_node *n;
+	if( lcfgx_get_string(node, &n, "path") != LCFGX_PATH_FOUND_TYPE_OK )
+	{
+		g_error("streamdumper needs a path");
+	}
+
+	char *path = n->value.string.data;
+	// test the path ...
+	char test[256];
+	time_t rawtime;
+	struct tm *timeinfo;
+	time(&rawtime);
+	timeinfo = localtime(&rawtime);
+	strftime(test, 255, path, timeinfo);
+	if( strcmp(test, path) == 0 )
+	{
+		g_error("streamdumper path does not have time based modifiers, all files end up in a single directory, which is not accepted.");
+	}
+
+	g_warning("%s <-> %s", test, path);
+	cfg->path = g_strdup(n->value.string.data);
+	return cfg;
+}
+
 void *proc_streamdumper_ctx_new(void *cfg)
 {
 	struct streamdumper_ctx *ctx = g_malloc0(sizeof(struct streamdumper_ctx));
+	
 	return ctx;
 }
 
@@ -359,7 +395,7 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 		struct tm t;
 		localtime_r(&stamp, &t);
 		char path[128];
-		snprintf(path, sizeof(path), "var/dionaea/bistreams/%04i-%02i-%02i/", t.tm_year + 1900, t.tm_mon + 1, t.tm_mday);
+		strftime(path, sizeof(path), ((struct streamdumper_config *)pd->processor->config)->path, &t);
 		char prefix[512];
 		snprintf(prefix, sizeof(prefix), "%s-%i-%s-",
 				 con->protocol.name,
