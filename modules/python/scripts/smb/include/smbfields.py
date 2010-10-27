@@ -814,14 +814,19 @@ class SMB_Sessionsetup_AndX_Request2(Packet):
 		LEShortField("ByteCount",35),
 		StrLenField("Password", "Pass", length_from=lambda x:x.PasswordLength),
 		StrLenField("UnicodePassword", "UniPass", length_from=lambda x:x.UnicodePasswordLength),
-		StrLenField("Padding", "\x00", length_from=lambda x:(x.PasswordLength+1)%2), 
+		ConditionalField(StrLenField("Padding", "\x00", length_from=lambda x:(x.PasswordLength+1)%2), lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE), 
 		SMBNullField("Account", "", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("PrimaryDomain","WORKGROUP", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("NativeOS","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
 		SMBNullField("NativeLanManager","Windows", utf16=lambda x:x.underlayer.Flags2 & SMB_FLAGS2_UNICODE),
-		StrFixedLenField("Extrabytes", b"\x00", length_from=lambda x: x.ByteCount - len(x.Padding) - len(x.Account) - len(x.PrimaryDomain) - len(x.NativeOS) - len(x.NativeLanManager)), 
+		StrFixedLenField("Extrabytes", b"\x00", length_from=lambda x: x.lengthof_Extrabytes()), 
 	]
-
+	def lengthof_Extrabytes(self):
+		bc = self.ByteCount
+		bc = bc - len(self.Account) - len(self.PrimaryDomain) - len(self.NativeOS) - len(self.NativeLanManager)
+		if hasattr(self,'Padding') and self.Padding is not None:
+			bc = bc - len(self.Padding)
+		return bc
 
 class SMB_Sessionsetup_AndX_Response2(Packet):
 	name="SMB Sessionsetup AndX Response2"
