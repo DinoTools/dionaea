@@ -102,8 +102,8 @@ class p0fhandler(ihandler):
 
 	def handle_incident(self, icd):
 		if icd.origin == 'dionaea.connection.tcp.accept' or icd.origin == 'dionaea.connection.tls.accept' or icd.origin == 'dionaea.connection.tcp.reject':
-			logger.warn("p0f action")
-			icd.dump()
+			logger.debug("p0f action")
+#			icd.dump()
 			con = icd.get('con')
 			p = p0fconnection(self.p0fpath, con)
 
