@@ -30,6 +30,8 @@
 #*  This program is published under a GPLv2 license
 #*******************************************************************************
 
+import logging
+logger = logging.getLogger('asn1')
 
 
 import random
@@ -205,7 +207,7 @@ class ASN1_Object_metaclass(type):
         try:
             c.tag.register_asn1_object(c)
         except:
-            warning("Error registering %r for %r" % (c.tag, c.codec))
+            logger.warning("Error registering %r for %r" % (c.tag, c.codec))
         return c
 
 

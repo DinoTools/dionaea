@@ -264,7 +264,7 @@ class ASN1F_SEQUENCE(ASN1F_field):
             for obj in self.seq:
                 s = obj.dissect(pkt,s)
             if s:
-                warning("Too many bytes to decode sequence: [%r]" % s) # XXX not reversible!
+                logger.warning("Too many bytes to decode sequence: [%r]" % s) # XXX not reversible!
             return remain
         except ASN1_Error as e:
             raise ASN1F_badsequence(e)
