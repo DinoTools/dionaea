@@ -65,10 +65,20 @@ class mssqld(connection):
 #			logger.warn("len(data) {} l {}".format(len(data),l))
 			p = None
 			try:
+				if len(data) - l  < 8: # length of TDS_Header
+					logger.warn("Incomplete TDS_Header")
+					return l
+
 				p = TDS_Header(data[l:l+8])
 				p.show()
+
+				if p.Length == 0:
+					logger.warn("Bad TDS Header, Length = 0")
+					return l
+
 				if len(data[l:]) < p.Length:
 					return l
+				
 				chunk = data[l:l+p.Length]
 				p = TDS_Header(chunk)
 				
@@ -255,6 +265,4 @@ class mssqld(connection):
 				r = self.process( self.pendingPacketType, x, self.buf[9:])
 			self.session.close()
 		return False
-
-			
 
