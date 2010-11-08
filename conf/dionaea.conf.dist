@@ -293,7 +293,7 @@ modules = {
 			 * this section defines a single xmpp logging target
 			 * you can have multiple
 			 */
-			carnviore = {
+			carnivore = {
 				server = "sensors.carnivore.it"
 
 				/**
