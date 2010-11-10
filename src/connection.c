@@ -314,13 +314,11 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 		{
 			int sockopt=1;
-			int level = 0;
-			int optname = 0;
 
 			if( socket_domain == PF_INET )
 			{
 				if( setsockopt(con->socket, SOL_IP, IP_PKTINFO, &sockopt, sizeof(sockopt)) != 0 )
-					g_warning("con %p setsockopt fail domain %i level %i optname %i %s", con, socket_domain, level, optname, strerror(errno));
+					g_warning("con %p setsockopt fail domain %i level %i optname %i %s", con, socket_domain, SOL_IP, IP_PKTINFO, strerror(errno));
 
 			}else
 			if( socket_domain == PF_INET6 )
