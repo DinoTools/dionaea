@@ -211,7 +211,11 @@ def recursive_print(cursor, connection, indent):
 		recursive_print(cursor, c['connection'], indent+2)
 
 def print_db(opts, args):
-	dbh = sqlite3.connect(args[0])
+	dbpath = '/opt/dionaea/var/dionaea/logsql.sqlite'
+	if len(args) >= 1:
+		dbpath = args[0]
+	print("using database located at {0}".format(dbpath))
+	dbh = sqlite3.connect(dbpath)
 	cursor = dbh.cursor()
 
 	offset = 0
