@@ -2306,6 +2306,7 @@ class SRVSVC(RPCService):
 		0x0e: "NetShareAdd",
 		0x0f: "NetShareEnum",
 		0x10: "NetrShareGetInfo",
+		0x15: "NetServerGetInfo",
 		0x1c: "NetrRemoteTOD",
 		0x1f: "NetPathCanonicalize",
 		0x20: "NetPathCompare",
@@ -2665,9 +2666,51 @@ class SRVSVC(RPCService):
 					self.__packer.pack_string_fix(str(data['comment']+'\0').encode('utf16')[2:])
 					# Path
 					self.__packer.pack_string_fix(str(data['path']+'\0').encode('utf16')[2:])
+	
+	class SERVER_INFO_101:
+		# 2.2.4.41 SERVER_INFO_101
+		# 
+		# http://msdn.microsoft.com/en-us/library/cc247164%28v=PROT.13%29.aspx
+		# 
+		#typedef struct _SERVER_INFO_101 {
+		#  DWORD sv101_platform_id;
+		#  [string] wchar_t* sv101_name;
+		#  DWORD sv101_version_major;
+		#  DWORD sv101_version_minor;
+		#  DWORD sv101_type;
+		#  [string] wchar_t* sv101_comment;
+		#} SERVER_INFO_101, 
+		# *PSERVER_INFO_101, 
+		# *LPSERVER_INFO_101;
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Data = {}
+				self.Pointer = 0x99999
+				self.Platform_id = 500 # Windows NT or a newer Windows operating system version.
+				self.Name_pointer= 0x68458
+				self.Comment_pointer = 0x73429
+				self.Version_major = 5 # Windows XP SP2 default reply
+				self.Version_minor = 1 # Windows XP SP2 default reply
+				#self.Type = 0x00051003 # Windows XP SP2 default reply (Type: Workstation, Server, NT Workstation, Potential Browser, Master Browser)
+				self.Type = 0xFFFFFFFF # All servers 
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				pass
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.__packer.pack_pointer(self.Pointer)
+				self.__packer.pack_long(self.Platform_id)
+				self.__packer.pack_pointer(self.Name_pointer)					
+				self.__packer.pack_long(self.Version_major)
+				self.__packer.pack_long(self.Version_minor)
+				self.__packer.pack_long(self.Type)
+				self.__packer.pack_pointer(self.Comment_pointer)
 					
-
-
+				for j in range(len(self.Data)):
+					self.__packer.pack_string_fix(self.Data[j].encode('utf16')[2:])
+					
+					
 	@classmethod
 	def handle_NetShareEnum(cls, con, p):
 
@@ -2997,7 +3040,36 @@ class SRVSVC(RPCService):
 
 		r.pack_long(0)
 		return r.get_buffer()
+
+	@classmethod
+	def handle_NetServerGetInfo(cls, con, p):
+		#3.1.4.17 NetrServerGetInfo (Opnum 21)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc247243%28v=PROT.13%29.aspx
+		#
+		#NET_API_STATUS NetrServerGetInfo(
+		#  [in, string, unique] SRVSVC_HANDLE ServerName,
+		#  [in] DWORD Level,
+		#  [out, switch_is(Level)] LPSERVER_INFO InfoStruct
+		#);
+
+		p = ndrlib.Unpacker(p.StubData)
+		Pointer = p.unpack_pointer()
+		ServerName = p.unpack_string()
+		Level = p.unpack_long()
+		print("ServerName %s Level %i" % (ServerName,Level))
+
+		r = ndrlib.Packer()
+		r.pack_long(Level)
 		
+		if Level == 101:
+			s = SRVSVC.SERVER_INFO_101(r)
+			server = ServerName.decode('UTF-16')[2:]
+			s.Data = [server, '\0']
+			s.pack()
+
+		r.pack_long(0)
+		return r.get_buffer()
 		
 class ssdpsrv(RPCService):
 	uuid = UUID('4b112204-0e19-11d3-b42b-0000f81feb9f').hex
