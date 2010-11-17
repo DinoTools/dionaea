@@ -54,6 +54,7 @@ class emuprofilehandler(ihandler):
 		state = "NONE"
 		host = None
 		port = None
+
 		for api in p:
 
 			if state == "NONE":
@@ -129,4 +130,6 @@ class emuprofilehandler(ihandler):
 					state = "DONE"
 
 
+		# set connection sustain timeout to low value, fainting death
+		con.timeouts.sustain = 3.0
 
