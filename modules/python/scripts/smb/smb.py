@@ -654,11 +654,12 @@ class epmapper(smbd):
 
 		r = self.process_dcerpc_packet(p)
 
+		if self.state['stop']:
+			smblog.info("faint death.")
+			return len(data)
+
 		if not r or r is None:
-			if self.state['stop']:
-				smblog.debug('drop dead!')
-			else:
-				smblog.critical('dcerpc processing failed. bailing out.')
+			smblog.critical('dcerpc processing failed. bailing out.')
 			return len(data)
 
 		smblog.debug('response: {0}'.format(r.summary()))
