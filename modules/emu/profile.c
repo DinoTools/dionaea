@@ -389,7 +389,7 @@ void profile(struct emu_config *conf, struct connection *con, void *data, unsign
 	{
 		GString *str = g_string_new(NULL);
 		json_profile_debug(env->profile, str);
-		printf("%s", str->str);
+		//printf("%s", str->str);
 		struct incident *i = incident_new("dionaea.module.emu.profile");
 		incident_value_string_set(i, "profile", str);
 		incident_value_con_set(i, "con", con);
