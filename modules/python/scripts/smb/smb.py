@@ -131,6 +131,10 @@ class smbd(connection):
 #		i.data = p.summary()
 #		i.report()
 
+		if self.state['stop']:
+			smblog.info("faint death.")
+			return len(data)
+
 		if r:
 			smblog.debug('response: {0}'.format(r.summary()))
 			r.show()
