@@ -923,6 +923,7 @@ AC_CONFIG_FILES([Makefile
 				modules/python/Makefile
 				modules/python/setup.py
 				modules/python/scripts/Makefile
+				modules/python/util/Makefile
 				modules/emu/Makefile
 				modules/curl/Makefile
 				modules/nl/Makefile
