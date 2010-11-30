@@ -39,8 +39,9 @@
 
 
 #include <stdio.h>
-#include <arpa/inet.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <stdlib.h> // qsort
 #include <ifaddrs.h> // getifaddrs
