@@ -93,7 +93,7 @@ static struct python_runtime
 {
 	struct lcfgx_tree_node *config;
 	struct ev_io python_cli_io_in;
-	FILE *stdin;
+	FILE *stdIN;
 	GHashTable *imports;
 	struct termios read_termios;
 	struct termios poll_termios;
@@ -138,7 +138,7 @@ void python_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	cf.cf_flags = 0;
 
 	tcsetattr(0, TCSANOW, &runtime.read_termios);
-	PyRun_InteractiveOneFlags(runtime.stdin, "<stdin>", &cf);
+	PyRun_InteractiveOneFlags(runtime.stdIN, "<stdin>", &cf);
 	traceback();
 	tcsetattr(0, TCSANOW, &runtime.poll_termios);
 }
@@ -398,7 +398,7 @@ static bool new(struct dionaea *dionaea)
 	if( isatty(STDOUT_FILENO) )
 	{
 		g_debug("Interactive Python shell");
-		runtime.stdin = fdopen(STDIN_FILENO, "r");
+		runtime.stdIN = fdopen(STDIN_FILENO, "r");
 		ev_io_init(&runtime.python_cli_io_in, python_io_in_cb, STDIN_FILENO, EV_READ);
 		ev_io_start(g_dionaea->loop, &runtime.python_cli_io_in);
 

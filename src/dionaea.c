@@ -110,7 +110,7 @@ struct options
 		char *levels;
 		char *domains;
 		struct log_filter *filter;
-	}stdout;
+	} stdOUT;
 
 	char *pidfile;
 };
@@ -173,11 +173,11 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			break;
 
 		case 'l':
-			options->stdout.levels = g_strdup(optarg);
+			options->stdOUT.levels = g_strdup(optarg);
 			break;
 
 		case 'L':
-			options->stdout.domains = g_strdup(optarg);
+			options->stdOUT.domains = g_strdup(optarg);
 			break;
 
 
@@ -272,8 +272,8 @@ bool options_validate(struct options *opt)
 		}
 	}
 
-	opt->stdout.filter = log_filter_new(opt->stdout.domains, opt->stdout.levels);
-	if( opt->stdout.filter == NULL )
+	opt->stdOUT.filter = log_filter_new(opt->stdOUT.domains, opt->stdOUT.levels);
+	if( opt->stdOUT.filter == NULL )
 		return false;
 
 	return true;
@@ -466,7 +466,7 @@ int main (int argc, char *argv[])
 		g_error("Invalid options");
 	}
 
-	g_log_set_default_handler(logger_stdout_log, opt->stdout.filter);
+	g_log_set_default_handler(logger_stdout_log, opt->stdOUT.filter);
 	// gc
 	if( opt->garbage != NULL )
 	{
@@ -526,7 +526,8 @@ int main (int argc, char *argv[])
 	// no daemon logs to stdout by default
 	if( opt->daemon == false )
 	{
-		struct logger *l = logger_new(logger_stdout_log, NULL, NULL, NULL, NULL, opt->stdout.filter);
+		struct logger *l = logger_new(logger_stdout_log, NULL, NULL, NULL, NULL, 
+opt->stdOUT.filter);
 		logger_stdout_open(l, NULL);
 		d->logging->loggers = g_list_append(d->logging->loggers, l);
 	}
