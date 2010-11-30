@@ -48,9 +48,9 @@
 #include <stddef.h> // offsetof
 #include <net/if.h> // if_nametoindex
 
+#ifdef HAVE_NETPACKET_PACKET_H
 #include <netpacket/packet.h> // af_packet
-
-
+#endif
 
 #include <lcfg/lcfg.h>
 #include <lcfgx/lcfgx_tree.h>
@@ -553,8 +553,13 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 		if( iface->ifa_addr == NULL )
 			continue;
 
-		if( iface->ifa_addr->sa_family != AF_INET && iface->ifa_addr->sa_family != AF_INET6 && iface->ifa_addr->sa_family != AF_PACKET )
+		if( iface->ifa_addr->sa_family != AF_INET && iface->ifa_addr->sa_family != AF_INET6 )
 			continue;
+
+#ifdef AF_PACKET
+		if( iface->ifa_addr->sa_family != AF_PACKET )
+			continue;
+#endif
 
 		if( !(iface->ifa_flags & IFF_UP) )
 			continue;
@@ -590,8 +595,11 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 			pyaddr = PyUnicode_FromString(ip_string);
 			PyDict_SetItemString(pyafdetails, "addr", pyaddr);
 			Py_DECREF(pyaddr);
-		} else
-			if( iface->ifa_addr->sa_family == AF_PACKET && PyList_Size(pyaflist) == 0 )
+		
+		} 
+#ifdef AF_PACKET
+		else
+		if( iface->ifa_addr->sa_family == AF_PACKET && PyList_Size(pyaflist) == 0 )
 		{
 			struct sockaddr_ll *lladdr = (struct sockaddr_ll *)iface->ifa_addr;
 
@@ -609,7 +617,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 			PyDict_SetItemString(pyafdetails, "addr", pyaddr);
 			Py_DECREF(pyaddr);
 		}
-
+#endif
 		if( pyaddr )
 			PyList_Append(pyaflist, pyafdetails);
 		Py_DECREF(pyafdetails);
