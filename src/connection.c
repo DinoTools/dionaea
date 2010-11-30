@@ -57,10 +57,6 @@
 #include <udns.h>
 #include <glib.h>
 
-#ifndef s6_addr32
-#define s6_addr32 __u6_addr.__u6_addr32
-#endif
-
 #define D_LOG_DOMAIN "connection"
 
 #define CL g_dionaea->loop
