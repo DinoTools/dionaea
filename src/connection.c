@@ -1905,8 +1905,12 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	int size, buf_size;
 
 	/* determine how many bytes we can recv */
+#ifdef SIOCINQ
 	if( ioctl(con->socket, SIOCINQ, &buf_size) != 0 )
 		buf_size=1024;
+#else
+	buf_size = 16*1024;
+#endif
 	if( buf_size == 0 )
 		buf_size++;
 
