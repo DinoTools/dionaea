@@ -49,6 +49,7 @@
 #include <openssl/pem.h>
 #include <stddef.h>
 #include <sys/ioctl.h>
+#include <sys/uio.h>
 
 #ifdef HAVE_LINUX_SOCKIOS_H
 #include <linux/sockios.h>
