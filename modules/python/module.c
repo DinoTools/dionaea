@@ -531,6 +531,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 		return result;
 
 	PyObject *pyiface, *pyaddr, *pynetmask, *pybroadcast, *pypointtopoint, *pyaf, *pyafdict, *pyaflist, *pyafdetails, *pyscopeid;
+	pynetmask = NULL;
 
 	int count=0;
 	for( iface=head; iface != NULL; iface=iface->ifa_next )
@@ -624,6 +625,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 
 
 		offset = ADDROFFSET(iface->ifa_netmask);
+#ifdef AF_PACKET
 		if( offset && iface->ifa_addr->sa_family != AF_PACKET )
 		{
 			inet_ntop(iface->ifa_addr->sa_family, offset, ip_string, INET6_ADDRSTRLEN);
@@ -631,7 +633,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 			PyDict_SetItemString(pyafdetails, "netmask", pynetmask);
 			Py_DECREF(pynetmask);
 		}
-
+#endif
 		if( iface->ifa_addr->sa_family == AF_INET6 )
 		{
 			struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)iface->ifa_addr;
