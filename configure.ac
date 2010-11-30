@@ -434,7 +434,7 @@ if test x$enable_pcap = "xyes" ; then
 		CPPFLAGS="${CPPFLAGS} -I${pcap_inc}"
 	fi
 	
-	AC_CHECK_HEADER(pcap.h,[enable_pcap=yes],[enable_pcap=no])
+	AC_CHECK_HEADER(pcap/sll.h,[enable_pcap=yes],[enable_pcap=no])
 	
 	if test x$enable_pcap = "xyes" ; then
 		OLD_LDFLAGS=${LDFLAGS}
