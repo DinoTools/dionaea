@@ -329,6 +329,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 #endif
 			}else
 #endif
+#ifdef SOL_IPV6 
 			if( socket_domain == PF_INET6 )
 			{ /* sometimes it is better if you have a choice ...
 			   * I just hope the cmsg type stays IPV6_PKTINFO
@@ -348,6 +349,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 				if( r < 0 )
 					g_warning("con %p setsockopt fail %s", con, strerror(errno));
 			}
+#endif
 		}
 
 		connection_set_nonblocking(con);
@@ -3345,6 +3347,7 @@ ssize_t recvfromto(int sockfd, void *buf, size_t len, int flags,
 			break;
 		}else
 #endif
+#if defined(SOL_IPV6) && defined(IPV6_PKTINFO)
 		if( fromaddr->sa_family == PF_INET6 && cmsgptr->cmsg_level == SOL_IPV6 && cmsgptr->cmsg_type == IPV6_PKTINFO )
 		{ /* IPv6 */
 			if( *fromlen < sizeof(struct sockaddr_in6) )
@@ -3357,6 +3360,7 @@ ssize_t recvfromto(int sockfd, void *buf, size_t len, int flags,
 			memcpy(addr, t, sizeof(struct in6_addr));
 			break;
 		}
+#endif
 	}
 	return rlen;
 }
@@ -3402,6 +3406,7 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 	}else
 	if( from->sa_family == PF_INET6 )
 	{ /* IPv6 */
+#if defined(SOL_IPV6) && defined(IPV6_PKTINFO)
 		char cbuf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
 		memset(cbuf, 0, sizeof(cbuf));
 		msg.msg_control = cbuf;
@@ -3412,6 +3417,7 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 		cmsgptr->cmsg_type = IPV6_PKTINFO;
 		cmsgptr->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
 		memcpy(&((struct in6_pktinfo *)(CMSG_DATA(cmsgptr)))->ipi6_addr, ADDROFFSET(from),  sizeof(struct in6_addr) );
+#endif
 	}else
 	{
 		errno = EINVAL;
@@ -3419,7 +3425,6 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 	}
 	return sendmsg(fd, &msg, 0);
 }
-
 
 void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 {
