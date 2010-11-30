@@ -315,15 +315,20 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 		g_debug("ip '%s' node '%s'", con->local.ip_string, con->local.node_string);
 
+
 		{
 			int sockopt=1;
-
+#ifdef SOL_IP 
 			if( socket_domain == PF_INET )
 			{
+#ifdef IP_PKTINFO
 				if( setsockopt(con->socket, SOL_IP, IP_PKTINFO, &sockopt, sizeof(sockopt)) != 0 )
 					g_warning("con %p setsockopt fail domain %i level %i optname %i %s", con, socket_domain, SOL_IP, IP_PKTINFO, strerror(errno));
-
+#else
+					g_warning("your operating system lacks IP_PKTINFO - if you got multiple ip addresses better turn off udp services");
+#endif
 			}else
+#endif
 			if( socket_domain == PF_INET6 )
 			{ /* sometimes it is better if you have a choice ...
 			   * I just hope the cmsg type stays IPV6_PKTINFO
@@ -3326,6 +3331,7 @@ ssize_t recvfromto(int sockfd, void *buf, size_t len, int flags,
 
 	for( cmsgptr = CMSG_FIRSTHDR(&msg); cmsgptr != NULL; cmsgptr = CMSG_NXTHDR(&msg, cmsgptr) )
 	{
+#ifdef SOL_IP
 		if( fromaddr->sa_family == PF_INET && cmsgptr->cmsg_level == SOL_IP && cmsgptr->cmsg_type == IP_PKTINFO )
 		{ /* IPv4 */
 			if( *fromlen < sizeof(struct sockaddr_in) )
@@ -3338,6 +3344,7 @@ ssize_t recvfromto(int sockfd, void *buf, size_t len, int flags,
 			memcpy(addr, t, sizeof(struct in_addr));
 			break;
 		}else
+#endif
 		if( fromaddr->sa_family == PF_INET6 && cmsgptr->cmsg_level == SOL_IPV6 && cmsgptr->cmsg_type == IPV6_PKTINFO )
 		{ /* IPv6 */
 			if( *fromlen < sizeof(struct sockaddr_in6) )
@@ -3380,6 +3387,7 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 
 	if( from->sa_family == PF_INET )
 	{ /* IPv4 */
+#if defined(SOL_IP) && defined(IP_PKTINFO)
 		char cbuf[CMSG_SPACE(sizeof(struct in_pktinfo))];
 		memset(cbuf, 0, sizeof(cbuf));
 		msg.msg_control = cbuf;
@@ -3390,6 +3398,7 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 		cmsgptr->cmsg_type = IP_PKTINFO;
 		cmsgptr->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
 		memcpy(&((struct in_pktinfo *)(CMSG_DATA(cmsgptr)))->ipi_addr.s_addr, ADDROFFSET(from),  sizeof(struct in_addr) );
+#endif
 	}else
 	if( from->sa_family == PF_INET6 )
 	{ /* IPv6 */
