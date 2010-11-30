@@ -3471,7 +3471,11 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 						 ((struct sockaddr *)&packet->to)->sa_family == PF_INET6 ? sizeof(struct sockaddr_in6) : 
 						 ((struct sockaddr *)&packet->to)->sa_family == AF_UNIX ? sizeof(struct sockaddr_un) : -1;
 
-		int ret = sendtofrom(con->socket, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size, (struct sockaddr *)&packet->from, size);
+		int ret;
+		if( con->state == connection_state_established && con->local.port != 0 )
+			ret = send(con->socket, packet->data->str, packet->data->len, 0);
+		else
+			ret = sendtofrom(con->socket, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size, (struct sockaddr *)&packet->from, size);
 
 		if( ret == -1 )
 		{
