@@ -643,10 +643,9 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 				Py_DECREF(pyscopeid);
 			}
 		}
-
 		if( iface->ifa_flags & IFF_BROADCAST )
 		{
-			offset = ADDROFFSET(iface->ifa_ifu.ifu_broadaddr);
+			offset = ADDROFFSET(iface->ifa_broadaddr);
 			if( offset )
 			{
 				inet_ntop(iface->ifa_addr->sa_family, offset, ip_string, INET6_ADDRSTRLEN);
@@ -658,7 +657,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 
 		if( iface->ifa_flags & IFF_POINTOPOINT )
 		{
-			offset = ADDROFFSET(iface->ifa_ifu.ifu_dstaddr);
+			offset = ADDROFFSET(iface->ifa_dstaddr);
 			if( offset )
 			{
 				inet_ntop(iface->ifa_addr->sa_family, offset, ip_string, INET6_ADDRSTRLEN);
