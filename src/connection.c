@@ -49,10 +49,17 @@
 #include <openssl/pem.h>
 #include <stddef.h>
 #include <sys/ioctl.h>
+
+#ifdef HAVE_LINUX_SOCKIOS_H
 #include <linux/sockios.h>
+#endif
 
 #include <udns.h>
 #include <glib.h>
+
+#ifndef s6_addr32
+#define s6_addr32 __u6_addr.__u6_addr32
+#endif
 
 #define D_LOG_DOMAIN "connection"
 

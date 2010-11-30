@@ -27,7 +27,7 @@ AC_PROG_CC
 AC_PROG_MAKE_SET
 AC_PROG_LIBTOOL
 
-AC_CHECK_HEADERS([stdint.h stdlib.h string.h strings.h unistd.h netpacket/packet.h execinfo.h])
+AC_CHECK_HEADERS([stdint.h stdlib.h string.h strings.h unistd.h netpacket/packet.h execinfo.h linux/sockios.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
