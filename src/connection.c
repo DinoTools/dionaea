@@ -318,7 +318,8 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 
 		{
-			int sockopt=1;
+			int sockopt;
+			sockopt = 1;
 #ifdef SOL_IP 
 			if( socket_domain == PF_INET )
 			{
@@ -3374,8 +3375,9 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 {
 	struct iovec iov[1];
 	struct msghdr msg;
-	
+
 	struct cmsghdr* cmsgptr;
+	cmsgptr = NULL;
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
