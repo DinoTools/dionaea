@@ -3409,6 +3409,7 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 		cmsgptr->cmsg_type = IP_PKTINFO;
 		cmsgptr->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
 		memcpy(&((struct in_pktinfo *)(CMSG_DATA(cmsgptr)))->ipi_addr.s_addr, ADDROFFSET(from),  sizeof(struct in_addr) );
+		return sendmsg(fd, &msg, 0);
 #endif
 	}else
 	if( from->sa_family == PF_INET6 )
@@ -3424,13 +3425,16 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 		cmsgptr->cmsg_type = IPV6_PKTINFO;
 		cmsgptr->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
 		memcpy(&((struct in6_pktinfo *)(CMSG_DATA(cmsgptr)))->ipi6_addr, ADDROFFSET(from),  sizeof(struct in6_addr) );
+		return sendmsg(fd, &msg, 0);
 #endif
 	}else
 	{
 		errno = EINVAL;
 		return -1;
 	}
-	return sendmsg(fd, &msg, 0);
+	/* if your operating system lacks everything ... */
+	g_warning("Your operating system lacks SOL_IP(V6) / IP(V6)_PKTINFO");
+	return sendto(fd, buf, len, flags, to, tolen);
 }
 
 void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
