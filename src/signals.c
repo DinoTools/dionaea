@@ -25,13 +25,17 @@
  *
  *******************************************************************************/
 
+#include "config.h"
+#include <string.h>
 #include <stdio.h>
 #include <unistd.h>
 #include <ev.h>
 #include <glib.h>
+#ifdef HAVE_EXECINFO_H
 #include <execinfo.h>
+#endif
 
-#include "config.h"
+
 #include "dionaea.h"
 #include "signals.h"
 #include "modules.h"
@@ -76,7 +80,7 @@ void sighup_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 	}
 }
 
-#include <string.h>
+
 
 void sigsegv_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 //int segv_handler(int sig)
@@ -102,8 +106,10 @@ void sigsegv_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 //	return 0;
 }
 
+
 void sigsegv_backtrace_cb(int sig)
 {
+#ifdef HAVE_EXECINFO_H
 #define BACKTRACE_SIZE 32
 	void *back[BACKTRACE_SIZE];
 	size_t size;
@@ -134,5 +140,6 @@ void sigsegv_backtrace_cb(int sig)
 		backtrace_symbols_fd(back, size, l->fd);
 	}
 //	g_mutex_unlock(g_dionaea->logging->lock);
+#endif
 	exit(-1);
 }
