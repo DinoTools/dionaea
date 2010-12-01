@@ -25,6 +25,8 @@
  *
  *******************************************************************************/
 
+#include "config.h"
+
 #include <Python.h>
 #include <glib.h>
 #include <stdio.h>
@@ -59,7 +61,6 @@
 #include "dionaea.h"
 #include "modules.h"
 
-#include "config.h"
 #include "log.h"
 
 #include "connection.h"
@@ -528,7 +529,10 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 	result = PyDict_New();
 
 	if( getifaddrs(&head) < 0 )
+	{
+		g_warning("getifaddrs failed (%s)",  strerror(errno));
 		return result;
+	}
 
 	PyObject *pyiface, *pyaddr, *pynetmask, *pybroadcast, *pypointtopoint, *pyaf, *pyafdict, *pyaflist, *pyafdetails, *pyscopeid;
 	pynetmask = NULL;
@@ -554,13 +558,12 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 		if( iface->ifa_addr == NULL )
 			continue;
 
-		if( iface->ifa_addr->sa_family != AF_INET && iface->ifa_addr->sa_family != AF_INET6 )
-			continue;
-
+		if( iface->ifa_addr->sa_family != AF_INET && iface->ifa_addr->sa_family != AF_INET6 
 #ifdef AF_PACKET
-		if( iface->ifa_addr->sa_family != AF_PACKET )
-			continue;
+			&& iface->ifa_addr->sa_family != AF_PACKET 
 #endif
+			)
+			continue;
 
 		if( !(iface->ifa_flags & IFF_UP) )
 			continue;
@@ -669,11 +672,8 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 			}
 		}
 	}
-#undef ADDROFFSET
 	freeifaddrs(head);
 	return result;
-
-
 }
 
 
