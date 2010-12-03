@@ -246,5 +246,7 @@ void tempfile_unlink(struct tempfile *tf)
 
 void tempfile_free(struct tempfile *tf)
 {
+	if( tf->path )
+		g_free(tf->path);
 	g_free(tf);
 }
