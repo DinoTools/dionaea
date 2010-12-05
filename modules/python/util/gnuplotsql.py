@@ -3,6 +3,7 @@
 import sqlite3
 import os
 import datetime
+import calendar
 from optparse import OptionParser
 
 def resolve_result(resultcursor):
@@ -27,7 +28,7 @@ def get_ranges_from_db(cursor):
 	start = datetime.datetime(start.year,start.month,1)
 
 	stop = datetime.datetime.strptime(r[0]['stop'], "%Y-%m-%d")
-	stop = (datetime.datetime(stop.year,stop.month+1,1)-datetime.timedelta(1))
+	stop = datetime.datetime(stop.year,stop.month,1)+datetime.timedelta(days=calendar.monthrange(stop.year,stop.month)[1])-datetime.timedelta(seconds=1)
 
 	# create a list of ranges
 	# (overview|year|month,start,stop)
@@ -59,7 +60,7 @@ def get_ranges_from_db(cursor):
 	ranges.append((
 		"month", 
 		datetime.datetime(cur.year,cur.month,1),
-		datetime.datetime(cur.year,cur.month+1,1)-datetime.timedelta(1))
+		datetime.datetime(cur.year,cur.month,1)+datetime.timedelta(days=calendar.monthrange(stop.year,stop.month)[1])-datetime.timedelta(seconds=1))
 	)
 	return (ranges,dates)
 
