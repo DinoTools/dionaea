@@ -143,6 +143,8 @@ static void session_free(struct session *session)
 			g_free(session->action.upload.callback);
 		if( session->action.upload.userdata != NULL )
 			g_free(session->action.upload.userdata);
+		if( session->action.upload.file != NULL )
+			tempfile_free(session->action.upload.file);
 		break;
 	}
 
@@ -234,6 +236,12 @@ static void check_run_count(void)
 					} else
 					{
 						g_warning("UPLOAD FAIL: %s => (%d) %s", eff_url, msg->data.result, session->error);
+
+						if( session->action.upload.callback == NULL )
+							break;
+
+						tempfile_close(session->action.upload.file);
+						tempfile_unlink(session->action.upload.file);
 					}
 					break;
 				}
