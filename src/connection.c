@@ -3480,10 +3480,18 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 						 ((struct sockaddr *)&packet->to)->sa_family == AF_UNIX ? sizeof(struct sockaddr_un) : -1;
 
 		int ret;
-		if( con->state == connection_state_established && con->local.port != 0 )
-			ret = send(con->socket, packet->data->str, packet->data->len, 0);
-		else
-			ret = sendtofrom(con->socket, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size, (struct sockaddr *)&packet->from, size);
+		/*
+		 * for whatever reason 
+		 * * send 
+		 *   - works on udp sockets which were connect()'ed before (linux)
+		 *   - works not on udp sockets which were bind()'ed before (linux)
+		 * * sendto 
+		 *   - does not work on connect()'ed sockets on (openbsd)
+		 *  
+		 * and as we can't distinguish from bound/unbound connected/unconnected sockets at this point 
+		 * udp does not work for openbsd 
+		 */
+		ret = sendtofrom(con->socket, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size, (struct sockaddr *)&packet->from, size);
 
 		if( ret == -1 )
 		{
