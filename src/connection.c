@@ -25,6 +25,8 @@
  *
  *******************************************************************************/
 
+#include "config.h"
+
 #include <stdbool.h>
 
 #include <stdio.h>
@@ -1923,8 +1925,9 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 #else
 	buf_size = 16*1024;
 #endif
-	if( buf_size == 0 )
-		buf_size++;
+
+	/* always increase by one so we get EOF and data in one callback */
+	buf_size++;
 
 	g_debug("can recv %i bytes", buf_size);
 
@@ -1963,7 +1966,12 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 		if( new_in->len > 0 )
 			con->protocol.io_in(con, con->protocol.ctx, (unsigned char *)con->transport.tcp.io_in->str, con->transport.tcp.io_in->len);
 
-		connection_tcp_disconnect(con);
+		/*
+		 * the protocol may have disabled the watcher for io_in already 
+		 * if so, do not deliver the disconnect 
+		 */
+		if( ev_is_active(w) )
+			connection_tcp_disconnect(con);
 	} else
 		if( (size == -1 && errno == EAGAIN) || size == MIN(buf_size, recv_throttle) )
 	{
