@@ -147,19 +147,19 @@ class RoomHandler(MucRoomHandler):
 						
 	def handle_incident_dionaea_connection_link(self, user, xmlobj):
 		try:
-			parent = xmlobj.hasProp('parent').content
-			child = xmlobj.hasProp('child').content
+			parent = int(xmlobj.hasProp('parent').content)
+			child = int(xmlobj.hasProp('child').content)
 		except Exception as e:
 			print(e)
 			return
 		if dbh is not None and parent in user.attacks:
 			parentroot, parentid = user.attacks[parent]
-			if icd.child in user.attacks:
+			if child in user.attacks:
 				childroot, childid = user.attacks[child]
 			else:
 				childid = parentid
-			self.attacks[child] = (parentroot, childid)
-			self.cursor.execute("UPDATE connections SET connection_root = %s, connection_parent = %s WHERE connection = %s",
+			user.attacks[child] = (parentroot, childid)
+			cursor.execute("UPDATE dionaea.connections SET connection_root = %s, connection_parent = %s WHERE connection = %s",
 				(parentroot, parentid, childid) )
 		print("[%s] link %s %s" % (user.room_jid.as_unicode(), parent, child))
 
