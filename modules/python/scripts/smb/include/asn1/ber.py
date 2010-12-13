@@ -136,6 +136,9 @@ def BER_identifier_dec(l):
     val = l[off]
     off += 1
 
+    if type(val) == str:
+        val = ord(val)
+
     cls = (val>>6) & 0x03
     pc = (val>>5) & 0x01;
     tag = val&0x1F;
@@ -167,8 +170,9 @@ def BER_len_enc(l, size=0):
         return x+s
 
 def BER_len_dec(s):
-#        l = ord(s[0])
         l = s[0]
+        if type(l) == str:
+            l = ord(l)
 #        logger.debug("l %i" % l)
         if not (l & 0x80):
             return l,s[1:]
