@@ -1950,6 +1950,7 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 		if( recv_size <= 0 )
 			break;
 	}
+	int lerrno = errno;
 
 	if( con->processor_data != NULL && new_in->len > 0 )
 	{
@@ -1973,7 +1974,9 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 		if( ev_is_active(w) )
 			connection_tcp_disconnect(con);
 	} else
-		if( (size == -1 && errno == EAGAIN) || size == MIN(buf_size, recv_throttle) )
+		if( (size == -1 && lerrno == EAGAIN) || 
+			size == MIN(buf_size, recv_throttle) ||
+			recv_size <= 0 )
 	{
 		g_debug("EAGAIN");
 		if( ev_is_active(&con->events.idle_timeout) )
@@ -1991,7 +1994,7 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 	} else
 	{
-		g_warning("recv failed (%s)", strerror(errno));
+		g_warning("recv failed size %i recv_size %i (%s)", size, recv_size, strerror(lerrno));
 		connection_tcp_disconnect(con);
 	}
 	g_string_free(new_in, TRUE);
