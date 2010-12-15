@@ -35,6 +35,7 @@ import datetime
 import io
 import cgi
 import urllib.parse
+import mimetypes
 
 logger = logging.getLogger('http')
 logger.setLevel(logging.DEBUG)
@@ -58,9 +59,9 @@ class httpreq:
 			self.headers[hset[0]] = hset[1]
 		
 	def print(self):
-		print(self.type + b" " + self.path.encode('utf-8') + b" " + self.version)
+		logger.debug(self.type + b" " + self.path.encode('utf-8') + b" " + self.version)
 		for i in self.headers:
-			print(i + b":" + self.headers[i])
+			logger.debug(i + b":" + self.headers[i])
 
 
 class httpd(connection):
@@ -76,15 +77,14 @@ class httpd(connection):
 		self.rwchunksize = parent.rwchunksize
 
 	def handle_established(self):
-#		self.processors()
 		self.timeouts.idle = 10
-#		pass
+		self.processors()
 
 	def chroot(self, path):
 		self.root = path
 
 	def handle_io_in(self, data):
-		print(data)
+		logger.debug(data)
 		if self.state == 'HEADER':
 			eoh = data.find(b'\r\n\r\n')
 			if eoh == -1:
@@ -98,11 +98,16 @@ class httpd(connection):
 			if self.header.type == b'GET':
 				self.handle_GET()
 			elif self.header.type == b'HEAD':
-				self.handle_GET()
+				self.handle_HEAD()
 			elif self.header.type == b'POST':
 				self.handle_POST()
-			elif self.header.type == b'PUT':
-				self.handle_PUT()
+			elif self.header.type == b'OPTIONS':
+				self.handle_OPTIONS()
+			#elif self.header.type == b'PUT':
+			#	self.handle_PUT()
+			else:
+				# method not found
+				self.handle_unknown()
 		elif self.state == 'POST':
 			print("posting to me")
 		elif self.state == 'PUT':
@@ -114,20 +119,45 @@ class httpd(connection):
 		return len(data)
 		
 	def handle_GET(self):
+		"""Handle the GET method. Send the header and the file."""
 		x = self.send_head()
 		if x :
 			self.copyfile(x)
 
 	def handle_HEAD(self):
+		"""Handle the HEAD method. Send only the header but not the file."""
 		x = self.send_head()
 		if x :
 			x.close()
+			self.close()
+
+	def handle_OPTIONS(self):
+		"""
+		Handle the OPTIONS method. Returns the HTTP methods that the server supports.
+		"""
+		self.send_response(200)
+		self.send_header("Allow", "OPTIONS, GET, HEAD, POST")
+		self.send_header("Content-Length", "0")
+		self.send_header("Connection", "close")
+		self.end_headers()
+		self.close()
 
 	def handle_POST(self):
-		pass
+		"""
+		Handle the POST method. Send the head and the file. But ignore the POST params.
+		Use the bistreams for a better analysis.
+		"""
+		x = self.send_head()
+		if x :
+			self.copyfile(x)
 
 	def handle_PUT(self):
 		pass
+
+	def handle_unknown(self):
+		x = self.send_error(501)
+		if x:
+			self.copyfile(x)
 
 	def copyfile(self, f):
 		self.file = f
@@ -138,7 +168,7 @@ class httpd(connection):
 		rpath = os.path.normpath(self.header.path)
 		fpath = os.path.join(self.root, rpath[1:])
 		apath = os.path.abspath(fpath)
-		print("root %s rpath %s fpath %s apath %s" % (self.root, rpath, fpath, apath))
+		logger.debug("root %s rpath %s fpath %s apath %s" % (self.root, rpath, fpath, apath))
 		if os.path.exists(apath):
 			if os.path.isdir(apath):
 				if not self.header.path.endswith('/'):
@@ -154,16 +184,18 @@ class httpd(connection):
 				self.send_response(200)
 				self.send_header("Connection", "close")
 				self.send_header("Content-Length", str(os.stat(apath).st_size))
+
+				# Try to detect the MIME type
+				mime = mimetypes.guess_type(apath)
+				if mime[0] != None:
+					self.send_header("Content-Type", mime[0])
+
 				self.end_headers()
 				return f
 			else:
-				self.send_response(404, "File not found")
-				self.end_headers()
-				self.close()
+				return self.send_error(404)
 		else:
-			self.send_response(404, "File not found")
-			self.end_headers()
-			self.close()
+			return self.send_error(404)
 		return None
 
 	def handle_io_out(self):
@@ -219,6 +251,7 @@ class httpd(connection):
 		self.send_response(200)
 		self.send_header("Content-type", "text/html; charset=%s" % enc)
 		self.send_header("Content-Length", str(len(encoded)))
+		self.send_header("Connection", "close")
 		self.end_headers()
 		f = io.BytesIO()
 		f.write(encoded)
@@ -232,6 +265,40 @@ class httpd(connection):
 			else:
 				message = ''
 		self.send("%s %d %s\r\n" % ("HTTP/1.0", code, message))
+
+	def send_error(self, code, message = None):
+		if message is None:
+			if code in self.responses:
+				message = self.responses[code][0]
+			else:
+				message = ''
+		enc = sys.getfilesystemencoding()
+
+		r = []
+		r.append('<?xml version="1.0" encoding="%s"?>\n' % (enc))
+		r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"\n')
+		r.append('         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">\n')
+		r.append('<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">\n')
+		r.append(' <head>\n')
+		r.append('  <title>%d - %s</title>\n' % (code, message))
+		r.append(' </head>\n')
+		r.append(' <body>\n')
+		r.append('  <h1>%d - %s</h1>\n' % (code, message))
+		r.append(' </body>\n')
+		r.append('</html>\n')
+
+		encoded = ''.join(r).encode(enc)
+
+		self.send_response(code, message)
+		self.send_header("Content-type", "text/html; charset=%s" % enc)
+		self.send_header("Content-Length", str(len(encoded)))
+		self.send_header("Connection", "close")
+		self.end_headers()
+
+		f = io.BytesIO()
+		f.write(encoded)
+		f.seek(0)
+		return f
 
 	def send_header(self, key, value):
 		self.send("%s: %s\r\n" % (key, value))
