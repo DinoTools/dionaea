@@ -52,9 +52,16 @@ class RoomHandler(MucRoomHandler):
 		print 'subject: %s' % stanza
 
 	def message_received(self, user, stanza):
+
+		if not hasattr(user, 'attacks'):
+			print("invalid message, maybe history")
+			return
 		# check if we have dionaea entries in the message
 		# provide a namespace ...
 		# I love xml namespaces ...
+
+		# dionaea
+
 		r = stanza.xpath_eval("/default:message/default:body/dionaea:dionaea", 
 			namespaces = {  "default" : "http://pyxmpp.jajcus.net/xmlns/common", 
 							"dionaea" : "http://dionaea.carnivore.it"})
@@ -111,8 +118,8 @@ class RoomHandler(MucRoomHandler):
 	"""INSERT INTO 
 			dionaea.connections 
 					(connection_timestamp, connection_type, connection_transport, connection_protocol, local_host, local_port, remote_host, remote_hostname, remote_port) 
-	VALUES (NOW(),'%s','%s','%s','%s',
-			%s,'%s','%s',%s)""" % 
+	VALUES (NOW(),%s,%s,%s,%s,
+			%s,%s,%s,%s)""" , 
 					(ctype, transport, protocol, local_host, 
 					local_port, remote_host, remote_hostname, remote_port))
 			r = cursor.execute("""SELECT CURRVAL('dionaea.connections_connection_seq')""")
