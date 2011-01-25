@@ -495,7 +495,7 @@ class ftpd(connection):
 			return (FILE_NOT_FOUND, p)
 
 		if os.path.isdir(dir):
-			return (PERMISSION_DENIED, dir)
+			return (PERMISSION_DENIED, p)
 		os.mkdir(dir)
 		return REQ_FILE_ACTN_COMPLETED_OK
 
