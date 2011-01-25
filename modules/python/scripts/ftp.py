@@ -439,6 +439,8 @@ class ftpd(connection):
 			return (FILE_NOT_FOUND, p)
 		else:
 			self.cwd = cwd[len(self.basedir):]
+			if self.cwd == "":
+				self.cwd = "/"
 
 		if os.path.exists(cwd) and os.path.isdir(cwd):
 			return REQ_FILE_ACTN_COMPLETED_OK
