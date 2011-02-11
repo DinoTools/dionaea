@@ -9,7 +9,7 @@ import uuid
 logger = logging.getLogger('submit_http')
 logger.setLevel(logging.DEBUG)
 
-class submmithttp_report:
+class submithttp_report:
 	def __init__(self, sha512h, md5, filepath):
 		self.sha512h, self.md5h, self.filepath = sha512h, filepath
 		self.saddr, self.sport, self.daddr, self.dport = ('', )*4
