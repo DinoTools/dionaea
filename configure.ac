@@ -27,7 +27,7 @@ AC_PROG_CC
 AC_PROG_MAKE_SET
 AC_PROG_LIBTOOL
 
-AC_CHECK_HEADERS([stdint.h stdlib.h string.h strings.h unistd.h])
+AC_CHECK_HEADERS([stdint.h stdlib.h string.h strings.h unistd.h netpacket/packet.h execinfo.h linux/sockios.h])
 
 # Checks for typedefs, structures, and compiler characteristics.
 AC_C_INLINE
@@ -371,8 +371,7 @@ if test x$enable_ssl = "xyes" ; then
 			LDFLAGS="${LDFLAGS}  -L${ssl_lib}"
 		fi
 	
-		AC_CHECK_LIB([ssl],[SSLv23_method],enable_ssl="yes", enable_ssl="no")
-	
+		AC_CHECK_LIB([ssl],[SSL_connect],enable_ssl="yes", enable_ssl="no")
 		if test x$enable_ssl = "xyes" ; then
 			if test x$ssl_lib != "xno"; then
 				LIB_SSL_LIBS="-L$ssl_lib -lssl"
@@ -385,6 +384,22 @@ if test x$enable_ssl = "xyes" ; then
 				LIB_SSL_CFLAGS=""
 			fi
 			AC_DEFINE([HAVE_LIBSSL], [1], [Define to 1 to compile with ssl support])
+		else
+			# try with -lcrypto
+			LDFLAGS="${LDFLAGS} -lcrypto"
+			AC_CHECK_LIB([ssl],[SSLv23_method],[LIBS=-lcrypto $LIBS 
+			enable_ssl="yes"], enable_ssl="no")
+                        if test x$ssl_lib != "xno"; then
+                                LIB_SSL_LIBS="-L$ssl_lib -lssl -lcrypto"
+                        else
+                                LIB_SSL_LIBS="-lssl -lcrypto"
+                        fi
+                        if test x$ssl_inc != "xno"; then
+                                LIB_SSL_CFLAGS="-I$ssl_inc"
+                        else
+                                LIB_SSL_CFLAGS=""
+                        fi
+                        AC_DEFINE([HAVE_LIBSSL], [1], [Define to 1 to compile with ssl support])
 		fi
 	fi
 	CPPFLAGS=${OLD_CPPFLAGS}
@@ -419,7 +434,7 @@ if test x$enable_pcap = "xyes" ; then
 		CPPFLAGS="${CPPFLAGS} -I${pcap_inc}"
 	fi
 	
-	AC_CHECK_HEADER(pcap.h,[enable_pcap=yes],[enable_pcap=no])
+	AC_CHECK_HEADER(pcap/sll.h,[enable_pcap=yes],[enable_pcap=no])
 	
 	if test x$enable_pcap = "xyes" ; then
 		OLD_LDFLAGS=${LDFLAGS}
@@ -923,6 +938,7 @@ AC_CONFIG_FILES([Makefile
 				modules/python/Makefile
 				modules/python/setup.py
 				modules/python/scripts/Makefile
+				modules/python/util/Makefile
 				modules/emu/Makefile
 				modules/curl/Makefile
 				modules/nl/Makefile

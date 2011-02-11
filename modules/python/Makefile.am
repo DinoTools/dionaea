@@ -2,7 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-SUBDIRS = scripts
+SUBDIRS = scripts util
 
 all: binding.c
 

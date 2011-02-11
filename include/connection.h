@@ -28,6 +28,7 @@
 #ifndef HAVE_CONNECTION_H
 #define HAVE_CONNECTION_H
 
+#include <sys/socket.h>
 #include <stdbool.h>
 #include <stdint.h>
 

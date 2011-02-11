@@ -35,9 +35,12 @@
 #include <stdint.h>
 #include <stdlib.h>
 #include <signal.h>
+#include <sys/uio.h>
+
 
 #include <glib.h>
 
+#include "config.h"
 #include "dionaea.h"
 #include "pchild.h"
 #include "log.h"
@@ -102,6 +105,7 @@ bool pchild_init(void)
 
 int pchild_recv_bind(int fd)
 {
+#ifdef HAVE_LINUX_SOCKIOS_H
 	struct sockaddr_storage sa;
 	socklen_t   sizeof_sa;
 	char data[1024];
@@ -146,11 +150,13 @@ int pchild_recv_bind(int fd)
 			cmsg = CMSG_NXTHDR(&msg, cmsg);
 		}
 	}
+#endif
 	return 0;
 }
 
 int pchild_sent_bind(int sx, struct sockaddr *s, socklen_t size)
 {
+#ifdef HAVE_LINUX_SOCKIOS_H
 	g_mutex_lock(g_dionaea->pchild->mutex);
 	uintptr_t cmd = (uintptr_t)pchild_recv_bind;
 	if( send(g_dionaea->pchild->fd, &cmd, sizeof(uintptr_t), 0) != sizeof(uintptr_t) )
@@ -213,7 +219,10 @@ int pchild_sent_bind(int sx, struct sockaddr *s, socklen_t size)
 		errno = 0;
 		return ret;
 	}
-
+#else
+	return bind(sx,s,size);
+#endif
+	return 0;
 }
 
 

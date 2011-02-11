@@ -359,7 +359,7 @@ class ftpd(connection):
 
 		if os.path.exists(name) and os.path.isfile(name):
 			if self.dtp:
-				if self.dtp.status == 'connected':
+				if self.dtp.status == 'established':
 					self.reply(FILE_STATUS_OK_OPEN_DATA_CNX)
 					self.dtp.send_file(name)
 				else:
@@ -386,7 +386,7 @@ class ftpd(connection):
 			return (PERMISSION_DENIED, p)
 
 		if self.dtp:
-			if self.dtp.status == 'connected':
+			if self.dtp.status == 'established':
 				self.reply(FILE_STATUS_OK_OPEN_DATA_CNX)
 				self.dtp.recv_file(file)
 			else:
@@ -414,7 +414,7 @@ class ftpd(connection):
 
 		if os.path.exists(name):
 			if self.dtp:
-				if self.dtp.status == 'connected':
+				if self.dtp.status == 'established':
 					self.reply(FILE_STATUS_OK_OPEN_DATA_CNX)
 					self.dtp.send_list(name, len(name)+1)
 				else:
@@ -439,6 +439,8 @@ class ftpd(connection):
 			return (FILE_NOT_FOUND, p)
 		else:
 			self.cwd = cwd[len(self.basedir):]
+			if self.cwd == "":
+				self.cwd = "/"
 
 		if os.path.exists(cwd) and os.path.isdir(cwd):
 			return REQ_FILE_ACTN_COMPLETED_OK
@@ -495,7 +497,7 @@ class ftpd(connection):
 			return (FILE_NOT_FOUND, p)
 
 		if os.path.isdir(dir):
-			return (PERMISSION_DENIED, dir)
+			return (PERMISSION_DENIED, p)
 		os.mkdir(dir)
 		return REQ_FILE_ACTN_COMPLETED_OK
 
@@ -933,7 +935,13 @@ class ftpdownloadhandler(ihandler):
 				con = icd.con
 			except AttributeError:
 				con = None
+
+			if hasattr(icd,'ftpmode'):
+				ftpmode = icd.ftpmode
+			else:
+				ftpmode = 'binary'
+
 			f = ftp()
-			f.download(con, p.username, p.password, p.hostname, p.port, p.path, icd.ftpmode, url)
+			f.download(con, p.username, p.password, p.hostname, p.port, p.path, ftpmode, url)
 
 

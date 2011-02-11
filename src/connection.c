@@ -25,6 +25,8 @@
  *
  *******************************************************************************/
 
+#include "config.h"
+
 #include <stdbool.h>
 
 #include <stdio.h>
@@ -49,7 +51,11 @@
 #include <openssl/pem.h>
 #include <stddef.h>
 #include <sys/ioctl.h>
+#include <sys/uio.h>
+
+#ifdef HAVE_LINUX_SOCKIOS_H
 #include <linux/sockios.h>
+#endif
 
 #include <udns.h>
 #include <glib.h>
@@ -312,15 +318,22 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 		g_debug("ip '%s' node '%s'", con->local.ip_string, con->local.node_string);
 
-		{
-			int sockopt=1;
 
+		{
+			int sockopt;
+			sockopt = 1;
+#ifdef SOL_IP 
 			if( socket_domain == PF_INET )
 			{
+#ifdef IP_PKTINFO
 				if( setsockopt(con->socket, SOL_IP, IP_PKTINFO, &sockopt, sizeof(sockopt)) != 0 )
 					g_warning("con %p setsockopt fail domain %i level %i optname %i %s", con, socket_domain, SOL_IP, IP_PKTINFO, strerror(errno));
-
+#else
+					g_warning("your operating system lacks IP_PKTINFO - if you got multiple ip addresses better turn off udp services");
+#endif
 			}else
+#endif
+#ifdef SOL_IPV6 
 			if( socket_domain == PF_INET6 )
 			{ /* sometimes it is better if you have a choice ...
 			   * I just hope the cmsg type stays IPV6_PKTINFO
@@ -340,6 +353,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 				if( r < 0 )
 					g_warning("con %p setsockopt fail %s", con, strerror(errno));
 			}
+#endif
 		}
 
 		connection_set_nonblocking(con);
@@ -1905,10 +1919,15 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	int size, buf_size;
 
 	/* determine how many bytes we can recv */
+#ifdef SIOCINQ
 	if( ioctl(con->socket, SIOCINQ, &buf_size) != 0 )
 		buf_size=1024;
-	if( buf_size == 0 )
-		buf_size++;
+#else
+	buf_size = 16*1024;
+#endif
+
+	/* always increase by one so we get EOF and data in one callback */
+	buf_size++;
 
 	g_debug("can recv %i bytes", buf_size);
 
@@ -1931,6 +1950,7 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 		if( recv_size <= 0 )
 			break;
 	}
+	int lerrno = errno;
 
 	if( con->processor_data != NULL && new_in->len > 0 )
 	{
@@ -1947,9 +1967,16 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 		if( new_in->len > 0 )
 			con->protocol.io_in(con, con->protocol.ctx, (unsigned char *)con->transport.tcp.io_in->str, con->transport.tcp.io_in->len);
 
-		connection_tcp_disconnect(con);
+		/*
+		 * the protocol may have disabled the watcher for io_in already 
+		 * if so, do not deliver the disconnect 
+		 */
+		if( ev_is_active(w) )
+			connection_tcp_disconnect(con);
 	} else
-		if( (size == -1 && errno == EAGAIN) || size == MIN(buf_size, recv_throttle) )
+		if( (size == -1 && lerrno == EAGAIN) || 
+			size == MIN(buf_size, recv_throttle) ||
+			recv_size <= 0 )
 	{
 		g_debug("EAGAIN");
 		if( ev_is_active(&con->events.idle_timeout) )
@@ -1967,7 +1994,7 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 
 	} else
 	{
-		g_warning("recv failed (%s)", strerror(errno));
+		g_warning("recv failed size %i recv_size %i (%s)", size, recv_size, strerror(lerrno));
 		connection_tcp_disconnect(con);
 	}
 	g_string_free(new_in, TRUE);
@@ -3297,7 +3324,11 @@ ssize_t recvfromto(int sockfd, void *buf, size_t len, int flags,
 				 const struct sockaddr *toaddr, socklen_t *tolen)
 {
 	struct iovec iov[1];
+#if defined(in_pktinfo)
 	char cmsg[CMSG_SPACE(sizeof(struct in_pktinfo))];
+#else
+	char cmsg[CMSG_SPACE(sizeof(64))];
+#endif
 	struct cmsghdr *cmsgptr;
 	struct msghdr msg;
 	ssize_t rlen;
@@ -3319,6 +3350,7 @@ ssize_t recvfromto(int sockfd, void *buf, size_t len, int flags,
 
 	for( cmsgptr = CMSG_FIRSTHDR(&msg); cmsgptr != NULL; cmsgptr = CMSG_NXTHDR(&msg, cmsgptr) )
 	{
+#ifdef SOL_IP
 		if( fromaddr->sa_family == PF_INET && cmsgptr->cmsg_level == SOL_IP && cmsgptr->cmsg_type == IP_PKTINFO )
 		{ /* IPv4 */
 			if( *fromlen < sizeof(struct sockaddr_in) )
@@ -3331,6 +3363,8 @@ ssize_t recvfromto(int sockfd, void *buf, size_t len, int flags,
 			memcpy(addr, t, sizeof(struct in_addr));
 			break;
 		}else
+#endif
+#if defined(SOL_IPV6) && defined(IPV6_PKTINFO)
 		if( fromaddr->sa_family == PF_INET6 && cmsgptr->cmsg_level == SOL_IPV6 && cmsgptr->cmsg_type == IPV6_PKTINFO )
 		{ /* IPv6 */
 			if( *fromlen < sizeof(struct sockaddr_in6) )
@@ -3343,6 +3377,7 @@ ssize_t recvfromto(int sockfd, void *buf, size_t len, int flags,
 			memcpy(addr, t, sizeof(struct in6_addr));
 			break;
 		}
+#endif
 	}
 	return rlen;
 }
@@ -3351,8 +3386,9 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 {
 	struct iovec iov[1];
 	struct msghdr msg;
-	
+
 	struct cmsghdr* cmsgptr;
+	cmsgptr = NULL;
 
 	iov[0].iov_base = buf;
 	iov[0].iov_len = len;
@@ -3373,6 +3409,7 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 
 	if( from->sa_family == PF_INET )
 	{ /* IPv4 */
+#if defined(SOL_IP) && defined(IP_PKTINFO)
 		char cbuf[CMSG_SPACE(sizeof(struct in_pktinfo))];
 		memset(cbuf, 0, sizeof(cbuf));
 		msg.msg_control = cbuf;
@@ -3383,9 +3420,12 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 		cmsgptr->cmsg_type = IP_PKTINFO;
 		cmsgptr->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
 		memcpy(&((struct in_pktinfo *)(CMSG_DATA(cmsgptr)))->ipi_addr.s_addr, ADDROFFSET(from),  sizeof(struct in_addr) );
+		return sendmsg(fd, &msg, 0);
+#endif
 	}else
 	if( from->sa_family == PF_INET6 )
 	{ /* IPv6 */
+#if defined(SOL_IPV6) && defined(IPV6_PKTINFO)
 		char cbuf[CMSG_SPACE(sizeof(struct in6_pktinfo))];
 		memset(cbuf, 0, sizeof(cbuf));
 		msg.msg_control = cbuf;
@@ -3396,14 +3436,17 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 		cmsgptr->cmsg_type = IPV6_PKTINFO;
 		cmsgptr->cmsg_len = CMSG_LEN(sizeof(struct in6_pktinfo));
 		memcpy(&((struct in6_pktinfo *)(CMSG_DATA(cmsgptr)))->ipi6_addr, ADDROFFSET(from),  sizeof(struct in6_addr) );
+		return sendmsg(fd, &msg, 0);
+#endif
 	}else
 	{
 		errno = EINVAL;
 		return -1;
 	}
-	return sendmsg(fd, &msg, 0);
+	/* if your operating system lacks everything ... */
+	g_warning("Your operating system lacks SOL_IP(V6) / IP(V6)_PKTINFO");
+	return sendto(fd, buf, len, flags, to, tolen);
 }
-
 
 void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 {
@@ -3439,7 +3482,19 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 						 ((struct sockaddr *)&packet->to)->sa_family == PF_INET6 ? sizeof(struct sockaddr_in6) : 
 						 ((struct sockaddr *)&packet->to)->sa_family == AF_UNIX ? sizeof(struct sockaddr_un) : -1;
 
-		int ret = sendtofrom(con->socket, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size, (struct sockaddr *)&packet->from, size);
+		int ret;
+		/*
+		 * for whatever reason 
+		 * * send 
+		 *   - works on udp sockets which were connect()'ed before (linux)
+		 *   - works not on udp sockets which were bind()'ed before (linux)
+		 * * sendto 
+		 *   - does not work on connect()'ed sockets on (openbsd)
+		 *  
+		 * and as we can't distinguish from bound/unbound connected/unconnected sockets at this point 
+		 * udp does not work for openbsd 
+		 */
+		ret = sendtofrom(con->socket, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size, (struct sockaddr *)&packet->from, size);
 
 		if( ret == -1 )
 		{

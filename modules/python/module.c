@@ -25,6 +25,8 @@
  *
  *******************************************************************************/
 
+#include "config.h"
+
 #include <Python.h>
 #include <glib.h>
 #include <stdio.h>
@@ -39,17 +41,18 @@
 
 
 #include <stdio.h>
-#include <arpa/inet.h>
+#include <sys/socket.h>
 #include <netinet/in.h>
+#include <arpa/inet.h>
 
 #include <stdlib.h> // qsort
 #include <ifaddrs.h> // getifaddrs
 #include <stddef.h> // offsetof
 #include <net/if.h> // if_nametoindex
 
+#ifdef HAVE_NETPACKET_PACKET_H
 #include <netpacket/packet.h> // af_packet
-
-
+#endif
 
 #include <lcfg/lcfg.h>
 #include <lcfgx/lcfgx_tree.h>
@@ -58,7 +61,6 @@
 #include "dionaea.h"
 #include "modules.h"
 
-#include "config.h"
 #include "log.h"
 
 #include "connection.h"
@@ -93,7 +95,7 @@ static struct python_runtime
 {
 	struct lcfgx_tree_node *config;
 	struct ev_io python_cli_io_in;
-	FILE *stdin;
+	FILE *stdIN;
 	GHashTable *imports;
 	struct termios read_termios;
 	struct termios poll_termios;
@@ -138,7 +140,7 @@ void python_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	cf.cf_flags = 0;
 
 	tcsetattr(0, TCSANOW, &runtime.read_termios);
-	PyRun_InteractiveOneFlags(runtime.stdin, "<stdin>", &cf);
+	PyRun_InteractiveOneFlags(runtime.stdIN, "<stdin>", &cf);
 	traceback();
 	tcsetattr(0, TCSANOW, &runtime.poll_termios);
 }
@@ -398,7 +400,7 @@ static bool new(struct dionaea *dionaea)
 	if( isatty(STDOUT_FILENO) )
 	{
 		g_debug("Interactive Python shell");
-		runtime.stdin = fdopen(STDIN_FILENO, "r");
+		runtime.stdIN = fdopen(STDIN_FILENO, "r");
 		ev_io_init(&runtime.python_cli_io_in, python_io_in_cb, STDIN_FILENO, EV_READ);
 		ev_io_start(g_dionaea->loop, &runtime.python_cli_io_in);
 
@@ -527,9 +529,13 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 	result = PyDict_New();
 
 	if( getifaddrs(&head) < 0 )
+	{
+		g_warning("getifaddrs failed (%s)",  strerror(errno));
 		return result;
+	}
 
 	PyObject *pyiface, *pyaddr, *pynetmask, *pybroadcast, *pypointtopoint, *pyaf, *pyafdict, *pyaflist, *pyafdetails, *pyscopeid;
+	pynetmask = NULL;
 
 	int count=0;
 	for( iface=head; iface != NULL; iface=iface->ifa_next )
@@ -552,7 +558,11 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 		if( iface->ifa_addr == NULL )
 			continue;
 
-		if( iface->ifa_addr->sa_family != AF_INET && iface->ifa_addr->sa_family != AF_INET6 && iface->ifa_addr->sa_family != AF_PACKET )
+		if( iface->ifa_addr->sa_family != AF_INET && iface->ifa_addr->sa_family != AF_INET6 
+#ifdef AF_PACKET
+			&& iface->ifa_addr->sa_family != AF_PACKET 
+#endif
+			)
 			continue;
 
 		if( !(iface->ifa_flags & IFF_UP) )
@@ -589,8 +599,11 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 			pyaddr = PyUnicode_FromString(ip_string);
 			PyDict_SetItemString(pyafdetails, "addr", pyaddr);
 			Py_DECREF(pyaddr);
-		} else
-			if( iface->ifa_addr->sa_family == AF_PACKET && PyList_Size(pyaflist) == 0 )
+		
+		} 
+#ifdef AF_PACKET
+		else
+		if( iface->ifa_addr->sa_family == AF_PACKET && PyList_Size(pyaflist) == 0 )
 		{
 			struct sockaddr_ll *lladdr = (struct sockaddr_ll *)iface->ifa_addr;
 
@@ -608,13 +621,14 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 			PyDict_SetItemString(pyafdetails, "addr", pyaddr);
 			Py_DECREF(pyaddr);
 		}
-
+#endif
 		if( pyaddr )
 			PyList_Append(pyaflist, pyafdetails);
 		Py_DECREF(pyafdetails);
 
 
 		offset = ADDROFFSET(iface->ifa_netmask);
+#ifdef AF_PACKET
 		if( offset && iface->ifa_addr->sa_family != AF_PACKET )
 		{
 			inet_ntop(iface->ifa_addr->sa_family, offset, ip_string, INET6_ADDRSTRLEN);
@@ -622,7 +636,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 			PyDict_SetItemString(pyafdetails, "netmask", pynetmask);
 			Py_DECREF(pynetmask);
 		}
-
+#endif
 		if( iface->ifa_addr->sa_family == AF_INET6 )
 		{
 			struct sockaddr_in6 *sa6 = (struct sockaddr_in6 *)iface->ifa_addr;
@@ -634,10 +648,9 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 				Py_DECREF(pyscopeid);
 			}
 		}
-
 		if( iface->ifa_flags & IFF_BROADCAST )
 		{
-			offset = ADDROFFSET(iface->ifa_ifu.ifu_broadaddr);
+			offset = ADDROFFSET(iface->ifa_broadaddr);
 			if( offset )
 			{
 				inet_ntop(iface->ifa_addr->sa_family, offset, ip_string, INET6_ADDRSTRLEN);
@@ -649,7 +662,7 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 
 		if( iface->ifa_flags & IFF_POINTOPOINT )
 		{
-			offset = ADDROFFSET(iface->ifa_ifu.ifu_dstaddr);
+			offset = ADDROFFSET(iface->ifa_dstaddr);
 			if( offset )
 			{
 				inet_ntop(iface->ifa_addr->sa_family, offset, ip_string, INET6_ADDRSTRLEN);
@@ -659,11 +672,8 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 			}
 		}
 	}
-#undef ADDROFFSET
 	freeifaddrs(head);
 	return result;
-
-
 }
 
 

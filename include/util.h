@@ -31,6 +31,9 @@
 #include <stdbool.h>
 #include <stdint.h>
 
+#ifndef s6_addr32
+#define s6_addr32 __u6_addr.__u6_addr32
+#endif
 
 void *ADDROFFSET(const void *x);
 

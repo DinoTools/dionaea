@@ -52,9 +52,16 @@ class RoomHandler(MucRoomHandler):
 		print 'subject: %s' % stanza
 
 	def message_received(self, user, stanza):
+
+		if not hasattr(user, 'attacks'):
+			print("invalid message, maybe history")
+			return
 		# check if we have dionaea entries in the message
 		# provide a namespace ...
 		# I love xml namespaces ...
+
+		# dionaea
+
 		r = stanza.xpath_eval("/default:message/default:body/dionaea:dionaea", 
 			namespaces = {  "default" : "http://pyxmpp.jajcus.net/xmlns/common", 
 							"dionaea" : "http://dionaea.carnivore.it"})
@@ -84,6 +91,146 @@ class RoomHandler(MucRoomHandler):
 #				print("method %s is not implemented" % mname)
 #				self.handle_incident_not_implemented(user, stanza)
 
+		# kippo
+
+		r = stanza.xpath_eval("/default:message/default:body/kippo:kippo", 			
+			namespaces = {  "default" : "http://pyxmpp.jajcus.net/xmlns/common", 
+							"kippo" : "http://code.google.com/p/kippo/"})
+
+		for d in r:
+			o = d.ns()
+			n = d.newNs("http://code.google.com/p/kippo/", "kippo")
+			d.setNs(n)
+			replace_ns(d,o,n)
+#			print(d)
+			p = d.hasProp('type')
+			mname = p.content
+			method = getattr(self, "handle_kippo_" + mname, None)
+			if method is not None:
+				for c in d.children:
+					if c.isText():
+						continue
+					method(user, c)
+			else:
+				print("method %s is not implemented" % mname)
+#				self.handle_incident_not_implemented(user, stanza)
+	
+	def handle_kippo_createsession(self, user, xmlobj):
+		try:
+			local_host = xmlobj.hasProp('local_host').content
+			remote_host = xmlobj.hasProp('remote_host').content
+			session = xmlobj.hasProp('session').content
+		except Exception as e:
+			print(e)
+			return
+		if dbh is not None:
+			r = cursor.execute(
+	"""INSERT INTO 
+			kippo.sessions
+					(session_start, session_stop, local_host, remote_host) 
+	VALUES (NOW(),NOW(),%s,%s)""" , 
+					(local_host, remote_host))
+			r = cursor.execute("""SELECT CURRVAL('kippo.sessions_session_seq')""")
+			attackid = cursor.fetchall()[0][0]
+			user.attacks[session] = (attackid,attackid)
+		print("[%s] createsession: %s %s %s" % (user.room_jid.as_unicode(), local_host, remote_host, session))
+			
+				
+	def handle_kippo_connectionlost(self, user, xmlobj):
+		try:
+			session = xmlobj.hasProp('session').content
+		except Exception as e:
+			print(e)
+			return
+		if dbh is not None:
+			if session in user.attacks:
+				attackid = user.attacks[session][0]
+				r = cursor.execute("""UPDATE kippo.sessions SET session_stop = NOW() WHERE session = %s""" , (attackid, ))
+				del user.attacks[session]
+		print("[%s] connectionlost: %s" % (user.room_jid.as_unicode(), session))
+
+	def _handle_kippo_login(self, user, xmlobj, success):
+		try:
+			session = xmlobj.hasProp('session').content
+			username = xmlobj.hasProp('username').content
+			password = xmlobj.hasProp('password').content
+		except Exception as e:
+			print(e)
+			return
+		if dbh is not None:
+			if session in user.attacks:
+				attackid = user.attacks[session][0]
+				r = cursor.execute(
+		"""INSERT INTO 
+				kippo.auths
+						(auth_timestamp, session, auth_username, auth_password, auth_success) 
+		VALUES (NOW(),%s,%s,%s,%s::boolean)""", 
+						(attackid, username, password, success))
+		print("[%s] : login %s %s %s %s" % (user.room_jid.as_unicode(), success, username, password, session))
+
+
+	def handle_kippo_loginfailed(self, user, xmlobj):
+		self._handle_kippo_login(user, xmlobj, False)
+
+	def handle_kippo_loginsucceeded(self, user, xmlobj):
+		self._handle_kippo_login(user, xmlobj, True)
+
+	def _handle_kippo_input(self, user, xmlobj, realm, success):
+		try:
+			session = xmlobj.hasProp('session').content
+			command = xmlobj.content
+		except Exception as e:
+			print(e)
+			return
+		if dbh is not None:
+			if session in user.attacks:
+				attackid = user.attacks[session][0]
+				cursor.execute("""INSERT INTO kippo.inputs
+					(session, input_timestamp, input_realm, input_success, input_data) 
+					VALUES (%s,NOW(),%s,%s,%s)""",
+					(attackid, realm, success, command) )
+		print("[%s] command %s %s" % (user.room_jid.as_unicode(), command, session))
+
+
+	def handle_kippo_command(self, user, xmlobj):
+		try:
+			if xmlobj.hasProp('command').content == 'known':
+				success = True
+			else:
+				success = False
+			self._handle_kippo_input(user, xmlobj,"",success)
+		except Exception as e:
+			print(e)
+			return
+
+	def handle_kippo_input(self, user, xmlobj):
+		try:
+			realm =  xmlobj.hasProp('realm').content
+			self._handle_kippo_input(user, xmlobj,realm,True)
+		except Exception as e:
+			print(e)
+			return
+		
+
+	def handle_kippo_clientversion(self, user, xmlobj):
+		try:
+			session = xmlobj.hasProp('session').content
+			ver = xmlobj.hasProp('version').content
+		except Exception as e:
+			print(e)
+			return
+		if dbh is not None:
+			if session in user.attacks:
+				attackid = user.attacks[session][0]
+				cursor.execute("""INSERT INTO kippo.clients
+					(session, version) 
+					VALUES (%s,%s)""",
+					(attackid, ver) )
+		print("[%s] version %s %s" % (user.room_jid.as_unicode(), ver, session))
+		
+
+
+	# dionaea 
 	def handle_incident_not_implemented(self, user, xmlobj):
 		print("USER %s xmlobj '%s'" % (user.room_jid.as_unicode(), xmlobj.serialize()))
 
@@ -111,8 +258,8 @@ class RoomHandler(MucRoomHandler):
 	"""INSERT INTO 
 			dionaea.connections 
 					(connection_timestamp, connection_type, connection_transport, connection_protocol, local_host, local_port, remote_host, remote_hostname, remote_port) 
-	VALUES (NOW(),'%s','%s','%s','%s',
-			%s,'%s','%s',%s)""" % 
+	VALUES (NOW(),%s,%s,%s,%s,
+			%s,%s,%s,%s)""" , 
 					(ctype, transport, protocol, local_host, 
 					local_port, remote_host, remote_hostname, remote_port))
 			r = cursor.execute("""SELECT CURRVAL('dionaea.connections_connection_seq')""")
@@ -147,19 +294,19 @@ class RoomHandler(MucRoomHandler):
 						
 	def handle_incident_dionaea_connection_link(self, user, xmlobj):
 		try:
-			parent = xmlobj.hasProp('parent').content
-			child = xmlobj.hasProp('child').content
+			parent = int(xmlobj.hasProp('parent').content)
+			child = int(xmlobj.hasProp('child').content)
 		except Exception as e:
 			print(e)
 			return
 		if dbh is not None and parent in user.attacks:
 			parentroot, parentid = user.attacks[parent]
-			if icd.child in user.attacks:
+			if child in user.attacks:
 				childroot, childid = user.attacks[child]
 			else:
 				childid = parentid
-			self.attacks[child] = (parentroot, childid)
-			self.cursor.execute("UPDATE connections SET connection_root = %s, connection_parent = %s WHERE connection = %s",
+			user.attacks[child] = (parentroot, childid)
+			cursor.execute("UPDATE dionaea.connections SET connection_root = %s, connection_parent = %s WHERE connection = %s",
 				(parentroot, parentid, childid) )
 		print("[%s] link %s %s" % (user.room_jid.as_unicode(), parent, child))
 
