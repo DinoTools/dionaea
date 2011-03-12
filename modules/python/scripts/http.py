@@ -138,7 +138,11 @@ class httpd(connection):
 		rpath = os.path.normpath(self.header.path)
 		fpath = os.path.join(self.root, rpath[1:])
 		apath = os.path.abspath(fpath)
-		print("root %s rpath %s fpath %s apath %s" % (self.root, rpath, fpath, apath))
+#		print("root %s rpath %s fpath %s apath %s" % (self.root, rpath, fpath, apath))
+		if not apath.startswith(self.root):
+			self.send_response(404, "File not found")
+			self.end_headers()
+			self.close()
 		if os.path.exists(apath):
 			if os.path.isdir(apath):
 				if not self.header.path.endswith('/'):

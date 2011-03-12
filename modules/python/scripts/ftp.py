@@ -459,6 +459,9 @@ class ftpd(connection):
 
 		file = self.real_path(p)
 
+		if not file.startswith(self.basedir):
+			return (FILE_NOT_FOUND, p)
+
 		if os.path.exists(file) and os.path.isfile(file):
 			return (FILE_STATUS, str(stat(file).st_size))
 		return (FILE_NOT_FOUND,p)
