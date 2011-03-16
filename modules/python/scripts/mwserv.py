@@ -150,6 +150,8 @@ class mwservhandler(ihandler):
 			i._userdata = cookie
 
 			i.report()
+		else:
+			del self.cookies[cookie]
 
 	def handle_incident_dionaea_modules_python_mwserv_uploadresult(self, icd):
 		fh = open(icd.path, mode="rb")
