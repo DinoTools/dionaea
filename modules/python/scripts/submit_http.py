@@ -18,7 +18,7 @@ else:
 	def filetype(fpath):
 		try:
 			mc = magic.Magic()
-			ftype = str(mc.from_file(fpath))
+			ftype = mc.from_file(fpath)
 		except:
 			ftype = ''
 		return ftype
