@@ -16,9 +16,9 @@ except:
 		return ''
 else:
 	def filetype(fpath):
-		mc = magic.open(magic.MAGIC_NONE)
 		try:
-			ftype = str(mc.file(fpath))
+			mc = magic.Magic()
+			ftype = str(mc.from_file(fpath))
 		except:
 			ftype = ''
 		return ftype
@@ -76,9 +76,9 @@ class handler(ihandler):
 
 		if hasattr(icd, 'con'):
 			i.source_host = str(struct.unpack('!I', socket.inet_aton(icd.con.remote.host))[0])
-			#i.source_port = str(icd.con.remote.port)
+			i.source_port = str(icd.con.remote.port)
 			i.target_host = str(struct.unpack('!I', socket.inet_aton(icd.con.local.host))[0])
-			#i.target_port = str(icd.con.local.port)
+			i.target_port = str(icd.con.local.port)
 			mr.saddr, mr.sport, mr.daddr, mr.dport = i.source_host, i.source_port, i.target_host, i.target_port
 		if hasattr(icd, 'url'):
 			i.url = icd.url
@@ -124,9 +124,9 @@ class handler(ihandler):
 			i.set('file://data', mr.filepath)
 
 			i.source_host = mr.saddr
-			#i.source_port = mr.sport
+			i.source_port = mr.sport
 			i.target_host = mr.daddr
-			#i.target_port = mr.dport
+			i.target_port = mr.dport
 			i.url = mr.download_url
 			i.trigger = mr.download_url
 
