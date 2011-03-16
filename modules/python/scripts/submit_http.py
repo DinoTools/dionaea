@@ -11,7 +11,7 @@ logger.setLevel(logging.DEBUG)
 
 class submithttp_report:
 	def __init__(self, sha512h, md5, filepath):
-		self.sha512h, self.md5h, self.filepath = sha512h, filepath
+		self.sha512h, self.md5h, self.filepath = sha512h, md5, filepath
 		self.saddr, self.sport, self.daddr, self.dport = ('', )*4
 		self.download_url = ''
 
@@ -24,7 +24,7 @@ class handler(ihandler):
 		self.backendurl = mwsconfig['url']
 		self.email = 'email' in mwsconfig and mwsconfig['email'] or 'dionaea@carnivore.it'
 		self.user = 'user' in mwsconfig and mwsconfig['user'] or ''
-		self.pass = 'pass' in mwsconfig and mwsconfig['pass'] or ''
+		self.passwd = 'pass' in mwsconfig and mwsconfig['pass'] or ''
 		self.cookies = {}
 
 		# heartbeats
@@ -51,7 +51,7 @@ class handler(ihandler):
 		i.md5 = md5file(icd.file)
 		i.email = self.email
 		i.user = self.user
-		i.pass = self.pass
+		i.set('pass', self.passwd)
 
 		mr = submithttp_report(i.sha512, i.md5, icd.file)
 
@@ -60,7 +60,7 @@ class handler(ihandler):
 			i.source_port = str(icd.con.remote.port)
 			i.target_host = icd.con.local.host
 			i.target_port = str(icd.con.local.port)
-			mr.saddr, mr.sport, mr.daddr, mr.dport = i.saddr, i.sport, i.daddr, i.dport
+			mr.saddr, mr.sport, mr.daddr, mr.dport = i.source_host, i.source_port, i.target_host, i.target_port
 		if hasattr(icd, 'url'):
 			i.download_url = icd.url
 			mr.download_url = icd.url
@@ -91,7 +91,7 @@ class handler(ihandler):
 			i.md5 = mr.md5h
 			i.email = self.email
 			i.user = self.user
-			i.pass = self.pass
+			i.set('pass', self.passwd)
 
 			i.set('file://data', mr.filepath)
 
@@ -105,6 +105,8 @@ class handler(ihandler):
 			i._userdata = cookie
 
 			i.report()
+		else:
+			del self.cookies[cookie]
 
 	def handle_incident_dionaea_modules_python_submithttp_uploadresult(self, icd):
 		fh = open(icd.path, mode="rb")
