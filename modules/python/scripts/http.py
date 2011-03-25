@@ -35,7 +35,6 @@ import datetime
 import io
 import cgi
 import urllib.parse
-import mimetypes
 
 logger = logging.getLogger('http')
 logger.setLevel(logging.DEBUG)
@@ -188,12 +187,6 @@ class httpd(connection):
 				self.send_response(200)
 				self.send_header("Connection", "close")
 				self.send_header("Content-Length", str(os.stat(apath).st_size))
-
-				# Try to detect the MIME type
-				mime = mimetypes.guess_type(apath)
-				if mime[0] != None:
-					self.send_header("Content-Type", mime[0])
-
 				self.end_headers()
 				return f
 			else:
