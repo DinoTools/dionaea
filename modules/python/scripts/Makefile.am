@@ -38,6 +38,7 @@ PYSCRIPTS += store.py
 PYSCRIPTS += surfids.py
 PYSCRIPTS += virustotal.py
 PYSCRIPTS += mwserv.py
+PYSCRIPTS += submit_http.py
 PYSCRIPTS += ndrlib.py
 PYSCRIPTS += logxmpp.py
 PYSCRIPTS += __init__.py

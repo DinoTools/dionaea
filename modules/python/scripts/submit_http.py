@@ -5,15 +5,34 @@ from dionaea import pyev
 import logging
 import json
 import uuid
+import struct
+import socket
+from urllib.parse import urlparse
+
+try:
+	import magic
+except:
+	def filetype(fpath):
+		return ''
+else:
+	def filetype(fpath):
+		try:
+			mc = magic.Magic()
+			ftype = mc.from_file(fpath)
+		except:
+			ftype = ''
+		return ftype
 
 logger = logging.getLogger('submit_http')
 logger.setLevel(logging.DEBUG)
 
-class submmithttp_report:
+class submithttp_report:
 	def __init__(self, sha512h, md5, filepath):
-		self.sha512h, self.md5h, self.filepath = sha512h, filepath
+		self.sha512h, self.md5h, self.filepath = sha512h, md5, filepath
 		self.saddr, self.sport, self.daddr, self.dport = ('', )*4
 		self.download_url = ''
+		self.filetype = ''
+		self.filename = ''
 
 
 class handler(ihandler):
@@ -24,7 +43,7 @@ class handler(ihandler):
 		self.backendurl = mwsconfig['url']
 		self.email = 'email' in mwsconfig and mwsconfig['email'] or 'dionaea@carnivore.it'
 		self.user = 'user' in mwsconfig and mwsconfig['user'] or ''
-		self.pass = 'pass' in mwsconfig and mwsconfig['pass'] or ''
+		self.passwd = 'pass' in mwsconfig and mwsconfig['pass'] or ''
 		self.cookies = {}
 
 		# heartbeats
@@ -51,19 +70,28 @@ class handler(ihandler):
 		i.md5 = md5file(icd.file)
 		i.email = self.email
 		i.user = self.user
-		i.pass = self.pass
+		i.set('pass', self.passwd)
 
 		mr = submithttp_report(i.sha512, i.md5, icd.file)
 
 		if hasattr(icd, 'con'):
-			i.source_host = icd.con.remote.host
+			i.source_host = str(struct.unpack('!I', socket.inet_aton(icd.con.remote.host))[0])
 			i.source_port = str(icd.con.remote.port)
-			i.target_host = icd.con.local.host
+			i.target_host = str(struct.unpack('!I', socket.inet_aton(icd.con.local.host))[0])
 			i.target_port = str(icd.con.local.port)
-			mr.saddr, mr.sport, mr.daddr, mr.dport = i.saddr, i.sport, i.daddr, i.dport
+			mr.saddr, mr.sport, mr.daddr, mr.dport = i.source_host, i.source_port, i.target_host, i.target_port
 		if hasattr(icd, 'url'):
-			i.download_url = icd.url
+			i.url = icd.url
+			i.trigger = icd.url
+			try:
+				i.filename = urlparse(icd.url).path.split('/')[-1]
+				mr.filename = i.filename
+			except:
+				pass
 			mr.download_url = icd.url
+
+		i.filetype = filetype(icd.file)
+		mr.filetype = i.filetype
 
 		i._callback = "dionaea.modules.python.submithttp.result"
 		i._userdata = cookie
@@ -91,7 +119,7 @@ class handler(ihandler):
 			i.md5 = mr.md5h
 			i.email = self.email
 			i.user = self.user
-			i.pass = self.pass
+			i.set('pass', self.passwd)
 
 			i.set('file://data', mr.filepath)
 
@@ -99,12 +127,18 @@ class handler(ihandler):
 			i.source_port = mr.sport
 			i.target_host = mr.daddr
 			i.target_port = mr.dport
-			i.download_url = mr.download_url
+			i.url = mr.download_url
+			i.trigger = mr.download_url
+
+			i.filetype = mr.filetype
+			i.filename = mr.filename
 
 			i._callback = "dionaea.modules.python.submithttp.uploadresult"
 			i._userdata = cookie
 
 			i.report()
+		else:
+			del self.cookies[cookie]
 
 	def handle_incident_dionaea_modules_python_submithttp_uploadresult(self, icd):
 		fh = open(icd.path, mode="rb")

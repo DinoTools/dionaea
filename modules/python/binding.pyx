@@ -692,8 +692,9 @@ cdef class connection:
 				raise ReferenceError(u'the object requested does not exist')
 			return connection_stats_from(&self.thisptr.stats.io_out)
 
-
-	create = staticmethod(connection_new)
+# the static create method causes problems with cython 0.14
+# not used anyway, so comment for now (tm)
+#	create = staticmethod(connection_new)
 
 def connection_new(type):
 	""" create a new connection - for cli useage

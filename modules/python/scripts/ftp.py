@@ -439,6 +439,8 @@ class ftpd(connection):
 			return (FILE_NOT_FOUND, p)
 		else:
 			self.cwd = cwd[len(self.basedir):]
+			if self.cwd == "":
+				self.cwd = "/"
 
 		if os.path.exists(cwd) and os.path.isdir(cwd):
 			return REQ_FILE_ACTN_COMPLETED_OK
@@ -456,6 +458,9 @@ class ftpd(connection):
 			return (FILE_NOT_FOUND,p)
 
 		file = self.real_path(p)
+
+		if not file.startswith(self.basedir):
+			return (FILE_NOT_FOUND, p)
 
 		if os.path.exists(file) and os.path.isfile(file):
 			return (FILE_STATUS, str(stat(file).st_size))
@@ -495,7 +500,7 @@ class ftpd(connection):
 			return (FILE_NOT_FOUND, p)
 
 		if os.path.isdir(dir):
-			return (PERMISSION_DENIED, dir)
+			return (PERMISSION_DENIED, p)
 		os.mkdir(dir)
 		return REQ_FILE_ACTN_COMPLETED_OK
 

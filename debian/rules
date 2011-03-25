@@ -36,6 +36,7 @@ install: build
 	dh_auto_install
 	rm $(CURDIR)/debian/dionaea/usr/lib/dionaea/python/dionaea/core.so
 	dh_link usr/lib/dionaea/python.so usr/lib/dionaea/python/dionaea/core.so
+	dh_link usr/lib/dionaea/python.so usr/lib/dionaea/python/dionaea/pyev.so
 
 binary-indep: install
 # There are no architecture-independent files to be uploaded
