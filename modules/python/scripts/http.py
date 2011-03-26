@@ -167,8 +167,9 @@ class httpd(connection):
 		rpath = os.path.normpath(self.header.path)
 		fpath = os.path.join(self.root, rpath[1:])
 		apath = os.path.abspath(fpath)
-		logger.debug("root %s rpath %s fpath %s apath %s" % (self.root, rpath, fpath, apath))
-		if not apath.startswith(self.root):
+		aroot = os.path.abspath(self.root)
+		logger.debug("root %s aroot %s rpath %s fpath %s apath %s" % (self.root, aroot, rpath, fpath, apath))
+		if not apath.startswith(aroot):
 			self.send_response(404, "File not found")
 			self.end_headers()
 			self.close()
