@@ -44,16 +44,16 @@ class fail2banhandler(ihandler):
 		ihandler.__init__(self, "*")
 		offers = g_dionaea.config()['modules']['python']['fail2ban']['offers']
 		downloads = g_dionaea.config()['modules']['python']['fail2ban']['downloads']
-		self.offers = open(offers, "w")
-		self.downloads = open(downloads, "w")
+		self.offers = open(offers, "a")
+		self.downloads = open(downloads, "a")
 
 	def handle_incident_dionaea_download_offer(self, icd):
-		data = "%s %s %s\n" % (datetime.datetime.now().isoformat(), icd.con.remote.host, icd.url)
+		data = "%s %s %s %s\n" % (datetime.datetime.now().isoformat(), icd.con.local.host, icd.con.remote.host, icd.url)
 		self.offers.write(data)
 		self.offers.flush()
 
 	def handle_incident_dionaea_download_complete_hash(self, icd):
-		data = "%s %s %s %s\n" % (datetime.datetime.now().isoformat(), icd.con.remote.host, icd.url, icd.md5hash)
+		data = "%s %s %s %s %s\n" % (datetime.datetime.now().isoformat(), icd.con.local.host, icd.con.remote.host, icd.url, icd.md5hash)
 		self.downloads.write(data)
 		self.downloads.flush()
 
