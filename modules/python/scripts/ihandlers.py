@@ -124,6 +124,10 @@ def start():
 		import dionaea.submit_http
 		g_handlers.append(dionaea.submit_http.handler('*'))
 
+	if "fail2ban" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import dionaea.fail2ban
+		g_handlers.append(dionaea.fail2ban.fail2banhandler())
+
 def stop():
 	global g_handlers
 	for i in g_handlers:
