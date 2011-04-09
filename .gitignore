@@ -31,3 +31,4 @@ modules/python/binding.c
 modules/python/build/
 modules/python/setup.py
 
+*.pyc

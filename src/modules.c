@@ -146,13 +146,13 @@ void modules_load(struct lcfgx_tree_node *node)
 	{
 		struct module *m = lit->data;
 
-		g_message("loaded module %s name %s module %p gmodule %p config %p prepare %p new %p free %p", 
+		g_message("loaded module %s name %s module %p gmodule %p config %p start %p new %p free %p", 
 				  g_module_name(m->module),
 				  m->name,
 				  m,
 				  m->module,
 				  m->api.config,
-				  m->api.prepare,
+				  m->api.start,
 				  m->api.new,
 				  m->api.free);
 	}
@@ -185,15 +185,15 @@ void modules_config(void)
 	}
 }
 
-void modules_prepare(void)
+void modules_start(void)
 {
 	GList *it;
 	for( it = g_list_first(g_dionaea->modules->modules); it != NULL; it = g_list_next(it) )
 	{
-		g_message("prepare module %p", it->data);
+		g_message("start module %p", it->data);
 		struct module *m = it->data;
-		if( m->api.prepare != NULL )
-			m->api.prepare();
+		if( m->api.start != NULL )
+			m->api.start();
 	}
 }
 

@@ -56,17 +56,10 @@ static bool emu_config(struct lcfgx_tree_node *node)
 	return true;
 }
 
-static bool emu_prepare(void)
-{
-	g_debug("%s", __PRETTY_FUNCTION__);
-	g_hash_table_insert(g_dionaea->processors->names, (void *)proc_emu.name, &proc_emu);
-	return true;
-}
-
 static bool emu_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
-//	struct lcfgx_tree_node *v;
+	g_hash_table_insert(g_dionaea->processors->names, (void *)proc_emu.name, &proc_emu);
 	return true;
 }
 
@@ -90,7 +83,7 @@ struct module_api *module_init(struct dionaea *d)
 	static struct module_api emu_api =
 	{
 		.config = &emu_config,
-		.prepare = &emu_prepare,
+		.start = NULL,
 		.new = &emu_new,
 		.free = &emu_free,
 		.hup = &emu_hup

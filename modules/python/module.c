@@ -232,6 +232,19 @@ static bool hupy(struct lcfgx_tree_node *node)
 					Py_DECREF(module); 
 					i->module = module;
 				}
+				func = PyObject_GetAttrString(module, "new");
+				if( func != NULL )
+				{
+					PyObject *arglist = Py_BuildValue("()");
+					PyObject *r = PyEval_CallObject(func, arglist);
+					traceback();
+					Py_DECREF(arglist);
+					Py_XDECREF(r);
+					Py_DECREF(func);
+				} else
+				{
+					traceback();
+				}
 				func = PyObject_GetAttrString(module, "start");
 				if( func != NULL )
 				{
@@ -245,7 +258,6 @@ static bool hupy(struct lcfgx_tree_node *node)
 				{
 					traceback();
 				}
-
 			} else
 			{
 				g_message("New Import %s", name);
@@ -262,7 +274,7 @@ static bool hupy(struct lcfgx_tree_node *node)
 				i->module = module;
 				g_hash_table_insert(runtime.imports, i->name, i);
 
-				PyObject *func = PyObject_GetAttrString(module, "start");
+				PyObject *func = PyObject_GetAttrString(module, "new");
 				if( func != NULL )
 				{
 					PyObject *arglist = Py_BuildValue("()");
@@ -309,6 +321,34 @@ static bool freepy(void)
 		traceback();
 	}
 	Py_Finalize();
+	return true;
+}
+
+
+static bool start(void)
+{
+	g_warning("%s %s", __PRETTY_FUNCTION__, __FILE__);
+	GHashTableIter iter;
+	gpointer key, value;
+	g_hash_table_iter_init (&iter, runtime.imports);
+	while( g_hash_table_iter_next (&iter, &key, &value) )
+	{
+		struct import *imp = value;
+		PyObject *module = imp->module;
+		g_info("start %s %p %p", (char *)key, imp, imp->module);
+
+		PyObject *func = PyObject_GetAttrString(module, "start");
+		if( func != NULL )
+		{
+			PyObject *arglist = Py_BuildValue("()");
+			PyObject *r = PyEval_CallObject(func, arglist);
+			Py_DECREF(arglist);
+			Py_XDECREF(r);
+			Py_DECREF(func);
+		} else
+			PyErr_Clear();
+		traceback();
+	}
 	return true;
 }
 
@@ -380,7 +420,7 @@ static bool new(struct dionaea *dionaea)
 			i->name = g_strdup(name);
 			i->module = module;
 			g_hash_table_insert(runtime.imports, i->name, i);
-			PyObject *func = PyObject_GetAttrString(module, "start");
+			PyObject *func = PyObject_GetAttrString(module, "new");
 			if( func != NULL )
 			{
 				PyObject *arglist = Py_BuildValue("()");
@@ -1007,7 +1047,7 @@ struct module_api *module_init(struct dionaea *dionaea)
 	static struct module_api python_api =
 	{
 		.config = &config,
-		.prepare = NULL,
+		.start = &start,
 		.new = &new,
 		.free = &freepy,
 		.hup = &hupy

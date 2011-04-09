@@ -43,6 +43,7 @@ class logsqlhandler(ihandler):
 		logger.debug("%s ready!" % (self.__class__.__name__))
 		ihandler.__init__(self, path)
 
+	def start(self):
 		# mapping socket -> attackid
 		self.attacks = {}
 
@@ -441,7 +442,9 @@ class logsqlhandler(ihandler):
 	def __del__(self):
 		logger.info("Closing sqlite handle")
 		self.cursor.close()
+		self.cursor = None
 		self.dbh.close()
+		self.dbh = None
 
 	def handle_incident(self, icd):
 #		print("unknown")

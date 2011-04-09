@@ -381,6 +381,11 @@ modules = {
 			path = "un:///tmp/p0f.sock"
 		}
 
+		fail2ban = {
+			downloads = "var/dionaea/downloads.f2b"
+			offers = "var/dionaea/offers.f2b"
+		}
+
 		ihandlers = {
 			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", 
 			"logsql",
@@ -390,7 +395,8 @@ modules = {
 //			"logxmpp",
 //			"nfq",
 //			"p0f",
-//			"surfids"
+//			"surfids",
+//			"fail2ban"
 			]
 		}
 

@@ -573,7 +573,7 @@ opt->stdOUT.filter);
 			if( *file != '/' )
 			{
 				fd->file = g_malloc0(PATH_MAX+1);
-				g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
+				g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR + strlen(PREFIX), file);
 			} else
 				fd->file = g_strdup(file);
 
@@ -682,7 +682,7 @@ opt->stdOUT.filter);
 		g_warning("dionaea is useless without modules");
 
 	modules_config();
-	modules_prepare();
+
 
 	// privileged child
 	d->pchild = pchild_new();
@@ -780,6 +780,9 @@ opt->stdOUT.filter);
 	{
 		g_error("Could not change user");
 	}
+
+	// start modules - after chroot & setuid
+	modules_start();
 
 	g_info("Installing signal handlers");
 	// signals

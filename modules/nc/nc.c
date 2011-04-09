@@ -57,12 +57,6 @@ static bool nc_config(struct lcfgx_tree_node *node)
 	return true;
 }
 
-static bool nc_prepare(void)
-{
-	g_debug("%s", __PRETTY_FUNCTION__);
-	return true;
-}
-
 static bool nc_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
@@ -104,7 +98,7 @@ static bool nc_new(struct dionaea *d)
 			if( strcmp(v->key, "services" ) == 0 )
 			{
 				connection_bind(con, host, port, iface);
-				connection_listen(con, 10);
+				connection_listen(con, 1000);
 			}
 
 			if( lcfgx_get_string(it, &node, "throttle.in") == LCFGX_PATH_FOUND_TYPE_OK )
@@ -136,7 +130,12 @@ static bool nc_new(struct dionaea *d)
 					if( memcmp("sink", node->value.string.data, MIN(strlen("sink"), node->value.string.len) ) == 0 )
 					connection_protocol_set(con, &proto_nc_sink);
 				else
+					if( memcmp("redir", node->value.string.data, MIN(strlen("sink"), node->value.string.len) ) == 0 )
 					connection_protocol_set(con, &proto_nc_redir);
+				else
+					if( memcmp("http", node->value.string.data, MIN(strlen("sink"), node->value.string.len) ) == 0 )
+					connection_protocol_set(con, &proto_nc_http);
+
 			} else
 				connection_protocol_set(con, &proto_nc_redir);
 
@@ -167,7 +166,7 @@ struct module_api *module_init(struct dionaea *d)
 	static struct module_api nc_api =
 	{
 		.config = &nc_config,
-		.prepare = &nc_prepare,
+		.start = NULL,
 		.new = &nc_new,
 		.free = &nc_free,
 		.hup = &nc_hup
@@ -188,6 +187,19 @@ struct protocol proto_nc_source =
 	.io_in = proto_nc_io_in,
 	.ctx = NULL,
 };
+
+struct protocol proto_nc_http =
+{
+	.ctx_new = proto_nc_ctx_new,
+	.ctx_free = proto_nc_ctx_free,
+	.established = proto_nc_established,
+	.error = proto_nc_error,
+	.idle_timeout = proto_nc_timeout,
+	.disconnect = proto_nc_disconnect,
+	.io_in = proto_nc_io_in_http,
+	.ctx = NULL,
+};
+
 
 struct protocol proto_nc_sink =
 {
@@ -240,6 +252,24 @@ bool proto_nc_error(struct connection *con, enum connection_error error)
 uint32_t proto_nc_io_in(struct connection *con, void *context, unsigned char *data, uint32_t size)
 {
 	g_debug("%s con %p ctx %p data %p size %i",__PRETTY_FUNCTION__, con, context, data, size);
+	return size;
+}
+
+char *f = NULL;
+
+uint32_t proto_nc_io_in_http(struct connection *con, void *context, unsigned char *data, uint32_t size)
+{
+	static const char *header = "200 HTTP/1.0\r\nContent-Length: 1048576\r\n\r\n";
+	if( f == NULL )
+	{
+		f = malloc(1024*1024 + strlen(header));
+		memcpy(f, header, strlen(header));
+	}
+
+//	connection_send(con, header, strlen(header));
+	connection_send(con, f, 1024*1024 + strlen(header));
+	connection_close(con);
+//	free(f);
 	return size;
 }
 

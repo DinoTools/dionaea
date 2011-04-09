@@ -352,6 +352,8 @@ static bool pcap_prepare(void)
 static bool pcap_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
+	pcap_prepare();
+
 	GHashTableIter iter;
 	gpointer key, value;
 
@@ -396,7 +398,7 @@ struct module_api *module_init(struct dionaea *d)
 	static struct module_api pcap_api =
 	{
 		.config = &pcap_config,
-		.prepare = &pcap_prepare,
+		.start = NULL,
 		.new = &pcap_new,
 		.free = &pcap_free,
 		.hup = &pcap_hup

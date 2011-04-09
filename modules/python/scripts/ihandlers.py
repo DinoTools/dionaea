@@ -56,9 +56,14 @@ logger.setLevel(logging.DEBUG)
 # allows restarting
 global g_handlers
 
-
-
 def start():
+	logger.warn("START THE IHANDLERS")
+	for i in g_handlers:
+		method = getattr(i, "start", None)
+		if method != None:
+			method()
+
+def new():
 	global g_handlers
 	g_handlers = []
 
@@ -123,6 +128,10 @@ def start():
 	if "submit_http" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
 		import dionaea.submit_http
 		g_handlers.append(dionaea.submit_http.handler('*'))
+
+	if "fail2ban" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import dionaea.fail2ban
+		g_handlers.append(dionaea.fail2ban.fail2banhandler())
 
 def stop():
 	global g_handlers

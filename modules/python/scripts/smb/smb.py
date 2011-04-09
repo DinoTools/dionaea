@@ -181,22 +181,15 @@ class smbd(connection):
 			tmp = p.getlayer(SMB_Negociate_Protocol_Request_Counts)
 			while c < len(tmp.Requests):
 				request = tmp.Requests[c]
-				try:
-					if request.BufferData.decode('ascii').find('NT LM 0.12') != -1:
-						break
-				except:
-					# if this throws an exception, we already have strange stuff going on
-					# for now we will just ignore the packet, maybe we need to send back a response as if nothing happened
-					r = None
+				if request.BufferData.decode('ascii').find('NT LM 0.12') != -1:
 					break
-
 				c += 1
-	
-			if r:
-				r.DialectIndex = c
-				if not p.Flags2 & SMB_FLAGS2_EXT_SEC:
-					#r.Capabilities = r.Capabilities & ~CAP_EXTENDED_SECURITY
-					r.Capabilities = r.Capabilities & ~CAP_EXTENDED_SECURITY
+
+			r.DialectIndex = c
+
+#			r.Capabilities = r.Capabilities & ~CAP_EXTENDED_SECURITY
+			if not p.Flags2 & SMB_FLAGS2_EXT_SEC:
+				r.Capabilities = r.Capabilities & ~CAP_EXTENDED_SECURITY
 
 		#elif self.state == STATE_SESSIONSETUP and p.getlayer(SMB_Header).Command == 0x73:
 		elif Command == SMB_COM_SESSION_SETUP_ANDX:

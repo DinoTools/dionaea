@@ -25,32 +25,35 @@
 #*
 #*******************************************************************************/
 
-from dionaea.core import *
+
+from dionaea.core import ihandler, incident, g_dionaea
+
+import os
 import logging
+import random
+import json
+import sqlite3
+import datetime
 
-global handler
-global logger
+logger = logging.getLogger('fail2ban')
+logger.setLevel(logging.DEBUG)
 
-class DionaeaLogHandler(logging.Handler):
+class fail2banhandler(ihandler):
 	def __init__(self):
-		logging.Handler.__init__(self, logging.DEBUG)
-	def emit(self,record):
-		dlhfn(record.name, record.levelno, record.pathname, record.lineno, record.msg)
+		logger.debug("%s ready!" % (self.__class__.__name__))
+		ihandler.__init__(self, "*")
+		offers = g_dionaea.config()['modules']['python']['fail2ban']['offers']
+		downloads = g_dionaea.config()['modules']['python']['fail2ban']['downloads']
+		self.offers = open(offers, "a")
+		self.downloads = open(downloads, "a")
 
-def start():
-	pass
+	def handle_incident_dionaea_download_offer(self, icd):
+		data = "%s %s %s %s\n" % (datetime.datetime.now().isoformat(), icd.con.local.host, icd.con.remote.host, icd.url)
+		self.offers.write(data)
+		self.offers.flush()
 
-def new():
-	global logger
-	global handler
-	logger = logging.getLogger('')
-	logger.setLevel(logging.DEBUG)
-	handler = DionaeaLogHandler()
-	logger.addHandler(handler)
-
-def stop():
-	global logger
-	global handler
-	logger.removeHandler(handler)
-
+	def handle_incident_dionaea_download_complete_hash(self, icd):
+		data = "%s %s %s %s %s\n" % (datetime.datetime.now().isoformat(), icd.con.local.host, icd.con.remote.host, icd.url, icd.md5hash)
+		self.downloads.write(data)
+		self.downloads.flush()
 
