@@ -117,12 +117,6 @@ static bool nl_config(struct lcfgx_tree_node *node)
 	return true;
 }
 
-static bool nl_prepare(void)
-{
-	g_debug("%s", __PRETTY_FUNCTION__);
-	return true;
-}
-
 static void nl_obj_input(struct nl_object *obj, void *arg)
 {
 	struct _obj
@@ -447,7 +441,7 @@ struct module_api *module_init(struct dionaea *d)
 	static struct module_api nl_api =
 	{
 		.config = &nl_config,
-		.prepare = &nl_prepare,
+		.start = NULL,
 		.new = &nl_new,
 		.free = &nl_free,
 		.hup = &nl_hup

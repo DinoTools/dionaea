@@ -200,6 +200,10 @@ class mssqlservice(service):
 mode = g_dionaea.config()['listen']['mode']
 addrs = {} 
 
+#def start():
+#	global g_slave, mode, addrs
+#	global addrs
+#	g_slave.start(addrs)
 
 def start():
 	print("START")

@@ -37,8 +37,10 @@ class DionaeaLogHandler(logging.Handler):
 	def emit(self,record):
 		dlhfn(record.name, record.levelno, record.pathname, record.lineno, record.msg)
 
-
 def start():
+	pass
+
+def new():
 	global logger
 	global handler
 	logger = logging.getLogger('')

@@ -101,7 +101,7 @@ bool nfq_config(struct lcfgx_tree_node *config)
 	return true;
 }
 
-bool nfq_prepare(void)
+bool nfq_new(struct dionaea *d)
 {
 	g_debug("%s %p", __PRETTY_FUNCTION__, g_dionaea);
 
@@ -149,7 +149,7 @@ bool nfq_prepare(void)
 	return true;
 }
 
-static bool nfq_new(struct dionaea *d)
+static bool nfq_start(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
 
@@ -164,7 +164,7 @@ struct module_api *module_init(struct dionaea *d)
 	static struct module_api nfq_api =
 	{
 		.config = &nfq_config,
-		.prepare = &nfq_prepare,
+		.start = &nfq_start,
 		.new = &nfq_new,
 		.free = NULL,
 		.hup = NULL,

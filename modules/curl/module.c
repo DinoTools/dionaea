@@ -607,12 +607,6 @@ static bool curl_config(struct lcfgx_tree_node *node)
 	return true;
 }
 
-static bool curl_prepare(void)
-{
-	g_debug("%s", __PRETTY_FUNCTION__);
-	return true;
-}
-
 static bool curl_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
@@ -709,7 +703,7 @@ struct module_api *module_init(struct dionaea *d)
 	static struct module_api curl_api =
 	{
 		.config = &curl_config,
-		.prepare = &curl_prepare,
+		.start = NULL,
 		.new = &curl_new,
 		.free = &curl_freex,
 		.hup = &curl_hup

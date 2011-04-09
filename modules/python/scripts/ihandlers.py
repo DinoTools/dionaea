@@ -56,9 +56,14 @@ logger.setLevel(logging.DEBUG)
 # allows restarting
 global g_handlers
 
-
-
 def start():
+	logger.warn("START THE IHANDLERS")
+	for i in g_handlers:
+		method = getattr(i, "start", None)
+		if method != None:
+			method()
+
+def new():
 	global g_handlers
 	g_handlers = []
 

@@ -17,7 +17,7 @@ struct module;
 typedef struct module_api *(*module_init_function)(struct dionaea *d);
 
 typedef bool (*module_config_function)(struct lcfgx_tree_node *node);
-typedef bool (*module_prepare_function)(void);
+typedef bool (*module_start_function)(void);
 typedef bool (*module_new_function)(struct dionaea *d);
 typedef bool (*module_free_function)(void);
 
@@ -37,10 +37,10 @@ typedef bool (*module_free_function)(void);
 struct module_api
 {
 	module_config_function config;
-	module_config_function hup;
-	module_prepare_function prepare;
+	module_start_function start;
 	module_new_function new;
 	module_free_function free;
+	module_config_function hup;
 };
 
 struct module
@@ -66,7 +66,7 @@ void modules_load(struct lcfgx_tree_node *node);
 void modules_unload(void);
 
 void modules_config(void);
-void modules_prepare(void);
+void modules_start(void);
 void modules_new(void);
 void modules_free(void);
 void modules_hup(void);

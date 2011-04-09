@@ -57,12 +57,6 @@ static bool nc_config(struct lcfgx_tree_node *node)
 	return true;
 }
 
-static bool nc_prepare(void)
-{
-	g_debug("%s", __PRETTY_FUNCTION__);
-	return true;
-}
-
 static bool nc_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
@@ -172,7 +166,7 @@ struct module_api *module_init(struct dionaea *d)
 	static struct module_api nc_api =
 	{
 		.config = &nc_config,
-		.prepare = &nc_prepare,
+		.start = NULL,
 		.new = &nc_new,
 		.free = &nc_free,
 		.hup = &nc_hup
