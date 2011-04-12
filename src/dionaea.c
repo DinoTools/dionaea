@@ -573,7 +573,7 @@ opt->stdOUT.filter);
 			if( *file != '/' )
 			{
 				fd->file = g_malloc0(PATH_MAX+1);
-				g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR + strlen(PREFIX), file);
+				g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
 			} else
 				fd->file = g_strdup(file);
 
