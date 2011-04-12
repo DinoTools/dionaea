@@ -682,7 +682,7 @@ opt->stdOUT.filter);
 		g_warning("dionaea is useless without modules");
 
 	modules_config();
-
+	modules_new();
 
 	// privileged child
 	d->pchild = pchild_new();
@@ -694,7 +694,6 @@ opt->stdOUT.filter);
 	// maybe a little late, but want to avoid having dups of the fd in the child
 	g_log_set_default_handler(log_multiplexer, NULL);
 
-	modules_new();
 
 	// processors continued, create tree
 	g_hash_table_insert(d->processors->names, (void *)proc_streamdumper.name, &proc_streamdumper);
