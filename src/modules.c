@@ -171,8 +171,6 @@ void modules_unload(void)
 	}
 }
 
-
-
 void modules_config(void)
 {
 	GList *it;
@@ -182,6 +180,18 @@ void modules_config(void)
 		struct module *m = it->data;
 		if( m->api.config != NULL )
 			m->api.config(m->config);
+	}
+}
+
+void modules_prepare(void)
+{
+	GList *it;
+	for( it = g_list_first(g_dionaea->modules->modules); it != NULL; it = g_list_next(it) )
+	{
+		g_message("configure module %p", it->data);
+		struct module *m = it->data;
+		if( m->api.prepare != NULL )
+			m->api.prepare();
 	}
 }
 

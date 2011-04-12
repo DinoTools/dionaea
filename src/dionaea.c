@@ -682,7 +682,7 @@ opt->stdOUT.filter);
 		g_warning("dionaea is useless without modules");
 
 	modules_config();
-
+	modules_prepare();
 
 	// privileged child
 	d->pchild = pchild_new();

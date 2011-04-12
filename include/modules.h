@@ -38,6 +38,7 @@ struct module_api
 {
 	module_config_function config;
 	module_start_function start;
+	module_start_function prepare;
 	module_new_function new;
 	module_free_function free;
 	module_config_function hup;
@@ -65,9 +66,28 @@ struct modules
 void modules_load(struct lcfgx_tree_node *node);
 void modules_unload(void);
 
+/**
+ * module bootstrapping order 
+ *  
+ * config: ... 
+ *  
+ * prepare: initialize shared memory for pchild (if required) 
+ *  
+ * ->fork pchild 
+ *  
+ * new: bind & do things 
+ *  
+ * drop privs & chroot 
+ *  
+ * start: run in your chroot, open db handles 
+ */
+
+
+
 void modules_config(void);
-void modules_start(void);
+void modules_prepare(void);
 void modules_new(void);
+void modules_start(void);
 void modules_free(void);
 void modules_hup(void);
 
