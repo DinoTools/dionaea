@@ -592,7 +592,7 @@ opt->stdOUT.filter);
 				{
 					g_error("log path has to be relative to var/ for chroot");
 				}
-				strncpy(fd->file, file, PATH_MAX);
+				g_snprintf(fd->file, PATH_MAX, "var/%s", file);
 			}
 
 			fd->filter = lf;
