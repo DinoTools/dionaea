@@ -266,6 +266,15 @@ bool options_validate(struct options *opt)
 		}
 	}
 
+	if( opt->root != NULL )
+	{
+		if( strcmp(opt->root,opt->workingdir) != 0)
+		{
+			g_error("chroot root has to match workingdir, try -r %s", opt->workingdir);
+			return false;
+		}
+	}
+
 	if( opt->garbage != NULL )
 	{
 		if( strcmp(opt->garbage, "collect" ) != 0 && strcmp(opt->garbage, "debug" ) != 0 )
@@ -570,12 +579,21 @@ opt->stdOUT.filter);
 				return -1;
 
 			struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
-			if( *file != '/' )
+			if( opt->root == NULL )
 			{
-				fd->file = g_malloc0(PATH_MAX+1);
-				g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
-			} else
-				fd->file = g_strdup(file);
+				if( *file != '/' )
+				{
+					g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
+				} else
+					strncpy(fd->file, file, PATH_MAX);
+			}else
+			{
+				if( *file == '/' )
+				{
+					g_error("log path has to be relative to var/ for chroot");
+				}
+				strncpy(fd->file, file, PATH_MAX);
+			}
 
 			fd->filter = lf;
 
