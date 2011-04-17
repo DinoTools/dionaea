@@ -95,12 +95,6 @@ static bool nc_new(struct dionaea *d)
 			if( lcfgx_get_string(it, &node, "iface") == LCFGX_PATH_FOUND_TYPE_OK )
 				iface = node->value.string.data;
 
-			if( strcmp(v->key, "services" ) == 0 )
-			{
-				connection_bind(con, host, port, iface);
-				connection_listen(con, 1000);
-			}
-
 			if( lcfgx_get_string(it, &node, "throttle.in") == LCFGX_PATH_FOUND_TYPE_OK )
 				connection_throttle_io_in_set(con, atoi(node->value.string.data));
 			g_message("throttle in %s", (char *)node->value.string.data);
@@ -140,6 +134,12 @@ static bool nc_new(struct dionaea *d)
 				connection_protocol_set(con, &proto_nc_redir);
 
 
+			if( strcmp(v->key, "services" ) == 0 )
+			{
+				connection_bind(con, host, port, iface);
+				connection_listen(con, 1000);
+			}
+
 			if( strcmp(v->key, "clients" ) == 0 )
 				connection_connect(con, host, port, iface);
 		}
@@ -178,6 +178,7 @@ struct module_api *module_init(struct dionaea *d)
 
 struct protocol proto_nc_source =
 {
+	.name = "nc source",
 	.ctx_new = proto_nc_ctx_new,
 	.ctx_free = proto_nc_ctx_free,
 	.established = proto_nc_established_source,
@@ -190,6 +191,7 @@ struct protocol proto_nc_source =
 
 struct protocol proto_nc_http =
 {
+	.name = "nc http",
 	.ctx_new = proto_nc_ctx_new,
 	.ctx_free = proto_nc_ctx_free,
 	.established = proto_nc_established,
@@ -203,6 +205,7 @@ struct protocol proto_nc_http =
 
 struct protocol proto_nc_sink =
 {
+	.name = "nc sink",
 	.ctx_new = proto_nc_ctx_new,
 	.ctx_free = proto_nc_ctx_free,
 	.established = proto_nc_established,
@@ -216,6 +219,7 @@ struct protocol proto_nc_sink =
 
 struct protocol proto_nc_redir =
 {
+	.name = "nc redir",
 	.ctx_new = proto_nc_ctx_new,
 	.ctx_free = proto_nc_ctx_free,
 	.established = proto_nc_established,
