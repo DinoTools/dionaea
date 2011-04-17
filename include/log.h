@@ -112,7 +112,7 @@ void log_multiplexer(const gchar *log_domain,
 
 struct logger_file_data
 {
-	char *file;
+	char file[PATH_MAX+1];
 	FILE *f;
 	struct log_filter *filter;
 };

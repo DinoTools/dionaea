@@ -205,7 +205,7 @@ addrs = {}
 #	global addrs
 #	g_slave.start(addrs)
 
-def start():
+def new():
 	print("START")
 	global g_slave, mode, addrs
 	global addrs

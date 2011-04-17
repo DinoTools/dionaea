@@ -41,9 +41,10 @@ logger.setLevel(logging.DEBUG)
 class logsqlhandler(ihandler):
 	def __init__(self, path):
 		logger.debug("%s ready!" % (self.__class__.__name__))
-		ihandler.__init__(self, path)
+		self.path = path
 
 	def start(self):
+		ihandler.__init__(self, self.path)
 		# mapping socket -> attackid
 		self.attacks = {}
 
