@@ -26,7 +26,7 @@
 #*******************************************************************************/
 
 
-from dionaea.core import connection
+from dionaea.core import connection, g_dionaea, incident, ihandler
 import struct
 import logging
 import os
@@ -35,6 +35,8 @@ import datetime
 import io
 import cgi
 import urllib.parse
+import re
+import tempfile
 
 logger = logging.getLogger('http')
 logger.setLevel(logging.DEBUG)
@@ -55,7 +57,7 @@ class httpreq:
 			if hline[len(hline)-1] == 13: # \r
 				hline = hline[:len(hline)-1]
 			hset = hline.split(b":", 1)
-			self.headers[hset[0]] = hset[1]
+			self.headers[hset[0]] = hset[1].strip()
 		
 	def print(self):
 		logger.debug(self.type + b" " + self.path.encode('utf-8') + b" " + self.version)
@@ -70,6 +72,11 @@ class httpd(connection):
 		self.state = 'HEADER'
 		self.rwchunksize = 64*1024
 		self._out.speed.limit = 16*1024
+		self.env = None
+		self.boundary = None
+		self.fp_tmp = None
+		self.cur_length = 0
+		self.max_request_size = int(g_dionaea.config()['modules']['python']['http']['max-request-size']) * 1024
 
 	def handle_origin(self, parent):
 		self.root = parent.root
@@ -83,14 +90,20 @@ class httpd(connection):
 		self.root = path
 
 	def handle_io_in(self, data):
-		logger.debug(data)
 		if self.state == 'HEADER':
+			# End Of Head
 			eoh = data.find(b'\r\n\r\n')
+			# Start Of Content
+			soc = eoh + 4
+
 			if eoh == -1:
 				eoh = data.find(b'\n\n')
+				soc = eoh + 2
 			if eoh == -1:
 				return 0
+
 			header = data[0:eoh]
+			data = data[soc:]
 			self.header = httpreq(header)
 			self.header.print()
 		
@@ -99,7 +112,32 @@ class httpd(connection):
 			elif self.header.type == b'HEAD':
 				self.handle_HEAD()
 			elif self.header.type == b'POST':
-				self.handle_POST()
+				if b'Content-Type' in self.header.headers and b'Content-Type' in self.header.headers:
+					self.env = {
+						'REQUEST_METHOD':'POST',
+						'CONTENT_LENGTH': self.header.headers[b'Content-Length'].decode("utf-8"),
+						'CONTENT_TYPE': self.header.headers[b'Content-Type'].decode("utf-8")
+					}
+					m = re.compile("multipart/form-data; *boundary=(?P<boundary>.*)").match(self.env['CONTENT_TYPE'])
+					if m:
+						self.state = 'POST'
+						self.boundary = bytes("--" + m.group("boundary") + "--\r\n", 'utf-8')
+						self.fp_tmp = tempfile.NamedTemporaryFile(delete=False, prefix='http-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
+
+						pos = data.find(self.boundary)
+						if pos < 0:
+							self.cur_length = soc
+							return soc
+						else:
+							self.fp_tmp.write(data[:pos])
+							self.handle_POST()
+							return soc + pos
+
+					else:
+						self.handle_POST()
+				else:
+					self.handle_POST()
+
 			elif self.header.type == b'OPTIONS':
 				self.handle_OPTIONS()
 			#elif self.header.type == b'PUT':
@@ -107,8 +145,33 @@ class httpd(connection):
 			else:
 				# method not found
 				self.handle_unknown()
+
 		elif self.state == 'POST':
-			print("posting to me")
+			pos = data.find(self.boundary)
+			length = len(data)
+			if pos < 0:
+				# boundary not found
+				l = length - len(self.boundary)
+				if l < 0:
+					l = 0
+				self.cur_length = self.cur_length + l
+
+				if self.cur_length > self.max_request_size:
+					# Close connection if request is to large.
+					# RFC2616: "The server MAY close the connection to prevent the client from continuing the request."
+					# http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.14
+					x = self.send_error(413)
+					if x:
+						self.copyfile(x)
+					return length
+				self.fp_tmp.write(data[:l])
+				return l
+			else:
+				# boundary found
+				self.fp_tmp.write(data[:pos+len(self.boundary)])
+				self.handle_POST()
+				return pos + len(self.boundary)
+
 		elif self.state == 'PUT':
 			print("putting to me")
 		elif self.state == 'SENDFILE':
@@ -116,7 +179,8 @@ class httpd(connection):
 			return 0
 
 		return len(data)
-		
+
+
 	def handle_GET(self):
 		"""Handle the GET method. Send the header and the file."""
 		x = self.send_head()
@@ -146,6 +210,32 @@ class httpd(connection):
 		Handle the POST method. Send the head and the file. But ignore the POST params.
 		Use the bistreams for a better analysis.
 		"""
+		if self.fp_tmp != None:
+			self.fp_tmp.seek(0)
+			form = cgi.FieldStorage(fp = self.fp_tmp, environ = self.env)
+			for field_name in form.keys():
+				# dump only files
+				if form[field_name].filename != None:
+					fp_post = form[field_name].file
+
+					data = fp_post.read(4096)
+
+					# don't handle empty files
+					if len(data) > 0:
+						fp_tmp = tempfile.NamedTemporaryFile(delete=False, prefix='http-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
+						while data != b'':
+							fp_tmp.write(data)
+							data = fp_post.read(4096)
+
+						icd = incident("dionaea.download.complete")
+						icd.path = fp_tmp.name
+						# We need the url for logging
+						icd.url = ""
+						fp_tmp.close()
+						icd.report()
+						fp_tmp.unlink(fp_tmp.name)
+
+			self.fp_tmp.unlink(self.fp_tmp.name)
 		x = self.send_head()
 		if x :
 			self.copyfile(x)

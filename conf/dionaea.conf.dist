@@ -248,6 +248,7 @@ modules = {
 		}
 		http = {
 			root = "var/dionaea/wwwroot"
+			max-request-size = "32768" // maximum size in kbytes of the request (32MB)
 		}
 		sip = {
 			use_authentication = "yes"
