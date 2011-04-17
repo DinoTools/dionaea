@@ -5,7 +5,7 @@ CLEANFILES = $(bin_SCRIPTS)
 EXTRA_DIST = readlogsqltree.py gnuplotsql.py
 
 
-do_subst = sed -e 's,[@]PYTHON[@],$(PYTHON_BIN),g'
+do_subst = sed -e 's,[@]PYTHON[@],$(PYTHON),g'
 
 readlogsqltree: readlogsqltree.py
 	$(do_subst) < readlogsqltree.py > readlogsqltree
