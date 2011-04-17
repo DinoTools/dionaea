@@ -906,6 +906,36 @@ dnl **************************************************
 #	CFLAGS="${CFLAGS} -DDIONAEA_REV=$REV..." 
 #fi
 
+dnl **************************************************
+dnl * sanity                                         *
+dnl * make sure everything which is required exists  *
+dnl **************************************************
+
+
+fail="no"
+
+for i in emu ev curl cython python glib udns ssl; do
+	AC_MSG_CHECKING(DEPENDENCY $i)
+	v=enable_$i
+	x=$(eval echo $`echo $v`)
+	if test "x$x" != "xyes"; then
+		AC_MSG_WARN(no)
+		fail="yes"
+	else
+		AC_MSG_RESULT(yes)	
+	fi
+done
+
+AC_MSG_CHECKING(if all required dependencies are installed properly)
+if test "x$fail" != "xno"; then
+	AC_MSG_ERROR([no - better read the documentation])
+else
+	AC_MSG_RESULT([yes - well done, you read the documentation])
+fi
+
+
+
+
 
 
 AC_DEFUN([AC_DEFINE_DIR], [
