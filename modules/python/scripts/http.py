@@ -57,7 +57,7 @@ class httpreq:
 			if hline[len(hline)-1] == 13: # \r
 				hline = hline[:len(hline)-1]
 			hset = hline.split(b":", 1)
-			self.headers[hset[0]] = hset[1].strip()
+			self.headers[hset[0].lower()] = hset[1].strip()
 		
 	def print(self):
 		logger.debug(self.type + b" " + self.path.encode('utf-8') + b" " + self.version)
@@ -109,42 +109,64 @@ class httpd(connection):
 		
 			if self.header.type == b'GET':
 				self.handle_GET()
+				return len(data)
+
 			elif self.header.type == b'HEAD':
 				self.handle_HEAD()
+				return len(data)
+
 			elif self.header.type == b'POST':
-				if b'Content-Type' in self.header.headers and b'Content-Type' in self.header.headers:
+				if b'content-type' not in self.header.headers and b'content-type' not in self.header.headers:
+					self.handle_POST()
+					return len(data)
+
+				try:
+					# at least this information are needed for cgi.FieldStorage() to parse the content
 					self.env = {
 						'REQUEST_METHOD':'POST',
-						'CONTENT_LENGTH': self.header.headers[b'Content-Length'].decode("utf-8"),
-						'CONTENT_TYPE': self.header.headers[b'Content-Type'].decode("utf-8")
+						'CONTENT_LENGTH': self.header.headers[b'content-length'].decode("utf-8"),
+						'CONTENT_TYPE': self.header.headers[b'content-type'].decode("utf-8")
 					}
-					m = re.compile("multipart/form-data; *boundary=(?P<boundary>.*)").match(self.env['CONTENT_TYPE'])
-					if m:
-						self.state = 'POST'
-						self.boundary = bytes("--" + m.group("boundary") + "--\r\n", 'utf-8')
-						self.fp_tmp = tempfile.NamedTemporaryFile(delete=False, prefix='http-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
-
-						pos = data.find(self.boundary)
-						if pos < 0:
-							self.cur_length = soc
-							return soc
-						else:
-							self.fp_tmp.write(data[:pos])
-							self.handle_POST()
-							return soc + pos
-
-					else:
-						self.handle_POST()
-				else:
+				except:
+					# ignore decode() errors
 					self.handle_POST()
+					return len(data)
+
+				m = re.compile("multipart/form-data;\s*boundary=(?P<boundary>.*)", re.IGNORECASE).match(self.env['CONTENT_TYPE'])
+
+				if not m:
+					self.handle_POST()
+					return len(data)
+
+
+				self.state = 'POST'
+				# More on boundaries see: http://www.apps.ietf.org/rfc/rfc2046.html#sec-5.1.1
+				self.boundary = bytes("--" + m.group("boundary") + "--\r\n", 'utf-8')
+
+				# dump post content to file
+				self.fp_tmp = tempfile.NamedTemporaryFile(delete=False, prefix='http-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
+
+				pos = data.find(self.boundary)
+				# ending boundary not found
+				if pos < 0:
+					self.cur_length = soc
+					return soc
+
+				self.fp_tmp.write(data[:pos])
+				self.handle_POST()
+				return soc + pos
 
 			elif self.header.type == b'OPTIONS':
 				self.handle_OPTIONS()
+				return len(data)
+
+			# ToDo
 			#elif self.header.type == b'PUT':
 			#	self.handle_PUT()
-			else:
-				# method not found
-				self.handle_unknown()
+
+			# method not found
+			self.handle_unknown()
+			return len(data)
 
 		elif self.state == 'POST':
 			pos = data.find(self.boundary)
@@ -166,11 +188,11 @@ class httpd(connection):
 					return length
 				self.fp_tmp.write(data[:l])
 				return l
-			else:
-				# boundary found
-				self.fp_tmp.write(data[:pos+len(self.boundary)])
-				self.handle_POST()
-				return pos + len(self.boundary)
+
+			# boundary found
+			self.fp_tmp.write(data[:pos+len(self.boundary)])
+			self.handle_POST()
+			return pos + len(self.boundary)
 
 		elif self.state == 'PUT':
 			print("putting to me")
@@ -215,27 +237,32 @@ class httpd(connection):
 			form = cgi.FieldStorage(fp = self.fp_tmp, environ = self.env)
 			for field_name in form.keys():
 				# dump only files
-				if form[field_name].filename != None:
-					fp_post = form[field_name].file
+				if form[field_name].filename == None:
+					continue
 
+				fp_post = form[field_name].file
+
+				data = fp_post.read(4096)
+
+				# don't handle empty files
+				if len(data) == 0:
+					continue
+
+				fp_tmp = tempfile.NamedTemporaryFile(delete=False, prefix='http-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
+				while data != b'':
+					fp_tmp.write(data)
 					data = fp_post.read(4096)
 
-					# don't handle empty files
-					if len(data) > 0:
-						fp_tmp = tempfile.NamedTemporaryFile(delete=False, prefix='http-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
-						while data != b'':
-							fp_tmp.write(data)
-							data = fp_post.read(4096)
-
-						icd = incident("dionaea.download.complete")
-						icd.path = fp_tmp.name
-						# We need the url for logging
-						icd.url = ""
-						fp_tmp.close()
-						icd.report()
-						fp_tmp.unlink(fp_tmp.name)
+				icd = incident("dionaea.download.complete")
+				icd.path = fp_tmp.name
+				# We need the url for logging
+				icd.url = ""
+				fp_tmp.close()
+				icd.report()
+				fp_tmp.unlink(fp_tmp.name)
 
 			self.fp_tmp.unlink(self.fp_tmp.name)
+
 		x = self.send_head()
 		if x :
 			self.copyfile(x)
