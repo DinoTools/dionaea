@@ -26,7 +26,7 @@
 #*******************************************************************************/
 
 
-from dionaea.core import connection
+from dionaea.core import connection, g_dionaea, incident, ihandler
 import struct
 import logging
 import os
@@ -35,6 +35,8 @@ import datetime
 import io
 import cgi
 import urllib.parse
+import re
+import tempfile
 
 logger = logging.getLogger('http')
 logger.setLevel(logging.DEBUG)
@@ -55,12 +57,12 @@ class httpreq:
 			if hline[len(hline)-1] == 13: # \r
 				hline = hline[:len(hline)-1]
 			hset = hline.split(b":", 1)
-			self.headers[hset[0]] = hset[1]
+			self.headers[hset[0].lower()] = hset[1].strip()
 		
 	def print(self):
-		print(self.type + b" " + self.path.encode('utf-8') + b" " + self.version)
+		logger.debug(self.type + b" " + self.path.encode('utf-8') + b" " + self.version)
 		for i in self.headers:
-			print(i + b":" + self.headers[i])
+			logger.debug(i + b":" + self.headers[i])
 
 
 class httpd(connection):
@@ -70,41 +72,128 @@ class httpd(connection):
 		self.state = 'HEADER'
 		self.rwchunksize = 64*1024
 		self._out.speed.limit = 16*1024
+		self.env = None
+		self.boundary = None
+		self.fp_tmp = None
+		self.cur_length = 0
+		self.max_request_size = int(g_dionaea.config()['modules']['python']['http']['max-request-size']) * 1024
 
 	def handle_origin(self, parent):
 		self.root = parent.root
 		self.rwchunksize = parent.rwchunksize
 
 	def handle_established(self):
-#		self.processors()
 		self.timeouts.idle = 10
-#		pass
+		self.processors()
 
 	def chroot(self, path):
 		self.root = path
 
 	def handle_io_in(self, data):
-		print(data)
 		if self.state == 'HEADER':
+			# End Of Head
 			eoh = data.find(b'\r\n\r\n')
+			# Start Of Content
+			soc = eoh + 4
+
 			if eoh == -1:
 				eoh = data.find(b'\n\n')
+				soc = eoh + 2
 			if eoh == -1:
 				return 0
+
 			header = data[0:eoh]
+			data = data[soc:]
 			self.header = httpreq(header)
 			self.header.print()
 		
 			if self.header.type == b'GET':
 				self.handle_GET()
+				return len(data)
+
 			elif self.header.type == b'HEAD':
-				self.handle_GET()
+				self.handle_HEAD()
+				return len(data)
+
 			elif self.header.type == b'POST':
+				if b'content-type' not in self.header.headers and b'content-type' not in self.header.headers:
+					self.handle_POST()
+					return len(data)
+
+				try:
+					# at least this information are needed for cgi.FieldStorage() to parse the content
+					self.env = {
+						'REQUEST_METHOD':'POST',
+						'CONTENT_LENGTH': self.header.headers[b'content-length'].decode("utf-8"),
+						'CONTENT_TYPE': self.header.headers[b'content-type'].decode("utf-8")
+					}
+				except:
+					# ignore decode() errors
+					self.handle_POST()
+					return len(data)
+
+				m = re.compile("multipart/form-data;\s*boundary=(?P<boundary>.*)", re.IGNORECASE).match(self.env['CONTENT_TYPE'])
+
+				if not m:
+					self.handle_POST()
+					return len(data)
+
+
+				self.state = 'POST'
+				# More on boundaries see: http://www.apps.ietf.org/rfc/rfc2046.html#sec-5.1.1
+				self.boundary = bytes("--" + m.group("boundary") + "--\r\n", 'utf-8')
+
+				# dump post content to file
+				self.fp_tmp = tempfile.NamedTemporaryFile(delete=False, prefix='http-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
+
+				pos = data.find(self.boundary)
+				# ending boundary not found
+				if pos < 0:
+					self.cur_length = soc
+					return soc
+
+				self.fp_tmp.write(data[:pos])
 				self.handle_POST()
-			elif self.header.type == b'PUT':
-				self.handle_PUT()
+				return soc + pos
+
+			elif self.header.type == b'OPTIONS':
+				self.handle_OPTIONS()
+				return len(data)
+
+			# ToDo
+			#elif self.header.type == b'PUT':
+			#	self.handle_PUT()
+
+			# method not found
+			self.handle_unknown()
+			return len(data)
+
 		elif self.state == 'POST':
-			print("posting to me")
+			pos = data.find(self.boundary)
+			length = len(data)
+			if pos < 0:
+				# boundary not found
+				l = length - len(self.boundary)
+				if l < 0:
+					l = 0
+				self.cur_length = self.cur_length + l
+
+				if self.cur_length > self.max_request_size:
+					# Close connection if request is to large.
+					# RFC2616: "The server MAY close the connection to prevent the client from continuing the request."
+					# http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.14
+					x = self.send_error(413)
+					if x:
+						self.copyfile(x)
+					return length
+				self.fp_tmp.write(data[:l])
+				return l
+
+			# boundary found
+			self.fp_tmp.write(data[:pos+len(self.boundary)])
+			self.handle_POST()
+			return pos + len(self.boundary)
+
 		elif self.state == 'PUT':
 			print("putting to me")
 		elif self.state == 'SENDFILE':
@@ -112,22 +201,79 @@ class httpd(connection):
 			return 0
 
 		return len(data)
-		
+
+
 	def handle_GET(self):
+		"""Handle the GET method. Send the header and the file."""
 		x = self.send_head()
 		if x :
 			self.copyfile(x)
 
 	def handle_HEAD(self):
+		"""Handle the HEAD method. Send only the header but not the file."""
 		x = self.send_head()
 		if x :
 			x.close()
+			self.close()
+
+	def handle_OPTIONS(self):
+		"""
+		Handle the OPTIONS method. Returns the HTTP methods that the server supports.
+		"""
+		self.send_response(200)
+		self.send_header("Allow", "OPTIONS, GET, HEAD, POST")
+		self.send_header("Content-Length", "0")
+		self.send_header("Connection", "close")
+		self.end_headers()
+		self.close()
 
 	def handle_POST(self):
-		pass
+		"""
+		Handle the POST method. Send the head and the file. But ignore the POST params.
+		Use the bistreams for a better analysis.
+		"""
+		if self.fp_tmp != None:
+			self.fp_tmp.seek(0)
+			form = cgi.FieldStorage(fp = self.fp_tmp, environ = self.env)
+			for field_name in form.keys():
+				# dump only files
+				if form[field_name].filename == None:
+					continue
+
+				fp_post = form[field_name].file
+
+				data = fp_post.read(4096)
+
+				# don't handle empty files
+				if len(data) == 0:
+					continue
+
+				fp_tmp = tempfile.NamedTemporaryFile(delete=False, prefix='http-', suffix=g_dionaea.config()['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
+				while data != b'':
+					fp_tmp.write(data)
+					data = fp_post.read(4096)
+
+				icd = incident("dionaea.download.complete")
+				icd.path = fp_tmp.name
+				# We need the url for logging
+				icd.url = ""
+				fp_tmp.close()
+				icd.report()
+				fp_tmp.unlink(fp_tmp.name)
+
+			self.fp_tmp.unlink(self.fp_tmp.name)
+
+		x = self.send_head()
+		if x :
+			self.copyfile(x)
 
 	def handle_PUT(self):
 		pass
+
+	def handle_unknown(self):
+		x = self.send_error(501)
+		if x:
+			self.copyfile(x)
 
 	def copyfile(self, f):
 		self.file = f
@@ -138,8 +284,9 @@ class httpd(connection):
 		rpath = os.path.normpath(self.header.path)
 		fpath = os.path.join(self.root, rpath[1:])
 		apath = os.path.abspath(fpath)
-#		print("root %s rpath %s fpath %s apath %s" % (self.root, rpath, fpath, apath))
-		if not apath.startswith(self.root):
+		aroot = os.path.abspath(self.root)
+		logger.debug("root %s aroot %s rpath %s fpath %s apath %s" % (self.root, aroot, rpath, fpath, apath))
+		if not apath.startswith(aroot):
 			self.send_response(404, "File not found")
 			self.end_headers()
 			self.close()
@@ -161,13 +308,9 @@ class httpd(connection):
 				self.end_headers()
 				return f
 			else:
-				self.send_response(404, "File not found")
-				self.end_headers()
-				self.close()
+				return self.send_error(404)
 		else:
-			self.send_response(404, "File not found")
-			self.end_headers()
-			self.close()
+			return self.send_error(404)
 		return None
 
 	def handle_io_out(self):
@@ -223,6 +366,7 @@ class httpd(connection):
 		self.send_response(200)
 		self.send_header("Content-type", "text/html; charset=%s" % enc)
 		self.send_header("Content-Length", str(len(encoded)))
+		self.send_header("Connection", "close")
 		self.end_headers()
 		f = io.BytesIO()
 		f.write(encoded)
@@ -236,6 +380,40 @@ class httpd(connection):
 			else:
 				message = ''
 		self.send("%s %d %s\r\n" % ("HTTP/1.0", code, message))
+
+	def send_error(self, code, message = None):
+		if message is None:
+			if code in self.responses:
+				message = self.responses[code][0]
+			else:
+				message = ''
+		enc = sys.getfilesystemencoding()
+
+		r = []
+		r.append('<?xml version="1.0" encoding="%s"?>\n' % (enc))
+		r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"\n')
+		r.append('         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">\n')
+		r.append('<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">\n')
+		r.append(' <head>\n')
+		r.append('  <title>%d - %s</title>\n' % (code, message))
+		r.append(' </head>\n')
+		r.append(' <body>\n')
+		r.append('  <h1>%d - %s</h1>\n' % (code, message))
+		r.append(' </body>\n')
+		r.append('</html>\n')
+
+		encoded = ''.join(r).encode(enc)
+
+		self.send_response(code, message)
+		self.send_header("Content-type", "text/html; charset=%s" % enc)
+		self.send_header("Content-Length", str(len(encoded)))
+		self.send_header("Connection", "close")
+		self.end_headers()
+
+		f = io.BytesIO()
+		f.write(encoded)
+		f.seek(0)
+		return f
 
 	def send_header(self, key, value):
 		self.send("%s: %s\r\n" % (key, value))
