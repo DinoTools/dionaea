@@ -51,11 +51,11 @@ cdef extern from "module.h":
 cdef class dionaea:
 	cdef c_dionaea *thisptr
 	def config(self):
-		return c_pylcfg(<object> NULL, <object> NULL)
+		return c_pylcfg(<object> None, <object> None)
 	def getifaddrs(self):
-		return c_pygetifaddrs(<object> NULL, <object> NULL)
+		return c_pygetifaddrs(<object> None, <object> None)
 	def version(self):
-		return c_version(<object> NULL, <object> NULL)
+		return c_version(<object> None, <object> None)
 	
 
 g_dionaea = dionaea() 
