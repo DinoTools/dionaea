@@ -76,7 +76,18 @@ class httpd(connection):
 		self.boundary = None
 		self.fp_tmp = None
 		self.cur_length = 0
-		self.max_request_size = int(g_dionaea.config()['modules']['python']['http']['max-request-size']) * 1024
+		max_request_size = 32768
+
+		try:
+			if 'max-request-size' in g_dionaea.config()['modules']['python']['http']:
+				# try to convert value to int
+				max_request_size = int(g_dionaea.config()['modules']['python']['http']['max-request-size'])
+			else:
+				logger.info("Value for 'max-request-size' not found, using default value.")
+		except:
+			logger.warning("Error while converting 'max-request-size' to an integer value. Using default value.")
+
+		self.max_request_size = max_request_size * 1024
 
 	def handle_origin(self, parent):
 		self.root = parent.root
