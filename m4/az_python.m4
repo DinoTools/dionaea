@@ -229,14 +229,9 @@ AC_DEFUN([AZ_PYTHON_CSPEC],
         then
             AC_MSG_ERROR([Python Prefix is not known])
         fi
-        az_python_execprefix=`${PYTHON} -c "import sys; print(sys.exec_prefix)"`
-        az_python_version=`$PYTHON -c "import sys; print(sys.version[[:3]])"`
-        az_python_includespec="-I${az_python_prefix}/include/python${az_python_version}"
-        if test x"$python_prefix" != x"$python_execprefix"; then
-            az_python_execspec="-I${az_python_execprefix}/include/python${az_python_version}"
-            az_python_includespec="${az_python_includespec} $az_python_execspec"
-        fi
-        az_python_ccshared=`${PYTHON} -c "import distutils.sysconfig; print(distutils.sysconfig.get_config_var('CFLAGSFORSHARED'))"`
+        az_python_platinclude=`$PYTHON -c "import sysconfig; print(sysconfig.get_path('platinclude'))"`
+        az_python_includespec="-I${az_python_platinclude}"
+        az_python_ccshared=`${PYTHON} -c "import sysconfig; print(sysconfig.get_config_var('CFLAGSFORSHARED'))"`
         az_python_cspec="${az_python_ccshared} ${az_python_includespec}"
         AC_SUBST([PYTHON_CSPEC], [${az_python_cspec}])
         AC_MSG_NOTICE([PYTHON_CSPEC=${az_python_cspec}])
@@ -274,38 +269,17 @@ AC_DEFUN([AZ_PYTHON_LSPEC],
     then
         AZ_PYTHON_RUN([
 import sys
-import distutils.sysconfig
-strUseFrameWork = "--enable-framework"
-dictConfig = distutils.sysconfig.get_config_vars( )
-strConfigArgs = dictConfig.get("CONFIG_ARGS")
+import sysconfig
+dictConfig = sysconfig.get_config_vars( )
 strLinkSpec =  dictConfig.get('LDFLAGS')
-if -1 ==  strConfigArgs.find(strUseFrameWork):
-    strLibPL = dictConfig.get("LIBPL")
-    if strLibPL and (strLibPL != ""):
-        strLinkSpec += " -L%s" % (strLibPL)
-    strSys = dictConfig.get("SYSLIBS")
-    if strSys and (strSys != ""):
-        strLinkSpec += " %s" % (strSys)
-    strSHL = dictConfig.get("SHLIBS")
-    if strSHL and (strSHL != ""):
-        strLinkSpec += " %s" % (strSHL)
-    # Construct the Python Library Name.
-    strTmplte = " -lpython%d.%d"
-    if (sys.platform == "win32") or (sys.platform == "os2emx"):
-        strTmplte = " -lpython%d%d"
-    strWrk = strTmplte % ( (sys.hexversion >> 24),
-                            ((sys.hexversion >> 16) & 0xff))
-    strLinkSpec += strWrk
-else:
-    # This is not ideal since it changes the search path
-    # for Frameworks which could have side-effects on
-    # other included Frameworks.  However, it is necessary
-    # where someone has installed more than one frameworked
-    # Python.  Frameworks are really only used in MacOSX.
-    strLibFW = dictConfig.get("PYTHONFRAMEWORKPREFIX")
-    if strLibFW and (strLibFW != ""):
-        strLinkSpec += " -F%s" % (strLibFW)
-strLinkSpec += " %s" % (dictConfig.get('LINKFORSHARED'))
+
+for k,v in {"LIBPL":"-L","SYSLIBS": "","SHLIBS":"","LINKFORSHARED":""}.items():
+	lib = dictConfig.get(k)
+	if lib and lib != "":
+		strLinkSpec += " %s%s" % (v,lib)
+
+# Construct the Python Library Name.
+strLinkSpec += " -lpython%s%s" % (sysconfig.get_python_version(), sys.abiflags)
 print(strLinkSpec)
         ])
         AC_SUBST([PYTHON_LSPEC], [${az_python_output}])
@@ -323,7 +297,7 @@ print(strLinkSpec)
 AC_DEFUN([AZ_PYTHON_PATH],
 [
     AC_ARG_VAR( [PYTHON], [Python Executable Path] )
-    AC_PATH_PROG( PYTHON, python3.1, [], $1 )
+    AC_PATH_PROG( PYTHON, python3.2, [], $1 )
     if test -z "$PYTHON"
     then
         AC_MSG_ERROR([Python Executable not found])
