@@ -951,7 +951,7 @@ static char *pyobjectstring(PyObject *obj)
 
 	Py_ssize_t pysize = PyUnicode_GetSize(pyobjectstr);
 	wchar_t * str = (wchar_t *) malloc((pysize + 1) * sizeof(wchar_t));
-	PyUnicode_AsWideChar((PyUnicodeObject *) pyobjectstr, str, pysize);
+	PyUnicode_AsWideChar(pyobjectstr, str, pysize);
 	str[pysize] = '\0';
 
 	if( pyobjectstr != obj )
