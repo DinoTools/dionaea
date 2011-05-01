@@ -61,7 +61,7 @@
 #include "Scheduler.c"
 #endif
 #endif
-#if EV_SIGNAL_ENABLE
+#if EV_SIGNAL_ENABLE_
 #include "Signal.c"
 #endif
 #if EV_CHILD_ENABLE

@@ -94,8 +94,10 @@
 #endif
 
 /* embed libev */
-#include "libev/ev.c"
-
+//#include "libev/ev.c"
+#include <ev.h>
+#define PYEV_VERSION "0.8-0.04"
+#define LIBEV_VERSION "4.04"
 
 /*******************************************************************************
 * objects
