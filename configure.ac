@@ -92,7 +92,7 @@ if test x$enable_ev = "xyes" ; then
 			LDFLAGS="${LDFLAGS}  -L${ev_lib}"
 		fi
 	
-		AC_CHECK_LIB([ev],[ev_loop],enable_ev="yes", enable_ev="no")
+		AC_CHECK_LIB([ev],[ev_run],enable_ev="yes", enable_ev="no")
 	
 		if test x$enable_ev = "xyes" ; then
 			if test x$ev_lib != "xno"; then
@@ -105,6 +105,7 @@ if test x$enable_ev = "xyes" ; then
 			else
 				LIB_EV_CFLAGS=""
 			fi
+			LIB_EV_CFLAGS="${LIB_EV_CFLAGS} -DEV_COMPAT3=0"
 			AC_DEFINE([HAVE_LIBEV], [1], [Define to 1 to compile with ev support])
 		fi
 	fi

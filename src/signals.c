@@ -46,7 +46,7 @@
 void sigint_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 {
 	g_warning("%s loop %p w %p revents %i",__PRETTY_FUNCTION__, loop, w, revents);
-	ev_unloop (loop, EVUNLOOP_ALL);
+	ev_break(loop, EVBREAK_ALL);
 }
 
 void sighup_cb(struct ev_loop *loop, struct ev_signal *w, int revents)

@@ -851,7 +851,7 @@ opt->stdOUT.filter);
 
 	// loop	
 	g_debug("looping");
-	ev_loop(d->loop,0);
+	ev_run(d->loop,0);
 
 	// delete thread pool
 	g_debug("Closing thread pool (%i active threads, %i jobs in queue), be patient",
