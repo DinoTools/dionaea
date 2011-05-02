@@ -173,7 +173,7 @@ class xmppclient(connection):
 			'xml:lang' : 'en',
 			'version' : '1.0'
 			})
-		d = """<?xml version="1.0"?>\r\n%s>""" % ElementTree.tostring(n)[:-3]
+		d = """<?xml version="1.0"?>\r\n%s>""" % ElementTree.tostring(n)[:-3].decode('utf-8')
 #		logger.debug(d)
 		self.send(d)
 
@@ -286,7 +286,7 @@ class xmppclient(connection):
 					'xml:lang' : 'en',
 					'version' : '1.0'
 					})
-				d = """<?xml version="1.0"?>\r\n%s>""" % ElementTree.tostring(n)[:-3]
+				d = """<?xml version="1.0"?>\r\n%s>""" % ElementTree.tostring(n)[:-3].decode('utf-8')
 #				logger.debug(d)
 				self.send(d)
 				self.state = "features"
