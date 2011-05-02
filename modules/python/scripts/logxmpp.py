@@ -27,7 +27,6 @@
 
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from lxml import etree as etree
-from xml.etree import ElementTree
 from lxml.etree import XMLParser
 from io import open
 import base64
@@ -63,7 +62,8 @@ __nsmap__ = {
 	'session': 'urn:ietf:params:xml:ns:xmpp-session',
 	'iq': 'http://jabber.org/features/iq-register',
 	'mucuser': 'http://jabber.org/protocol/muc#user',
-	'dionaea' : 'http://dionaea.carnivore.it'
+	'dionaea' : 'http://dionaea.carnivore.it',
+	'xml' : 'http://www.w3.org/XML/1998/namespace'
 }
 
 class xmppparser:
@@ -164,17 +164,12 @@ class xmppclient(connection):
 
 	def handle_established(self):
 		self.state = "connected"
-		n = ElementTree.Element('stream:stream', attrib={
-			'xmlns' : 'jabber:client',
-			'xmlns:stream' :'http://etherx.jabber.org/streams',
-			'xmlns:sasl' : 'http://www.iana.org/assignments/sasl-mechanisms',
-			'xmlns:xml' : 'http://www.w3.org/XML/1998/namespace',
+		n = etree.Element('{http://etherx.jabber.org/streams}stream', attrib={
 			'to' : self.server,
-			'xml:lang' : 'en',
-			'version' : '1.0'
-			})
-		d = """<?xml version="1.0"?>\r\n%s>""" % ElementTree.tostring(n)[:-3].decode('utf-8')
-#		logger.debug(d)
+			'version' : '1.0',
+			'{http://www.w3.org/XML/1998/namespace}lang' : 'en'
+			}, nsmap = __nsmap__)
+		d = """<?xml version="1.0"?>\r\n%s>""" % etree.tostring(n)[:-2].decode('utf-8')
 		self.send(d)
 
 	def handle_io_in(self, data):
@@ -277,17 +272,13 @@ class xmppclient(connection):
 				self.element = None
 				self.elements = []
 				self.parser = xmppparser(self)
-				n = ElementTree.Element('stream:stream', attrib={
-					'xmlns' : 'jabber:client',
-					'xmlns:stream' :'http://etherx.jabber.org/streams',
-					'xmlns:sasl' : 'http://www.iana.org/assignments/sasl-mechanisms',
-					'xmlns:xml' : 'http://www.w3.org/XML/1998/namespace',
-					'to' : self.server, #'example.com',
-					'xml:lang' : 'en',
-					'version' : '1.0'
-					})
-				d = """<?xml version="1.0"?>\r\n%s>""" % ElementTree.tostring(n)[:-3].decode('utf-8')
-#				logger.debug(d)
+				n = etree.Element('{http://etherx.jabber.org/streams}stream', attrib={
+					'xmlns': 'jabber:client',
+					'to' : self.server,
+					'version' : '1.0',
+					'{http://www.w3.org/XML/1998/namespace}lang' : 'en'
+					}, nsmap = __nsmap__)
+				d = """<?xml version="1.0"?>\r\n%s>""" % etree.tostring(n)[:-2].decode('utf-8')
 				self.send(d)
 				self.state = "features"
 				sasl[0].getparent().remove(sasl[0])
