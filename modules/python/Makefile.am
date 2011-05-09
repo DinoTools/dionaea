@@ -7,7 +7,7 @@ SUBDIRS = scripts util
 all: binding.c
 
 binding.c: setup.py setup.py.in binding.pyx module.c module.h ../../config.h ../../include/protocol.h ../../include/dionaea.h
-	python setup.py build
+	$(PYTHON) setup.py build
 
 install-exec-am: all
 	cp build/*/dionaea/*.so $(DESTDIR)$(pkglibdir)/python.so
@@ -17,7 +17,7 @@ install-exec-am: all
 	ln -s $(DESTDIR)$(pkglibdir)/python.so $(DESTDIR)$(pkglibdir)/python/dionaea/pyev.so
 
 clean:
-	python setup.py clean
+	$(PYTHON) setup.py clean
 	rm -rf ./build binding.{c,h} 
 
 dist-clean: clean
