@@ -1486,6 +1486,8 @@ class samr(RPCService):
 		7: "OpenDomain",
 		13: "EnumDomainUsers",
 		15: "EnumerateAliasesInDomain",
+		17: "LookupNamesInDomain",
+		34: "OpenUser",
 		40: "QueryDisplayInformation",
 		46: "QueryInformationDomain2",
 		62: "Connect4",
@@ -1724,6 +1726,95 @@ class samr(RPCService):
 
 		# long* CountReturned
 		r.pack_long(s.EntriesRead)
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_LookupNamesInDomain(cls, con, p):
+		#3.1.5.11.2 SamrLookupNamesInDomain (Opnum 17)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245712%28v=prot.10%29.aspx
+		#
+		#long SamrLookupNamesInDomain(
+		#  [in] SAMPR_HANDLE DomainHandle,
+		#  [in, range(0,1000)] unsigned long Count,
+		#  [in, size_is(1000), length_is(Count)] 
+		#    RPC_UNICODE_STRING Names[*],
+		#  [out] PSAMPR_ULONG_ARRAY RelativeIds,
+		#  [out] PSAMPR_ULONG_ARRAY Use
+		#)
+		x = ndrlib.Unpacker(p.StubData)
+		DomainHandle = samr.SAMPR_HANDLE(x)
+		rpclog.debug("DomainHandle %s" % DomainHandle)
+
+		# unsigned long Count
+		Count= x.unpack_long()
+		rpclog.debug("Count %i" % Count)
+		
+		# RPC_UNICODE_STRING Names[*]
+		Maxcount = x.unpack_long()
+		rpclog.debug("Maxcount %i" % Maxcount)
+		Offset = x.unpack_long()
+		rpclog.debug("Offset %i" % Offset)
+		ActualCount = x.unpack_long()
+		rpclog.debug("ActualCount %i" % ActualCount)
+		Names = samr.RPC_UNICODE_STRING(x,Count)
+		
+		r = ndrlib.Packer()
+
+		# PSAMPR_ULONG_ARRAY RelativeIds
+		# RelativeIds.Count
+		r.pack_long(Count)
+		
+		# RelativeIds.Element
+		r.pack_pointer(0x0da260) 
+		r.pack_long(1)
+		r.pack_long(500)
+
+		# PSAMPR_ULONG_ARRAY Use
+		# Use.Count
+		r.pack_long(Count)
+		
+		# Use.Element
+		r.pack_pointer(0x0e1288)		
+		r.pack_long(1)
+		r.pack_long(1)
+		
+		# return
+		r.pack_long(0)
+
+		return r.get_buffer()
+		
+	@classmethod
+	def handle_OpenUser(cls, con, p):
+		#3.1.5.1.9 SamrOpenUser (Opnum 34)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245752%28v=prot.10%29.aspx
+		#
+		#long SamrOpenUser(
+		#  [in] SAMPR_HANDLE DomainHandle,
+		#  [in] unsigned long DesiredAccess,
+		#  [in] unsigned long UserId,
+		#  [out] SAMPR_HANDLE* UserHandle
+		#);
+		x = ndrlib.Unpacker(p.StubData)
+		DomainHandle = samr.SAMPR_HANDLE(x)
+		rpclog.debug("DomainHandle %s" % DomainHandle)
+	
+		DesiredAccess = x.unpack_long()
+		rpclog.debug("DesiredAccess %i" % DesiredAccess)
+		
+		UserId = x.unpack_long()
+		rpclog.debug("UserId %i" % UserId)
+
+		r = ndrlib.Packer()
+		# UserHandle
+		UserHandle = samr.SAMPR_HANDLE(r)
+		UserHandle.Handle = b'01234567890123456789'
+		UserHandle.pack()
+
+		# return
 		r.pack_long(0)
 
 		return r.get_buffer()
