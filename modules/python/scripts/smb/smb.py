@@ -411,7 +411,12 @@ class smbd(connection):
 							outpacket.show()
 							self.outbuf = outpacket.build()
 						self.buf = b''
-
+		elif Command == SMB_COM_WRITE:
+			h = p.getlayer(SMB_Write_Request)
+			if h.FID in self.fids and self.fids[h.FID] is not None:
+				smblog.warn("WRITE FILE!")
+				self.fids[h.FID].write(h.Data)
+			r = SMB_Write_Response(CountOfBytesWritten = h.CountOfBytesToWrite)
 		elif Command == SMB_COM_READ_ANDX:
 			r = SMB_Read_AndX_Response()
 			h = p.getlayer(SMB_Read_AndX_Request)

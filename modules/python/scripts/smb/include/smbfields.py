@@ -1045,6 +1045,33 @@ class SMB_Write_AndX_Response(Packet):
 		LEShortField("ByteCount",0),
 	]
 
+
+class SMB_Write_Request(Packet):
+	# http://msdn.microsoft.com/en-us/library/ee441864%28v=PROT.13%29.aspx
+	name = "SMB Write Request"
+	smb_cmd = SMB_COM_WRITE
+	fields_desc = [
+		ByteField("WordCount",6),
+		XLEShortField("FID",0),
+		XLEShortField("CountOfBytesToWrite",0),
+		XIntField("WriteOffsetInBytes",0),
+		XLEShortField("EstimateOfRemainingBytesToBeWritten",0),
+		LEShortField("ByteCount",0),
+		ByteField("BufferFormat",0x01),
+		FieldLenField("DataLength",None, fmt='<H', length_of="Data"),
+		StrLenField("Data",b"",length_from=lambda x:x.DataLength)
+	]
+
+class SMB_Write_Response(Packet):
+	name = "SMB Write Response"
+	smb_cmd = SMB_COM_WRITE
+	fields_desc = [
+		ByteField("WordCount",1),
+		LEShortField("CountOfBytesWritten",0),
+		LEShortField("ByteCount",0),
+	]
+
+
 # page 82
 # I have no idea why we need the FixGap's
 class SMB_Read_AndX_Request(Packet):
@@ -1498,6 +1525,9 @@ bind_bottom_up(SMB_Header, SMB_Trans2_Request, Command=lambda x: x==0x32, Flags=
 
 bind_bottom_up(SMB_Header, SMB_Write_AndX_Request, Command=lambda x: x==0x2f, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Write_AndX_Response, Command=lambda x: x==0x2f, Flags=lambda x: x&0x80)
+bind_bottom_up(SMB_Header, SMB_Write_Request, Command=lambda x: x==SMB_COM_WRITE, Flags=lambda x: not x&0x80)
+bind_bottom_up(SMB_Header, SMB_Write_Response, Command=lambda x: x==SMB_COM_WRITE, Flags=lambda x: x&0x80)
+
 bind_bottom_up(SMB_Header, SMB_Read_AndX_Request, Command=lambda x: x==0x2e, Flags=lambda x: not x&0x80)
 bind_bottom_up(SMB_Header, SMB_Read_AndX_Response, Command=lambda x: x==0x2e, Flags=lambda x: x&0x80)
 
@@ -1534,6 +1564,7 @@ bind_top_down(SMB_Header, SMB_Treeconnect_AndX_Response2, Command=0x75)
 bind_top_down(SMB_Header, SMB_Treedisconnect, Command=0x71)
 bind_top_down(SMB_Header, SMB_NTcreate_AndX_Response, Command=0xa2)
 bind_top_down(SMB_Header, SMB_Write_AndX_Response, Command=0x2f)
+bind_top_down(SMB_Header, SMB_Write_Response, Command=SMB_COM_WRITE)
 bind_top_down(SMB_Header, SMB_Read_AndX_Response, Command=0x2e)
 bind_top_down(SMB_Header, SMB_Trans_Request, Command=0x25)
 bind_top_down(SMB_Header, SMB_Trans2_Request, Command=0x32)
