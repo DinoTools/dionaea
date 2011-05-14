@@ -43,6 +43,9 @@ import errno
 import datetime
 import tempfile
 
+from dionaea.sip import rfc3261
+
+
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from dionaea import pyev
 
@@ -797,6 +800,7 @@ class SipServer(connection):
 	def __init__(self):
 		connection.__init__(self, 'udp')
 		self._sessions = {}
+		self._bindings = {}
 
 	def handle_io_in(self, data):
 		sessionkey = (self.local.host, self.local.port, self.remote.host, self.remote.port)
@@ -812,7 +816,6 @@ class SipServer(connection):
 class SipSession(connection):
 	def __init__(self, server, sessionkey):
 		connection.__init__(self, 'udp')
-		
 		# we send everything via the servers connection
 		self.server = server
 		self.sessionkey = sessionkey
@@ -836,7 +839,8 @@ class SipSession(connection):
 		global g_default_loop
 
 		global _SipSession_sustain_timeout
-		self.timers = [ pyev.Timer(3, 0, g_default_loop, self.__handle_idle_timeout), # idle
+		self.timers = [
+			pyev.Timer(3, 0, g_default_loop, self.__handle_idle_timeout), # idle
 			pyev.Timer(_SipSession_sustain_timeout, 0, g_default_loop, self.__handle_sustain_timeout) # sustain
 		]
 
@@ -926,6 +930,9 @@ class SipSession(connection):
 		# feed bistream
 		self.bistream.append(('in', data))
 
+		msg = rfc3261.Message(data)
+
+		"""
 		# Get byte data and decode to unicode string
 		data = data.decode('utf-8')
 
@@ -935,6 +942,7 @@ class SipSession(connection):
 		except SipParsingError as e:
 			logger.warn("Error while parsing SIP message: {}".format(e))
 			return len(data)
+
 
 		# SIP message incident
 #		i = incident("dionaea.modules.python.sip.in")
@@ -964,11 +972,35 @@ class SipSession(connection):
 			logger.warn("Unknown SIP header " + \
 				"(supported: INVITE, ACK, OPTIONS, BYE, CANCEL, REGISTER " + \
 				"and SIP responses")
+		"""
+		if msg.method == 'INVITE2':
+			self.sip_INVITE(firstLine, headers, body)
+		elif msg.method == 'OPTIONS':
+			self.handle_OPTIONS(msg)
+		else:
+			self.handle_unknown(msg)
 
+		"""
+		elif msg.method == 'ACK':
+			self.sip_ACK(firstLine, headers, body)
+		elif msg.method == 'BYE':
+			self.sip_BYE(firstLine, headers, body)
+		elif msg.method == 'CANCEL':
+			self.sip_CANCEL(firstLine, headers, body)
+		elif msg.method == 'REGISTER':
+			self.sip_REGISTER(firstLine, headers, body)
+		elif msg.method == 'SIP/2.0':
+			self.sip_RESPONSE(firstLine, headers, body)
+		"""
 		logger.debug("io_in: returning {}".format(len(data)))
 		return len(data)
 
-	def sip_INVITE(self, requestLine, headers, body):
+	def handle_unknown(self, msg):
+		res = msg.create_response(501)
+		d = res.dumps()
+		self.send(res.dumps())
+
+	def sip_INVITE(self, msg):
 		global g_sipconfig
 
 		# Print SIP header
@@ -976,18 +1008,22 @@ class SipSession(connection):
 		for k, v in headers.items():
 			logger.debug("SIP header {}: {}".format(k, v))
 
-		if self.__checkForMissingHeaders(headers, ["accept", "content-type"]):
+		if msg.check_headers(["accept", "content-type"], overwrite = True):
+			# ToDo: return error
 			return
 
 		# Header has to define Content-Type: application/sdp if body contains
 		# SDP message. Also, Accept has to be set to sdp so that we can send
 		# back a SDP response.
-		if headers["content-type"] != "application/sdp":
+		if msg.headers.get("content-type") != "application/sdp":
 			logger.warn("INVITE without SDP message: exit")
 			return
 
-		if headers["accept"] != "application/sdp":
+		if msg.headers.get("accept") != "application/sdp":
 			logger.warn("INVITE without SDP message: exit")
+			return
+
+		if msg.sdp == None:
 			return
 
 		# Check for SDP body
@@ -997,7 +1033,7 @@ class SipSession(connection):
 
 		# Parse SDP part of session invite
 		try:
-			sessionDescription, mediaDescriptions = parseSdpMessage(body)
+			sessionDescription, mediaDescriptions = parseSdpMessage(msg._body)
 		except SdpParsingError as e:
 			logger.warn("Error while parsing SDP message: {}".format(e))
 			return
@@ -1032,7 +1068,7 @@ class SipSession(connection):
 		# request received (remote host might send more than one because of time
 		# outs or because he wants to flood the honeypot)
 		logger.debug("Currently active sessions: {}".format(self._callids))
-		callId = headers["call-id"]
+		callId = msg.headers.get("call-id").value
 		if callId in self._callids:
 			logger.warn("SIP session with Call-ID {} already exists".format(
 				callId))
@@ -1074,28 +1110,16 @@ class SipSession(connection):
 			except AuthenticationError:
 				logger.warn("Authentication failed for ACK request")
 
-	def sip_OPTIONS(self, requestLine, headers, body):
+	def handle_OPTIONS(self, msg):
 		logger.info("Received OPTIONS")
 
-		# Construct OPTIONS response
-		global g_sipconfig
-		msgLines = []
-		msgLines.append("SIP/2.0 " + RESPONSE[OK])
-		msgLines.append("Via: SIP/2.0/UDP {}:{}".format(
-			g_sipconfig['domain'], g_sipconfig['port']))
-		msgLines.append("To: " + headers['from'])
-		msgLines.append("From: {0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], g_sipconfig['domain']))
-		msgLines.append("Call-ID: " + headers['call-id'])
-		msgLines.append("CSeq: " + headers['cseq'])
-		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], self.local.host))
-		msgLines.append("Allow: INVITE, ACK, CANCEL, OPTIONS, BYE")
-		msgLines.append("Accept: application/sdp")
-		msgLines.append("Accept-Language: en")
-		msgLines.append('\n')
+		# ToDo: add Contact
+		res = msg.create_response(200)
+		res.headers.append(rfc3261.Header("INVITE, ACK, CANCEL, OPTIONS, BYE", "Allow"))
+		res.headers.append(rfc3261.Header("application/sdp", "Accept"))
+		res.headers.append(rfc3261.Header("en", "Accept-Language"))
 
-		self.send('\n'.join(msgLines))
+		self.send(res.dumps())
 
 	def sip_BYE(self, requestLine, headers, body):
 		logger.info("Received BYE")
@@ -1166,21 +1190,3 @@ class SipSession(connection):
 	def sip_RESPONSE(self, statusLine, headers, body):
 		logger.info("Received a response")
 
-	def __checkForMissingHeaders(self, headers, mandatoryHeaders=[]):
-		"""
-		Check for specific missing headers given as a list in the second
-		argument are present as keys in the dictionary of headers.
-		If list of mandatory headers is omitted, a set of common standard
-		headers is used: To, From, Call-ID, CSeq, and Contact.
-		"""
-		if not mandatoryHeaders:
-			mandatoryHeaders = ["to", "from", "call-id", "cseq", "contact"]
-
-		headerMissing = False
-
-		for m in mandatoryHeaders:
-			if m not in headers:
-				logger.warn("Mandatory header {} not in message".format(m))
-				headerMissing = True
-
-		return headerMissing

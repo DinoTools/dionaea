@@ -1,0 +1,177 @@
+#!/bin/bash
+
+# set default values
+
+PWD=$(pwd)
+DATETIME=$(date +%Y%m%d-%H%M%S)
+
+if [ "${LHOST}" == "" ]; then
+	LHOST=127.0.0.1
+fi
+
+if [ "${RHOST}" == "" ]; then
+	RHOST=127.0.0.1
+fi
+
+if [ "${VERBOSE}" == "" ]; then
+	VERBOSE=0
+fi
+
+if [ "${TOOL_SMAP}" == "" ]; then
+	TOOL_SMAP=smap
+fi
+
+# SNMAP needs its fingerprint db
+if [ "${TOOL_SMAP_BASE}" == "" ]; then
+	TOOL_SMAP_BASE=.
+fi
+
+if [ "${TOOL_SIPP}" == "" ]; then
+	TOOL_SIPP=sipp
+fi
+
+function help_print() {
+	echo "Help"
+	echo "$0 run|clean|help"
+	echo ""
+	echo "Commands"
+	echo -e "\tclean: remove log files and so on"
+	echo -e "\thelp:  display this help"
+	echo -e "\trun:   run all tests"
+	echo ""
+	echo "Environment vars"
+	echo -e "\tLHOST:   The IP Address of the local computer"
+	echo -e "\tRHOST:   The IP Address of the SIP server"
+	echo -e "\tVERBOSE: Verbosity from 0(no logging) to 2(more logging)"
+	echo -e "\tTools:"
+	echo -e "\t\tTOOL_SIPP - sipp tool"
+	echo -e "\t\tTOOL_SMAP - smap tool"
+	echo -e "\t\tTOOL_SMAP_BASE - path where to run smap"
+	echo ""
+	echo "Example"
+	echo -e "\tLHOST=192.168.1.2 RHOST=192.168.1.1 ./run_tests.sh run"
+	echo -e "\t./run_tests.sh clean"
+	echo ""
+}
+
+function print_error() {
+	print_msg "$1" "red"
+}
+
+function print_ok() {
+	print_msg "$1" "green"
+}
+
+function print_warning() {
+	print_msg "$1" "orange"
+}
+	
+function print_msg() {
+	TXTGREEN="\e[0;32m"
+	TXTRED="\e[0;31m"
+	TXTYELLOW="\e[0;33m"
+	TXTRESET="\e[0m"
+
+	case $2 in
+		"red")
+			echo -ne $TXTRED
+			;;
+		"green")
+			echo -ne $TXTGREEN
+			;;
+		"yellow"|"orange")
+			echo -ne $TXTYELLOW
+			;;
+	esac
+	echo $1
+	echo -ne $TXTRESET
+}
+
+function sipp_clean() {
+	echo "Cleaning sipp ..."
+	(cd sipp && rm *.log)
+}
+
+function sipp_run() {
+	echo -e "\n=== SIPP ===\n"
+	if [ "${SIPP_PARAMS}" == "" ]; then
+		if [ "${VERBOSE}" -gt "0" ]; then
+			SIPP_PARAMS=-trace_err
+		fi
+		if [ "${VERBOSE}" -gt "1" ]; then
+			SIPP_PARAMS=-trace_msg -trace_err -trace_screen
+		fi
+	fi
+
+	echo -n "REGISTER: "
+	(cd sipp && ${TOOL_SIPP} -sf register.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 -inf user.csv ${RHOST} &> /dev/null)
+	if [ $? == 0 ]; then
+		print_ok "OK"
+	else
+		print_error "Failed"
+	fi
+
+	echo -n "INVITE ACK BYE: "
+	(cd sipp && ${TOOL_SIPP} -sn uac -s 500 -m 1 -l 1 -d 500 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 ${RHOST} &> /dev/null)
+	if [ $? == 0 ]; then 
+		print_ok "OK"
+	else
+		print_error "Failed"
+	fi
+
+	echo -n "NEWMETHOD: "
+	(cd sipp && ${TOOL_SIPP} -sf newmethod.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 ${RHOST} &> /dev/null)
+	if [ $? == 0 ]; then
+		print_ok "OK"
+	else
+		print_error "Failed"
+	fi
+
+	echo -n "OPTIONS: "
+	(cd sipp && ${TOOL_SIPP} -sf options.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 ${RHOST} &> /dev/null)
+	if [ $? == 0 ]; then
+		print_ok "OK"
+	else
+		print_error "Failed"
+	fi
+}
+
+
+function smap_clean() {
+	echo "Cleaning smap ..."
+	rm smap-*.log
+}
+
+function smap_run() {
+	echo -e "\n=== SMAP ===\n"
+	echo -n "Scanning ... "
+	FILE=$PWD/smap-$DATETIME.log
+	(cd ${TOOL_SMAP_BASE} && ${TOOL_SMAP} -d -o ${RHOST} &> $FILE)
+	awk "/^$RHOST.*, SIP enabled/{exit 1} /^$RHOST.*, SIP disabled/{exit 2}" $FILE
+	case $? in
+		1)
+			print_ok "OK - SIP enabled"
+			;;
+		2)
+			print_error "Failed - SIP disabled or not detected"
+			;;
+		*)
+			print_warning "An error occurs"
+			;;
+	esac
+}
+
+case $1 in
+	"run")
+		sipp_run
+		smap_run
+		;;
+	"clean")
+		sipp_clean
+		smap_clean
+		;;
+	* )
+		help_print
+		;;
+esac
+
