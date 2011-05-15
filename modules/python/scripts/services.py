@@ -41,6 +41,7 @@ import dionaea.mirror
 from dionaea.smb import smb
 import dionaea.sip
 from dionaea.mssql import mssql
+from dionaea.mysql import mysql
 
 # reload service imports
 #imp.reload(dionaea.http)
@@ -194,6 +195,15 @@ class mssqlservice(service):
 	def stop(self, daemon):
 		daemon.close()
 
+class mysqlservice(service):
+	def start(self, addr,  iface=None):
+		daemon = mysql.mysqld()
+		daemon.bind(addr, 3306, iface=iface)
+		daemon.listen()
+		return daemon
+	def stop(self, daemon):
+		daemon.close()
+
 #mode = 'getifaddrs'
 #mode = 'manual'
 #addrs = { 'eth0' : ['127.0.0.1', '192.168.47.11'] }
@@ -257,6 +267,9 @@ def new():
 	if "mssql" in g_dionaea.config()['modules']['python']['services']['serve']:
 		g_slave.services.append(mssqlservice)
 		
+	if "mysql" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(mysqlservice)
+
 	g_slave.start(addrs)
 
 

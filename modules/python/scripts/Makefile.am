@@ -47,6 +47,12 @@ PYSCRIPTS += mssql/__init__.py
 PYSCRIPTS += mssql/mssql.py
 PYSCRIPTS += mssql/include/tds.py
 PYSCRIPTS += mssql/include/__init__.py
+PYSCRIPTS += mysql/__init__.py
+PYSCRIPTS += mysql/mysql.py
+PYSCRIPTS += mysql/include/packets.py
+PYSCRIPTS += mysql/include/fields.py
+PYSCRIPTS += mysql/include/__init__.py
+
 
 all: $(PYSCRIPTS)
 	
