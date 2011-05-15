@@ -618,7 +618,12 @@ class FieldListField(Field):
         elif self.count_from is not None:
             c = self.count_from(pkt)
             return c * self.field.size(pkt, val)
-        
+        else:
+            r = 0
+            for i in val:
+                r += self.field.size(pkt,i)
+            return r
+
 class MultiFieldLenField(Field):
     def __init__(self, name, default,  length_of=None, fmt = "H", count_of=None, adjust=lambda pkt,x:x):
         Field.__init__(self, name, default, fmt)
