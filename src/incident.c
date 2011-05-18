@@ -46,7 +46,81 @@ void opaque_data_free(struct opaque_data *d)
 {
 	if( d->type == opaque_type_string )
 		g_string_free(d->opaque.string, TRUE);
+	if( d->type == opaque_type_list )
+	{
+		GList *elem;
+		while( (elem = g_list_first(d->opaque.list)) != NULL )
+		{
+			opaque_data_free(elem->data);
+			d->opaque.list = g_list_delete_link(d->opaque.list, elem);
+		}
+	}
 	g_free(d);
+}
+
+void opaque_data_string_set(struct opaque_data *d, GString *val)
+{
+	d->type = opaque_type_string;
+	d->opaque.string = val;
+}
+void opaque_data_string_get(struct opaque_data *d, GString **val)
+{
+	*val = d->opaque.string;
+}
+void opaque_data_int_set(struct opaque_data *d, long int val)
+{
+	d->type = opaque_type_int;
+	d->opaque.integer = val;
+}
+void opaque_data_int_get(struct opaque_data *d, long int *val)
+{
+	*val = d->opaque.integer;
+}
+void opaque_data_con_set(struct opaque_data *d, struct connection *val)
+{
+	d->type = opaque_type_ptr;
+	d->opaque.con = val;
+}
+void opaque_data_con_get(struct opaque_data *d, struct connection **val)
+{
+	*val = d->opaque.con;
+}
+void opaque_data_list_set(struct opaque_data *d, GList *val)
+{
+	d->type = opaque_type_list;
+	d->opaque.list = val;
+}
+void opaque_data_list_get(struct opaque_data *d, GList **val)
+{
+	*val = d->opaque.list;
+}
+
+void opaque_data_dump(struct opaque_data *d, int indent)
+{
+	char x[1024];
+	memset(x, '\t', indent);
+	if( d->type == opaque_type_int )
+	{
+		g_snprintf(x+indent, 1023, "%s: (int) %li", d->name, d->opaque.integer);
+	} else
+		if( d->type == opaque_type_string )
+	{
+		g_snprintf(x+indent, 1023, "%s: (string) %.*s", d->name, (int)d->opaque.string->len, d->opaque.string->str);
+	} else
+		if( d->type == opaque_type_ptr )
+	{
+		g_snprintf(x+indent, 1023, "%s: (ptr) %p", d->name, (void *)d->opaque.ptr);
+	}else
+		if( d->type == opaque_type_list )
+	{
+			g_snprintf(x+indent, 1023, "%s: (list) %p", d->name, (void *)d->opaque.ptr);
+			g_debug("%s", x);
+			for(GList *it = g_list_first(d->opaque.list); it != NULL; it = g_list_next(it))
+				opaque_data_dump(it->data, indent+1);
+			return;
+	}
+
+	g_debug("%s", x);
 }
 
 struct ihandler *ihandler_new(char *pattern, ihandler_cb cb, void *ctx)
@@ -102,8 +176,7 @@ struct opaque_data *incident_value_get(struct incident *e, const char *name, enu
 bool incident_value_int_set(struct incident *e, const char *name, long int val)
 {
 	struct opaque_data *d = opaque_data_new();
-	d->type = opaque_type_int;
-	d->opaque.integer = val;
+	opaque_data_int_set(d, val);
 	d->name = g_strdup(name);
 	g_hash_table_insert(e->data, (gpointer)d->name, d);
 	return true;
@@ -122,8 +195,7 @@ bool incident_value_int_get(struct incident *e, const char *name, long int *val)
 bool incident_value_con_set(struct incident *e, const char *name, struct connection *con)
 {
 	struct opaque_data *d = opaque_data_new();
-	d->type = opaque_type_ptr;
-	d->opaque.con = con;
+	opaque_data_con_set(d, con);
 	d->name = g_strdup(name);
 	g_hash_table_insert(e->data, d->name, d);
 	return true;
@@ -141,8 +213,7 @@ bool incident_value_con_get(struct incident *e, const char *name, struct connect
 bool incident_value_string_set(struct incident *e, const char *name, GString *val)
 {
 	struct opaque_data *d = opaque_data_new();
-	d->type = opaque_type_string;
-	d->opaque.string = val;
+	opaque_data_string_set(d, val);
 	d->name = g_strdup(name);
 	g_hash_table_insert(e->data, (gpointer)d->name, d);
 	return true;
@@ -154,6 +225,24 @@ bool incident_value_string_get(struct incident *e, const char *name, GString **v
 	if( d == NULL )
 		return false;
 	*val = d->opaque.string;
+	return true;
+}
+
+bool incident_value_list_set(struct incident *e, const char *name, GList *val)
+{
+	struct opaque_data *d = opaque_data_new();
+	opaque_data_list_set(d, val);
+	d->name = g_strdup(name);
+	g_hash_table_insert(e->data, (gpointer)d->name, d);
+	return true;
+}
+
+bool incident_value_list_get(struct incident *e, const char *name, GList **val)
+{
+	struct opaque_data *d = incident_value_get(e, name, opaque_type_list);
+	if( d == NULL )
+		return false;
+	*val = d->opaque.list;
 	return true;
 }
 
@@ -185,22 +274,8 @@ void incident_dump(struct incident *e)
 	g_debug("incident %p %s", e, e->origin);
 	while( g_hash_table_iter_next (&iter, &key, &value) )
 	{
-		char x[1024];
-		char *name = key;
 		struct opaque_data *d = value;
-		if( d->type == opaque_type_int )
-		{
-			g_snprintf(x, 1023, "%s: (int) %li", name, d->opaque.integer);
-		} else
-			if( d->type == opaque_type_string )
-		{
-			g_snprintf(x, 1023, "%s: (string) %.*s", name, (int)d->opaque.string->len, d->opaque.string->str);
-		} else
-			if( d->type == opaque_type_ptr )
-		{
-			g_snprintf(x, 1023, "%s: (ptr) %p", name, (void *)d->opaque.ptr);
-		}
-		g_debug("\t%s", x);
+		opaque_data_dump(d, 1);
 	}
 }
 
