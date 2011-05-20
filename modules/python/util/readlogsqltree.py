@@ -172,6 +172,38 @@ def print_mssql_commands(cursor, connection, indent):
 			cmd['mssql_command_cmd']))
 
 
+def print_mysql_commands(cursor, connection, indent):
+	r = cursor.execute("""
+		SELECT
+			mysql_command,
+			mysql_command_cmd,
+			mysql_command_op_name
+		FROM 
+			mysql_commands
+			LEFT OUTER JOIN mysql_command_ops USING(mysql_command_cmd)
+		WHERE 
+			connection = ?""", (connection, ))
+	commands = resolve_result(r)
+	for cmd in commands:
+		print("{:s} mysql command (0x{:02x}) {:s}".format(
+			' ' * indent,
+			cmd['mysql_command_cmd'],
+			cmd['mysql_command_op_name']
+			), end='')
+		# args
+		r = cursor.execute("""
+		SELECT
+			mysql_command_arg_data
+		FROM
+			mysql_command_args
+		WHERE
+			mysql_command = ?
+		ORDER BY
+			mysql_command_arg_index ASC """, (cmd['mysql_command'], ))
+		args = resolve_result(r)
+		print("({:s})".format(",".join([ "'%s'" % arg['mysql_command_arg_data'] for arg in args])))
+
+
 def print_connection(c, indent):
 	indentStr = ' ' * (indent + 1)
 
@@ -301,6 +333,7 @@ WHERE
 			print_logins(cursor, c['connection'], 2)
 			print_mssql_fingerprints(cursor, c['connection'], 2)
 			print_mssql_commands(cursor, c['connection'], 2)
+			print_mysql_commands(cursor, c['connection'], 2)
 			recursive_print(cursor, c['connection'], 2)
 
 		offset += limit
