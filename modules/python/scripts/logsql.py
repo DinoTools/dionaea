@@ -396,6 +396,40 @@ class logsqlhandler(ihandler):
 		self.cursor.execute("""CREATE INDEX IF NOT EXISTS virustotalscans_virustotal_idx 
 			ON virustotalscans (virustotal)""")
 
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			mysql_commands (
+				mysql_command INTEGER PRIMARY KEY,
+				connection INTEGER,
+				mysql_command_cmd NUMBER NOT NULL
+				-- CONSTRAINT mysql_commands_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
+			)""")
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			mysql_command_args (
+				mysql_command_arg INTEGER PRIMARY KEY,
+				mysql_command INTEGER,
+				mysql_command_arg_index NUMBER NOT NULL,
+				mysql_command_arg_data TEXT NOT NULL
+				-- CONSTRAINT mysql_commands_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
+			)""")
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			mysql_command_ops (
+				mysql_command_op INTEGER PRIMARY KEY,
+				mysql_command_cmd INTEGER NOT NULL,
+				mysql_command_op_name TEXT NOT NULL,
+				CONSTRAINT mysql_command_cmd_uniq UNIQUE (mysql_command_cmd)
+			)""")
+
+		from dionaea.mysql.include.packets import MySQL_Commands
+		logger.info("Setting MySQL Command Ops")
+		for num,name in MySQL_Commands.items():
+			try:
+				self.cursor.execute("INSERT INTO mysql_command_ops (mysql_command_cmd, mysql_command_op_name) VALUES (?,?)",
+							(num, name))
+			except:
+				pass
+
 #		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 #			httpheaders (
 #				httpheader INTEGER PRIMARY KEY,
@@ -697,7 +731,29 @@ class logsqlhandler(ihandler):
 #				logger.debug("scanner {} result {}".format(av,scans[av]))
 			self.dbh.commit()
 
+	def handle_incident_dionaea_modules_python_mysql_login(self, icd):
+		con = icd.con
+		if con in self.attacks:
+			attackid = self.attacks[con][1]
+			self.cursor.execute("INSERT INTO logins (connection, login_username, login_password) VALUES (?,?,?)",
+				(attackid, icd.username, icd.password))
+			self.dbh.commit()
 
+
+	def handle_incident_dionaea_modules_python_mysql_command(self, icd):
+		con = icd.con
+		if con in self.attacks:
+			attackid = self.attacks[con][1]
+			self.cursor.execute("INSERT INTO mysql_commands (connection, mysql_command_cmd) VALUES (?,?)",
+				(attackid, icd.command))
+			cmdid = self.cursor.lastrowid
+			args = icd.args
+
+			for i in range(len(args)):
+				arg = args[i]
+				self.cursor.execute("INSERT INTO mysql_command_args (mysql_command, mysql_command_arg_index, mysql_command_arg_data) VALUES (?,?,?)",
+					(cmdid, i, arg))
+			self.dbh.commit()
 
 
 
