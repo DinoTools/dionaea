@@ -217,12 +217,32 @@ class mysqld(connection):
 				else:
 					r = MySQL_Result_OK()
 
+				i = incident("dionaea.modules.python.mysql.login")
+				i.con = self
+				i.username = p.User
+				i.password = ""
+				i.report()
+
 			elif self.state == 'online':
 				p = MySQL_Command_Header(data[offset+4:offset+4+h.Length])
 				cmd = MySQL_Commands[p.Command]
 				m = getattr(self, "_handle_" + cmd, None)
+				args = None
 				if m is not None:
+					args = []
+					for f in p.payload.fields_desc:
+						if f.name in p.payload.fields:
+							args.append(p.payload.fields[f.name])
 					r = m(p.payload)
+
+				i = incident("dionaea.modules.python.mysql.command")
+				i.con = self
+				i.command = p.Command
+				if args is not None:
+					i.args = args
+				i.dump()
+				i.report()
+
 			if p is not None:
 				h = h / p
 			h.show()
