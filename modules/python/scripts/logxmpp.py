@@ -678,3 +678,24 @@ class logxmpp(ihandler):
 			'ref' : str(c.__hash__())})
 		self.broadcast(i, n)
 
+	def handle_incident_dionaea_modules_python_mysql_login(self, i):
+		n = etree.Element('mysqllogin', attrib={
+			'username' : i.username,
+			'password' : i.password,
+			'ref' : str(i.con.__hash__())})
+		self.broadcast(i, n)
+
+	def handle_incident_dionaea_modules_python_mysql_command(self, i):
+		n = etree.Element('mysqlcommand', attrib={
+			'cmd' : str(i.command),
+			'ref' : str(i.con.__hash__())})
+		if hasattr(i,'args'):
+			args = etree.Element('args')
+			for j in range(len(i.args)):
+				arg = etree.Element('arg', attrib={
+					'index' : str(j)})
+				arg.text = i.args[j]
+				args.append(arg)
+			n.append(args)
+		self.broadcast(i, n)
+
