@@ -23,7 +23,7 @@ from pyPgSQL import PgSQL
 from pyxmpp.all import JID,Iq,Presence,Message,StreamError
 from pyxmpp.jabber.client import JabberClient
 from pyxmpp.jabber.muc import MucRoomManager, MucRoomHandler
-from pyxmpp.xmlextra import replace_ns, common_ns, get_node_ns
+from pyxmpp.xmlextra import replace_ns, common_doc, common_ns, get_node_ns
 from pyxmpp import xmlextra
 
 
@@ -33,6 +33,19 @@ logger=logging.getLogger()
 logger.addHandler(logging.StreamHandler())
 logger.setLevel(logging.INFO) # change to DEBUG for higher verbosity
 
+dionaea_ns = {  "default" : "http://pyxmpp.jajcus.net/xmlns/common",
+				"dionaea" : "http://dionaea.carnivore.it"}
+
+# libxml2 is cruel
+def xpath_eval(xmlnode,expr,namespaces=None):
+	ctxt = common_doc.xpathNewContext()
+	ctxt.setContextNode(xmlnode)
+	if namespaces:
+		for prefix,uri in namespaces.items():
+			ctxt.xpathRegisterNs(unicode(prefix),uri)
+	ret=ctxt.xpathEval(unicode(expr))
+	ctxt.xpathFreeContext()
+	return ret
 
 class RoomHandler(MucRoomHandler):
 	def __init__(self):
@@ -63,8 +76,8 @@ class RoomHandler(MucRoomHandler):
 		# dionaea
 
 		r = stanza.xpath_eval("/default:message/default:body/dionaea:dionaea", 
-			namespaces = {  "default" : "http://pyxmpp.jajcus.net/xmlns/common", 
-							"dionaea" : "http://dionaea.carnivore.it"})
+			namespaces = dionaea_ns)
+
 		for d in r:
 			# rename the namespace for the dionaea entries
 			o = d.ns()
@@ -81,12 +94,16 @@ class RoomHandler(MucRoomHandler):
 			method = getattr(self, "handle_incident_" + mname, None)
 #			method = self.handle_incident_debug
 			if method is not None:
-				for c in d.children:
+				c = d.children
+				while c is not None:
+#					print("c: '%s'" % c)
 					if c.isText():
+						c = c.next
 						continue
 					# call the handler with the object
 #				   print(mname)
 					method(user, c)
+					c = c.next
 #			else:
 #				print("method %s is not implemented" % mname)
 #				self.handle_incident_not_implemented(user, stanza)
