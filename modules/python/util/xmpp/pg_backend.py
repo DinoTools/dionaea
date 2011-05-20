@@ -437,6 +437,49 @@ class RoomHandler(MucRoomHandler):
 				(attackid, uuid, transfersyntax))
 		print("[%s] dcerpcbind ref %i: %s %s" % (user.room_jid.as_unicode(), ref, uuid, transfersyntax))
 
+	def handle_incident_dionaea_modules_python_mysql_login(self, user, xmlobj):
+		try:
+			ref = xmlobj.hasProp('ref').content
+			ref = int(ref)
+			username = xmlobj.hasProp('username').content
+			password = xmlobj.hasProp('password').content
+		except Exception as e:
+			print(e)
+			return
+		if dbh is not None and ref in user.attacks:
+			attackid = user.attacks[ref][1]
+			cursor.execute("INSERT INTO dionaea.logins (connection, login_username, login_password) VALUES (%s,%s,%s)",
+				(attackid, username, password))
+		print("[%s] mysqllogin ref %i: %s %s" % (user.room_jid.as_unicode(), ref, username, password))
+
+	def handle_incident_dionaea_modules_python_mysql_command(self, user, xmlobj):
+		try:
+			ref = xmlobj.hasProp('ref').content
+			ref = int(ref)
+			cmd = int(xmlobj.hasProp('cmd').content)
+			args = []
+			child = xmlobj.children
+			r = xpath_eval(xmlobj, './dionaea:args/dionaea:arg', namespaces=dionaea_ns)
+			for i in r:
+				args.append((i.hasProp('index').content, i.content))
+		except Exception as e:
+			print(e)
+			return
+		if dbh is not None and ref in user.attacks:
+			attackid = user.attacks[ref][1]
+			cursor.execute("INSERT INTO dionaea.mysql_commands (connection, mysql_command_cmd) VALUES (%s,%s)",
+				(attackid, cmd))
+			r = cursor.execute("""SELECT CURRVAL('dionaea.mysql_commands_mysql_command_seq')""")
+			command = cursor.fetchall()[0][0]
+
+			for i in args:
+				cursor.execute("INSERT INTO dionaea.mysql_command_args (mysql_command, mysql_command_arg_data, mysql_command_arg_index) VALUES (%s,%s,%s)",
+					(command, i[1], i[0]))
+
+		print("[%s] mysqlcommand ref %i: %i %s" % (user.room_jid.as_unicode(), ref, cmd, args))
+
+
+
 class Client(JabberClient):
 	"""Simple bot (client) example. Uses `pyxmpp.jabber.client.JabberClient`
 	class as base. That class provides basic stream setup (including
