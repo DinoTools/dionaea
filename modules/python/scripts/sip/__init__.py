@@ -44,10 +44,17 @@ import datetime
 import tempfile
 
 from dionaea.sip import rfc3261
-
+from dionaea.sip import rfc4566
 
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from dionaea import pyev
+
+def int2bytes(value):
+	"""
+	Convert integer to bytes
+	"""
+	return bytes(str(value), "utf-8")
+
 
 g_default_loop = pyev.default_loop()
 
@@ -908,7 +915,7 @@ class SipSession(connection):
 			s, self.remote.host, self.remote.port))
 
 		# feed bistream
-		self.bistream.append(('out', s.encode('utf-8')))
+		self.bistream.append(('out', s))
 
 		# SIP response incident
 #		i = incident("dionaea.modules.python.sip.out")
@@ -923,7 +930,7 @@ class SipSession(connection):
 		self.server.remote.port = self.local.port
 		self.server.remote.host = self.remote.host
 		self.server.remote.port = self.remote.port
-		self.server.send(s.encode('utf-8'))
+		self.server.send(s)
 
 	def handle_io_in(self, data):
 
