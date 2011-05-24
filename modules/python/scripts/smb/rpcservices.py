@@ -1202,6 +1202,24 @@ class MGMT(RPCService):
 
 
 
+__userinfo__ = {
+	'Administrator' : { 
+		'RID': 500, 
+		'comment' : 'Built-in account for administering the computer/domain'
+	},
+	'Guest' : { 
+		'RID': 501, 
+		'comment' : 'Built-in account for guest access the computer/domain'
+	},
+	'HelpAssistant' : { 
+		'RID': 1000, 
+		'comment' : 'Account for Providing Remote Assistance' 
+	},
+	'SUPPORT_388945a0' : {
+		'RID' : 1002,
+		'comment' : 'This is a vendor\'s account for the Help and Support Service'
+	}
+}
 
 		
 class samr(RPCService):
@@ -1214,6 +1232,9 @@ class samr(RPCService):
 	
 
 	uuid = UUID('12345778-1234-abcd-ef00-0123456789ac').hex
+
+	# Used for SAMR handle_LookupNamesInDomain and handle_QueryInformationUser
+	LookupName = ""
 
 	class SAMPR_HANDLE:
 		# 2.2.3.2 SAMPR_HANDLE
@@ -1479,15 +1500,332 @@ class samr(RPCService):
 				b.Name = self.Buffer
 				b.pack()
 
+	class ACCESS_ALLOWED_ACE:
+		# ACCESS_ALLOWED_ACE Structure
+		#
+		# http://msdn.microsoft.com/en-us/library/aa374847%28v=vs.85%29.aspx
+		#
+		# typedef struct _ACCESS_ALLOWED_ACE {
+		#  ACE_HEADER  Header;
+		#  ACCESS_MASK Mask;
+		#  DWORD       SidStart;
+		#} ACCESS_ALLOWED_ACE, *PACCESS_ALLOWED_ACE;
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.AceType = 0
+				self.AceFlags = 0
+				self.AceSize = 20
+				self.Mask = 0x0002035b
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				raise NotImplementedError
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				#http://msdn.microsoft.com/en-us/library/aa374919%28v=vs.85%29.aspx
+				# typedef struct _ACE_HEADER {
+				#  BYTE AceType;
+				#  BYTE AceFlags;
+				#  WORD AceSize;
+				#} ACE_HEADER, *PACE_HEADER;
+
+				self.__packer.pack_small(self.AceType)
+				self.__packer.pack_small(self.AceFlags)
+				self.__packer.pack_short(self.AceSize)
+
+				# ACCESS_MASK Mask;
+				self.__packer.pack_long(self.Mask)
+
+				# DWORD SidStart;
+				# for example : SID = S-1-1-0
+				SidStart = samr.RPC_SID(self.__packer)
+				SidStart.Value = 'WORLD_SID_AUTHORITY'
+				SidStart.SubAuthority = ['0']
+				SidStart.SubAuthorityCount = len(SidStart.SubAuthority)
+				SidStart.pack()
+
+	class ACL:
+		# ACL Structure
+		# http://msdn.microsoft.com/en-us/library/aa374931%28v=vs.85%29.aspx
+		#
+		# typedef struct _ACL {
+		#  BYTE AclRevision;
+		#  BYTE Sbz1;
+		#  WORD AclSize;
+		#  WORD AceCount;
+		#  WORD Sbz2;
+		#} ACL, *PACL;
+		# A complete ACL consists of an ACL structure followed by an ordered list of zero or more access control entries (ACEs).
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.AclRevision = 2
+				self.Sbz1 = 0
+				self.AclSize = 20
+				self.AceCount = 1
+				self.Sbz2 = 0
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				raise NotImplementedError
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				# ACL Structure
+				self.__packer.pack_small(self.AclRevision)
+				self.__packer.pack_small(self.Sbz1)
+				self.__packer.pack_short(self.AclSize)
+				self.__packer.pack_short(self.AceCount)
+				self.__packer.pack_short(self.Sbz2)
+
+				# Followed by a ACCESS_ALLOWED_ACE Structure
+				b = samr.ACCESS_ALLOWED_ACE(self.__packer)
+				b.pack()
+
+	class SECURITY_DESCRIPTOR:
+		# 2.4.6 SECURITY_DESCRIPTOR
+		#
+		# http://msdn.microsoft.com/en-us/library/cc230366%28v=prot.10%29.aspx
+		# The documentation only provide the struct details as below:
+		#
+		# Revision (1 byte)
+		# Sbz1 (1 byte)
+		# Control (2 bytes)
+		# OffsetOwner (4 bytes)
+		# OffsetGroup (4 bytes)
+		# OffsetSacl (4 bytes)
+		# OffsetDacl (4 bytes)
+		# OwnerSid (variable)
+		# GroupSid (variable)
+		# Sacl (variable)
+		# Dacl (variable)
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Revision = 1
+				self.Sbz1 = 0
+				self.Control = 0x8004
+				self.OffsetOwner = 0
+				self.OffsetGroup = 0
+				self.OffsetSacl = 0
+				self.OffsetDacl = 20
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				raise NotImplementedError
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				self.__packer.pack_small(self.Revision)
+				self.__packer.pack_small(self.Sbz1)
+				self.__packer.pack_short(self.Control)
+				self.__packer.pack_long(self.OffsetOwner)
+				self.__packer.pack_long(self.OffsetGroup)
+				self.__packer.pack_long(self.OffsetSacl)
+				self.__packer.pack_long(self.OffsetDacl)
+
+				b = samr.ACL(self.__packer)
+				b.pack()
+	
+
+	class SAMPR_SR_SECURITY_DESCRIPTOR:
+		# 2.2.3.11 SAMPR_SR_SECURITY_DESCRIPTOR
+		#
+		# http://msdn.microsoft.com/en-us/library/cc245537%28v=prot.10%29.aspx
+		#
+		#typedef struct _SAMPR_SR_SECURITY_DESCRIPTOR {
+		#  [range(0, 256 * 1024)] unsigned long Length;
+		#  [size_is(Length)] unsigned char* SecurityDescriptor;
+		#} SAMPR_SR_SECURITY_DESCRIPTOR, 
+		# *PSAMPR_SR_SECURITY_DESCRIPTOR;
+
+		def __init__(self, p, c=0):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Length = c
+				self.Pointer = 0xd1b00
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				raise NotImplementedError
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				if self.Length == 0:
+					# Support for samr.handle_QueryInformationUser()
+					self.__packer.pack_long(self.Length)
+					self.__packer.pack_pointer(0)
+
+				else:
+					# Support samr.handle_QuerySecurityObject()
+					# Pointer to SecurityDescriptor
+					self.__packer.pack_pointer(self.Pointer)
+					self.__packer.pack_long(self.Length)
+					b = samr.SECURITY_DESCRIPTOR(self.__packer)
+					b.pack()
+
+	class SAMPR_USER_ALL_INFORMATION:
+		# 2.2.7.6 SAMPR_USER_ALL_INFORMATION
+		#
+		# http://msdn.microsoft.com/en-us/library/cc245622%28v=prot.10%29.aspx
+		#
+		#typedef struct _SAMPR_USER_ALL_INFORMATION {
+		#  OLD_LARGE_INTEGER LastLogon;
+		#  OLD_LARGE_INTEGER LastLogoff;
+		#  OLD_LARGE_INTEGER PasswordLastSet;
+		#  OLD_LARGE_INTEGER AccountExpires;
+		#  OLD_LARGE_INTEGER PasswordCanChange;
+		#  OLD_LARGE_INTEGER PasswordMustChange;
+		#  RPC_UNICODE_STRING UserName;
+		#  RPC_UNICODE_STRING FullName;
+		#  RPC_UNICODE_STRING HomeDirectory;
+		#  RPC_UNICODE_STRING HomeDirectoryDrive;
+		#  RPC_UNICODE_STRING ScriptPath;
+		#  RPC_UNICODE_STRING ProfilePath;
+		#  RPC_UNICODE_STRING AdminComment;
+		#  RPC_UNICODE_STRING WorkStations;
+		#  RPC_UNICODE_STRING UserComment;
+		#  RPC_UNICODE_STRING Parameters;
+		#  RPC_SHORT_BLOB LmOwfPassword;
+		#  RPC_SHORT_BLOB NtOwfPassword;
+		#  RPC_UNICODE_STRING PrivateData;
+		#  SAMPR_SR_SECURITY_DESCRIPTOR SecurityDescriptor;
+		#  unsigned long UserId;
+		#  unsigned long PrimaryGroupId;
+		#  unsigned long UserAccountControl;
+		#  unsigned long WhichFields;
+		#  SAMPR_LOGON_HOURS LogonHours;
+		#  unsigned short BadPasswordCount;
+		#  unsigned short LogonCount;
+		#  unsigned short CountryCode;
+		#  unsigned short CodePage;
+		#  unsigned char LmPasswordPresent;
+		#  unsigned char NtPasswordPresent;
+		#  unsigned char PasswordExpired;
+		#  unsigned char PrivateDataSensitive;
+		#} SAMPR_USER_ALL_INFORMATION, 
+		# *PSAMPR_USER_ALL_INFORMATION;
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.LastLogon = 0
+				self.LastLogoff = 0
+				# Last Password Change = Apr 20,2011 07:32:44 78125000
+				self.PasswordLastSet = 0x01cbfeea1590eb94
+				self.AccountExpires = 0
+				self.PasswordCanChange = 0
+				self.PasswordMustChange = 0x7fffffffffffffff
+				self.Buffer = []
+				self.Pointer = 0x6511
+				self.UserId = 0
+				self.PrimaryGroupId = 513
+				self.UserAccountControl = 0x00000210
+				self.WhichFields = 0x00ffffff
+				self.UnitsPerWeek = 168
+				self.LogonHours = 0xff
+				self.BadPasswordCount = 0
+				self.LogonCount = 0
+				self.CountryCode = 0
+				self.CodePage = 0
+				self.LmPasswordPresent = 0
+				self.NtPasswordPresent = 0
+				self.PasswordExpired = 0
+				self.PrivateDataSensitive = 0
+
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				raise NotImplementedError
+		def pack(self):
+			if isinstance(self.__packer, ndrlib.Packer):
+				self.__packer.pack_hyper(self.LastLogon)
+				self.__packer.pack_hyper(self.LastLogoff)
+				self.__packer.pack_hyper(self.PasswordLastSet)
+				self.__packer.pack_hyper(self.AccountExpires)
+				self.__packer.pack_hyper(self.PasswordCanChange)
+				self.__packer.pack_hyper(self.PasswordMustChange)
+
+				for k in range(13):
+						b = samr.RPC_UNICODE_STRING(self.__packer)
+						b.Data = self.Buffer[k]
+						b.pack()
+						self.__packer.pack_pointer(self.Pointer)
+
+				# SAMPR_SR_SECURITY_DESCRIPTOR SecurityDescriptor;
+				k = samr.SAMPR_SR_SECURITY_DESCRIPTOR(self.__packer, 0)
+				k.pack()
+
+				self.__packer.pack_long(self.UserId)
+				self.__packer.pack_long(self.PrimaryGroupId)
+				self.__packer.pack_long(self.UserAccountControl)
+				self.__packer.pack_long(self.WhichFields)
+
+				# SAMPR_LOGON_HOURS LogonHours;
+				# 2.2.7.5 SAMPR_LOGON_HOURS
+				# http://msdn.microsoft.com/en-us/library/cc245621%28v=prot.10%29.aspx
+				self.__packer.pack_long(self.UnitsPerWeek)
+				self.__packer.pack_pointer(self.Pointer)
+
+				self.__packer.pack_short(self.BadPasswordCount)
+				self.__packer.pack_short(self.LogonCount)
+				self.__packer.pack_short(self.CountryCode)
+				self.__packer.pack_short(self.CodePage)
+				self.__packer.pack_small(self.LmPasswordPresent)
+				self.__packer.pack_small(self.NtPasswordPresent)
+				self.__packer.pack_small(self.PasswordExpired)
+				self.__packer.pack_small(self.PrivateDataSensitive)
+
+				for j in range(len(self.Buffer)):
+					self.__packer.pack_string(self.Buffer[j].encode('utf16')[2:])
+				self.__packer.pack_long(int(self.UnitsPerWeek*60/8))
+				self.__packer.pack_long(0)
+				self.__packer.pack_long(int(self.UnitsPerWeek/8))
+
+				for l in range(int(self.UnitsPerWeek/8)):
+					self.__packer.pack_small(self.LogonHours)
+
+	class SAMPR_PSID_ARRAY:
+		# 2.2.3.6 SAMPR_PSID_ARRAY
+		#
+		# http://msdn.microsoft.com/en-us/library/cc245548%28v=prot.10%29.aspx
+		#
+		# typedef struct _SAMPR_PSID_ARRAY {
+		#  [range(0,1024)] unsigned long Count;
+		#  [size_is(Count)] PSAMPR_SID_INFORMATION Sids;
+		#} SAMPR_PSID_ARRAY, 
+		# *PSAMPR_PSID_ARRAY;
+
+		# 2.2.3.5 SAMPR_SID_INFORMATION
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245547%28v=prot.10%29.aspx
+		#
+		# typedef struct _SAMPR_SID_INFORMATION {
+		#  PRPC_SID SidPointer;
+		#} SAMPR_SID_INFORMATION, 
+		# *PSAMPR_SID_INFORMATION;
+
+		def __init__(self, p):
+			self.__packer = p
+			if isinstance(self.__packer,ndrlib.Packer):
+				self.Count1 = 0
+				self.Count2 = 0
+			elif isinstance(self.__packer,ndrlib.Unpacker):
+				
+				self.Count1 = self.__packer.unpack_long()
+				for i in range(int(self.Count1)):
+					self.SidPointer = self.__packer.unpack_pointer()
+				for j in range(int(self.Count1)):
+					self.Count2 = self.__packer.unpack_long()
+					Sids = samr.RPC_SID(self.__packer)
+				
+		def pack(self):
+			if isinstance(self.__packer,ndrlib.Packer):
+				raise NotImplementedError
 	ops = {
 		1: "Close",
+		3: "QuerySecurityObject",
 		5: "LookupDomain",
 		6: "EnumDomains",
 		7: "OpenDomain",
 		13: "EnumDomainUsers",
 		15: "EnumerateAliasesInDomain",
+		16: "GetAliasMembership",
 		17: "LookupNamesInDomain",
 		34: "OpenUser",
+		36: "QueryInformationUser",
+		39: "GetGroupsForUser",
 		40: "QueryDisplayInformation",
 		46: "QueryInformationDomain2",
 		62: "Connect4",
@@ -1576,6 +1914,40 @@ class samr(RPCService):
 		ServerHandle.pack()
 
 		# return
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_QuerySecurityObject(cls, con, p):
+		#3.1.5.12.2 SamrQuerySecurityObject (Opnum 3)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245718%28v=PROT.10%29.aspx
+		#
+		#long SamrQuerySecurityObject(
+		#  [in] SAMPR_HANDLE ObjectHandle,
+		#  [in] SECURITY_INFORMATION SecurityInformation,
+		#  [out] PSAMPR_SR_SECURITY_DESCRIPTOR* SecurityDescriptor
+		#);
+		x = ndrlib.Unpacker(p.StubData)
+		ObjectHandle = samr.SAMPR_HANDLE(x)
+		rpclog.debug("ObjectHandle %s" % ObjectHandle)
+
+		SecurityInformation = x.unpack_long()
+		rpclog.debug("SecurityInformation %i" % SecurityInformation)
+		
+		r = ndrlib.Packer()
+
+		# Pointer to struct _SAMPR_SR_SECURITY_DESCRIPTOR
+		r.pack_pointer(0xbbe58)
+
+		# FIXME: currently length is hardcoded as 48, make it dynamic if necessary
+		Length = 48
+		r.pack_long(Length)
+		
+		s = samr.SAMPR_SR_SECURITY_DESCRIPTOR(r,Length)
+		s.pack()
+
 		r.pack_long(0)
 
 		return r.get_buffer()
@@ -1731,6 +2103,38 @@ class samr(RPCService):
 		return r.get_buffer()
 
 	@classmethod
+	def handle_GetAliasMembership(cls, con, p):
+		#3.1.5.9.2 SamrGetAliasMembership (Opnum 16)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245816%28v=prot.10%29.aspx
+		#
+		#long SamrGetAliasMembership(
+		#  [in] SAMPR_HANDLE DomainHandle,
+		#  [in] PSAMPR_PSID_ARRAY SidArray,
+		#  [out] PSAMPR_ULONG_ARRAY Membership
+		#);
+		x = ndrlib.Unpacker(p.StubData)
+		DomainHandle = samr.SAMPR_HANDLE(x)
+		rpclog.debug("DomainHandle %s" % DomainHandle)
+		
+		Count = x.unpack_long()
+		# PSAMPR_PSID_ARRAY SidArray
+		Pointer = x.unpack_pointer()
+		SidArray = samr.SAMPR_PSID_ARRAY(x)
+	
+		r = ndrlib.Packer()
+		r.pack_long(1)
+
+		# PSAMPR_ULONG_ARRAY Membership
+		r.pack_pointer(0x0d15a8)
+		r.pack_long(1)
+		r.pack_long(514)
+
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
 	def handle_LookupNamesInDomain(cls, con, p):
 		#3.1.5.11.2 SamrLookupNamesInDomain (Opnum 17)
 		#
@@ -1760,29 +2164,46 @@ class samr(RPCService):
 		ActualCount = x.unpack_long()
 		rpclog.debug("ActualCount %i" % ActualCount)
 		Names = samr.RPC_UNICODE_STRING(x,Count)
+
+		global LookupName
+		LookupName = Names.Buffer.decode('UTF-16')
+		rpclog.debug("LookupName %s" % LookupName)
 		
 		r = ndrlib.Packer()
 
-		# PSAMPR_ULONG_ARRAY RelativeIds
-		# RelativeIds.Count
-		r.pack_long(Count)
+		if LookupName in __userinfo__:
+			# PSAMPR_ULONG_ARRAY RelativeIds
+			# RelativeIds.Count
+			r.pack_long(Count)
 		
-		# RelativeIds.Element
-		r.pack_pointer(0x0da260) 
-		r.pack_long(1)
-		r.pack_long(500)
+			# RelativeIds.Element
+			r.pack_pointer(0x0da260) 
+			r.pack_long(1)
+			
+			data = __userinfo__[LookupName]
+			rid  = data["RID"]
+			r.pack_long(rid)
 
-		# PSAMPR_ULONG_ARRAY Use
-		# Use.Count
-		r.pack_long(Count)
+			# PSAMPR_ULONG_ARRAY Use
+			# Use.Count
+			r.pack_long(Count)
 		
-		# Use.Element
-		r.pack_pointer(0x0e1288)		
-		r.pack_long(1)
-		r.pack_long(1)
+			# Use.Element
+			r.pack_pointer(0x0e1288)		
+			r.pack_long(1)
+			r.pack_long(1)
 		
-		# return
-		r.pack_long(0)
+			# return
+			r.pack_long(0)
+
+		else:
+			r.pack_long(0)
+			r.pack_pointer(0)
+			r.pack_long(0)
+			r.pack_pointer(0)
+
+			# return
+			r.pack_pointer(0xc0000073)
 
 		return r.get_buffer()
 		
@@ -1813,6 +2234,119 @@ class samr(RPCService):
 		UserHandle = samr.SAMPR_HANDLE(r)
 		UserHandle.Handle = b'01234567890123456789'
 		UserHandle.pack()
+
+		# return
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_QueryInformationUser(cls, con, p):
+		#3.1.5.5.6 SamrQueryInformationUser (Opnum 36)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245786%28v=prot.10%29.aspx
+		#
+		#long SamrQueryInformationUser(
+		#  [in] SAMPR_HANDLE UserHandle,
+		#  [in] USER_INFORMATION_CLASS UserInformationClass,
+		#  [out, switch_is(UserInformationClass)] 
+		#    PSAMPR_USER_INFO_BUFFER* Buffer
+		#);
+		x = ndrlib.Unpacker(p.StubData)
+		UserHandle = samr.SAMPR_HANDLE(x)
+		rpclog.debug("UserHandle %s" % UserHandle)
+	
+		UserInformationClass = x.unpack_short()
+		rpclog.debug("UserInformationClass %i" % UserInformationClass)
+
+		r = ndrlib.Packer()
+		#typedef  enum _USER_INFORMATION_CLASS
+		#{
+		#  UserGeneralInformation = 1,
+		#  UserPreferencesInformation = 2,
+		#  UserLogonInformation = 3,
+		#  UserLogonHoursInformation = 4,
+		#  UserAccountInformation = 5,
+		#  UserNameInformation = 6,
+		#  UserAccountNameInformation = 7,
+		#  UserFullNameInformation = 8,
+		#  UserPrimaryGroupInformation = 9,
+		#  UserHomeInformation = 10,
+		#  UserScriptInformation = 11,
+		#  UserProfileInformation = 12,
+		#  UserAdminCommentInformation = 13,
+		#  UserWorkStationsInformation = 14,
+		#  UserControlInformation = 16,
+		#  UserExpiresInformation = 17,
+		#  UserInternal1Information = 18,
+		#  UserParametersInformation = 20,
+		#  UserAllInformation = 21,
+		#  UserInternal4Information = 23,
+		#  UserInternal5Information = 24,
+		#  UserInternal4InformationNew = 25,
+		#  UserInternal5InformationNew = 26
+		#} USER_INFORMATION_CLASS, 
+		# *PUSER_INFORMATION_CLASS;
+		
+		# Pointer to the USER_INFORMATION_CLASS
+		r.pack_pointer(0x000cc228) 
+		
+		if UserInformationClass == 21 :
+			r.pack_long(UserInformationClass)
+			# SAMPR_USER_ALL_INFORMATION
+			s = samr.SAMPR_USER_ALL_INFORMATION(r)
+			rpclog.debug("LookupName %s" % LookupName)
+
+			if LookupName in __userinfo__:
+				data = __userinfo__[LookupName]
+				rid  = data["RID"]
+				comment = data["comment"]
+				s.Buffer = [LookupName,'','','','','',comment,'','','','','','']
+				s.UserID = rid
+				s.pack()
+
+		# padding
+		r.pack_small(0)
+		# return
+		r.pack_long(0)
+
+		return r.get_buffer()
+
+	@classmethod
+	def handle_GetGroupsForUser (cls, con, p):
+		#3.1.5.9.1 SamrGetGroupsForUser (Opnum 39)
+		#
+		#http://msdn.microsoft.com/en-us/library/cc245815%28v=prot.10%29.aspx
+		#
+		#long SamrGetGroupsForUser(
+		#  [in] SAMPR_HANDLE UserHandle,
+		#  [out] PSAMPR_GET_GROUPS_BUFFER* Groups
+		#);
+		x = ndrlib.Unpacker(p.StubData)
+		UserHandle = samr.SAMPR_HANDLE(x)
+		rpclog.debug("UserHandle %s" % UserHandle)
+	
+		# 2.2.3.13 SAMPR_GET_GROUPS_BUFFER
+		# http://msdn.microsoft.com/en-us/library/cc245539%28v=prot.10%29.aspx
+		#typedef struct _SAMPR_GET_GROUPS_BUFFER {
+		#  unsigned long MembershipCount;
+		#  [size_is(MembershipCount)] PGROUP_MEMBERSHIP Groups;
+		#} SAMPR_GET_GROUPS_BUFFER, 
+		# *PSAMPR_GET_GROUPS_BUFFER;
+
+		# Note: Information about PGROUP_MEMBERSHIP struct not found on MDSN.
+		# The following response is made by refering to Microsoft Network Monitor
+		
+		r = ndrlib.Packer()
+		r.pack_pointer(0xc6298)
+
+		# MembershipCount;
+		r.pack_long(1)
+
+		r.pack_pointer(0xd2a80)
+		r.pack_long(1)
+		r.pack_long(513)
+		r.pack_long(7)
 
 		# return
 		r.pack_long(0)
