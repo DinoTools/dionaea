@@ -2,7 +2,11 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-PYSCRIPTS = sip.py
+PYSCRIPTS = sip/__init__.py
+PYSCRIPTS += sip/extras.py
+PYSCRIPTS += sip/rfc2396.py
+PYSCRIPTS += sip/rfc3261.py
+PYSCRIPTS += sip/rfc4566.py
 PYSCRIPTS += tftp.py
 PYSCRIPTS += echo.py
 PYSCRIPTS += ftp.py
