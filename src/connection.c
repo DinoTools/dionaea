@@ -3324,10 +3324,10 @@ ssize_t recvfromto(int sockfd, void *buf, size_t len, int flags,
 				 const struct sockaddr *toaddr, socklen_t *tolen)
 {
 	struct iovec iov[1];
-#if defined(in_pktinfo)
-	char cmsg[CMSG_SPACE(sizeof(struct in_pktinfo))];
+#if defined(IPV6_PKTINFO)
+	char cmsg[CMSG_SPACE(sizeof(struct in6_pktinfo))];
 #else
-	char cmsg[CMSG_SPACE(sizeof(64))];
+	char cmsg[CMSG_SPACE(64)];
 #endif
 	struct cmsghdr *cmsgptr;
 	struct msghdr msg;
