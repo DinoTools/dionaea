@@ -517,19 +517,20 @@ class RtpUdpStream(connection):
 class SipCall(connection):
 	"""Usually, a new SipSession instance is created when the SIP server
 	receives an INVITE message"""
-	NO_SESSION, SESSION_SETUP, ACTIVE_SESSION, SESSION_TEARDOWN = range(4)
+	NO_SESSION, SESSION_SETUP, ACTIVE_SESSION, SESSION_TEARDOWN, INVITE, INVITE_TRYING, INVITE_RINGING, CALL = range(8)
 
-	def __init__(self, session, conInfo, rtpPort, inviteHeaders):
+	def __init__(self, session, conInfo, rtpPort, invite_message):
 		logger.debug("SipCall {} session {} ".format(self, session))
 		connection.__init__(self,'udp')
 		# Store incoming information of the remote host
 
 		self.__session = session
 		self.__state = SipCall.SESSION_SETUP
-		self.__remoteAddress = conInfo[0]
-		self.__remoteSipPort = conInfo[1]
-		self.__remoteRtpPort = rtpPort
-		self.__callId = inviteHeaders['call-id']
+		self.__remote_address = conInfo[0]
+		self.__remote_sip_port = conInfo[1]
+		self.__remote_rtp_port = rtpPort
+		self.__msg = invite_message
+		self.__call_id = invite_message.headers.get(b"call-id").value
 		self._rtpStream = None
 
 		self.local.host = self.__session.local.host
@@ -544,6 +545,7 @@ class SipCall(connection):
 		i.con = self
 		i.report()
 
+		"""
 		# Generate static values for SIP messages
 		global g_sipconfig
 		self.__sipTo = inviteHeaders['from']
@@ -554,39 +556,111 @@ class SipCall(connection):
 		self.__sipContact = "{0} <sip:{0}@{1}>".format(
 			g_sipconfig['user'], self.__session.local.host)
 
+		"""
 		global _SipCall_sustain_timeout
-		self.timers = [ pyev.Timer(5, 0, g_default_loop, self.__handle_idle_timeout), # idle
-			pyev.Timer(_SipCall_sustain_timeout, 0, g_default_loop, self.__handle_sustain_timeout), # sustain
-			pyev.Timer(3, 0, g_default_loop, self.__handle_invite_timeout) # invite
-		]
 
-		self.timers[1].start()
-		
-	def send(self, s):
-		s += '\n\n'
-		self.__session.send(s)
+		# Global timers
+		self._timers = {
+			#"idle": pyev.Timer(500, 0, g_default_loop, self.__handle_idle_timeout),
+			"invite_handler": pyev.Timer(5, 0, g_default_loop, self.__handle_invite),
+			#pyev.Timer(3, 0, g_default_loop, self.__handle_invite_timeout),
+			#"substain": pyev.Timer(_SipCall_sustain_timeout, 0, g_default_loop, self.__handle_sustain_timeout),
+		}
 
-	def close(self):
-		logger.debug("SipCall.close {} Session {}".format(self, self.__session))
-		# remove Call from Session
-		if self.__callId in self.__session._callids:
-			del self.__session._callids[self.__callId]
+		#self._timers["idle"].start()
 
-		# close rtpStream
-		if self._rtpStream != None:
-			self._rtpStream.close()
-			self._rtpStream = None
+	def __handle_invite(self, watcher, events):
+		print("---------handle invite")
+		if self.__state == SipCall.INVITE:
+			print("Send trying")
+			# ToDo: Check authentication
+			#self.__authenticate(headers)
 
-		# stop timers
-		for t in self.timers:
-			logger.debug("SipCall timer {} active {} pending {}".format(t,t.active,t.pending))
-			if t.active == True or t.pending == True:
-#				logger.warn("SipCall Stopping {}".format(t))
-				t.stop()
-		
-		# close connection
-		connection.close(self)
-		
+			msg = self.__msg.create_response(100)
+			"""
+			msgLines = []
+			msgLines.append("SIP/2.0 " + RESPONSE[RINGING])
+			msgLines.append("Via: " + self.__sipVia)
+			msgLines.append("Max-Forwards: 70")
+			msgLines.append("To: " + self.__sipTo)
+			msgLines.append("From: " + self.__sipFrom)
+			msgLines.append("Call-ID: {}".format(self.__callId))
+			msgLines.append("CSeq: " + headers['cseq'])
+			msgLines.append("Contact: " + self.__sipContact)
+			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+			"""
+			print(msg.dumps())
+			self.send(msg.dumps())
+
+			# ToDo: random
+			self.__state = SipCall.INVITE_TRYING
+			self._timers["invite_handler"].set(1, 0)
+			self._timers["invite_handler"].start()
+			return
+
+		if self.__state == SipCall.INVITE_TRYING:
+			# Send 180 Ringing to make honeypot appear more human-like
+			msg = self.__msg.create_response(180)
+			"""
+			msgLines = []
+			msgLines.append("SIP/2.0 " + RESPONSE[RINGING])
+			msgLines.append("Via: " + self.__sipVia)
+			msgLines.append("Max-Forwards: 70")
+			msgLines.append("To: " + self.__sipTo)
+			msgLines.append("From: " + self.__sipFrom)
+			msgLines.append("Call-ID: {}".format(self.__callId))
+			msgLines.append("CSeq: " + headers['cseq'])
+			msgLines.append("Contact: " + self.__sipContact)
+			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+			"""
+			print(msg.dumps())
+			self.send(msg.dumps())
+
+			# ToDo: random time
+			self.__state = SipCall.INVITE_RINGING
+			self._timers["invite_handler"].set(5, 0)
+			self._timers["invite_handler"].start()
+			return
+
+		if self.__state == SipCall.INVITE_RINGING:
+			# Create RTP stream instance and pass address and port of listening
+			# remote RTP host
+			self._rtp_stream = RtpUdpStream(
+				self.__session.local.host,
+				self.__remote_address,
+				self.__remote_rtp_port
+			)
+
+			i = incident("dionaea.connection.link")
+			i.parent = self
+			i.child = self._rtp_stream
+			i.report()
+
+			# Send 200 OK and pick up the phone
+			msg = self.__msg.create_response(200)
+			# ToDo: use our own sdp definition
+			msg.sdp = rfc4566.SDP(self.__msg.sdp.dumps())
+			"""
+			msgLines = []
+			msgLines.append("SIP/2.0 " + RESPONSE[RINGING])
+			msgLines.append("Via: " + self.__sipVia)
+			msgLines.append("Max-Forwards: 70")
+			msgLines.append("To: " + self.__sipTo)
+			msgLines.append("From: " + self.__sipFrom)
+			msgLines.append("Call-ID: {}".format(self.__callId))
+			msgLines.append("CSeq: " + headers['cseq'])
+			msgLines.append("Contact: " + self.__sipContact)
+			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
+			"""
+			print(msg.dumps())
+			self.send(msg.dumps())
+
+			self.__state = SipCall.CALL
+
+			# ToDo: Send rtp data?
+			return
+
+
 	def __handle_idle_timeout(self, watcher, events):
 #		logger.warn("self {} IDLE TIMEOUT watcher {}".format(self, watcher))
 		pass
@@ -598,10 +672,13 @@ class SipCall(connection):
 	def __handle_invite_timeout(self, watcher, events):
 		# Send our RTP port to the remote host as a 200 OK response to the
 		# remote host's INVITE request
-		logger.debug("SipCall: {} CallID {}".format(self, self.__callId))
-		headers = watcher.data
-		localRtpPort = self._rtpStream.local.port
+		#logger.debug("SipCall: {} CallID {}".format(self, self.__callId))
+		#headers = watcher.data
+		#localRtpPort = self._rtpStream.local.port
 
+		msg = self.__msg.create_response(200)
+
+		"""
 		msgLines = []
 		msgLines.append("SIP/2.0 " + RESPONSE[OK])
 		msgLines.append("Via: " + self.__sipVia)
@@ -617,47 +694,54 @@ class SipCall(connection):
 		msgLines.append("o=... 0 0 IN IP4 localhost")
 		msgLines.append("t=0 0")
 		msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
-		self.send('\n'.join(msgLines))
+		"""
+
+		self.send(msg.dumps())
 
 		# Stop timer
-		self.timers[2].stop()
+		#self._timers[2].stop()
 
+	def send(self, s):
+		self.__session.send(s)
 
-	def handle_INVITE(self, headers):
-		# Check authentication
-		self.__authenticate(headers)
+	def close(self):
+		logger.debug("SipCall.close {} Session {}".format(self, self.__session))
+		# remove Call from Session
+		if self.__call_id in self.__session._callids:
+			del self.__session._callids[self.__call_id]
 
-		# Create RTP stream instance and pass address and port of listening
-		# remote RTP host
-		self._rtpStream = RtpUdpStream(self.__session.local.host,
-			self.__remoteAddress, self.__remoteRtpPort)
+		# close rtpStream
+		if self._rtp_stream != None:
+			self._rtp_stream.close()
+			self._rtp_stream = None
+
+		# stop timers
+		for name, timer in self._timers.items():
+			if timer == None:
+				continue
+
+			logger.debug("SipCall timer {} active {} pending {}".format(timer,timer.active,timer.pending))
+			if timer.active == True or timer.pending == True:
+				logger.warn("SipCall Stopping {}".format(name))
+				timer.stop()
 		
-		i = incident("dionaea.connection.link")
-		i.parent = self
-		i.child = self._rtpStream
-		i.report()
+		# close connection
+		connection.close(self)
 
 
-
-		# Send 180 Ringing to make honeypot appear more human-like
-		msgLines = []
-		msgLines.append("SIP/2.0 " + RESPONSE[RINGING])
-		msgLines.append("Via: " + self.__sipVia)
-		msgLines.append("Max-Forwards: 70")
-		msgLines.append("To: " + self.__sipTo)
-		msgLines.append("From: " + self.__sipFrom)
-		msgLines.append("Call-ID: {}".format(self.__callId))
-		msgLines.append("CSeq: " + headers['cseq'])
-		msgLines.append("Contact: " + self.__sipContact)
-		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-		self.send('\n'.join(msgLines))
-
-		# Start timer for INVITE response
-		self.timers[2].data = headers
-		self.timers[2].start()
+	def handle_INVITE(self, msg):
+		self.__state = SipCall.INVITE
+		self._timers["invite_handler"].set(0.1, 0)
+		self._timers["invite_handler"].data = msg
+		self._timers["invite_handler"].start()
 		return 0
 
-	def handle_ACK(self, headers, body):
+	def handle_ACK(self, msg_ack):
+		#msg = msg_ack.create_response(200)
+		#self.send(msg.dumps())
+		return
+
+
 		if self.__state != SipCall.SESSION_SETUP:
 			logger.warn("ACK received but not in session setup mode")
 
@@ -684,10 +768,23 @@ class SipCall(connection):
 			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
 			self.send('\n'.join(msgLines))
 
-	def handle_CANCEL(self, headers, body):
-		self.__authenticate(headers)
+	def handle_CANCEL(self, msg_cancel):
+		# Todo:
+		#self.__authenticate(headers)
+		if not (self.__state == INVITE or self.__state == INVITE_TRYING or self.__state == INVITE_RINGING):
+			return
 
-	def handle_BYE(self, headers, body):
+		self._timers["invite_handler"].stop()
+		msg = self.__msg.create_response(487)
+		self.send(msg.dumps())
+		msg = msg_cancel.create_response(200)
+		self.send(msg.dumps())
+
+	def handle_BYE(self, msg_bye):
+		msg = msg_bye.create_response(200)
+		self.send(msg.dumps())
+		return
+
 		global g_sipconfig
 
 		if self.__state != SipCall.ACTIVE_SESSION:
@@ -810,8 +907,11 @@ class SipServer(connection):
 		self._bindings = {}
 
 	def handle_io_in(self, data):
+		print(dir(self.local))
 		sessionkey = (self.local.host, self.local.port, self.remote.host, self.remote.port)
+		print(sessionkey, self.local.hostname)
 		if sessionkey not in self._sessions:
+			print("new")
 			self._sessions[sessionkey] = SipSession(self, sessionkey)
 
 		session = self._sessions[sessionkey]
@@ -929,17 +1029,6 @@ class SipSession(connection):
 		msg = rfc3261.Message(data)
 
 		"""
-		# Get byte data and decode to unicode string
-		data = data.decode('utf-8')
-
-		# Parse SIP message
-		try:
-			msgType, firstLine, headers, body = parseSipMessage(data)
-		except SipParsingError as e:
-			logger.warn("Error while parsing SIP message: {}".format(e))
-			return len(data)
-
-
 		# SIP message incident
 #		i = incident("dionaea.modules.python.sip.in")
 #		i.con = self
@@ -969,9 +1058,13 @@ class SipSession(connection):
 				"(supported: INVITE, ACK, OPTIONS, BYE, CANCEL, REGISTER " + \
 				"and SIP responses")
 		"""
-		if msg.method == 'INVITE2':
-			self.sip_INVITE(firstLine, headers, body)
-		elif msg.method == 'OPTIONS':
+		if msg.method == b"ACK":
+			self.handle_ACK(msg)
+		elif msg.method == b"BYE":
+			self.handle_BYE(msg)
+		elif msg.method == b"INVITE":
+			self.handle_INVITE(msg)
+		elif msg.method == b"OPTIONS":
 			self.handle_OPTIONS(msg)
 		else:
 			self.handle_unknown(msg)
@@ -996,115 +1089,114 @@ class SipSession(connection):
 		d = res.dumps()
 		self.send(res.dumps())
 
-	def sip_INVITE(self, msg):
+	def handle_INVITE(self, msg):
 		global g_sipconfig
 
 		# Print SIP header
-		logger.info("Received INVITE")
-		for k, v in headers.items():
-			logger.debug("SIP header {}: {}".format(k, v))
+		#logger.info("Received INVITE")
+		#for k, v in headers.items():
+	#		logger.debug("SIP header {}: {}".format(k, v))
 
-		if msg.check_headers(["accept", "content-type"], overwrite = True):
+		# ToDo: content-length? also for udp or only for tcp?
+		if not msg.headers_exist([b"content-type"]):
+			logger.warn("INVITE without accept and content-type")
 			# ToDo: return error
 			return
 
 		# Header has to define Content-Type: application/sdp if body contains
 		# SDP message. Also, Accept has to be set to sdp so that we can send
 		# back a SDP response.
-		if msg.headers.get("content-type") != "application/sdp":
+		if msg.headers.get("content-type").value.lower() != b"application/sdp":
+			# ToDo: error
 			logger.warn("INVITE without SDP message: exit")
 			return
 
-		if msg.headers.get("accept") != "application/sdp":
-			logger.warn("INVITE without SDP message: exit")
-			return
+		#if msg.headers.get("accept").value.lower() != "application/sdp":
+		#	logger.warn("INVITE without SDP message: exit")
+			# ToDo: error
+		#	return
 
 		if msg.sdp == None:
-			return
-
-		# Check for SDP body
-		if not body:
 			logger.warn("INVITE without SDP message: exit")
+			# ToDo: error
 			return
-
-		# Parse SDP part of session invite
-		try:
-			sessionDescription, mediaDescriptions = parseSdpMessage(msg._body)
-		except SdpParsingError as e:
-			logger.warn("Error while parsing SDP message: {}".format(e))
-			return
-
-		# Check for all necessary fields
-		sdpSessionOwnerParts = sessionDescription['o'].split(' ')
-		if len(sdpSessionOwnerParts) < 6:
-			logger.warn("SDP session owner field to short: exit")
-			return
-
-		logger.debug("Parsed SDP message:")
-		for k, v in sessionDescription.items():
-			logger.debug("{}: {}".format(k, v))
-		for mediaDescription in mediaDescriptions:
-			for k, v in mediaDescription.items():
-				logger.debug("{}: {}".format(k, v))
 
 		# Get RTP port from SDP media description
-		if len(mediaDescriptions) < 1:
+		medias = msg.sdp[b"m"]
+		if len(medias) < 1:
 			logger.warn("SDP message has to include a media description: exit")
-			return
-		
-		# TODO: look at other mediaDescriptions as well
-		mediaDescriptionParts = mediaDescriptions[0]['m'].split(' ')
-		if mediaDescriptionParts[0] != 'audio':
-			logger.warn("SDP media description has to be of audio type: exit")
+			# ToDo: error
 			return
 
-		rtpPort = mediaDescriptionParts[1]
+		audio = None
+		for media in medias:
+			if media.media.lower() == b"audio":
+				audio = media
+				# ToDo: parse the rest to find the best one
+				break
+
+		if audio == None:
+			logger.warn("SDP media description has to be of audio type: exit")
+			return
 
 		# Read Call-ID field and create new SipCall instance on first INVITE
 		# request received (remote host might send more than one because of time
 		# outs or because he wants to flood the honeypot)
 		logger.debug("Currently active sessions: {}".format(self._callids))
-		callId = msg.headers.get("call-id").value
-		if callId in self._callids:
+		call_id = msg.headers.get(b"call-id").value
+		print(call_id)
+		if call_id in self._callids:
 			logger.warn("SIP session with Call-ID {} already exists".format(
-				callId))
+				call_id))
+			# ToDo: error
 			return
 
 		# Establish a new SIP Call
-		newCall = SipCall(self, (self.remote.host, self.remote.port),
-			rtpPort, headers)
+		new_call = SipCall(
+			self,
+			(self.remote.host, self.remote.port),
+			audio.port,
+			msg
+		)
 
 		# Store session object in sessions dictionary
-		self._callids[callId] = newCall
-
+		self._callids[call_id] = new_call
+		print(self._callids)
+		print(self)
 		i = incident("dionaea.connection.link")
 		i.parent = self
-		i.child = newCall
+		i.child = new_call
 		i.report()
 
 		try:
-			r = newCall.handle_INVITE(headers)
+			r = new_call.handle_INVITE(msg)
 		except AuthenticationError:
 			logger.warn("Authentication failed, not creating SIP session")
-			newCall.close()
-			del newCall
+			new_call.close()
+			del new_call
 
-	def sip_ACK(self, requestLine, headers, body):
+	def handle_ACK(self, msg):
 		logger.info("Received ACK")
 
-		if self.__checkForMissingHeaders(headers):
-			return
+		#if self.__checkForMissingHeaders(headers):
+		#	return
 
 		# Check if session (identified by Call-ID) exists
-		callId = headers['call-id'] 
-		if callId not in self._callids:
+		# ToDo: check if call-id header exist
+		call_id = msg.headers.get(b"call-id").value
+		print(self._callids)
+		print(self)
+		if call_id not in self._callids:
 			logger.warn("Given Call-ID does not belong to any session: exit")
-		else:
-			try:
-				# Handle incoming ACKs depending on current state
-				self._callids[callId].handle_ACK(headers, body)
-			except AuthenticationError:
-				logger.warn("Authentication failed for ACK request")
+			# ToDo: error
+			return
+
+		try:
+			# Handle incoming ACKs depending on current state
+			self._callids[call_id].handle_ACK(msg)
+		except AuthenticationError:
+			# ToDo error handling
+			logger.warn("Authentication failed for ACK request")
 
 	def handle_OPTIONS(self, msg):
 		logger.info("Received OPTIONS")
@@ -1117,22 +1209,25 @@ class SipSession(connection):
 
 		self.send(res.dumps())
 
-	def sip_BYE(self, requestLine, headers, body):
+	def handle_BYE(self, msg):
 		logger.info("Received BYE")
 
-		if self.__checkForMissingHeaders(headers):
-			return
+		#if self.__checkForMissingHeaders(headers):
+		#	return
 		
 		# Check if session (identified by Call-ID) exists
-		callId = headers['call-id'] 
-		if callId not in self._callids:
+		call_id = msg.headers.get(b"call-id").value
+		if call_id not in self._callids:
 			logger.warn("Given Call-ID does not belong to any session: exit")
-		else:
-			try:
-				# Handle incoming BYE request depending on current state
-				self._callids[callId].handle_BYE(headers, body)
-			except AuthenticationError:
-				logger.warn("Authentication failed for BYE request")
+			# ToDo: error
+			return
+
+		try:
+			# Handle incoming BYE request depending on current state
+			self._callids[call_id].handle_BYE(msg)
+		except AuthenticationError:
+			# ToDo: handle
+			logger.warn("Authentication failed for BYE request")
 
 	def sip_CANCEL(self, requestLine, headers, body):
 		logger.info("Received CANCEL")

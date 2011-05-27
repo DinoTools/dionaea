@@ -1,4 +1,5 @@
 import re
+import logging
 
 try:
 	from dionaea.sip import rfc2396, rfc4566
@@ -6,6 +7,9 @@ try:
 except:
 	import rfc2396, rfc4566
 	from extras import int2bytes
+
+logger = logging.getLogger('sip')
+logger.setLevel(logging.DEBUG)
 
 # For more information see RFC3261 Section: 21 Response Codes
 # http://tools.ietf.org/html/rfc3261#section-21
@@ -110,7 +114,7 @@ class Header(object):
 		if name != None:
 			name = name.lower()
 			self.name = name
-			self.value = value
+			self._value = value
 			return 0
 
 		value = value.strip()
@@ -124,20 +128,18 @@ class Header(object):
 			addr.must_quote = True
 			l = addr.loads(value)
 			# ToDo: use l to parse the rest
-			self.value = addr
+			self._value = addr
 			return l
 
-		self.value = value
+		self._value = value
 		return len(value)
 
-	def dumps(self):
-		r = self.format_name(self.name) + b": "
-		if type(self.value) == bytes:
-			return r + self.value
-		if type(self.value) == int:
-			return r + int2bytes(self.value)
 
-		return r + self.value.dumps()
+	def dumps(self):
+		"""
+		Dump the value with header name.
+		"""
+		return self.format_name(self.name) + b": "  + self.get_value()
 
 	def format_name(self, name):
 		name = name.lower()
@@ -148,6 +150,21 @@ class Header(object):
 		names = [n.capitalize() for n in names]
 		
 		return b"-".join(names)
+
+	def get_value(self):
+		"""
+		Prepare the value and return it as bytes.
+		"""
+		if type(self._value) == bytes:
+			return self._value
+		if type(self._value) == int:
+			return int2bytes(self._value)
+
+		return self._value.dumps()
+
+	value = property(get_value)
+
+
 
 class Headers(object):
 
@@ -181,15 +198,18 @@ class Headers(object):
 	def __iter__(self):
 		return iter(self._headers)
 
-	def append(self, headers, copy = False):
+	def append(self, headers, copy = False, name_new = None):
 		if headers == None:
 			return
 
 		if type(headers) != list:
 			headers = [headers]
 		for header in headers:
+			print(header)
 			if copy == True:
 				header = Header(header.dumps())
+			if name_new != None:
+				header.name = name_new
 
 			if header.name in self._single:
 				self._headers[header.name] = header
@@ -308,9 +328,13 @@ class Message(object):
 				res.status_message = status_messages[code]
 			else:
 				res.status_message = b""
-
-		for name in [b"cseq", b"from", b"to", b"call-id"]:
+		print("----create response")
+		for name in [b"cseq", b"call-id", b"via"]:
 			res.headers.append(self.headers.get(name, None), True)
+
+		res.headers.append(self.headers.get(b"from", None), True, b"to")
+		res.headers.append(self.headers.get(b"to", None), True, b"from")
+		res.headers.append(self.headers.get(b"to", None), True, b"contact")
 
 		res.headers.append(Header(0, b"Content-Length"))
 
@@ -321,8 +345,8 @@ class Message(object):
 			headers = headers + [b"to", b"from", b"call-id", b"cseq", b"contact"]
 
 		for header in headers:
-			if not header in self._headers:
-				logger.warn(b"Header missing: {}".format(header))
+			if self.headers.get(header) == None:
+				logger.warn("Header missing: {}".format(repr(header)))
 				return False
 
 		return True
@@ -387,9 +411,15 @@ class Message(object):
 		else:
 			return None
 
+		sdp = b""
+		if self.sdp != None:
+			sdp = self.sdp.dumps()
+			self.headers.append(Header(b"application/sdp", b"content-type"))
+			self.headers.append(Header(len(sdp), b"content-length"))
+
 		h = h + self.headers.dump_list()
 
-		return b"\r\n".join(h) + b"\r\n\r\n"
+		return b"\r\n".join(h) + b"\r\n\r\n" + sdp
 
 
 if __name__ == '__main__':
