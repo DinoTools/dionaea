@@ -607,10 +607,25 @@ cdef class connection:
 
 		c_connection_connect(self.thisptr,addr_utf8,port,iface_utf8)
 
-	def send(self, data):
+	def send(self, data, local=None, remote=None):
 		"""send something to the remote"""
 		if self.thisptr == NULL:
 			raise ReferenceError(u'the object requested does not exist')
+		if remote is not None and local is not None and self.transport == u'udp':
+			if type(remote) is tuple:
+				(host,port) = remote
+				host = host.encode(u'UTF-8')
+				c_node_info_set_addr(&self.thisptr.remote, host)
+				c_node_info_set_port(&self.thisptr.remote, port)
+			else:
+				raise ValueError(u"requires tuple input, got %s" % type(remote))
+			if type(local) is tuple:
+				(host,port) = local
+				host = host.encode(u'UTF-8')
+				c_node_info_set_addr(&self.thisptr.local, host)
+				c_node_info_set_port(&self.thisptr.local, port)
+			else:
+				raise ValueError(u"requires tuple input, got %s" % type(local))
 		if isinstance(data, unicode):
 			data_bytes = data.encode(u'UTF-8')
 		elif isinstance(data, bytes):
