@@ -904,12 +904,7 @@ class SipSession(connection):
 
 	def send(self, s):
 		"""
-		Since the dionaea connection class doesn't provide a sendto method it is
-		implemented here. It is needed to other classes (instances) send
-		messages through the SIP connection (particularly instances of
-		SipSession). It is not needed in this class itself because all send
-		calls are in direct response to an incoming message so self.remote.host
-		and self.remote.port are already set correctly.
+		The SipSession is not connected, we have to use the origin connection of the server to send.
 		"""
 		logger.debug('Sending message "{}" to ({}:{})'.format(
 			s, self.remote.host, self.remote.port))
@@ -924,13 +919,7 @@ class SipSession(connection):
 #		i.msgType = "RESPONSE"
 #		i.message = s
 #		i.report()
-		
-		# Set remote host and port before UDP send
-		self.server.local.host = self.local.host
-		self.server.remote.port = self.local.port
-		self.server.remote.host = self.remote.host
-		self.server.remote.port = self.remote.port
-		self.server.send(s)
+		self.server.send(s, local=(self.local.host,self.local.port),remote=(self.remote.host,self.remoteport))
 
 	def handle_io_in(self, data):
 
