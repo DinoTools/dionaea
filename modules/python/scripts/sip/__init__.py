@@ -919,7 +919,7 @@ class SipSession(connection):
 #		i.msgType = "RESPONSE"
 #		i.message = s
 #		i.report()
-		self.server.send(s, local=(self.local.host,self.local.port),remote=(self.remote.host,self.remoteport))
+		self.server.send(s, local=(self.local.host,self.local.port),remote=(self.remote.host,self.remote.port))
 
 	def handle_io_in(self, data):
 
