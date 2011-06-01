@@ -131,6 +131,11 @@ class Header(object):
 			self._value = addr
 			return l
 
+		if name == b"via":
+			v = Via(value)
+			self._value = v
+			return
+
 		self._value = value
 		return len(value)
 
@@ -150,6 +155,9 @@ class Header(object):
 		names = [n.capitalize() for n in names]
 		
 		return b"-".join(names)
+
+	def get_raw(self):
+		return self._value
 
 	def get_value(self):
 		"""
@@ -205,7 +213,6 @@ class Headers(object):
 		if type(headers) != list:
 			headers = [headers]
 		for header in headers:
-			print(header)
 			if copy == True:
 				header = Header(header.dumps())
 			if name_new != None:
@@ -420,6 +427,101 @@ class Message(object):
 		h = h + self.headers.dump_list()
 
 		return b"\r\n".join(h) + b"\r\n\r\n" + sdp
+
+
+class Via(object):
+	"""
+	Parse and generate the content of a Via: Header.
+
+	:See: http://tools.ietf.org/html/rfc3261#page-179
+
+	Test strings are taken from RFC3261
+
+	>>> s = b"SIP/2.0/UDP erlang.bell-telephone.com:5060;branch=z9hG4bK87asdks7"
+	>>> v = Via(s)
+	>>> print(v.port, v.address, v.protocol)
+	5060 b'erlang.bell-telephone.com' b'UDP'
+	>>> print(v.get_param(b"branch"))
+	b'z9hG4bK87asdks7'
+	>>> print(s == v.dumps())
+	True
+	>>> v = Via(b"SIP/2.0/UDP 192.0.2.1:5060 ;received=192.0.2.207;branch=z9hG4bK77asjd")
+	>>> print(v.port, v.address, v.protocol)
+	5060 b'192.0.2.1' b'UDP'
+	>>> print(v.get_param(b"branch"), v.get_param(b"received"))
+	b'z9hG4bK77asjd' b'192.0.2.207'
+	"""
+
+	_syntax = re.compile(b"SIP */ *2\.0 */ *(?P<protocol>[a-zA-Z]+) *(?P<address>[^ :]*) *(:(?P<port>[0-9]+))?( *; *(?P<params>.*))?")
+
+
+	def __init__(self, data = None):
+		self.protocol = None
+		self.address = None
+		self.port = None
+		self._params = []
+
+		if data != None:
+			self.loads(data)
+
+	def dumps(self):
+		ret = b"SIP/2.0/" + self.protocol.upper() + b" " + self.address
+		if self.port != None:
+			ret = ret + b":" + int2bytes(self.port)
+
+		if self._params != None and len(self._params) > 0:
+			params = []
+			for x in self._params:
+				if x != b"":
+					params.append(b"=".join(x))
+				else:
+					params.append(x[0])
+			ret = ret + b";" + b";".join(params)
+
+		return ret
+
+	def get_param(self, name, default = None):
+		for x in self._params:
+			if x[0] == name:
+				return x[1]
+
+		return default
+
+	def set_param(self, name, value):
+		for x in self._params:
+			if x[0] == name:
+				x[1] = value
+				return
+
+	def loads(self, data):
+		m = self._syntax.match(data)
+		if not m:
+			return
+
+		self.protocol = m.group("protocol")
+		self.address = m.group("address")
+		self.port = m.group("port")
+		if self.port != None:
+			try:
+				self.port = int(self.port)
+			except:
+				# error parsing port, set default value
+				self.port = 5060
+
+		params = m.group("params")
+
+		if not params:
+			return
+
+		# prevent crashes by limiting split count
+		# ToDo: needs testing
+		for param in re.split(b" *; *", params, 64):
+			t = re.split(b" *= *", param, 1)
+			v = b""
+			if len(t) > 1:
+				v = t[1]
+
+			self._params.append((t[0], v))
 
 
 if __name__ == '__main__':
