@@ -43,17 +43,12 @@ import errno
 import datetime
 import tempfile
 
-from dionaea.sip import rfc3261
-from dionaea.sip import rfc4566
-
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from dionaea import pyev
 
-def int2bytes(value):
-	"""
-	Convert integer to bytes
-	"""
-	return bytes(str(value), "utf-8")
+from dionaea.sip import rfc3261
+from dionaea.sip import rfc4566
+from dionaea.sip.extras import int2bytes
 
 
 g_default_loop = pyev.default_loop()
@@ -81,134 +76,6 @@ else:
 # Shortcut hashing function
 def hash(s):
 	return hashlib.md5(s.encode('utf-8')).hexdigest()
-
-#############
-# SIP globals
-#############
-
-TRYING                      = '100'
-RINGING                     = '180'
-CALL_FWD                    = '181'
-QUEUED                      = '182'
-PROGRESS                    = '183'
-OK                          = '200'
-ACCEPTED                    = '202'
-MULTI_CHOICES               = '300'
-MOVED_PERMANENTLY           = '301'
-MOVED_TEMPORARILY           = '302'
-SEE_OTHER					= '303'
-USE_PROXY                   = '305'
-ALT_SERVICE                 = '380'
-BAD_REQUEST                 = '400'
-UNAUTHORIZED                = '401'
-PAYMENT_REQUIRED            = '402'
-FORBIDDEN                   = '403'
-NOT_FOUND                   = '404'
-NOT_ALLOWED                 = '405'
-NOT_ACCEPTABLE              = '406'
-PROXY_AUTH_REQUIRED         = '407'
-REQUEST_TIMEOUT             = '408'
-CONFLICT                    = '409'
-GONE                        = '410'
-LENGTH_REQUIRED             = '411'
-ENTITY_TOO_LARGE            = '413'
-URI_TOO_LARGE               = '414'
-UNSUPPORTED_MEDIA           = '415'
-UNSUPPORTED_URI				= '416'
-BAD_EXTENSION               = '420'
-EXTENSION_REQUIRED			= '421'
-INTERVAL_TOO_BRIEF			= '423'
-NOT_AVAILABLE               = '480'
-NO_TRANSACTION              = '481'
-LOOP                        = '482'
-TOO_MANY_HOPS               = '483'
-ADDRESS_INCOMPLETE          = '484'
-AMBIGUOUS                   = '485'
-BUSY_HERE                   = '486'
-CANCELLED                   = '487'
-NOT_ACCEPTABLE_HERE         = '488'
-REQUEST_PENDING				= '491'
-UNDECIPHERABLE				= '493'
-INTERNAL_ERROR              = '500'
-NOT_IMPLEMENTED             = '501'
-BAD_GATEWAY                 = '502'
-UNAVAILABLE                 = '503'
-GATEWAY_TIMEOUT             = '504'
-SIP_VERSION_NOT_SUPPORTED   = '505'
-MESSAGE_TOO_LARGE			= '513'
-BUSY_EVERYWHERE             = '600'
-DECLINE                     = '603'
-DOES_NOT_EXIST              = '604'
-NOT_ACCEPTABLE_6xx          = '606'
-
-# SIP Responses from SIP Demystified by Gonzalo Camarillo
-RESPONSE = { 
-	# 1xx
-	TRYING:                     '100 Trying',
-	RINGING:                    '180 Ringing',
-	CALL_FWD:                   '181 Call is being forwarded',
-	QUEUED:                     '182 Queued',
-	PROGRESS:                   '183 Session progress',
-
-	# 2xx
-	OK:                         '200 OK',
-	ACCEPTED:                   '202 Accepted',
-
-	# 3xx
-	MULTI_CHOICES:              '300 Multiple choices',
-	MOVED_PERMANENTLY:          '301 Moved permanently',
-	MOVED_TEMPORARILY:          '302 Moved temporarily',
-	SEE_OTHER:					'303 See other',
-	USE_PROXY:                  '305 Use proxy',
-	ALT_SERVICE:                '380 Alternative service',
-
-	# 4xx
-	BAD_REQUEST:                '400 Bad request',
-	UNAUTHORIZED:               '401 Unauthorized',
-	PAYMENT_REQUIRED:           '402 Payment required',
-	FORBIDDEN:                  '403 Forbidden',
-	NOT_FOUND:                  '404 Not found',
-	NOT_ALLOWED:                '405 Method not allowed',
-	NOT_ACCEPTABLE:             '406 Not acceptable',
-	PROXY_AUTH_REQUIRED:        '407 Proxy authentication required',
-	REQUEST_TIMEOUT:            '408 Request time-out',
-	CONFLICT:                   '409 Conflict',
-	GONE:                       '410 Gone',
-	LENGTH_REQUIRED:            '411 Length required',
-	ENTITY_TOO_LARGE:           '413 Request entity too large',
-	URI_TOO_LARGE:              '414 Request-URI too large',
-	UNSUPPORTED_MEDIA:          '415 Unsupported media type',
-	UNSUPPORTED_URI:			'416 Unsupported URI scheme',
-	BAD_EXTENSION:              '420 Bad extension',
-	EXTENSION_REQUIRED:			'421 Extension required',
-	INTERVAL_TOO_BRIEF:			'423 Interval too brief',
-	NOT_AVAILABLE:              '480 Temporarily not available',
-	NO_TRANSACTION:             '481 Call leg/transaction does not exist',
-	LOOP:                       '482 Loop detected',
-	TOO_MANY_HOPS:              '483 Too many hops',
-	ADDRESS_INCOMPLETE:         '484 Address incomplete',
-	AMBIGUOUS:                  '485 Ambiguous',
-	BUSY_HERE:                  '486 Busy here',
-	CANCELLED:                  '487 Request cancelled',
-	NOT_ACCEPTABLE_HERE:        '488 Not acceptable here',
-	REQUEST_PENDING:			'491 Request pending',
-	UNDECIPHERABLE:				'493 Undecipherable',
-
-	# 5xx
-	INTERNAL_ERROR:             '500 Internal server error',
-	NOT_IMPLEMENTED:            '501 Not implemented',
-	BAD_GATEWAY:                '502 Bad gateway',
-	UNAVAILABLE:                '503 Service unavailable',
-	GATEWAY_TIMEOUT:            '504 Gateway time-out',
-	SIP_VERSION_NOT_SUPPORTED:  '505 SIP version not supported',
-	MESSAGE_TOO_LARGE:			'513 Message too large',
-
-	# 6xx
-	BUSY_EVERYWHERE:            '600 Busy everywhere',
-	DECLINE:                    '603 Decline',
-	DOES_NOT_EXIST:             '604 Does not exist anywhere',
-	NOT_ACCEPTABLE_6xx:         '606 Not acceptable'
-}
 
 # SIP headers have short forms
 shortHeaders = {"call-id": "i",
@@ -239,182 +106,9 @@ class SipParsingError(Exception):
 class AuthenticationError(Exception):
 	"""Exception class for errors occuring during SIP authentication"""
 
-#############
-# SDP globals
-#############
-
-sessionDescriptionTypes = {
-	"v": "protocol version",
-	"o": "session owner",
-	"s": "session name",
-	"i": "session information",
-	"u": "uri",
-	"e": "email address",
-	"p": "phone number",
-	"c": "connection information",
-	"b": "bandwidth information",
-	"z": "time zone adjustment",
-	"k": "encryption key",
-	"t": "active time",
-	"r": "repeat time",
-	"a": "session attribute line"
-}
-
-mediaDescriptionTypes = {
-	"m": "media name",
-	"i": "media title",
-	"c": "connection information",
-	"b": "bandwidth information",
-	"k": "encryption key",
-	"a": "attribute line"
-}
-
 class SdpParsingError(Exception):
 	"""Exception class for errors occuring during SDP message parsing"""
 
-###################
-# Parsing functions
-###################
-
-def parseSdpMessage(msg):
-	"""Parses an SDP message (string), returns a tupel of dictionaries with
-	{type: value} entries: (sessionDescription, mediaDescriptions)"""
-	# Normalize line feed and carriage return to \n
-	msg = msg.replace("\n\r", "\n")
-
-	# Sanitize input: remove superfluous leading and trailing newlines and
-	# spaces
-	msg = msg.strip("\n\r\t ")
-
-	# Split message into session description, and media description parts
-	SEC_SESSION, SEC_MEDIA = range(2)
-	curSection = SEC_SESSION
-	sessionDescription = {}
-	mediaDescriptions = []
-	mediaDescriptionNumber = -1
-
-	# Process each line individually
-	if len(msg) > 0:
-		lines = msg.split("\n")
-		for line in lines:
-			# Remove leading and trailing whitespaces from line
-			line = line.strip('\n\r\t ')
-
-			# Get first two characters of line and check for "type="
-			if len(line) < 2:
-				raise SdpParsingError("Line too short")
-			elif line[1] != "=":
-				raise SdpParsingError("Invalid SDP line")
-
-			type = line[0]
-			value = line[2:].strip("\n\r\t ")
-
-			# Change current section if necessary
-			# (session -> media -> media -> ...)
-			if type == "m":
-				curSection = SEC_MEDIA
-				mediaDescriptionNumber += 1
-				mediaDescriptions.append({})
-
-			# Store the SDP values
-			if curSection == SEC_SESSION:
-				if type not in sessionDescriptionTypes:
-					raise SdpParsingError(
-						"Invalid session description type: " + type)
-				else:
-					sessionDescription[type] = value
-			elif curSection == SEC_MEDIA:
-				if type not in mediaDescriptionTypes:
-					raise SdpParsingError(
-						"Invalid media description type: " + type)
-				else:
-					mediaDescriptions[mediaDescriptionNumber][type] = value
-
-	return (sessionDescription, mediaDescriptions)
-
-def parseSipMessage(msg):
-	"""Parses a SIP message (string), returns a tupel (type, firstLine, header,
-	body)"""
-	# Sanitize input: remove superfluous leading and trailing newlines and
-	# spaces
-	msg = msg.strip("\n\r\t ")
-
-	# Split request/status line plus headers from body: we don't care about the
-	# body in the SIP parser
-	parts = msg.split("\n\n", 1)
-	if len(parts) < 1:
-		logger.warn("SIP message is too short")
-		raise SipParsingError("SIP message is too short")
-
-	msg = parts[0]
-
-	# Python way of doing a ? b : c
-	body = len(parts) == 2 and parts[1] or ''
-
-	# Normalize line feed and carriage return to \n
-	msg = msg.replace("\n\r", "\n")
-
-	# Split lines into a list, each item containing one line
-	lines = msg.split('\n')
-
-	# Get message type (first word, smallest possible one is "ACK" or "BYE")
-	sep = lines[0].find(' ')
-	if sep < 3:
-		raise SipParsingError("Malformed request or status line")
-
-	msgType = lines[0][:sep]
-	firstLine = lines[0][sep+1:]
-
-	# Done with first line: delete from list of lines
-	del lines[0]
-
-	# Parse header
-	headers = {}
-	for i in range(len(lines)):
-		# Take first line and remove from list of lines
-		line = lines.pop(0)
-
-		# Strip each line of leading and trailing whitespaces
-		line = line.strip("\n\r\t ")
-
-		# Break on empty line (end of headers)
-		if len(line.strip(' ')) == 0:
-			break
-
-		# Parse header lines
-		sep = line.find(':')
-		if sep < 1:
-			raise SipParsingError("Malformed header line (no ':')")
-
-		# Get header identifier (word before the ':')
-		identifier = line[:sep]
-		identifier = identifier.lower()
-
-		# Check for valid header
-		if identifier not in shortHeaders.keys() and \
-			identifier not in longHeaders.keys():
-			raise SipParsingError("Unknown header type: {}".format(identifier))
-
-		# Get long header identifier if necessary
-		if identifier in longHeaders.keys():
-			identifier = longHeaders[identifier]
-
-		# Get header value (line after ':')
-		value = line[sep+1:].strip(' ')
-
-		# The Via header can occur multiple times
-		if identifier == "via":
-			if identifier not in headers:
-				headers["via"] = [value]
-			else:
-				headers["via"].append(value)
-
-		# Assign any other header value directly to the header key
-		else:
-			headers[identifier] = value
-
-	# Return message type, header dictionary, and body string
-	return (msgType, firstLine, headers, body)
 
 #########
 # Classes
@@ -1039,52 +733,24 @@ class SipSession(connection):
 #		i.sipBody = body
 #		i.report()
 
-		if msgType == 'INVITE':
-			self.sip_INVITE(firstLine, headers, body)
-		elif msgType == 'ACK':
-			self.sip_ACK(firstLine, headers, body)
-		elif msgType == 'OPTIONS':
-			self.sip_OPTIONS(firstLine, headers, body)
-		elif msgType == 'BYE':
-			self.sip_BYE(firstLine, headers, body)
-		elif msgType == 'CANCEL':
-			self.sip_CANCEL(firstLine, headers, body)
-		elif msgType == 'REGISTER':
-			self.sip_REGISTER(firstLine, headers, body)
-		elif msgType == 'SIP/2.0':
-			self.sip_RESPONSE(firstLine, headers, body)
-		else:
-			logger.warn("Unknown SIP header " + \
-				"(supported: INVITE, ACK, OPTIONS, BYE, CANCEL, REGISTER " + \
-				"and SIP responses")
 		"""
-		if msg.method == b"ACK":
-			self.handle_ACK(msg)
-		elif msg.method == b"BYE":
-			self.handle_BYE(msg)
-		elif msg.method == b"INVITE":
-			self.handle_INVITE(msg)
-		elif msg.method == b"OPTIONS":
-			self.handle_OPTIONS(msg)
+
+		try:
+			func = getattr(self, "handle_" + msg.method.decode("utf-8").upper(), None)
+		except:
+			func = None
+
+		if func is not None and callable(func) == True:
+			func(msg)
 		else:
 			self.handle_unknown(msg)
 
-		"""
-		elif msg.method == 'ACK':
-			self.sip_ACK(firstLine, headers, body)
-		elif msg.method == 'BYE':
-			self.sip_BYE(firstLine, headers, body)
-		elif msg.method == 'CANCEL':
-			self.sip_CANCEL(firstLine, headers, body)
-		elif msg.method == 'REGISTER':
-			self.sip_REGISTER(firstLine, headers, body)
-		elif msg.method == 'SIP/2.0':
-			self.sip_RESPONSE(firstLine, headers, body)
-		"""
 		logger.debug("io_in: returning {}".format(len(data)))
 		return len(data)
 
 	def handle_unknown(self, msg):
+		logger.warn("Unknown SIP header: {}".format(repr(msg.method)))
+
 		res = msg.create_response(501)
 		d = res.dumps()
 		self.send(res.dumps())
