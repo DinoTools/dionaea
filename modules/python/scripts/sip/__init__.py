@@ -109,10 +109,28 @@ class AuthenticationError(Exception):
 class SdpParsingError(Exception):
 	"""Exception class for errors occuring during SDP message parsing"""
 
-
 #########
 # Classes
 #########
+
+class User(object):
+	def __init__(self, user_id, branch):
+		self.id = user_id
+		self.branch = branch
+		self.expires = 3600
+
+class RegistrationManager(object):
+	def __init__(self):
+		self._users = {}
+		self._branches = {}
+
+	def register(self, user):
+		if not user.id in self._users:
+			self._users[user.id] = []
+
+		self._users[user.id].append(user)
+
+reg_manager = RegistrationManager()
 
 class RtpUdpStream(connection):
 	"""RTP stream that can send data and writes the whole conversation to a
@@ -875,6 +893,34 @@ class SipSession(connection):
 
 		self.send(res.dumps())
 
+	def handle_REGISTER(self, msg):
+		"""
+		:See: http://tools.ietf.org/html/rfc3261#section-10
+		"""
+
+		# b"request-uri"
+		if not msg.headers_exist([b"to", b"from", b"call-id", b"cseq"]):
+			logger.warn("REGISTER, header missing")
+			# ToDo: return error
+			return
+
+		vias = msg.headers.get(b"via", [])
+
+		via = vias[-1]
+
+		branch = via.get_raw().get_param(b"branch")
+
+		to = msg.headers.get(b"to")
+		user_id = to.get_raw().uri.user
+
+		# ToDo: password
+		user = User(user_id, branch)
+		reg_manager.register(user)
+
+		res = msg.create_response(200)
+		self.send(res.dumps())
+
+
 	def handle_BYE(self, msg):
 		logger.info("Received BYE")
 
@@ -941,8 +987,6 @@ class SipSession(connection):
 
 		self.send('\n'.join(msgLines))
 
-	def sip_REGISTER(self, requestLine, headers, body):
-		logger.info("Received REGISTER")
 
 	def sip_RESPONSE(self, statusLine, headers, body):
 		logger.info("Received a response")
