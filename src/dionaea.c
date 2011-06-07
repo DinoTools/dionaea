@@ -48,7 +48,7 @@
 
 #include <sys/time.h>
 #include <sys/resource.h>
-
+#include <sys/file.h>
 
 #include <lcfg/lcfg.h>
 #include <lcfgx/lcfgx_tree.h>
@@ -623,13 +623,17 @@ opt->stdOUT.filter);
 		{
 			g_error("Could not write pid file to %s", opt->pidfile);
 		}
+		if( flock(fileno(p), LOCK_EX|LOCK_NB) == -1 )
+		{
+			g_error("Could not lock pidfile %s (%s)", opt->pidfile, strerror(errno));
+		}
 		char pidstr[16];
 		int len = snprintf(pidstr, 15, "%i", getpid());
 		if( fwrite(pidstr, len, 1, p) != 1 )
 		{
 			g_error("Could not write pid file to %s", opt->pidfile);
 		}
-		fclose(p);
+//		fclose(p);
 	}
 	g_message("glib version %i.%i.%i", glib_major_version, glib_minor_version, glib_micro_version);
 
