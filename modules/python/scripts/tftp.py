@@ -277,10 +277,10 @@ class TftpPacketInitial(TftpPacket, TftpPacketWithOptions):
             for key in self.options:
                 # Populate the option name
                 format += "%dsx" % len(key)
-                options_list.append(key)
+                options_list.append(key.encode("utf-8"))
                 # Populate the option value
                 format += "%dsx" % len(str(self.options[key]))
-                options_list.append(str(self.options[key]))
+                options_list.append(str(self.options[key]).encode("utf-8"))
 
         logger.debug("format is %s" % format)
         logger.debug("options_list is %s" % options_list)
@@ -288,8 +288,8 @@ class TftpPacketInitial(TftpPacket, TftpPacketWithOptions):
 
         self.buffer = struct.pack(format,
                                   self.opcode,
-                                  self.filename,
-                                  self.mode,
+                                  self.filename.encode('utf-8'),
+                                  self.mode.encode('utf-8'),
                                   *options_list)
 
         logger.debug("buffer is " + repr(self.buffer))
@@ -498,7 +498,7 @@ ERROR | 05    |  ErrorCode |   ErrMsg   |   0  |
         self.buffer = struct.pack(format,
                                   self.opcode,
                                   self.errorcode,
-                                  self.errmsgs[self.errorcode])
+                                  self.errmsgs[self.errorcode].encode("utf-8"))
         return self
 
     def decode(self):
@@ -537,8 +537,8 @@ class TftpPacketOACK(TftpPacket, TftpPacketWithOptions):
             logger.debug("value is %s" % self.options[key])
             format += "%dsx" % len(key)
             format += "%dsx" % len(self.options[key])
-            options_list.append(key)
-            options_list.append(self.options[key])
+            options_list.append(key.encode("utf-8"))
+            options_list.append(self.options[key].encode("utf-8"))
         self.buffer = struct.pack(format, self.opcode, *options_list)
         return self
     
