@@ -136,7 +136,7 @@ class mysqld(connection):
 			for i in self.config.keys():
 				r.append(MySQL_Result_Row_Data(ColumnValues=[i]))
 
-			r.append(MySQL_Result_Row_Data(ColumnValues=['information_schema']))
+#			r.append(MySQL_Result_Row_Data(ColumnValues=['information_schema']))
 			r.append(MySQL_Result_EOF(ServerStatus=0x002))
 		elif p.Query == b'show tables':
 			r = [MySQL_Result_Header(FieldCount=1),
