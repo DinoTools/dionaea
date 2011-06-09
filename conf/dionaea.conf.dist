@@ -344,7 +344,8 @@ modules = {
 									"^dionaea\x5c.modules\x5c.python\x5c.smb.dcerpc\x5c.*",
 									"^dionaea\x5c.download\x5c.offer$",
 									"^dionaea\x5c.download\x5c.complete\x5c.hash$",
-									"^dionaea\x5c.module\x5c.emu\x5c.profile$"]
+									"^dionaea\x5c.module\x5c.emu\x5c.profile$",
+									"^dionaea\x5c.modules\x5c.python\x5c.mysql\x5c.*"]
 
 						/**
 						 * anonymous removes the local host information from all connection messages
