@@ -747,12 +747,13 @@ class logsqlhandler(ihandler):
 			self.cursor.execute("INSERT INTO mysql_commands (connection, mysql_command_cmd) VALUES (?,?)",
 				(attackid, icd.command))
 			cmdid = self.cursor.lastrowid
-			args = icd.args
 
-			for i in range(len(args)):
-				arg = args[i]
-				self.cursor.execute("INSERT INTO mysql_command_args (mysql_command, mysql_command_arg_index, mysql_command_arg_data) VALUES (?,?,?)",
-					(cmdid, i, arg))
+			if hasattr(icd, 'args'):
+				args = icd.args
+				for i in range(len(args)):
+					arg = args[i]
+					self.cursor.execute("INSERT INTO mysql_command_args (mysql_command, mysql_command_arg_index, mysql_command_arg_data) VALUES (?,?,?)",
+						(cmdid, i, arg))
 			self.dbh.commit()
 
 
