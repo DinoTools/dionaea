@@ -48,7 +48,7 @@ from dionaea import pyev
 
 from dionaea.sip import rfc3261
 from dionaea.sip import rfc4566
-from dionaea.sip.extras import int2bytes
+from dionaea.sip.extras import int2bytes, SipConfig
 
 
 g_default_loop = pyev.default_loop()
@@ -56,12 +56,17 @@ g_default_loop = pyev.default_loop()
 logger = logging.getLogger('sip')
 logger.setLevel(logging.DEBUG)
 
+"""
 # Shortcut to sip config
 g_sipconfig = g_dionaea.config()['modules']['python']['sip']
+"""
 
 _SipSession_sustain_timeout = 20
 _SipCall_sustain_timeout = 20
 
+g_sipconfig = SipConfig(g_dionaea.config()['modules']['python'].get("sip", {}))
+
+"""
 # Make "yes"/"no" from config file into boolean value
 if g_sipconfig['use_authentication'].lower() == 'no':
 	g_sipconfig['use_authentication'] = False
@@ -72,6 +77,7 @@ if g_sipconfig['record_rtp'].lower() == 'no':
 	g_sipconfig['record_rtp'] = False
 else:
 	g_sipconfig['record_rtp'] = True
+"""
 
 # Shortcut hashing function
 def hash(s):
@@ -251,6 +257,12 @@ class SipCall(connection):
 		self.remote.host = self.__session.remote.host
 		self.remote.port = self.__session.remote.port
 
+		user = self.__msg.headers.get(b"to").get_raw().uri.user
+
+		self._user = g_sipconfig.get_user_by_username(
+			self.__session.personality,
+			user
+		)
 
 		# fake a connection entry
 		i = incident("dionaea.connection.udp.connect")
@@ -287,6 +299,12 @@ class SipCall(connection):
 			print("Send trying")
 			# ToDo: Check authentication
 			#self.__authenticate(headers)
+
+			if self._user == None:
+				msg = self.__msg.create_response(404)
+				self.send(msg.dumps())
+				self.__state = SipCall.NO_SESSION
+				return
 
 			msg = self.__msg.create_response(100)
 			"""
@@ -328,9 +346,10 @@ class SipCall(connection):
 			print(msg.dumps())
 			self.send(msg.dumps())
 
-			# ToDo: random time
+			delay = random.randint(self._user.pickup_delay_min, self._user.pickup_delay_max)
+			logger.info("Choosing ring delay between {} and {} seconds: {}".format(self._user.pickup_delay_min, self._user.pickup_delay_max, delay))
 			self.__state = SipCall.INVITE_RINGING
-			self._timers["invite_handler"].set(5, 0)
+			self._timers["invite_handler"].set(delay, 0)
 			self._timers["invite_handler"].start()
 			return
 
@@ -643,6 +662,7 @@ class SipSession(connection):
 		self.local.host = server.local.host
 		self.local.port = server.local.port
 
+		self.personality = g_sipconfig.get_personality_by_address(server.local.host)
 		# fake a connection entry
 		i = incident("dionaea.connection.udp.connect")
 		i.con = self
@@ -651,8 +671,7 @@ class SipSession(connection):
 		# Dictionary with SIP sessions (key is Call-ID)
 		self._callids = {}
 
-		# Test log entry
-		logger.info("SIP Session created")
+		logger.info("SIP Session created with personality '{}'".format(self.personality))
 
 		# Setup timers
 		global g_default_loop

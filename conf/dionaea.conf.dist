@@ -251,13 +251,50 @@ modules = {
 			max-request-size = "32768" // maximum size in kbytes of the request (32MB)
 		}
 		sip = {
-			use_authentication = "yes"
-			domain = "localhost"
 			port = "5060"
-			user = "100"
-			useragent = "softphone"
-			secret = "F2DS13G5"
-			record_rtp = "yes"
+			users = "var/dionaea/sipaccounts.sqlite"
+			rtp = {
+				enable = "yes"
+				dumps = "var/dionaea/rtp/$(personality)/%Y-%M-%d/"
+			}
+			personalities = {
+				default = {
+					domain = "localhost"
+					name = "softphone"
+					personality = "generic"
+				}
+				/*
+				next-server = {
+					domain = "my-domain"
+					name = "my server"
+					personality = "generic"
+					serve = ["10.0.0.1"]
+				}
+
+				*/
+			}
+			actions = {
+				bank-redirect = {
+					do = "redirect"
+					params = {
+					}
+				}
+				play-hello = {
+					do = "play"
+					params = {
+						file = "var/dionaea/.../file.ext"
+					}
+				}
+			}
+
+			//old:
+			//use_authentication = "yes"
+			//domain = "localhost"
+			//port = "5060"
+			//user = "100"
+			//useragent = "softphone"
+			//secret = "F2DS13G5"
+			//record_rtp = "yes"
 		}
 		surfids = {
 			sslmode = "require"
