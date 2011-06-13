@@ -118,6 +118,7 @@ class User(object):
 		pickup_delay_min,
 		pickup_delay_max
 	):
+		self.realm = "test"
 		self.username = username
 		self.username_regex = username_regex
 		self.password = password

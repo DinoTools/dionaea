@@ -48,6 +48,7 @@ from dionaea import pyev
 
 from dionaea.sip import rfc3261
 from dionaea.sip import rfc4566
+from dionaea.sip import rfc2617 # auth
 from dionaea.sip.extras import int2bytes, SipConfig
 
 
@@ -135,6 +136,7 @@ class RegistrationManager(object):
 			self._users[user.id] = []
 
 		self._users[user.id].append(user)
+
 
 reg_manager = RegistrationManager()
 
@@ -689,6 +691,8 @@ class SipSession(connection):
 		# as all sip traffic shares a single connection
 		self.bistream = []
 
+		self._auth = []
+
 
 	def __handle_idle_timeout(self, watcher, events):
 #		logger.warn("self {} SipSession IDLE TIMEOUT watcher".format(self))
@@ -931,6 +935,37 @@ class SipSession(connection):
 
 		to = msg.headers.get(b"to")
 		user_id = to.get_raw().uri.user
+
+		u = g_sipconfig.get_user_by_username(self.personality, user_id)
+
+		if u.password != None:
+			header_auth = msg.headers.get(b"authorization", None)
+			if header_auth == None or self._auth == None:
+				self._auth = rfc2617.Authentication(
+					method = "digest",
+					algorithm = "md5",
+					nonce = "foobar123",
+					realm = u.realm
+				)
+				res = msg.create_response(401)
+				res.headers.append(rfc3261.Header(self._auth, b"www-authenticate"))
+				res.headers.append(rfc3261.Header(b"INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, SUBSCRIBE, NOTIFY, INFO", b"Allow"))
+				self.send(res.dumps())
+				return
+
+			auth_response = rfc2617.Authentication(header_auth[0].value)
+			if self._auth.check(u.username, "test", "REGISTER", auth_response) == False:
+				self._auth = rfc2617.Authentication(
+					method = "digest",
+					algorithm = "md5",
+					nonce = b"foobar123",
+					realm = u.realm
+				)
+				res = msg.create_response(401)
+				res.headers.append(rfc3261.Header(self._auth, b"www-authenticate"))
+				res.headers.append(rfc3261.Header(b"INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, SUBSCRIBE, NOTIFY, INFO", b"Allow"))
+				self.send(res.dumps())
+				return
 
 		# ToDo: password
 		user = User(user_id, branch)
