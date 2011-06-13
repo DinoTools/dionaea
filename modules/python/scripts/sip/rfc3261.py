@@ -84,6 +84,10 @@ class Header(object):
 	b'To: "John Doe" <sip:john@example.org>'
 	>>> print(Header(b'"John Doe" <sip:john@example.org>', b'to').dumps())
 	b'To: "John Doe" <sip:john@example.org>'
+	>>> print(Header(b'"John Doe" <sip:john@example.org>;tag=abc123', b'to').dumps())
+	b'To: "John Doe" <sip:john@example.org>;tag=abc123'
+	>>> print(Header(b'To: "John Doe" <sip:john@example.org>;tag=abc123').dumps())
+	b'To: "John Doe" <sip:john@example.org>;tag=abc123'
 	"""
 
 	_address = [
@@ -104,40 +108,41 @@ class Header(object):
 	def __init__(self, value, name = None):
 		self.loads(value, name)
 
-	def loads(self, value, name):
-		if type(value) == str:
-			value = bytes(value, "utf-8")
+	def loads(self, data, name):
+		if type(data) == str:
+			data = bytes(data, "utf-8")
 		if type(name) == str:
 			name = bytes(name, "utf-8")
 
-		# Get name
-		if name != None:
-			name = name.lower()
-			self.name = name
-			self._value = value
-			return 0
+		if name == None:
+			data = data.strip()
+			d = data.split(b":", 1)
+			name = d[0].strip()
+			data = d[1].strip()
 
-		value = value.strip()
-		v = value.split(b":", 1)
-		name = v[0].lower()
-		value = v[1].strip()
+		name = name.lower()
 		self.name = name
+
+		if type(data) != bytes:
+			self._value = data
+			return
+
 		# parse value
 		if name in self._address:
 			addr = rfc2396.Address()
 			addr.must_quote = True
-			l = addr.loads(value)
+			l = addr.loads(data)
 			# ToDo: use l to parse the rest
 			self._value = addr
 			return l
 
 		if name == b"via":
-			v = Via(value)
+			v = Via(data)
 			self._value = v
 			return
 
-		self._value = value
-		return len(value)
+		self._value = data
+		return len(data)
 
 
 	def dumps(self):
@@ -339,9 +344,10 @@ class Message(object):
 		for name in [b"cseq", b"call-id", b"via"]:
 			res.headers.append(self.headers.get(name, None), True)
 
-		res.headers.append(self.headers.get(b"from", None), True, b"to")
-		res.headers.append(self.headers.get(b"to", None), True, b"from")
-		res.headers.append(self.headers.get(b"to", None), True, b"contact")
+		#ToDo: recheck this!!!!
+		res.headers.append(self.headers.get(b"from", None), True, b"from")
+		res.headers.append(self.headers.get(b"to", None), True, b"to")
+		#res.headers.append(self.headers.get(b"to", None), True, b"contact")
 
 		res.headers.append(Header(0, b"Content-Length"))
 
@@ -452,7 +458,7 @@ class Via(object):
 	b'z9hG4bK77asjd' b'192.0.2.207'
 	"""
 
-	_syntax = re.compile(b"SIP */ *2\.0 */ *(?P<protocol>[a-zA-Z]+) *(?P<address>[^ :]*) *(:(?P<port>[0-9]+))?( *; *(?P<params>.*))?")
+	_syntax = re.compile(b"SIP */ *2\.0 */ *(?P<protocol>[a-zA-Z]+) *(?P<address>[^ :;]*) *(:(?P<port>[0-9]+))?( *; *(?P<params>.*))?")
 
 
 	def __init__(self, data = None):
@@ -472,7 +478,7 @@ class Via(object):
 		if self._params != None and len(self._params) > 0:
 			params = []
 			for x in self._params:
-				if x != b"":
+				if x[1] != b"" and x[1] != None:
 					params.append(b"=".join(x))
 				else:
 					params.append(x[0])

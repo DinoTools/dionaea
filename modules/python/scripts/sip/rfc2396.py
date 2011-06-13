@@ -15,13 +15,14 @@ class Address(object):
 	True
 	"""
 	_syntax = [
-		re.compile(b'^(?P<name>[a-zA-Z0-9\-\.\_\+\~\ \t]*)<(?P<uri>[^>]+)>'),
-		re.compile(b'^(?:"(?P<name>[a-zA-Z0-9\-\.\_\+\~\ \t]+)")[\ \t]*<(?P<uri>[^>]+)>'),
-		re.compile(b'^[\ \t]*(?P<name>)(?P<uri>[^;]+)')
+		re.compile(b'^(?P<name>[a-zA-Z0-9\-\.\_\+\~\ \t]*)<(?P<uri>[^>]+)>( *; *(?P<params>.*))?'),
+		re.compile(b'^(?:"(?P<name>[a-zA-Z0-9\-\.\_\+\~\ \t]+)")[\ \t]*<(?P<uri>[^>]+)>( *; *(?P<params>.*))?'),
+		re.compile(b'^[\ \t]*(?P<name>)(?P<uri>[^;]+)( *; *(?P<params>.*))?')
 	]
 
 	def __init__(self, value = None):
 		self.must_quote = False
+		self.params = {}
 		if value != None:
 			self.loads(value)
 
@@ -35,11 +36,19 @@ class Address(object):
 		:return: length used
 		:rtype: Integer
 		"""
-		for s in self._syntax:
-			m = s.match(value)
+		for regex in self._syntax:
+			m = regex.match(value)
 			if m:
 				self.display_name = m.groups()[0].strip()
 				self.uri = URI(m.groups()[1].strip())
+				params = m.groupdict()["params"]
+				if params == None:
+					return m.end()
+
+				for param in re.split(b" *; *", params):
+					n,s,v = param.partition(b"=")
+					self.params[n.strip()] = v.strip()
+
 				return m.end()
 
 		return 0
@@ -59,6 +68,12 @@ class Address(object):
 		else:
 			r = r + self.uri.dumps()
 
+		if len(self.params) > 0:
+			params = []
+			for n,v in self.params.items():
+				params.append(b"=".join([n,v]))
+
+			r = r + b";" + b";".join(params)
 		return r
 
 class URI(object):
