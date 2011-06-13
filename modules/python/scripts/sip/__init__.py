@@ -37,7 +37,6 @@
 import logging
 import time
 import random
-import hashlib
 import os
 import errno
 import datetime
@@ -57,32 +56,10 @@ g_default_loop = pyev.default_loop()
 logger = logging.getLogger('sip')
 logger.setLevel(logging.DEBUG)
 
-"""
-# Shortcut to sip config
-g_sipconfig = g_dionaea.config()['modules']['python']['sip']
-"""
-
 _SipSession_sustain_timeout = 20
 _SipCall_sustain_timeout = 20
 
 g_sipconfig = SipConfig(g_dionaea.config()['modules']['python'].get("sip", {}))
-
-"""
-# Make "yes"/"no" from config file into boolean value
-if g_sipconfig['use_authentication'].lower() == 'no':
-	g_sipconfig['use_authentication'] = False
-else:
-	g_sipconfig['use_authentication'] = True
-
-if g_sipconfig['record_rtp'].lower() == 'no':
-	g_sipconfig['record_rtp'] = False
-else:
-	g_sipconfig['record_rtp'] = True
-"""
-
-# Shortcut hashing function
-def hash(s):
-	return hashlib.md5(s.encode('utf-8')).hexdigest()
 
 # SIP headers have short forms
 shortHeaders = {"call-id": "i",
@@ -480,7 +457,7 @@ class SipCall(connection):
 
 		else:
 			# Authenticate ACK
-			self.__authenticate(headers)
+			#self.__authenticate(headers)
 
 			logger.info("SIP session established (session {})".format(
 				self.__callId))
@@ -523,7 +500,7 @@ class SipCall(connection):
 		if self.__state != SipCall.ACTIVE_SESSION:
 			logger.warn("BYE received but not in active session mode")
 		else:
-			self.__authenticate(headers)
+			#self.__authenticate(headers)
 
 			# Send OK response to other client
 			msgLines = []
@@ -542,95 +519,6 @@ class SipCall(connection):
 			self.__state = SipCall.NO_SESSION
 			self._rtpStream.close()
 			self._rtpStream = None
-
-	def __authenticate(self, headers):
-		global g_sipconfig
-
-		if not g_sipconfig['use_authentication']:
-			logger.debug("Skipping authentication")
-			return
-
-		logger.debug("'Authorization' in SIP headers: {}".format(
-			'authorization' in headers))
-
-		def sendUnauthorized(nonce):
-			msgLines = []
-			msgLines.append('SIP/2.0 ' + RESPONSE[UNAUTHORIZED])
-			msgLines.append("Via: " + self.__sipVia)
-			msgLines.append("Max-Forwards: 70")
-			msgLines.append("To: " + self.__sipTo)
-			msgLines.append("From: " + self.__sipFrom)
-			msgLines.append("Call-ID: {}".format(self.__callId))
-			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipContact)
-			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-			msgLines.append('WWW-Authenticate: Digest ' + \
-				'realm="{}@{}",'.format(g_sipconfig['user'],
-					g_sipconfig['domain']) + \
-				'nonce="{}"'.format(nonce))
-			self.send('\n'.join(msgLines))
-
-		if "authorization" not in headers:
-			# Calculate new nonce for authentication based on current time
-			nonce = hash("{}".format(time.time()))
-
-			# Send 401 Unauthorized response
-			sendUnauthorized(nonce)
-
-			raise AuthenticationError("Request was unauthenticated")
-		else:
-			# Check against config file
-			authMethod, authLine = headers['authorization'].split(' ', 1)
-			if authMethod != 'Digest':
-				logger.warn("Authorization method is not Digest")
-				raise AuthenticationError("Method is not Digest")
-
-			# Get Authorization header parts (a="a", b="b", c="c", ...) and put
-			# them in a dictionary for easy lookup
-			authLineParts = [x.strip(' \t\r\n') for x in authLine.split(',')]
-			authLineDict = {}
-			for x in authLineParts:
-				parts = x.split('=')
-				authLineDict[parts[0]] = parts[1].strip(' \n\r\t"\'')
-
-			logger.debug("Authorization dict: {}".format(authLineDict))
-
-			if 'nonce' not in authLineDict:
-				logger.warn("Nonce missing from authorization header")
-				raise AuthenticationError("Nonce missing")
-
-			if 'response' not in authLineDict:
-				logger.warn("Response missing from authorization header")
-				raise AuthenticationError("Response missing")
-
-			# The calculation of the expected response is taken from
-			# Sipvicious (c) Sandro Gaucci
-			realm = "{}@{}".format(g_sipconfig['user'], g_sipconfig['domain'])
-			uri = "sip:" + realm
-			a1 = hash("{}:{}:{}".format(
-				g_sipconfig['user'], realm, g_sipconfig['secret']))
-			a2 = hash("INVITE:{}".format(uri))
-			expected = hash("{}:{}:{}".format(a1, authLineDict['nonce'], a2))
-
-			logger.debug("a1: {}".format(a1))
-			logger.debug("a2: {}".format(a2))
-			logger.debug("expected: {}".format(expected))
-
-			# Report authentication incident
-			i = incident("dionaea.modules.python.sip.authentication")
-			i.authenticationSuccessful = expected == authLineDict['response']
-			i.realm = realm
-			i.uri = uri
-			i.nonce = authLineDict['nonce']
-			i.challengeResponse = authLineDict['response']
-			i.expected = expected
-			i.report()
-
-			if expected != authLineDict['response']:
-				sendUnauthorized(authLineDict['nonce'])
-				raise AuthenticationError("Authorization failed")
-
-			logger.info("Authorization succeeded")
 
 class SipServer(connection):
 	"""Only UDP connections are supported at the moment"""
@@ -967,7 +855,27 @@ class SipSession(connection):
 				self.send(res.dumps())
 				return
 
-		# ToDo: password
+		"""
+
+
+			# Report authentication incident
+			i = incident("dionaea.modules.python.sip.authentication")
+			i.authenticationSuccessful = expected == authLineDict['response']
+			i.realm = realm
+			i.uri = uri
+			i.nonce = authLineDict['nonce']
+			i.challengeResponse = authLineDict['response']
+			i.expected = expected
+			i.report()
+
+			if expected != authLineDict['response']:
+				sendUnauthorized(authLineDict['nonce'])
+				raise AuthenticationError("Authorization failed")
+
+			logger.info("Authorization succeeded")
+
+		"""
+
 		user = User(user_id, branch)
 		reg_manager.register(user)
 
