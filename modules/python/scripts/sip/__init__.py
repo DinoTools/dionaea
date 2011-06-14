@@ -214,7 +214,7 @@ class RtpUdpStream(connection):
 class SipCall(connection):
 	"""Usually, a new SipSession instance is created when the SIP server
 	receives an INVITE message"""
-	NO_SESSION, SESSION_SETUP, ACTIVE_SESSION, SESSION_TEARDOWN, INVITE, INVITE_TRYING, INVITE_RINGING, CALL = range(8)
+	NO_SESSION, SESSION_SETUP, ACTIVE_SESSION, SESSION_TEARDOWN, INVITE, INVITE_TRYING, INVITE_RINGING, INVITE_CANCEL, CALL = range(9)
 
 	def __init__(self, session, conInfo, rtpPort, invite_message):
 		logger.debug("SipCall {} session {} ".format(self, session))
@@ -228,7 +228,7 @@ class SipCall(connection):
 		self.__remote_rtp_port = rtpPort
 		self.__msg = invite_message
 		self.__call_id = invite_message.headers.get(b"call-id").value
-		self._rtpStream = None
+		self._rtp_stream = None
 
 		self.local.host = self.__session.local.host
 		self.local.port = self.__session.local.port
@@ -447,44 +447,44 @@ class SipCall(connection):
 		return 0
 
 	def handle_ACK(self, msg_ack):
-		#msg = msg_ack.create_response(200)
-		#self.send(msg.dumps())
-		return
+		# does this ACK belong to a CANCEL request?
+		if not self.__state == SipCall.INVITE_CANCEL:
+			logger.info("No method to cancel")
+			return
 
+		cseq = self.__msg.headers.get(b"cseq").get_raw()
+		cseq_ack = msg_ack.headers.get(b"cseq").get_raw()
 
-		if self.__state != SipCall.SESSION_SETUP:
-			logger.warn("ACK received but not in session setup mode")
+		# does this ACK belong to this session?
+		if cseq.seq != cseq_ack.seq:
+			logger.info("Sequence number doesn't match INVITE id {}; ACK id {}".format(cseq.seq, cseq_ack.seq))
+			return
 
-		else:
-			# Authenticate ACK
-			#self.__authenticate(headers)
+		self.close()
+		return True
 
-			logger.info("SIP session established (session {})".format(
-				self.__callId))
-
-			# Set current state to active (ready for multimedia stream)
-			self.__state = SipCall.ACTIVE_SESSION
-
-			# Send 200 OK response
-			msgLines = []
-			msgLines.append("SIP/2.0 " + RESPONSE[OK])
-			msgLines.append("Via: " + self.__sipVia)
-			msgLines.append("Max-Forwards: 70")
-			msgLines.append("To: " + self.__sipTo)
-			msgLines.append("From: " + self.__sipFrom)
-			msgLines.append("Call-ID: {}".format(self.__callId))
-			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipContact)
-			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-			self.send('\n'.join(msgLines))
 
 	def handle_CANCEL(self, msg_cancel):
 		# Todo:
 		#self.__authenticate(headers)
-		if not (self.__state == INVITE or self.__state == INVITE_TRYING or self.__state == INVITE_RINGING):
+		if not (self.__state == SipCall.INVITE or self.__state == SipCall.INVITE_TRYING or self.__state == SipCall.INVITE_RINGING):
+			logger.info("No method to cancel")
 			return
 
+		cseq = self.__msg.headers.get(b"cseq").get_raw()
+		cseq_cancel = msg_cancel.headers.get(b"cseq").get_raw()
+
+		if cseq.seq != cseq_cancel.seq:
+			logger.info("Sequence number doesn't match INVITE id {}; CANCEL id {}".format(cseq.seq, cseq_cancel.seq))
+			return
+
+		self.__state = SipCall.INVITE_CANCEL
+
 		self._timers["invite_handler"].stop()
+
+		# RFC3261 send 487 Request Terminated after cancel
+		# old RFC2543 don't send 487
+		#ToDo: use timeout to close the session
 		msg = self.__msg.create_response(487)
 		self.send(msg.dumps())
 		msg = msg_cancel.create_response(200)
@@ -517,8 +517,8 @@ class SipCall(connection):
 
 			# A BYE ends the session immediately
 			self.__state = SipCall.NO_SESSION
-			self._rtpStream.close()
-			self._rtpStream = None
+			self._rtp_stream.close()
+			self._rtp_stream = None
 
 class SipServer(connection):
 	"""Only UDP connections are supported at the moment"""
@@ -684,6 +684,81 @@ class SipSession(connection):
 		d = res.dumps()
 		self.send(res.dumps())
 
+
+	def handle_ACK(self, msg):
+		logger.info("Received ACK")
+
+		#if self.__checkForMissingHeaders(headers):
+		#	return
+
+		# Check if session (identified by Call-ID) exists
+		# ToDo: check if call-id header exist
+		call_id = msg.headers.get(b"call-id").value
+		print(self._callids)
+		print(self)
+		if call_id not in self._callids:
+			logger.warn("Given Call-ID does not belong to any session: exit")
+			# ToDo: error
+			return
+
+		try:
+			# Handle incoming ACKs depending on current state
+			self._callids[call_id].handle_ACK(msg)
+		except AuthenticationError:
+			# ToDo error handling
+			logger.warn("Authentication failed for ACK request")
+
+
+	def handle_BYE(self, msg):
+		logger.info("Received BYE")
+
+		#if self.__checkForMissingHeaders(headers):
+		#	return
+
+		# Check if session (identified by Call-ID) exists
+		call_id = msg.headers.get(b"call-id").value
+		if call_id not in self._callids:
+			logger.warn("Given Call-ID does not belong to any session: exit")
+			# ToDo: error
+			return
+
+		try:
+			# Handle incoming BYE request depending on current state
+			self._callids[call_id].handle_BYE(msg)
+		except AuthenticationError:
+			# ToDo: handle
+			logger.warn("Authentication failed for BYE request")
+
+
+	def handle_CANCEL(self, msg):
+		logger.info("Received CANCEL")
+
+		# Check mandatory headers
+		#if self.__checkForMissingHeaders(headers):
+		#	return
+
+		# Get Call-Id and check if there's already a SipSession
+		call_id = msg.headers.get(b"call-id").value
+
+		cseq = msg.headers.get(b"cseq").get_raw()
+
+		#print("-----------------------------cseq", cseq.seq, cseq.method)
+
+		#if cseq.method == b"INVITE" or cseq.method == b"ACK":
+		# Find SipSession and delete it
+		print("---",call_id, self._callids)
+		if call_id not in self._callids:
+			logger.warn(
+				"CANCEL request does not match any existing SIP session")
+			return
+		try:
+			self._callids[call_id].handle_CANCEL(msg)
+		except AuthenticationError:
+			logger.warn("Authentication failed for CANCEL request")
+
+		return
+
+
 	def handle_INVITE(self, msg):
 		global g_sipconfig
 
@@ -770,28 +845,6 @@ class SipSession(connection):
 			new_call.close()
 			del new_call
 
-	def handle_ACK(self, msg):
-		logger.info("Received ACK")
-
-		#if self.__checkForMissingHeaders(headers):
-		#	return
-
-		# Check if session (identified by Call-ID) exists
-		# ToDo: check if call-id header exist
-		call_id = msg.headers.get(b"call-id").value
-		print(self._callids)
-		print(self)
-		if call_id not in self._callids:
-			logger.warn("Given Call-ID does not belong to any session: exit")
-			# ToDo: error
-			return
-
-		try:
-			# Handle incoming ACKs depending on current state
-			self._callids[call_id].handle_ACK(msg)
-		except AuthenticationError:
-			# ToDo error handling
-			logger.warn("Authentication failed for ACK request")
 
 	def handle_OPTIONS(self, msg):
 		logger.info("Received OPTIONS")
@@ -803,6 +856,7 @@ class SipSession(connection):
 		res.headers.append(rfc3261.Header("en", "Accept-Language"))
 
 		self.send(res.dumps())
+
 
 	def handle_REGISTER(self, msg):
 		"""
@@ -842,6 +896,7 @@ class SipSession(connection):
 				return
 
 			auth_response = rfc2617.Authentication(header_auth[0].value)
+			print("-----auth", self._auth)
 			if self._auth.check(u.username, "test", "REGISTER", auth_response) == False:
 				self._auth = rfc2617.Authentication(
 					method = "digest",
@@ -881,73 +936,6 @@ class SipSession(connection):
 
 		res = msg.create_response(200)
 		self.send(res.dumps())
-
-
-	def handle_BYE(self, msg):
-		logger.info("Received BYE")
-
-		#if self.__checkForMissingHeaders(headers):
-		#	return
-		
-		# Check if session (identified by Call-ID) exists
-		call_id = msg.headers.get(b"call-id").value
-		if call_id not in self._callids:
-			logger.warn("Given Call-ID does not belong to any session: exit")
-			# ToDo: error
-			return
-
-		try:
-			# Handle incoming BYE request depending on current state
-			self._callids[call_id].handle_BYE(msg)
-		except AuthenticationError:
-			# ToDo: handle
-			logger.warn("Authentication failed for BYE request")
-
-	def sip_CANCEL(self, requestLine, headers, body):
-		logger.info("Received CANCEL")
-
-		# Check mandatory headers
-		if self.__checkForMissingHeaders(headers):
-			return
-
-		# Get Call-Id and check if there's already a SipSession
-		callId = headers['call-id']
-
-		# Get CSeq to find out which request to cancel
-		cseqParts = headers['cseq'].split(' ')
-		cseqMethod = cseqParts[1]
-
-		if cseqMethod == "INVITE" or cseqMethod == "ACK":
-			# Find SipSession and delete it
-			if callId not in self._callids:
-				logger.warn(
-					"CANCEL request does not match any existing SIP session")
-				return
-			try:
-				self._callids[callId].handle_CANCEL(headers)
-			except AuthenticationError:
-				logger.warn("Authentication failed for CANCEL request")
-				return
-			else:
-				# No RTP connection has been made yet so deleting the session
-				# instance is sufficient
-				self.__session[callId].close()
-		
-		# Construct CANCEL response
-		global g_sipconfig
-		msgLines = []
-		msgLines.append("SIP/2.0 " + RESPONSE[OK])
-		msgLines.append("Via: SIP/2.0/UDP {}:{}".format(
-			g_sipconfig['domain'], g_sipconfig['port']))
-		msgLines.append("To: " + headers['from'])
-		msgLines.append("From: {0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], g_sipconfig['domain']))
-		msgLines.append("Call-ID: " + headers['call-id'])
-		msgLines.append("CSeq: " + headers['cseq'])
-		msgLines.append("Contact: {0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], self.local.host))
-
-		self.send('\n'.join(msgLines))
 
 
 	def sip_RESPONSE(self, statusLine, headers, body):
