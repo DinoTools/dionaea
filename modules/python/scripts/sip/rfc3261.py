@@ -77,6 +77,38 @@ status_messages = {
 	606: b"Not Acceptable",
 }
 
+class CSeq(object):
+	"""
+	Hold the value of an CSeq attribute
+
+	>>> cseq1 = CSeq(b"100 INVITE")
+	>>> cseq2 = CSeq(seq = 100, method = b"INVITE")
+	>>> print(cseq1.dumps(), cseq2.dumps(), cseq1.seq, cseq1.method)
+	b'100 INVITE' b'100 INVITE' 100 b'INVITE'
+	"""
+	def __init__(self, data = None, seq = None, method = None):
+		# do we need to convert the data?
+		if seq != None and type(seq) == str:
+			seq = int(seq)
+		if type(method) == str:
+			method = bytes(method, "utf-8")
+
+		self.seq = seq
+		self.method = method
+		if data != None:
+			self.loads(data)
+
+	def loads(self, data):
+		if type(data) == str:
+			data = bytes(data, "utf-8")
+
+		d = data.partition(b" ")
+		self.seq = int(d[0].decode("utf-8"))
+		self.method = d[2].strip()
+
+	def dumps(self):
+		return int2bytes(self.seq) + b" " + self.method
+
 
 class Header(object):
 	"""
@@ -135,6 +167,11 @@ class Header(object):
 			# ToDo: use l to parse the rest
 			self._value = addr
 			return l
+
+		if name == b"cseq":
+			v = CSeq(data)
+			self._value = v
+			return
 
 		if name == b"via":
 			v = Via(data)
