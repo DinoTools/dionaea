@@ -385,6 +385,7 @@ class Message(object):
 		res.headers.append(self.headers.get(b"from", None), True, b"from")
 		res.headers.append(self.headers.get(b"to", None), True, b"to")
 		#res.headers.append(self.headers.get(b"to", None), True, b"contact")
+		res.headers.append(Header(b"INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, SUBSCRIBE, NOTIFY, INFO", b"Allow"))
 
 		res.headers.append(Header(0, b"Content-Length"))
 

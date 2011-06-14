@@ -491,34 +491,15 @@ class SipCall(connection):
 		self.send(msg.dumps())
 
 	def handle_BYE(self, msg_bye):
+		if not self.__state == SipCall.INVITE_CANCEL:
+			logger.info("BYE without call")
+			return
+
 		msg = msg_bye.create_response(200)
 		self.send(msg.dumps())
+		self.close()
 		return
 
-		global g_sipconfig
-
-		if self.__state != SipCall.ACTIVE_SESSION:
-			logger.warn("BYE received but not in active session mode")
-		else:
-			#self.__authenticate(headers)
-
-			# Send OK response to other client
-			msgLines = []
-			msgLines.append("SIP/2.0 200 OK")
-			msgLines.append("Via: " + self.__sipVia)
-			msgLines.append("Max-Forwards: 70")
-			msgLines.append("To: " + self.__sipTo)
-			msgLines.append("From: " + self.__sipFrom)
-			msgLines.append("Call-ID: {}".format(self.__callId))
-			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipContact)
-			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-			self.send('\n'.join(msgLines))
-
-			# A BYE ends the session immediately
-			self.__state = SipCall.NO_SESSION
-			self._rtp_stream.close()
-			self._rtp_stream = None
 
 class SipServer(connection):
 	"""Only UDP connections are supported at the moment"""
@@ -891,7 +872,7 @@ class SipSession(connection):
 				)
 				res = msg.create_response(401)
 				res.headers.append(rfc3261.Header(self._auth, b"www-authenticate"))
-				res.headers.append(rfc3261.Header(b"INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, SUBSCRIBE, NOTIFY, INFO", b"Allow"))
+#				res.headers.append(rfc3261.Header(b"INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, SUBSCRIBE, NOTIFY, INFO", b"Allow"))
 				self.send(res.dumps())
 				return
 
@@ -906,7 +887,6 @@ class SipSession(connection):
 				)
 				res = msg.create_response(401)
 				res.headers.append(rfc3261.Header(self._auth, b"www-authenticate"))
-				res.headers.append(rfc3261.Header(b"INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, SUBSCRIBE, NOTIFY, INFO", b"Allow"))
 				self.send(res.dumps())
 				return
 
