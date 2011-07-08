@@ -348,8 +348,14 @@ class SipCall(connection):
 
 			# Send 200 OK and pick up the phone
 			msg = self.__msg.create_response(200)
-			# ToDo: use our own sdp definition
-			msg.sdp = rfc4566.SDP(self.__msg.sdp.dumps())
+			# ToDo: add IP6 support
+			msg.sdp = rfc4566.SDP(
+				g_sipconfig.get_sdp_by_name(
+					self._user.sdp,
+					unicast_address = self.local.host,
+					addrtype = "IP4"
+				)
+			)
 			"""
 			msgLines = []
 			msgLines.append("SIP/2.0 " + RESPONSE[RINGING])

@@ -269,6 +269,7 @@ modules = {
 					name = "my server"
 					personality = "generic"
 					serve = ["10.0.0.1"]
+					default_sdp = "default"
 				}
 
 				*/
