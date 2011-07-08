@@ -54,7 +54,7 @@ class SipConfig(object):
 
 		if not self._table_exists("users"):
 			self._cur.execute("CREATE TABLE IF NOT EXISTS users (username STRING, password STRING, personality STRING, pickup_delay_min INTEGER, pickup_delay_max INTEGER, action STRING, sdp STRING)")
-			self._cur.execute("INSERT INTO users (username, password, personality, pickup_delay_min, pickup_delay_max, action, sdp) VALUES ('[1-9][0-9]*', '', 'default', 5, 10, 'default', 'default')")
+			self._cur.execute("INSERT INTO users (username, password, personality, pickup_delay_min, pickup_delay_max, action, sdp) VALUES ('^[1-9][0-9]{0,4}$', '', 'default', 5, 10, 'default', 'default')")
 
 		if not self._table_exists("sdp"):
 			self._cur.execute("CREATE TABLE IF NOT EXISTS sdp (name STRING, sdp STRING)")
