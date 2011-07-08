@@ -125,8 +125,13 @@ class SipConfig(object):
 		regexp("200", "500")
 		conn.create_function("regexp", 2, regexp)
 
+		if username == None:
+			username = b""
+
+		username = username.decode("utf-8")
+
 		cur = conn.cursor()
-		cur.execute("SELECT username, password, pickup_delay_min, pickup_delay_max, action, sdp FROM users WHERE personality = ? AND ? REGEXP username", (personality, username.decode("utf-8")))
+		cur.execute("SELECT username, password, pickup_delay_min, pickup_delay_max, action, sdp FROM users WHERE personality = ? AND ? REGEXP username", (personality, username))
 		row = cur.fetchone()
 
 		if row == None:
