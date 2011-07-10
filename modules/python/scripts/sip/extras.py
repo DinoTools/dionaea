@@ -84,6 +84,14 @@ class SipConfig(object):
 
 		self.actions = config.get("actions", {})
 
+		# ToDo: read values from config
+		# set default values
+		self.timers = {
+			"idle": {
+				"timeout": 30
+			}
+		}
+
 		rtp = config.get("rtp", {})
 
 		rtp_enable = rtp.get("enable", "no")
@@ -111,6 +119,17 @@ class SipConfig(object):
 		# ToDo:
 		#return (func, params)
 		pass
+
+
+	def get_timer(self, name):
+		if not name in self.timers:
+			return False
+
+		timer = self.timers[name]
+
+		return Timer(
+			timeout = timer["timeout"]
+		)
 
 
 	def get_user_by_username(self, personality, username):
@@ -179,6 +198,14 @@ class SipConfig(object):
 		sdp = data[0]
 		sdp = sdp.format(**params)
 		return bytes(sdp, "utf-8")
+
+
+class Timer(object):
+	def __init__(
+		self,
+		timeout
+	):
+		self.timeout = timeout
 
 
 class User(object):
