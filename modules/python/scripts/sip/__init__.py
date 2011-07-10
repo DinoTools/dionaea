@@ -248,18 +248,6 @@ class SipCall(connection):
 		i.con = self
 		i.report()
 
-		"""
-		# Generate static values for SIP messages
-		global g_sipconfig
-		self.__sipTo = inviteHeaders['from']
-		self.__sipFrom = "{0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], g_sipconfig['domain'])
-		self.__sipVia = "SIP/2.0/UDP {}:{}".format(
-			g_sipconfig['domain'], g_sipconfig['port'])
-		self.__sipContact = "{0} <sip:{0}@{1}>".format(
-			g_sipconfig['user'], self.__session.local.host)
-
-		"""
 		global _SipCall_sustain_timeout
 
 		# Global timers
@@ -275,7 +263,7 @@ class SipCall(connection):
 	def __handle_invite(self, watcher, events):
 		print("---------handle invite")
 		if self.__state == SipCall.INVITE:
-			print("Send trying")
+			logger.debug("Send trying")
 			# ToDo: Check authentication
 			#self.__authenticate(headers)
 
@@ -301,9 +289,9 @@ class SipCall(connection):
 			print(msg.dumps())
 			self.send(msg.dumps())
 
-			# ToDo: random
 			self.__state = SipCall.INVITE_TRYING
-			self._timers["invite_handler"].set(1, 0)
+			# Wait up to two seconds
+			self._timers["invite_handler"].set(random.random() * 2, 0)
 			self._timers["invite_handler"].start()
 			return
 
