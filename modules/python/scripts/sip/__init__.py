@@ -56,7 +56,6 @@ g_default_loop = pyev.default_loop()
 logger = logging.getLogger('sip')
 logger.setLevel(logging.DEBUG)
 
-_SipSession_sustain_timeout = 20
 _SipCall_sustain_timeout = 20
 
 g_sipconfig = SipConfig(g_dionaea.config()['modules']['python'].get("sip", {}))
@@ -98,10 +97,29 @@ class SdpParsingError(Exception):
 #########
 
 class User(object):
-	def __init__(self, user_id, branch):
+	def __init__(self, user_id, **kwargs):
 		self.id = user_id
-		self.branch = branch
-		self.expires = 3600
+		self.branch = kwargs.get("branch", None)
+		self.expires = kwargs.get("expires", 3600)
+		self._msg = kwargs.get("msg", None)
+
+		if self._msg != None:
+			self.loads(self._msg)
+
+		self.expire_time = datetime.datetime.now(), datetime.datetime.now() + datetime.timedelta(0, self.expires)
+
+	def loads(self, msg):
+		# get branch
+		vias = msg.headers.get(b"via", [])
+		via = vias[-1]
+		self.branch = via.get_raw().get_param(b"branch")
+
+		# get expires
+		try:
+			self.expires = int(msg.headers.get(b"expires"))
+		except:
+			pass
+
 
 class RegistrationManager(object):
 	def __init__(self):
@@ -115,7 +133,7 @@ class RegistrationManager(object):
 		self._users[user.id].append(user)
 
 
-reg_manager = RegistrationManager()
+g_reg_manager = RegistrationManager()
 
 class RtpUdpStream(connection):
 	"""RTP stream that can send data and writes the whole conversation to a
@@ -485,7 +503,7 @@ class SipCall(connection):
 		self.send(msg.dumps())
 
 	def handle_BYE(self, msg_bye):
-		if not self.__state == SipCall.INVITE_CANCEL:
+		if not self.__state == SipCall.CALL:
 			logger.info("BYE without call")
 			return
 
@@ -541,14 +559,17 @@ class SipSession(connection):
 		# Setup timers
 		global g_default_loop
 
-		global _SipSession_sustain_timeout
-		self.timers = [
-			pyev.Timer(3, 0, g_default_loop, self.__handle_idle_timeout), # idle
-			pyev.Timer(_SipSession_sustain_timeout, 0, g_default_loop, self.__handle_sustain_timeout) # sustain
-		]
+		self._timers = {
+			"idle": pyev.Timer(
+				g_sipconfig.get_timer("idle").timeout,
+				g_sipconfig.get_timer("idle").timeout,
+				g_default_loop,
+				self.__handle_idle_timeout
+			)
+		}
 
-		# start sustain timer
-		self.timers[1].start()
+		# start idle timer for this session
+		self._timers["idle"].start()
 
 		# we have to create a 'special' bistream for this
 		# as all sip traffic shares a single connection
@@ -558,12 +579,14 @@ class SipSession(connection):
 
 
 	def __handle_idle_timeout(self, watcher, events):
-#		logger.warn("self {} SipSession IDLE TIMEOUT watcher".format(self))
-		pass
+		logger.debug("self {} SipSession IDLE TIMEOUT watcher".format(self))
 
-	def __handle_sustain_timeout(self, watcher, events):
-		logger.debug("SipSession.__handle_sustain_timeout self {} watcher {}".format(self, watcher))
+		# are there active calls
+		if len(self._callids) > 0:
+			return
+
 		self.close()
+
 
 	def handle_disconnect(self):
 		logger.debug("SipSession.handle_disconnect {}".format(self))
@@ -589,14 +612,14 @@ class SipSession(connection):
 		for callid in [x for x in self._callids]:
 #			logger.debug("closing callid {} call {}".format(callid, self._callids[callid]))
 			self._callids[callid].close()
-		self._callids = None
+		self._callids = {}
 		
 		# stop timers
-		for t in self.timers:
-			logger.debug("SipSession timer {} active {} pending {}".format(t,t.active,t.pending))
-			if t.active == True or t.pending == True:
+		for name, timer in self._timers.items():
+			logger.debug("SipSession timer {} name {} active {} pending {}".format(timer,name, timer.active,timer.pending))
+			if timer.active == True or t.pending == True:
 #				logger.debug("SipSession Stopping {}".format(t))
-				t.stop()
+				timer.stop()
 
 		connection.close(self)
 
@@ -638,6 +661,9 @@ class SipSession(connection):
 #		i.report()
 
 		"""
+
+		# reset idle timer
+		self._timers["idle"].reset()
 
 		try:
 			func = getattr(self, "handle_" + msg.method.decode("utf-8").upper(), None)
@@ -844,12 +870,6 @@ class SipSession(connection):
 			# ToDo: return error
 			return
 
-		vias = msg.headers.get(b"via", [])
-
-		via = vias[-1]
-
-		branch = via.get_raw().get_param(b"branch")
-
 		to = msg.headers.get(b"to")
 		user_id = to.get_raw().uri.user
 
@@ -858,6 +878,7 @@ class SipSession(connection):
 		if u.password != None:
 			header_auth = msg.headers.get(b"authorization", None)
 			if header_auth == None or self._auth == None:
+				# ToDo: change nonce
 				self._auth = rfc2617.Authentication(
 					method = "digest",
 					algorithm = "md5",
@@ -866,13 +887,14 @@ class SipSession(connection):
 				)
 				res = msg.create_response(401)
 				res.headers.append(rfc3261.Header(self._auth, b"www-authenticate"))
-#				res.headers.append(rfc3261.Header(b"INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, SUBSCRIBE, NOTIFY, INFO", b"Allow"))
 				self.send(res.dumps())
 				return
 
 			auth_response = rfc2617.Authentication(header_auth[0].value)
 			print("-----auth", self._auth)
+			# ToDo: change realm
 			if self._auth.check(u.username, "test", "REGISTER", auth_response) == False:
+				# ToDo: change nonce
 				self._auth = rfc2617.Authentication(
 					method = "digest",
 					algorithm = "md5",
@@ -905,8 +927,8 @@ class SipSession(connection):
 
 		"""
 
-		user = User(user_id, branch)
-		reg_manager.register(user)
+		user = User(user_id, msg = msg)
+		g_reg_manager.register(user)
 
 		res = msg.create_response(200)
 		self.send(res.dumps())
