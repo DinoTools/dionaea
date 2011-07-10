@@ -381,10 +381,21 @@ class Message(object):
 		for name in [b"cseq", b"call-id", b"via"]:
 			res.headers.append(self.headers.get(name, None), True)
 
-		#ToDo: recheck this!!!!
+		#copy headers
 		res.headers.append(self.headers.get(b"from", None), True, b"from")
 		res.headers.append(self.headers.get(b"to", None), True, b"to")
-		#res.headers.append(self.headers.get(b"to", None), True, b"contact")
+
+		# create contact header
+		addr = self.headers.get(b"to", None)._value
+		uri = rfc2396.URI()
+		uri.scheme = addr.uri.scheme
+		uri.user = addr.uri.user
+		uri.host = addr.uri.host
+		uri.port = addr.uri.port
+		contact = Header(rfc2396.Address(uri), b"contact")
+		res.headers.append(contact)
+
+		# ToDo:
 		res.headers.append(Header(b"INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, SUBSCRIBE, NOTIFY, INFO", b"Allow"))
 
 		res.headers.append(Header(0, b"Content-Length"))
