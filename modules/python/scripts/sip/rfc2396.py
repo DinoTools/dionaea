@@ -21,10 +21,15 @@ class Address(object):
 	]
 
 	def __init__(self, value = None):
+		self.display_name = None
+		self.uri = None
 		self.must_quote = False
 		self.params = {}
-		if value != None:
+
+		if type(value) == bytes or type(value) == str:
 			self.loads(value)
+		elif type(value) == URI:
+			self.uri = value
 
 	def __repr__(self):
 		return repr(self.dumps())
