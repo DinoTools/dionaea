@@ -7,10 +7,10 @@ except:
 
 class Address(object):
 	"""
-	>>> a1 = Address(b"sip:john@example.org")
-	>>> b1 = Address(b"<sip:john@example.org>")
-	>>> c1 = Address(b'John Doe <sip:john@example.org>')
-	>>> d1 = Address(b'"John Doe" <sip:john@example.org>')
+	>>> a1 = Address(value = b"sip:john@example.org")
+	>>> b1 = Address(value = b"<sip:john@example.org>")
+	>>> c1 = Address(value = b'John Doe <sip:john@example.org>')
+	>>> d1 = Address(value = b'"John Doe" <sip:john@example.org>')
 	>>> print(a1.dumps() == b1.dumps() and c1.dumps() == d1.dumps())
 	True
 	"""
@@ -20,11 +20,12 @@ class Address(object):
 		re.compile(b'^[\ \t]*(?P<name>)(?P<uri>[^;]+)( *; *(?P<params>.*))?')
 	]
 
-	def __init__(self, value = None):
-		self.display_name = None
-		self.uri = None
-		self.must_quote = False
+	def __init__(self, **kwargs):
+		self.display_name = kwargs.get("display_name", None)
+		self.uri = kwargs.get("uri", None)
+		self.must_quote = kwargs.get("must_quote", False)
 		self.params = {}
+		value = kwargs.get("value", None)
 
 		if type(value) == bytes or type(value) == str:
 			self.loads(value)
@@ -45,7 +46,7 @@ class Address(object):
 			m = regex.match(value)
 			if m:
 				self.display_name = m.groups()[0].strip()
-				self.uri = URI(m.groups()[1].strip())
+				self.uri = URI(value = m.groups()[1].strip())
 				params = m.groupdict()["params"]
 				if params == None:
 					return m.end()
@@ -83,13 +84,13 @@ class Address(object):
 
 class URI(object):
 	"""
-	>>> print(URI(b"sip:john@example.org"))
+	>>> print(URI(value = b"sip:john@example.org"))
 	sip:john@example.org
-	>>> u = URI(b"sip:foo:bar@example.org:5060;transport=udp;novalue;param=pval?header=val&second=sec_val")
+	>>> u = URI(value = b"sip:foo:bar@example.org:5060;transport=udp;novalue;param=pval?header=val&second=sec_val")
 	>>> print(u.scheme, u.user, u.password, u.host, u.port, len(u.params), len(u.headers))
 	b'sip foo bar example.org 5060 3 2'
 	>>> d = u.dumps()
-	>>> u = URI(d)
+	>>> u = URI(value = d)
 	>>> print(u.dumps() == d)
 	True
 	"""
@@ -103,14 +104,15 @@ class URI(object):
 		+ b"(?:\?(?P<headers>.*))?$" # headers
 	)
 
-	def __init__(self, value = None):
-		self.scheme = None
-		self.user = None
-		self.password = None
-		self.host = None
-		self.port = None
-		self.params = {}
-		self.headers = []
+	def __init__(self, **kwargs):
+		self.scheme = kwargs.get("scheme", None)
+		self.user = kwargs.get("user", None)
+		self.password = kwargs.get("password", None)
+		self.host = kwargs.get("host", None)
+		self.port = kwargs.get("port", None)
+		self.params = kwargs.get("params", {})
+		self.headers = kwargs.get("headers", [])
+		value = kwargs.get("value", None)
 
 		self.loads(value)
 

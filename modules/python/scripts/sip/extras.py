@@ -201,29 +201,17 @@ class SipConfig(object):
 
 
 class Timer(object):
-	def __init__(
-		self,
-		timeout
-	):
-		self.timeout = timeout
+	def __init__(self, **kwargs):
+		self.timeout = kwargs.get("timeout", 30)
 
 
 class User(object):
-	def __init__(
-		self,
-		username,
-		username_regex,
-		password,
-		pickup_delay_min,
-		pickup_delay_max,
-		action,
-		sdp
-	):
-		self.realm = "test"
-		self.username = username
-		self.username_regex = username_regex
-		self.password = password
-		self.pickup_delay_min = pickup_delay_min
-		self.pickup_delay_max = pickup_delay_max
-		self.action = action
-		self.sdp = sdp
+	def __init__(self, **kwargs):
+		self.realm = kwargs.get("realm", "test")
+		self.username = kwargs.get("username", "")
+		self.username_regex = kwargs.get("username_regex", "")
+		self.password = kwargs.get("password", "")
+		self.pickup_delay_min = kwargs.get("pickup_delay_min", 5)
+		self.pickup_delay_max = kwargs.get("pickup_delay_max", 10)
+		self.action = kwargs.get("action", "default")
+		self.sdp = kwargs.get("sdp", "default")

@@ -174,7 +174,7 @@ class Header(object):
 			return
 
 		if name == b"via":
-			v = Via(data)
+			v = Via(value = data)
 			self._value = v
 			return
 
@@ -392,7 +392,7 @@ class Message(object):
 		uri.user = addr.uri.user
 		uri.host = addr.uri.host
 		uri.port = addr.uri.port
-		contact = Header(rfc2396.Address(uri), b"contact")
+		contact = Header(rfc2396.Address(value = uri), b"contact")
 		res.headers.append(contact)
 
 		# ToDo:
@@ -444,7 +444,7 @@ class Message(object):
 			self.response, self.protocol, self.responsetext = int(h2), h1, h3
 		except:
 			# ToDo: parse h2 as uri
-			self.method, self.uri, self.protocol = h1, rfc2396.Address(h2), h3
+			self.method, self.uri, self.protocol = h1, rfc2396.Address(value = h2), h3
 		
 		# ToDo: check protocol
 
@@ -493,14 +493,14 @@ class Via(object):
 	Test strings are taken from RFC3261
 
 	>>> s = b"SIP/2.0/UDP erlang.bell-telephone.com:5060;branch=z9hG4bK87asdks7"
-	>>> v = Via(s)
+	>>> v = Via(value = s)
 	>>> print(v.port, v.address, v.protocol)
 	5060 b'erlang.bell-telephone.com' b'UDP'
 	>>> print(v.get_param(b"branch"))
 	b'z9hG4bK87asdks7'
 	>>> print(s == v.dumps())
 	True
-	>>> v = Via(b"SIP/2.0/UDP 192.0.2.1:5060 ;received=192.0.2.207;branch=z9hG4bK77asjd")
+	>>> v = Via(value = b"SIP/2.0/UDP 192.0.2.1:5060 ;received=192.0.2.207;branch=z9hG4bK77asjd")
 	>>> print(v.port, v.address, v.protocol)
 	5060 b'192.0.2.1' b'UDP'
 	>>> print(v.get_param(b"branch"), v.get_param(b"received"))
@@ -510,14 +510,15 @@ class Via(object):
 	_syntax = re.compile(b"SIP */ *2\.0 */ *(?P<protocol>[a-zA-Z]+) *(?P<address>[^ :;]*) *(:(?P<port>[0-9]+))?( *; *(?P<params>.*))?")
 
 
-	def __init__(self, data = None):
-		self.protocol = None
-		self.address = None
-		self.port = None
-		self._params = []
+	def __init__(self, **kwargs):
+		self.protocol = kwargs.get("protocol", None)
+		self.address = kwargs.get("address", None)
+		self.port = kwargs.get("port", None)
+		self._params = kwargs.get("params", [])
+		value = kwargs.get("value", None)
 
-		if data != None:
-			self.loads(data)
+		if value != None:
+			self.loads(value)
 
 	def dumps(self):
 		ret = b"SIP/2.0/" + self.protocol.upper() + b" " + self.address

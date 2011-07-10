@@ -21,13 +21,13 @@ class Attribute(object):
 	:See: http://tools.ietf.org/html/rfc4566#page-21
 
 	>>> s = b"tool:foo"
-	>>> a = Attribute(s)
+	>>> a = Attribute(value = s)
 	>>> print(a.dumps() == s)
 	True
 	>>> print(a.value, a.attribute)
 	b'foo' b'tool'
 	>>> s = b"sendrecv"
-	>>> a = Attribute(s)
+	>>> a = Attribute(value = s)
 	>>> print(a.dumps() == s)
 	True
 	>>> print(a.attribute)
@@ -36,19 +36,20 @@ class Attribute(object):
 	True
 	"""
 
-	def __init__(self, data = None, attribute = None, value = None):
-		self.attribute = attribute
-		self.value = value
+	def __init__(self, **kwargs):
+		self.attribute = kwargs.get("attribute", None)
+		self.value = kwargs.get("value", None)
+		value = kwargs.get("value", None)
 
-		if data != None:
-			self.loads(data)
+		if value != None:
+			self.loads(value)
 
 		# we need at least a name
 		if self.attribute == None or self.attribute == b"":
 			raise Exception("Error", "Error")
 
-	def loads(self, data):
-		self.attribute, sep, v = data.partition(b":")
+	def loads(self, value):
+		self.attribute, sep, v = value.partition(b":")
 		if v == b"":
 			return
 
@@ -71,9 +72,9 @@ class Attributes(object):
 	def __iter__(self):
 		return iter(self._attributes)
 
-	def append(self, data):
-		if type(data) == bytes:
-			self._attributes.append(Attribute(data))
+	def append(self, value):
+		if type(value) == bytes:
+			self._attributes.append(Attribute(value = value))
 			return
 
 		self._attributes.append(data)
@@ -116,7 +117,7 @@ class Bandwidth(object):
 
 	# Example taken from RFC4566
 	>>> s = b"X-YZ:128"
-	>>> b = Bandwidth(s)
+	>>> b = Bandwidth(value = s)
 	>>> print(b.dumps() == s)
 	True
 	>>> print(b.bwtype)
@@ -125,9 +126,10 @@ class Bandwidth(object):
 	128
 	"""
 
-	def __init__(self, value = None):
-		self.bwtype = None
-		self.bandwidth = None
+	def __init__(self, **kwargs):
+		self.bwtype = kwargs.get("bwtype", None)
+		self.bandwidth = kwargs.get("bandwidth", None)
+		value = kwargs.get("value", None)
 
 		if value != None:
 			self.loads(value)
@@ -163,12 +165,13 @@ class ConnectionData(object):
 	3 127 b'224.2.1.1' b'IP4' b'IN'
 	"""
 
-	def __init__(self, value):
-		self.nettype = None
-		self.addrtype = None
-		self.connection_address = None
-		self.ttl = None
-		self.number_of_addresses = None
+	def __init__(self, **kwargs):
+		self.nettype = kwargs.get("nettype", None)
+		self.addrtype = kwargs.get("addrtype", None)
+		self.connection_address = kwargs.get("connection_address", None)
+		self.ttl = kwargs.get("ttl", None)
+		self.number_of_addresses = kwargs.get("number_of_addresses", None)
+		value = kwargs["value"]
 
 		if value != None:
 			self.loads(value)
@@ -206,25 +209,26 @@ class Media(object):
 	:See: http://tools.ietf.org/html/rfc4566#page-22
 
 	>>> s = b"video 49170/2 RTP/AVP 31"
-	>>> m = Media(s)
+	>>> m = Media(value = s)
 	>>> print(m.dumps() == s)
 	True
 	>>> print(m.fmt, m.proto, m.number_of_ports, m.port, m.media)
 	[b'31'] b'RTP/AVP' 2 49170 b'video'
 	>>> s = b"audio 49170 RTP/AVP 31"
-	>>> m = Media(s)
+	>>> m = Media(value = s)
 	>>> print(m.dumps() == s)
 	True
 	>>> print(m.fmt, m.proto, m.number_of_ports, m.port, m.media)
 	[b'31'] b'RTP/AVP' None 49170 b'audio'
 	"""
 
-	def __init__(self, value = None):
-		self.media = None
-		self.port = None
-		self.number_of_ports = None
-		self.proto = None
-		self.fmt = None
+	def __init__(self, **kwargs):
+		self.media = kwargs.get("media", None)
+		self.port = kwargs.get("port", None)
+		self.number_of_ports = kwargs.get("numer_of_ports", None)
+		self.proto = kwargs.get("proto", None)
+		self.fmt = kwargs.get("fmt", None)
+		value = kwargs.get("value", None)
 		self.attributes = Attributes()
 
 		if value != None:
@@ -346,13 +350,13 @@ class SDP(object):
 			if k == b"v":
 				self._attributes[k] = int(v)
 			elif k == b"o":
-				self._attributes[k] = Origin(v)
+				self._attributes[k] = Origin(value = v)
 			elif k == b"c":
-				self._attributes[k] = ConnectionData(v)
+				self._attributes[k] = ConnectionData(value = v)
 			elif k == b"b":
-				self._attributes[k] = Bandwidth(v)
+				self._attributes[k] = Bandwidth(value = v)
 			elif k == b"t":
-				self._attributes[k] = Timing(v)
+				self._attributes[k] = Timing(value = v)
 			elif k == b"r":
 				# ToDo: parse it
 				self._attributes[k] = v
@@ -372,7 +376,7 @@ class SDP(object):
 			elif k == b"m":
 				if self._attributes[k] == None:
 					self._attributes[k] = []
-				self._attributes[k].append(Media(v))
+				self._attributes[k].append(Media(value = v))
 
 			elif k in self._attributes_allowed:
 				self._attributes[k] = v
@@ -419,9 +423,10 @@ class Timing(object):
 	:See: http://tools.ietf.org/html/rfc4566#page-17
 	"""
 
-	def __init__(self, value = None):
-		self.start_time = None
-		self.stop_time = None
+	def __init__(self, **kwargs):
+		self.start_time = kwargs.get("start_time", None)
+		self.stop_time = kwargs.get("stop_time", None)
+		value = kwargs.get("value", None)
 
 		if value != None:
 			self.loads(value)

@@ -60,28 +60,18 @@ class Authentication(object):
 	_quote = ["realm", "domain", "nonce", "response", "uri"]
 	_noquote = ["algorithm"]
 
-	def __init__(
-		self,
-		data = None,
-		method = "basic",
-		realm = None,
-		domain = None,
-		algorithm = None,
-		nonce = None,
-		response = None,
-		uri = None
-		
-	):
-		self.method = method
-		self.realm = realm
-		self.domain = domain
-		self.algorithm = algorithm
-		self.nonce = nonce
-		self.response = response
-		self.uri = uri
+	def __init__(self, **kwargs):
+		self.method = kwargs.get("method", "basic")
+		self.realm = kwargs.get("realm", None)
+		self.domain = kwargs.get("domain", None)
+		self.algorithm = kwargs.get("algorithm", None)
+		self.nonce = kwargs.get("nonce", None)
+		self.response = kwargs.get("response", None)
+		self.uri = kwargs.get("uri", None)
+		value = kwargs.get("value", None)
 
-		if data != None:
-			self.loads(data)
+		if value != None:
+			self.loads(value)
 
 	def check(self, username, password, method, auth):
 		digest = create_digest(
@@ -99,14 +89,14 @@ class Authentication(object):
 
 		return False
 
-	def loads(self, data):
-		if type(data) == str:
-			data = bytes(data, "utf-8")
+	def loads(self, value):
+		if type(value) == str:
+			value = bytes(value, "utf-8")
 
-		method,data = data.split(b" ",1)
+		method,value = value.split(b" ",1)
 		self.method = method.lower()
 
-		for part in re.split(b" *, *", data):
+		for part in re.split(b" *, *", value):
 			n,s,v = part.partition(b"=")
 			n = n.decode("utf-8")
 			if n in self._quote:

@@ -890,7 +890,7 @@ class SipSession(connection):
 				self.send(res.dumps())
 				return
 
-			auth_response = rfc2617.Authentication(header_auth[0].value)
+			auth_response = rfc2617.Authentication(value = header_auth[0].value)
 			print("-----auth", self._auth)
 			# ToDo: change realm
 			if self._auth.check(u.username, "test", "REGISTER", auth_response) == False:
