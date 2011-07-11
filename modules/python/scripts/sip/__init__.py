@@ -279,9 +279,9 @@ class SipCall(connection):
 		#self._timers["idle"].start()
 
 	def __handle_invite(self, watcher, events):
-		print("---------handle invite")
+		logger.info("Handle invite")
 		if self.__state == SipCall.INVITE:
-			logger.debug("Send trying")
+			logger.debug("Send TRYING")
 			# ToDo: Check authentication
 			#self.__authenticate(headers)
 
@@ -292,19 +292,7 @@ class SipCall(connection):
 				return
 
 			msg = self.__msg.create_response(100)
-			"""
-			msgLines = []
-			msgLines.append("SIP/2.0 " + RESPONSE[RINGING])
-			msgLines.append("Via: " + self.__sipVia)
-			msgLines.append("Max-Forwards: 70")
-			msgLines.append("To: " + self.__sipTo)
-			msgLines.append("From: " + self.__sipFrom)
-			msgLines.append("Call-ID: {}".format(self.__callId))
-			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipContact)
-			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-			"""
-			print(msg.dumps())
+
 			self.send(msg.dumps())
 
 			self.__state = SipCall.INVITE_TRYING
@@ -315,20 +303,9 @@ class SipCall(connection):
 
 		if self.__state == SipCall.INVITE_TRYING:
 			# Send 180 Ringing to make honeypot appear more human-like
+			logger.debug("Send RINGING")
 			msg = self.__msg.create_response(180)
-			"""
-			msgLines = []
-			msgLines.append("SIP/2.0 " + RESPONSE[RINGING])
-			msgLines.append("Via: " + self.__sipVia)
-			msgLines.append("Max-Forwards: 70")
-			msgLines.append("To: " + self.__sipTo)
-			msgLines.append("From: " + self.__sipFrom)
-			msgLines.append("Call-ID: {}".format(self.__callId))
-			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipContact)
-			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-			"""
-			print(msg.dumps())
+
 			self.send(msg.dumps())
 
 			delay = random.randint(self._user.pickup_delay_min, self._user.pickup_delay_max)
@@ -339,6 +316,7 @@ class SipCall(connection):
 			return
 
 		if self.__state == SipCall.INVITE_RINGING:
+			logger.debug("Send OK")
 			# Create RTP stream instance and pass address and port of listening
 			# remote RTP host
 			self._rtp_stream = RtpUdpStream(
@@ -362,19 +340,7 @@ class SipCall(connection):
 					addrtype = "IP4"
 				)
 			)
-			"""
-			msgLines = []
-			msgLines.append("SIP/2.0 " + RESPONSE[RINGING])
-			msgLines.append("Via: " + self.__sipVia)
-			msgLines.append("Max-Forwards: 70")
-			msgLines.append("To: " + self.__sipTo)
-			msgLines.append("From: " + self.__sipFrom)
-			msgLines.append("Call-ID: {}".format(self.__callId))
-			msgLines.append("CSeq: " + headers['cseq'])
-			msgLines.append("Contact: " + self.__sipContact)
-			msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-			"""
-			print(msg.dumps())
+
 			self.send(msg.dumps())
 
 			self.__state = SipCall.CALL
@@ -518,18 +484,17 @@ class SipServer(connection):
 	def __init__(self):
 		connection.__init__(self, 'udp')
 		self._sessions = {}
-		self._bindings = {}
 
 	def handle_io_in(self, data):
-		print(dir(self.local))
-		sessionkey = (self.local.host, self.local.port, self.remote.host, self.remote.port)
-		print(sessionkey, self.local.hostname)
-		if sessionkey not in self._sessions:
-			print("new")
-			self._sessions[sessionkey] = SipSession(self, sessionkey)
+		session_key = (self.local.host, self.local.port, self.remote.host, self.remote.port)
+		if session_key not in self._sessions:
+			logger.info("Creating new SipSession: {}".format(session_key))
+			self._sessions[session_key] = SipSession(self, session_key)
+		else:
+			logger.info("Using existing SipSession: {}".format(session_key))
 
-		session = self._sessions[sessionkey]
-		logger.debug("{}: {}".format(sessionkey, data))
+		session = self._sessions[session_key]
+		logger.debug("{}: {}".format(session_key, data))
 		session.handle_io_in(data)
 		return len(data)
 
@@ -695,8 +660,7 @@ class SipSession(connection):
 		# Check if session (identified by Call-ID) exists
 		# ToDo: check if call-id header exist
 		call_id = msg.headers.get(b"call-id").value
-		print(self._callids)
-		print(self)
+
 		if call_id not in self._callids:
 			logger.warn("Given Call-ID does not belong to any session: exit")
 			# ToDo: error
@@ -743,21 +707,14 @@ class SipSession(connection):
 
 		cseq = msg.headers.get(b"cseq").get_raw()
 
-		#print("-----------------------------cseq", cseq.seq, cseq.method)
-
-		#if cseq.method == b"INVITE" or cseq.method == b"ACK":
 		# Find SipSession and delete it
-		print("---",call_id, self._callids)
 		if call_id not in self._callids:
-			logger.warn(
-				"CANCEL request does not match any existing SIP session")
+			logger.warn("CANCEL request does not match any existing SIP session")
 			return
 		try:
 			self._callids[call_id].handle_CANCEL(msg)
 		except AuthenticationError:
 			logger.warn("Authentication failed for CANCEL request")
-
-		return
 
 
 	def handle_INVITE(self, msg):
@@ -815,7 +772,7 @@ class SipSession(connection):
 		# outs or because he wants to flood the honeypot)
 		logger.debug("Currently active sessions: {}".format(self._callids))
 		call_id = msg.headers.get(b"call-id").value
-		print(call_id)
+
 		if call_id in self._callids:
 			logger.warn("SIP session with Call-ID {} already exists".format(
 				call_id))
@@ -832,8 +789,7 @@ class SipSession(connection):
 
 		# Store session object in sessions dictionary
 		self._callids[call_id] = new_call
-		print(self._callids)
-		print(self)
+
 		i = incident("dionaea.connection.link")
 		i.parent = self
 		i.child = new_call
@@ -891,7 +847,7 @@ class SipSession(connection):
 				return
 
 			auth_response = rfc2617.Authentication(value = header_auth[0].value)
-			print("-----auth", self._auth)
+
 			# ToDo: change realm
 			if self._auth.check(u.username, "test", "REGISTER", auth_response) == False:
 				# ToDo: change nonce

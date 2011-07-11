@@ -368,6 +368,7 @@ class Message(object):
 			self.loads(data)
 
 	def create_response(self, code, message = None):
+		logger.info("Creating Response: code={}, message={}".format(code, message))
 		res = Message()
 
 		res.protocol = b"SIP/2.0"
@@ -377,7 +378,6 @@ class Message(object):
 				res.status_message = status_messages[code]
 			else:
 				res.status_message = b""
-		print("----create response")
 		for name in [b"cseq", b"call-id", b"via"]:
 			res.headers.append(self.headers.get(name, None), True)
 

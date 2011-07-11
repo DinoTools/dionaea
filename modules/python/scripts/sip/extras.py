@@ -1,9 +1,14 @@
 """
 Some helper functions.
 """
+import logging
 import os
+import pprint
 import re
 import sqlite3
+
+logger = logging.getLogger('sip')
+logger.setLevel(logging.DEBUG)
 
 DEFAULT_SDP = """
 v=0
@@ -48,7 +53,6 @@ class SipConfig(object):
 
 		self.users = os.path.join(self.root_path, config.get("users", "var/dionaea/sipaccounts.sqlite"))
 
-		print(self.users)
 		self._conn = sqlite3.connect(self.users)
 		self._cur = self._conn.cursor()
 
@@ -108,7 +112,6 @@ class SipConfig(object):
 		"""
 		Check if table exists
 		"""
-		print(name)
 		ret = self._cur.execute("SELECT name FROM sqlite_master WHERE type='table' and name=?", (name,))
 		if ret.fetchone() == None:
 			return False
@@ -137,11 +140,10 @@ class SipConfig(object):
 		def regexp(expr, value):
 			if type(expr) != str:
 				expr = str(expr)
-			print("----", type(expr), type(value))
 			regex = re.compile(expr)
 			return regex.match(value) is not None
+
 		sqlite3.enable_callback_tracebacks(True)
-		regexp("200", "500")
 		conn.create_function("regexp", 2, regexp)
 
 		if username == None:
@@ -183,7 +185,7 @@ class SipConfig(object):
 		"""
 		Fetch the SDP content from the database and add missing values.
 		"""
-		print(params)
+		logger.debug("Loading sdp with: {}".format(pprint.pformat(params)))
 		ret = self._cur.execute("SELECT sdp FROM sdp WHERE name='?'")
 		data = ret.fetchone()
 

@@ -144,7 +144,6 @@ class URI(object):
 		if value:
 			m = self._syntax.match(value)
 			if not m:
-				print("value", value)
 				# ToDo: error handling
 				return
 			self.scheme = m.group("scheme")
