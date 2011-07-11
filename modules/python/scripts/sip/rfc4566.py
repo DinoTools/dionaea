@@ -22,26 +22,28 @@ class Attribute(object):
 
 	>>> s = b"tool:foo"
 	>>> a = Attribute(value = s)
-	>>> print(a.dumps() == s)
-	True
+	>>> print(a.dumps())
+	b'tool:foo'
 	>>> print(a.value, a.attribute)
 	b'foo' b'tool'
 	>>> s = b"sendrecv"
 	>>> a = Attribute(value = s)
-	>>> print(a.dumps() == s)
-	True
+	>>> print(a.dumps())
+	b'sendrecv'
 	>>> print(a.attribute)
 	b'sendrecv'
-	>>> print(a.value == None)
-	True
+	>>> print(a.value)
+	None
 	"""
 
 	def __init__(self, **kwargs):
 		self.attribute = kwargs.get("attribute", None)
-		self.value = kwargs.get("value", None)
+		self.value = None
 		value = kwargs.get("value", None)
 
-		if value != None:
+		if self.attribute != None:
+			self.value = value
+		elif value != None:
 			self.loads(value)
 
 		# we need at least a name
@@ -152,15 +154,15 @@ class ConnectionData(object):
 	Test values are taken from RFC4566
 
 	>>> s = b"IN IP4 224.2.36.42/127"
-	>>> c = ConnectionData(s)
-	>>> print(c.dumps() == s)
-	True
+	>>> c = ConnectionData(value = s)
+	>>> print(c.dumps())
+	b'IN IP4 224.2.36.42/127'
 	>>> print(str(c.ttl), c.connection_address, c.addrtype, c.nettype)
 	127 b'224.2.36.42' b'IP4' b'IN'
 	>>> s = b"IN IP4 224.2.1.1/127/3"
-	>>> c = ConnectionData(s)
-	>>> print(c.dumps() == s)
-	True
+	>>> c = ConnectionData(value = s)
+	>>> print(c.dumps())
+	b'IN IP4 224.2.1.1/127/3'
 	>>> print(str(c.number_of_addresses), str(c.ttl), c.connection_address, c.addrtype, c.nettype)
 	3 127 b'224.2.1.1' b'IP4' b'IN'
 	"""

@@ -53,7 +53,7 @@ class Authentication(object):
 	>>> a = Authentication(method = "digest", realm = "test", domain = "example.org", algorithm = "md5", nonce = "abcd")
 	>>> print(a.dumps())
 	b'Digest realm="test", domain="example.org", algorithm=MD5, nonce="abcd"'
-	>>> a = Authentication(b'Digest realm="test", algorithm="MD5", nonce="efgh", domain="example.org"')
+	>>> a = Authentication(value = b'Digest realm="test", algorithm="MD5", nonce="efgh", domain="example.org"')
 	>>> print(a.method, a.algorithm, a.domain, a.nonce, a.realm)
 	b'digest' b'MD5' b'example.org' b'efgh' b'test'
 	"""
