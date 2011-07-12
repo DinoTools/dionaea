@@ -81,7 +81,7 @@ class CSeq(object):
 	"""
 	Hold the value of an CSeq attribute
 
-	>>> cseq1 = CSeq(b"100 INVITE")
+	>>> cseq1 = CSeq.froms(b"100 INVITE")
 	>>> cseq2 = CSeq(seq = 100, method = b"INVITE")
 	>>> print(cseq1.dumps(), cseq2.dumps(), cseq1.seq, cseq1.method)
 	b'100 INVITE' b'100 INVITE' 100 b'INVITE'
@@ -95,30 +95,35 @@ class CSeq(object):
 
 		self.seq = seq
 		self.method = method
-		if data != None:
-			self.loads(data)
-
-	def loads(self, data):
-		if type(data) == str:
-			data = bytes(data, "utf-8")
-
-		d = data.partition(b" ")
-		self.seq = int(d[0].decode("utf-8"))
-		self.method = d[2].strip()
 
 	def dumps(self):
 		return int2bytes(self.seq) + b" " + self.method
 
+	@classmethod
+	def froms(cls,data):
+		return cls(**cls.loads(data)[1])
+
+	@classmethod
+	def loads(cls, data):
+		if type(data) == str:
+			data = bytes(data, "utf-8")
+
+		d = data.partition(b" ")
+		seq = int(d[0].decode("utf-8"))
+		method = d[2].strip()
+		return (len(data), {'seq':seq,'method':method})
+
+
 
 class Header(object):
 	"""
-	>>> print(Header('"John Doe" <sip:john@example.org>', 'to').dumps())
+	>>> print(Header.froms('"John Doe" <sip:john@example.org>', 'to').dumps())
 	b'To: "John Doe" <sip:john@example.org>'
-	>>> print(Header(b'"John Doe" <sip:john@example.org>', b'to').dumps())
+	>>> print(Header.froms(b'"John Doe" <sip:john@example.org>', b'to').dumps())
 	b'To: "John Doe" <sip:john@example.org>'
-	>>> print(Header(b'"John Doe" <sip:john@example.org>;tag=abc123', b'to').dumps())
+	>>> print(Header.froms(b'"John Doe" <sip:john@example.org>;tag=abc123', b'to').dumps())
 	b'To: "John Doe" <sip:john@example.org>;tag=abc123'
-	>>> print(Header(b'To: "John Doe" <sip:john@example.org>;tag=abc123').dumps())
+	>>> print(Header.froms(b'To: "John Doe" <sip:john@example.org>;tag=abc123').dumps())
 	b'To: "John Doe" <sip:john@example.org>;tag=abc123'
 	"""
 
@@ -137,10 +142,22 @@ class Header(object):
 		b"www-authenticate": b"WWW-Authenticate"
 	}
 
-	def __init__(self, value, name = None):
-		self.loads(value, name)
+	def __init__(self, name = None, value = None):
+		self.name = name.lower()
+		self._value = value
 
-	def loads(self, data, name):
+	def dumps(self):
+		"""
+		Dump the value with header name.
+		"""
+		return self.format_name(self.name) + b": "  + self.get_value()
+
+	@classmethod
+	def froms(cls, data, name = None):
+		return cls(**cls.loads(data, name)[1])
+
+	@classmethod
+	def loads(cls, data, name):
 		if type(data) == str:
 			data = bytes(data, "utf-8")
 		if type(name) == str:
@@ -148,45 +165,29 @@ class Header(object):
 
 		if name == None:
 			data = data.strip()
-			d = data.split(b":", 1)
+			d = re.split(b": *", data, 1)
 			name = d[0].strip()
 			data = d[1].strip()
 
 		name = name.lower()
-		self.name = name
 
 		if type(data) != bytes:
-			self._value = data
-			return
-
-		# parse value
-		if name in self._address:
-			addr = rfc2396.Address()
-			addr.must_quote = True
-			l = addr.loads(data)
+			value = data
+		elif name in cls._address:
+			# FIXME may cause problems?
+			addr = rfc2396.Address.froms(data)
+#			addr.must_quote = True
+#			l = addr.loads(data)
 			# ToDo: use l to parse the rest
-			self._value = addr
-			return l
+			value = addr
+		elif name == b"cseq":
+			value = CSeq.froms(data)
+		elif name == b"via":
+			value = Via.froms(data)
+		else:
+			value = data
 
-		if name == b"cseq":
-			v = CSeq(data)
-			self._value = v
-			return
-
-		if name == b"via":
-			v = Via(value = data)
-			self._value = v
-			return
-
-		self._value = data
-		return len(data)
-
-
-	def dumps(self):
-		"""
-		Dump the value with header name.
-		"""
-		return self.format_name(self.name) + b": "  + self.get_value()
+		return (len(data), {'name':name,'value':value})
 
 	def format_name(self, name):
 		name = name.lower()
@@ -256,7 +257,7 @@ class Headers(object):
 			headers = [headers]
 		for header in headers:
 			if copy == True:
-				header = Header(header.dumps())
+				header = Header.froms(header.dumps())
 			if name_new != None:
 				header.name = name_new
 
@@ -302,7 +303,7 @@ class Message(object):
 	>>> s = s + b'Content-Length: 0\\r\\n'
 	>>> s = s + b'Max-Forwards: 70\\r\\n'
 	>>> s = s + b'\\r\\n'
-	>>> m = Message(s)
+	>>> m = Message.froms(s)
 	>>> print(m.method)
 	b'ACK'
 	>>> print(m.protocol)
@@ -315,7 +316,7 @@ class Message(object):
 	b'Call-ID: cWhfKU3v'
 	>>> s = m.dumps()
 	>>> # parse the generated message again
-	>>> m = Message(s)
+	>>> m = Message.froms(s)
 	>>> s2 = m.dumps()
 	>>> # check if the content is the same
 	>>> t1 = s.split(b"\\r\\n")
@@ -333,7 +334,7 @@ class Message(object):
 	>>> s1 = s1 + b"Max-Forwards: 70\\r\\n"
 	>>> s1 = s1 + b"Contact: <sip:bob@example.org>\\r\\n"
 	>>> s1 = s1 + b"Content-Type: application/sdp\\r\\n"
-	>>> s1 = s1 + b"Content-Length: 155\\r\\n\\r\\n"
+	>>> s1 = s1 + b"Content-Length: 141\\r\\n\\r\\n"
 	>>> s2 = b"v=0\\r\\n"
 	>>> s2 = s2 + b"o=bob 12345 23456 IN IP4 192.168.1.1\\r\\n"
 	>>> s2 = s2 + b"s=A dionaea test\\r\\n"
@@ -342,7 +343,7 @@ class Message(object):
 	>>> s2 = s2 + b"m=audio 8080 RTP/AVP 0 8\\r\\n"
 	>>> s2 = s2 + b"m=video 8081 RTP/AVP 31\\r\\n"
 	>>> s = s1 + s2
-	>>> m = Message(s)
+	>>> m = Message.froms(s)
 	>>> m.sdp[b"v"]
 	0
 	>>> m.sdp[b"o"].dumps()
@@ -353,24 +354,23 @@ class Message(object):
 	b'IN IP4 192.168.1.2'
 	"""
 
-	def __init__(self, data = None):
-		self.method = None
-		self.uri = None
-		self.response_code = None
-		self.status_message = None
-		self.protocol = None
-		self._body = None
+	def __init__(self, method = None, uri = None, response_code = None, status_message = None, protocol = None, body = None, headers = None, sdp = None):
+		self.method = method
+		self.uri = uri
+		self.response_code = response_code
+		self.status_message = status_message
+		self.protocol = protocol
+		self._body = body
 
-		self.headers = Headers()
-		self.sdp = None
+		if headers == None:
+			headers = Headers()
 
-		if data != None:
-			self.loads(data)
+		self.headers = headers
+		self.sdp = sdp
 
 	def create_response(self, code, message = None):
 		logger.info("Creating Response: code={}, message={}".format(code, message))
 		res = Message()
-
 		res.protocol = b"SIP/2.0"
 		res.response_code = code
 		if message == None:
@@ -387,81 +387,24 @@ class Message(object):
 
 		# create contact header
 		addr = self.headers.get(b"to", None)._value
-		uri = rfc2396.URI()
-		uri.scheme = addr.uri.scheme
-		uri.user = addr.uri.user
-		uri.host = addr.uri.host
-		uri.port = addr.uri.port
-		contact = Header(rfc2396.Address(value = uri), b"contact")
+		uri = rfc2396.URI(
+			scheme = addr.uri.scheme,
+			user = addr.uri.user,
+			host = addr.uri.host,
+			port = addr.uri.port
+		)
+
+		cont_addr = rfc2396.Address(uri = uri)
+
+		contact = Header(name = b"contact", value = cont_addr)
 		res.headers.append(contact)
 
 		# ToDo:
-		res.headers.append(Header(b"INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, SUBSCRIBE, NOTIFY, INFO", b"Allow"))
+		res.headers.append(Header(name = b"Allow", value = b"INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, SUBSCRIBE, NOTIFY, INFO"))
 
-		res.headers.append(Header(0, b"Content-Length"))
+		res.headers.append(Header(name = b"content-length", value = 0))
 
 		return res
-
-	def headers_exist(self, headers, overwrite = False):
-		if overwrite == False:
-			headers = headers + [b"to", b"from", b"call-id", b"cseq", b"contact"]
-
-		for header in headers:
-			if self.headers.get(header) == None:
-				logger.warn("Header missing: {}".format(repr(header)))
-				return False
-
-		return True
-
-
-	def loads(self, data):
-		"""
-		Parse a SIP-Message and return the used bytes
-
-		:return: bytes used
-		"""
-		# End Of Head
-		if type(data) == bytes:
-			eoh = data.find(b"\r\n\r\n")
-		else:
-			eoh = data.find("\r\n\r\n")
-			
-
-		if eoh == -1:
-			return 0
-
-		header = data[:eoh]
-
-		headers = header.split(b"\r\n")
-
-		self._body = data[eoh+4:]
-
-		# remove first line and parse it
-		h1, h2, h3 = headers[0].split(b" ", 2)
-		del headers[0]
-
-		try:
-			self.response, self.protocol, self.responsetext = int(h2), h1, h3
-		except:
-			# ToDo: parse h2 as uri
-			self.method, self.uri, self.protocol = h1, rfc2396.Address(value = h2), h3
-		
-		# ToDo: check protocol
-
-		for h in headers:
-			header = Header(h)
-			self.headers.append(header)
-
-		content_length = self.headers.get(b"content-length", None)
-		if content_length == None:
-			return
-
-		content = self._body[:int(content_length.value)]
-
-		content_type = self.headers.get(b"content-type", None)
-		if content_type != None and content_type.value.lower().strip() == b"application/sdp":
-			self.sdp = rfc4566.SDP(content)
-
 
 	def dumps(self):
 		# h = Header
@@ -476,12 +419,99 @@ class Message(object):
 		sdp = b""
 		if self.sdp != None:
 			sdp = self.sdp.dumps()
-			self.headers.append(Header(b"application/sdp", b"content-type"))
-			self.headers.append(Header(len(sdp), b"content-length"))
+			self.headers.append(Header(name = b"content-type", value = b"application/sdp"))
+			self.headers.append(Header(name = b"content-length", value = len(sdp)))
 
 		h = h + self.headers.dump_list()
 
 		return b"\r\n".join(h) + b"\r\n\r\n" + sdp
+
+	@classmethod
+	def froms(cls, data):
+		return cls(**cls.loads(data)[1])
+
+	def headers_exist(self, headers, overwrite = False):
+		if overwrite == False:
+			headers = headers + [b"to", b"from", b"call-id", b"cseq", b"contact"]
+
+		for header in headers:
+			if self.headers.get(header) == None:
+				logger.warn("Header missing: {}".format(repr(header)))
+				return False
+
+		return True
+
+	@classmethod
+	def loads(cls, data):
+		"""
+		Parse a SIP-Message and return the used bytes
+
+		:return: bytes used
+		"""
+		# End Of Head
+		if type(data) == bytes:
+			eoh = data.find(b"\r\n\r\n")
+		else:
+			eoh = data.find("\r\n\r\n")
+			
+
+		if eoh == -1:
+			return (0, {})
+
+		# length of used data
+		l = eoh + 4
+		header = data[:eoh]
+		headers_data = header.split(b"\r\n")
+		body = data[eoh+4:]
+
+		# remove first line and parse it
+		h1, h2, h3 = headers_data[0].split(b" ", 2)
+		del headers_data[0]
+
+		response_code = None
+		status_message = None
+		try:
+			response_code, protocol, status_message = int(h2), h1, h3
+		except:
+			# ToDo: parse h2 as uri
+			method, uri, protocol = h1, rfc2396.Address.froms(h2), h3
+		
+		# ToDo: check protocol
+		headers = Headers()
+		for h in headers_data:
+			header = Header.froms(h)
+			headers.append(header)
+
+		sdp = None
+		try:
+			content_length = int(headers.get(b"content-length", None).value)
+		except:
+			content_length = None
+		if content_length != None:
+			if content_length <=  len(body):
+				content = body[:content_length]
+
+				content_type = headers.get(b"content-type", None)
+				if content_type != None and content_type.value.lower().strip() == b"application/sdp":
+					sdp = rfc4566.SDP.froms(content)
+				l = l + content_length
+			else:
+				logger.info("Body is to short than the given content-length: Content-Length {}, Body {}".format(content_length, len(body)))
+
+		return (
+			l,
+			{
+				"method": method,
+				"uri": uri,
+				"response_code": response_code,
+				"status_message": status_message,
+				"protocol": protocol,
+				"body": body,
+				"headers": headers,
+				"sdp": sdp
+			}
+		)
+
 
 
 class Via(object):
@@ -493,14 +523,14 @@ class Via(object):
 	Test strings are taken from RFC3261
 
 	>>> s = b"SIP/2.0/UDP erlang.bell-telephone.com:5060;branch=z9hG4bK87asdks7"
-	>>> v = Via(value = s)
+	>>> v = Via.froms(s)
 	>>> print(v.port, v.address, v.protocol)
 	5060 b'erlang.bell-telephone.com' b'UDP'
 	>>> print(v.get_param(b"branch"))
 	b'z9hG4bK87asdks7'
 	>>> print(s == v.dumps())
 	True
-	>>> v = Via(value = b"SIP/2.0/UDP 192.0.2.1:5060 ;received=192.0.2.207;branch=z9hG4bK77asjd")
+	>>> v = Via.froms(b"SIP/2.0/UDP 192.0.2.1:5060 ;received=192.0.2.207;branch=z9hG4bK77asjd")
 	>>> print(v.port, v.address, v.protocol)
 	5060 b'192.0.2.1' b'UDP'
 	>>> print(v.get_param(b"branch"), v.get_param(b"received"))
@@ -509,16 +539,11 @@ class Via(object):
 
 	_syntax = re.compile(b"SIP */ *2\.0 */ *(?P<protocol>[a-zA-Z]+) *(?P<address>[^ :;]*) *(:(?P<port>[0-9]+))?( *; *(?P<params>.*))?")
 
-
-	def __init__(self, **kwargs):
-		self.protocol = kwargs.get("protocol", None)
-		self.address = kwargs.get("address", None)
-		self.port = kwargs.get("port", None)
-		self._params = kwargs.get("params", [])
-		value = kwargs.get("value", None)
-
-		if value != None:
-			self.loads(value)
+	def __init__(self, protocol = None, address = None, port = None, params = []):
+		self.protocol = protocol
+		self.address = address
+		self.port = port
+		self._params = params
 
 	def dumps(self):
 		ret = b"SIP/2.0/" + self.protocol.upper() + b" " + self.address
@@ -549,38 +574,54 @@ class Via(object):
 				x[1] = value
 				return
 
-	def loads(self, data):
-		m = self._syntax.match(data)
-		if not m:
-			return
+	@classmethod
+	def froms(cls, data):
+		return cls(**cls.loads(data)[1])
 
-		self.protocol = m.group("protocol")
-		self.address = m.group("address")
-		self.port = m.group("port")
-		if self.port != None:
+
+	@classmethod
+	def loads(cls, data):
+		m = cls._syntax.match(data)
+		if not m:
+			raise Exception("Error parsing the data")
+
+		protocol = m.group("protocol")
+		address = m.group("address")
+		port = m.group("port")
+		if port != None:
 			try:
-				self.port = int(self.port)
+				port = int(port)
 			except:
 				# error parsing port, set default value
 				self.port = 5060
 
-		params = m.group("params")
+		param_data = m.group("params")
 
-		if not params:
-			return
+		if not param_data:
+			raise Exception("Error no parameter given")
 
+		params = []
 		# prevent crashes by limiting split count
 		# ToDo: needs testing
-		for param in re.split(b" *; *", params, 64):
+		for param in re.split(b" *; *", param_data, 64):
 			t = re.split(b" *= *", param, 1)
 			v = b""
 			if len(t) > 1:
 				v = t[1]
 
-			self._params.append((t[0], v))
+			params.append((t[0], v))
+
+		return (
+			m.end(),
+			{
+				"protocol": protocol,
+				"address": address,
+				"port": port,
+				"params": params
+			}
+		)
 
 
 if __name__ == '__main__':
     import doctest
     doctest.testmod()
-

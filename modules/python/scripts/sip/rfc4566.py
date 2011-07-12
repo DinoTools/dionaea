@@ -4,6 +4,7 @@ This package implements RFC 4566
 :See: http://tools.ietf.org/html/rfc4566
 """
 
+import re
 import time
 
 try:
@@ -21,13 +22,13 @@ class Attribute(object):
 	:See: http://tools.ietf.org/html/rfc4566#page-21
 
 	>>> s = b"tool:foo"
-	>>> a = Attribute(value = s)
+	>>> a = Attribute.froms(s)
 	>>> print(a.dumps())
 	b'tool:foo'
 	>>> print(a.value, a.attribute)
 	b'foo' b'tool'
 	>>> s = b"sendrecv"
-	>>> a = Attribute(value = s)
+	>>> a = Attribute(attribute=s)
 	>>> print(a.dumps())
 	b'sendrecv'
 	>>> print(a.attribute)
@@ -35,32 +36,27 @@ class Attribute(object):
 	>>> print(a.value)
 	None
 	"""
-
-	def __init__(self, **kwargs):
-		self.attribute = kwargs.get("attribute", None)
-		self.value = None
-		value = kwargs.get("value", None)
-
-		if self.attribute != None:
-			self.value = value
-		elif value != None:
-			self.loads(value)
-
+	def __init__(self, attribute=None, value=None):
+		self.attribute = attribute
+		self.value = value
 		# we need at least a name
 		if self.attribute == None or self.attribute == b"":
-			raise Exception("Error", "Error")
+			raise ValueError("Attribute name is empty")
 
-	def loads(self, value):
-		self.attribute, sep, v = value.partition(b":")
-		if v == b"":
-			return
+	@classmethod
+	def froms(cls,data):
+		return cls(**cls.loads(data)[1])
 
-		self.value = v
+	@classmethod
+	def loads(cls, data):
+		attribute, sep, v = data.partition(b":")
+		if sep != b":":
+			v = None
+		return (len(data), {'value':v,'attribute':attribute})
 
 	def dumps(self):
 		if self.value == None:
 			return self.attribute
-
 		return b":".join([self.attribute, self.value])
 
 class Attributes(object):
@@ -76,10 +72,10 @@ class Attributes(object):
 
 	def append(self, value):
 		if type(value) == bytes:
-			self._attributes.append(Attribute(value = value))
+			self._attributes.append(Attribute.froms(value))
 			return
 
-		self._attributes.append(data)
+		self._attributes.append(value)
 
 	def get(self, name, default = None):
 		"""
@@ -119,7 +115,7 @@ class Bandwidth(object):
 
 	# Example taken from RFC4566
 	>>> s = b"X-YZ:128"
-	>>> b = Bandwidth(value = s)
+	>>> b = Bandwidth.froms(s)
 	>>> print(b.dumps() == s)
 	True
 	>>> print(b.bwtype)
@@ -128,17 +124,19 @@ class Bandwidth(object):
 	128
 	"""
 
-	def __init__(self, **kwargs):
-		self.bwtype = kwargs.get("bwtype", None)
-		self.bandwidth = kwargs.get("bandwidth", None)
-		value = kwargs.get("value", None)
+	def __init__(self, bwtype=None, bandwidth=None):
+		self.bwtype = bwtype
+		self.bandwidth = bandwidth
 
-		if value != None:
-			self.loads(value)
+	@classmethod
+	def froms(cls,data):
+		return cls(**cls.loads(data)[1])
 
-	def loads(self, value):
-		self.bwtype, self.bandwidth = value.split(b":")
-		self.bandwidth = int(self.bandwidth)
+	@classmethod
+	def loads(cls, data):
+		bwtype, bandwidth = data.split(b":")
+		bandwidth = int(bandwidth)
+		return (len(data), {'bwtype':bwtype,'bandwidth':bandwidth})
 
 	def dumps(self):
 		return b":".join([self.bwtype, int2bytes(self.bandwidth)])
@@ -154,41 +152,56 @@ class ConnectionData(object):
 	Test values are taken from RFC4566
 
 	>>> s = b"IN IP4 224.2.36.42/127"
-	>>> c = ConnectionData(value = s)
+	>>> c = ConnectionData.froms(s)
 	>>> print(c.dumps())
 	b'IN IP4 224.2.36.42/127'
 	>>> print(str(c.ttl), c.connection_address, c.addrtype, c.nettype)
 	127 b'224.2.36.42' b'IP4' b'IN'
 	>>> s = b"IN IP4 224.2.1.1/127/3"
-	>>> c = ConnectionData(value = s)
+	>>> c = ConnectionData.froms(s)
 	>>> print(c.dumps())
 	b'IN IP4 224.2.1.1/127/3'
 	>>> print(str(c.number_of_addresses), str(c.ttl), c.connection_address, c.addrtype, c.nettype)
 	3 127 b'224.2.1.1' b'IP4' b'IN'
 	"""
 
-	def __init__(self, **kwargs):
-		self.nettype = kwargs.get("nettype", None)
-		self.addrtype = kwargs.get("addrtype", None)
-		self.connection_address = kwargs.get("connection_address", None)
-		self.ttl = kwargs.get("ttl", None)
-		self.number_of_addresses = kwargs.get("number_of_addresses", None)
-		value = kwargs["value"]
+	def __init__(self, nettype=None,addrtype=None,connection_address=None,ttl=None,number_of_addresses=None):
+		self.nettype = nettype
+		self.addrtype = addrtype
+		self.connection_address = connection_address
+		self.ttl = ttl
+		self.number_of_addresses = number_of_addresses
 
-		if value != None:
-			self.loads(value)
+	@classmethod
+	def froms(cls,data):
+		return cls(**cls.loads(data)[1])
 
-	def loads(self, value):
-		self.nettype, self.addrtype, con_addr = value.split(b" ")
+	@classmethod
+	def loads(cls, data):
+		nettype, addrtype, con_addr = re.split(b" +", data, 2)
 		con_values = con_addr.split(b"/")
-		self.connection_address = con_values[0]
+		connection_address = con_values[0]
 
-		if self.addrtype == b"IP4":
-			if len(con_values) > 1:
-				self.ttl = int(con_values[1])
-			if len(con_values) > 2:
-				self.number_of_addresses = int(con_values[2])
 		# ToDo: IP6?
+		if addrtype == b"IP4":
+			if len(con_values) > 1:
+				ttl = int(con_values[1])
+			else:
+				ttl = None
+			if len(con_values) > 2:
+				number_of_addresses = int(con_values[2])
+			else:
+				number_of_addresses = None
+		return (
+			len(data),
+			{
+				'nettype':nettype,
+				'addrtype':addrtype,
+				'connection_address':connection_address,
+				'ttl':ttl,
+				'number_of_addresses':number_of_addresses
+			}
+		)
 
 	def dumps(self):
 		addr = self.connection_address
@@ -211,44 +224,60 @@ class Media(object):
 	:See: http://tools.ietf.org/html/rfc4566#page-22
 
 	>>> s = b"video 49170/2 RTP/AVP 31"
-	>>> m = Media(value = s)
+	>>> m = Media.froms(s)
 	>>> print(m.dumps() == s)
 	True
 	>>> print(m.fmt, m.proto, m.number_of_ports, m.port, m.media)
 	[b'31'] b'RTP/AVP' 2 49170 b'video'
 	>>> s = b"audio 49170 RTP/AVP 31"
-	>>> m = Media(value = s)
+	>>> m = Media.froms(s)
 	>>> print(m.dumps() == s)
 	True
 	>>> print(m.fmt, m.proto, m.number_of_ports, m.port, m.media)
 	[b'31'] b'RTP/AVP' None 49170 b'audio'
 	"""
 
-	def __init__(self, **kwargs):
-		self.media = kwargs.get("media", None)
-		self.port = kwargs.get("port", None)
-		self.number_of_ports = kwargs.get("numer_of_ports", None)
-		self.proto = kwargs.get("proto", None)
-		self.fmt = kwargs.get("fmt", None)
-		value = kwargs.get("value", None)
-		self.attributes = Attributes()
+	def __init__(self, media=None, port=None, number_of_ports=None, proto=None, fmt=None, attributes=None):
+		self.media = media
+		self.port = port
+		self.number_of_ports = number_of_ports
+		self.proto = proto
+		self.fmt = fmt
+		if attributes == None:
+			attributes = Attributes()
+		self.attributes = attributes
 
-		if value != None:
-			self.loads(value)
+	@classmethod
+	def froms(cls,data):
+		return cls(**cls.loads(data)[1])
 
-	def loads(self, value):
-		self.media, ports, self.proto, rest = value.split(b" ", 3)
+	@classmethod
+	def loads(cls, data):
+		media, ports, proto, rest = re.split(b" +", data, 3)
 		# Media: currently defined media are "audio", "video", "text", "application", and "message"
 		# check if we support the type and if not send an error?
 
 		# ToDo: error on wrong format?
 		port, sep, ports = ports.partition(b"/")
-		self.port = int(port)
+		port = int(port)
 		if ports != b"":
-			self.number_of_ports = int(ports)
+			number_of_ports = int(ports)
+		else:
+			number_of_ports = None
 
 		# ToDo: better fmt handling
-		self.fmt = rest.split(b" ")
+		fmt = rest.split(b" ")
+		return (
+			len(data),
+			{
+				"media": media,
+				"port": port,
+				"number_of_ports": number_of_ports,
+				"proto": proto,
+				"fmt": fmt
+			}
+		)
+
 
 	def dumps(self):
 		# ToDo: better fmt handling
@@ -269,24 +298,39 @@ class Origin(object):
 	:See: http://tools.ietf.org/html/rfc4566#page-11
 
 	>>> s = b"Foo 12345 12345 IN IP4 192.168.1.1"
-	>>> o = Origin(s)
+	>>> o = Origin.froms(s)
 	>>> print(s == o.dumps())
 	True
 	"""
-	def __init__(self, value = None):
-		t = int(time.time())
-		# ToDo: IP6 support
-		self.username, self.sess_id, self.sess_version, self.nettype, self.addrtype, self.unicast_address = \
-			b"-", t, t, b"IN", b"IP4", b"127.0.0.1"
+	def __init__(self, username=b'-',sess_id=-1,sess_version=-1,nettype=b'IN',addrtype=b"IP4",unicast_address=b"127.0.0.1"):
 
-		if value != None:
-			self.loads(value)
+		self.username = username
+		self.sess_id = sess_id
+		self.sess_version = sess_version
+		self.nettype = nettype
+		self.addrtype = addrtype
+		self.unicast_address = unicast_address
 
+	@classmethod
+	def froms(cls,data):
+		return cls(**cls.loads(data)[1])
 
-	def loads(self, value):
-		self.username, self.sess_id, self.sess_version, self.nettype, self.addrtype, self.unicast_address = value.split(b" ")
-		self.sess_id = int(self.sess_id)
-		self.sess_version = int(self.sess_version)
+	@classmethod
+	def loads(cls, data):
+		username, sess_id, sess_version, nettype, addrtype, unicast_address = re.split(b" +", data, 5)
+		sess_id = int(sess_id)
+		sess_version = int(sess_version)
+		return (
+			len(data),
+			{
+				"username": username,
+				"sess_id": sess_id,
+				"sess_version": sess_version,
+				"nettype": nettype,
+				"addrtype": addrtype,
+				"unicast_address": unicast_address
+			}
+		)
 
 	def dumps(self):
 		return b" ".join([self.username, int2bytes(self.sess_id), int2bytes(self.sess_version), self.nettype, self.addrtype, self.unicast_address])
@@ -307,7 +351,7 @@ class SDP(object):
 	>>> s = s + b"m=audio 49170 RTP/AVP 0\\r\\n"
 	>>> s = s + b"m=video 51372 RTP/AVP 99\\r\\n"
 	>>> s = s + b"a=rtpmap:99 h263-1998/90000\\r\\n"
-	>>> sdp = SDP(s)
+	>>> sdp = SDP.froms(s)
 	>>> #print(str(s, "utf-8"), "--", str(sdp.dumps(), "utf-8"))
 	>>> #print(sdp.dumps(), s)
 	>>> print(sdp.dumps() == s)
@@ -320,68 +364,77 @@ class SDP(object):
 	_attributes_allowed = [b"v", b"o", b"s", b"i", b"u", b"e", b"p", b"c", b"b", b"t", b"r", b"z", b"a", b"m"]
 
 
-	def __init__(self, data):
+	def __init__(self, a=None, b=None, c=None, e=None, i=None, k=None, m=None, o=None, p=None, r=None, s=None, t=None, u=None, v=None, z=None):
 		self._attributes = {
-			b"a": None, # Attributes
-			b"b": None, # Bandwidth
-			b"c": None, # Connection Data
-			b"e": None, # Email Address
-			b"i": None, # Session Information
-			b"k": None, # Encryption Keys
-			b"m": None, # Media Description
-			b"o": None, # Origin
-			b"p": None, # Phone Number
-			b"r": None, # Repeat Times
-			b"s": None, # Session Name
-			b"t": None, # Timing
-			b"u": None, # URI
-			b"v": None, # Protocol Version
-			b"z": None, # Time Zone
+			b"a": a, # Attributes
+			b"b": b, # Bandwidth
+			b"c": c, # Connection Data
+			b"e": e, # Email Address
+			b"i": i, # Session Information
+			b"k": k, # Encryption Keys
+			b"m": m, # Media Description
+			b"o": o, # Origin
+			b"p": p, # Phone Number
+			b"r": r, # Repeat Times
+			b"s": s, # Session Name
+			b"t": t, # Timing
+			b"u": u, # URI
+			b"v": v, # Protocol Version
+			b"z": z, # Time Zone
 		}
-
-		if data != None:
-			self.loads(data)
 
 	def __getitem__(self, name):
 		return self.get(name)
 
-	def loads(self, data):
+	@classmethod
+	def froms(cls,data):
+		return cls(**cls.loads(data)[1])
+
+	@classmethod
+	def loads(cls, data):
+		attributes = {k:None for k in cls._attributes_allowed}
+		data_length = len(data)
 		data = data.replace(b"\r\n", b"\n")
 		for line in data.split(b"\n"):
 			k, sep, v = line.partition(b"=")
 			if k == b"v":
-				self._attributes[k] = int(v)
+				attributes[k] = int(v)
 			elif k == b"o":
-				self._attributes[k] = Origin(value = v)
+				attributes[k] = Origin.froms(v)
 			elif k == b"c":
-				self._attributes[k] = ConnectionData(value = v)
+				attributes[k] = ConnectionData.froms(v)
 			elif k == b"b":
-				self._attributes[k] = Bandwidth(value = v)
+				attributes[k] = Bandwidth.froms(v)
 			elif k == b"t":
-				self._attributes[k] = Timing(value = v)
+				attributes[k] = Timing.froms(v)
 			elif k == b"r":
 				# ToDo: parse it
-				self._attributes[k] = v
+				attributes[k] = v
 			elif k == b"z":
 				# ToDo: parse it
-				self._attributes[k] = v
+				attributes[k] = v
 			elif k == b"a":
-				if self._attributes[b"m"] == None:
+				if attributes[b"m"] == None:
 					# append attribute to session
-					if self._attributes[k] == None:
-						self._attributes[k] = Attributes()
-					self._attributes[k].append(v)
+					if attributes[k] == None:
+						attributes[k] = Attributes()
+					attributes[k].append(v)
 				else:
 					# append attribute to media
-					self._attributes[b"m"][-1].attributes.append(v)
+					attributes[b"m"][-1].attributes.append(v)
 
 			elif k == b"m":
-				if self._attributes[k] == None:
-					self._attributes[k] = []
-				self._attributes[k].append(Media(value = v))
+				if attributes[k] == None:
+					attributes[k] = []
+				attributes[k].append(Media.froms(v))
 
-			elif k in self._attributes_allowed:
-				self._attributes[k] = v
+			elif k in cls._attributes_allowed:
+				attributes[k] = v
+
+		a = {}
+		for k,v in attributes.items():
+			a[k.decode('ascii')] = v
+		return (data_length, a)
 
 	def dumps(self):
 		ret = []
@@ -425,18 +478,20 @@ class Timing(object):
 	:See: http://tools.ietf.org/html/rfc4566#page-17
 	"""
 
-	def __init__(self, **kwargs):
-		self.start_time = kwargs.get("start_time", None)
-		self.stop_time = kwargs.get("stop_time", None)
-		value = kwargs.get("value", None)
+	def __init__(self, start_time=None,stop_time=None):
+		self.start_time = start_time
+		self.stop_time = stop_time
 
-		if value != None:
-			self.loads(value)
+	@classmethod
+	def froms(cls,data):
+		return cls(**cls.loads(data)[1])
 
-	def loads(self, value):
-		self.start_time, self.stop_time = value.split(b" ", 1)
-		self.start_time = int(self.start_time)
-		self.stop_time = int(self.stop_time)
+	@classmethod
+	def loads(cls, data):
+		start_time, stop_time = re.split(b" +", data, 1)
+		start_time = int(start_time)
+		stop_time = int(stop_time)
+		return (len(data), {'start_time':start_time,'stop_time':stop_time})
 
 	def dumps(self):
 		return b" ".join([int2bytes(self.start_time), int2bytes(self.stop_time)])

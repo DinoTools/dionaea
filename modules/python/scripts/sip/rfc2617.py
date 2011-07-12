@@ -53,25 +53,21 @@ class Authentication(object):
 	>>> a = Authentication(method = "digest", realm = "test", domain = "example.org", algorithm = "md5", nonce = "abcd")
 	>>> print(a.dumps())
 	b'Digest realm="test", domain="example.org", algorithm=MD5, nonce="abcd"'
-	>>> a = Authentication(value = b'Digest realm="test", algorithm="MD5", nonce="efgh", domain="example.org"')
+	>>> a = Authentication.froms(b'Digest realm="test", algorithm="MD5", nonce="efgh", domain="example.org"')
 	>>> print(a.method, a.algorithm, a.domain, a.nonce, a.realm)
 	b'digest' b'MD5' b'example.org' b'efgh' b'test'
 	"""
 	_quote = ["realm", "domain", "nonce", "response", "uri"]
 	_noquote = ["algorithm"]
 
-	def __init__(self, **kwargs):
-		self.method = kwargs.get("method", "basic")
-		self.realm = kwargs.get("realm", None)
-		self.domain = kwargs.get("domain", None)
-		self.algorithm = kwargs.get("algorithm", None)
-		self.nonce = kwargs.get("nonce", None)
-		self.response = kwargs.get("response", None)
-		self.uri = kwargs.get("uri", None)
-		value = kwargs.get("value", None)
-
-		if value != None:
-			self.loads(value)
+	def __init__(self, method = "basic", realm = None, domain = None, algorithm = None, nonce = None, response = None, uri = None):
+		self.method = method
+		self.realm = realm
+		self.domain = domain
+		self.algorithm = algorithm
+		self.nonce = nonce
+		self.response = response
+		self.uri = uri
 
 	def check(self, username, password, method, auth):
 		digest = create_digest(
@@ -88,23 +84,6 @@ class Authentication(object):
 			return True
 
 		return False
-
-	def loads(self, value):
-		if type(value) == str:
-			value = bytes(value, "utf-8")
-
-		method,value = value.split(b" ",1)
-		self.method = method.lower()
-
-		for part in re.split(b" *, *", value):
-			n,s,v = part.partition(b"=")
-			n = n.decode("utf-8")
-			if n in self._quote:
-				setattr(self, n, unquote(v))
-			if n in self._noquote:
-				# this values shouldn't be quoted, but nevertheless some clients do it
-				setattr(self, n, unquote(v))
-			
 
 	def dumps(self):
 		if self.method == "digest":
@@ -129,21 +108,58 @@ class Authentication(object):
 
 		return b"Basic realm=" + quote(self.realm)
 
+	@classmethod
+	def froms(cls, data):
+		return cls(**cls.loads(data)[1])
+
+	@classmethod
+	def loads(cls, data):
+		l = len(data)
+		if type(data) == str:
+			data = bytes(data, "utf-8")
+
+		method, data = re.split(b" *", data, 1)
+		ret = {
+			"method": method.lower()
+		}
+
+		for part in re.split(b" *, *", data):
+			n,s,v = part.partition(b"=")
+			n = n.decode("utf-8")
+			if n in cls._quote:
+				ret[n] = unquote(v)
+			if n in cls._noquote:
+				# this values shouldn't be quoted, but nevertheless some clients do it
+				ret[n] = unquote(v)
+
+		return (l, ret)
+
 # :See: http://tools.ietf.org/html/rfc2617#page-10
 H = lambda d: bytes(hashlib.md5(d).hexdigest(), "utf-8")
 KD = lambda secret, data: H(secret + b":" + data)
 
 
-def create_digest(**kwargs):
+def create_digest(algorithm = None, cnonce = None, method = None, nonce = None, password = None, realm = None, uri = None, username = None):
 	"""
 	>>> print(create_digest(algorithm = "md5", method = "REGISTER", nonce = "foobar", password = "secret", realm = "sip-server", uri = "sip:sip-server", username = "alice"))
 	b'8b30552864468e5e6ab1eb2b87d1b92f'
 	"""
-	for n,v in kwargs.items():
-		if type(kwargs[n]) == str:
-			kwargs[n] = bytes(v, "utf-8")
-
-	algorithm, cnonce, method, nonce, password, realm, uri, username = [kwargs.get(n, None) for n in ["algorithm", "cnonce", "method", "nonce", "password", "realm", "uri", "username"]]
+	if type(algorithm) == str:
+		algorithm = bytes(algorithm, "utf-8")
+	if type(cnonce) == str:
+		cnonce = bytes(cnonce, "utf-8")
+	if type(method) == str:
+		method = bytes(method, "utf-8")
+	if type(nonce) == str:
+		nonce = bytes(nonce, "utf-8")
+	if type(password) == str:
+		password = bytes(password, "utf-8")
+	if type(realm) == str:
+		realm = bytes(realm, "utf-8")
+	if type(uri) == str:
+		uri = bytes(uri, "utf-8")
+	if type(username) == str:
+		username = bytes(username, "utf-8")
 
 	# :See: http://tools.ietf.org/html/rfc2617#page-13
 	if algorithm and algorithm.lower() == 'md5-sess':

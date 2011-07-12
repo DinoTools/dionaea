@@ -7,12 +7,14 @@ except:
 
 class Address(object):
 	"""
-	>>> a1 = Address(value = b"sip:john@example.org")
-	>>> b1 = Address(value = b"<sip:john@example.org>")
-	>>> c1 = Address(value = b'John Doe <sip:john@example.org>')
-	>>> d1 = Address(value = b'"John Doe" <sip:john@example.org>')
+	>>> a1 = Address.froms(b"sip:john@example.org")
+	>>> b1 = Address.froms(b"<sip:john@example.org>")
+	>>> c1 = Address.froms(b'John Doe <sip:john@example.org>')
+	>>> d1 = Address.froms(b'"John Doe" <sip:john@example.org>')
 	>>> print(a1.dumps() == b1.dumps() and c1.dumps() == d1.dumps())
 	True
+	>>> print(d1.dumps())
+	b'"John Doe" <sip:john@example.org>'
 	"""
 	_syntax = [
 		re.compile(b'^(?P<name>[a-zA-Z0-9\-\.\_\+\~\ \t]*)<(?P<uri>[^>]+)>( *; *(?P<params>.*))?'),
@@ -20,44 +22,14 @@ class Address(object):
 		re.compile(b'^[\ \t]*(?P<name>)(?P<uri>[^;]+)( *; *(?P<params>.*))?')
 	]
 
-	def __init__(self, **kwargs):
-		self.display_name = kwargs.get("display_name", None)
-		self.uri = kwargs.get("uri", None)
-		self.must_quote = kwargs.get("must_quote", False)
-		self.params = {}
-		value = kwargs.get("value", None)
-
-		if type(value) == bytes or type(value) == str:
-			self.loads(value)
-		elif type(value) == URI:
-			self.uri = value
+	def __init__(self, display_name = None, uri = None, must_quote = None, params = {}):
+		self.display_name = display_name
+		self.uri = uri
+		self.must_quote = must_quote
+		self.params = params
 
 	def __repr__(self):
 		return repr(self.dumps())
-
-	def loads(self, value):
-		"""
-		Parse an address
-
-		:return: length used
-		:rtype: Integer
-		"""
-		for regex in self._syntax:
-			m = regex.match(value)
-			if m:
-				self.display_name = m.groups()[0].strip()
-				self.uri = URI(value = m.groups()[1].strip())
-				params = m.groupdict()["params"]
-				if params == None:
-					return m.end()
-
-				for param in re.split(b" *; *", params):
-					n,s,v = param.partition(b"=")
-					self.params[n.strip()] = v.strip()
-
-				return m.end()
-
-		return 0
 
 	def dumps(self):
 		r = b""
@@ -68,8 +40,8 @@ class Address(object):
 
 		if not self.uri:
 			return r
-	
-		if self.must_quote:
+
+		if self.must_quote or (self.display_name != None and self.display_name != b""):
 			r = r + b"<" + self.uri.dumps() + b">"
 		else:
 			r = r + self.uri.dumps()
@@ -82,15 +54,61 @@ class Address(object):
 			r = r + b";" + b";".join(params)
 		return r
 
+	@classmethod
+	def froms(cls, data):
+		return cls(**cls.loads(data)[1])
+
+	@classmethod
+	def loads(cls, data):
+		"""
+		Parse an address
+
+		:return: length used
+		:rtype: Integer
+		"""
+		if data == None:
+			return (0, {})
+
+		for regex in cls._syntax:
+			m = regex.match(data)
+			if m:
+				display_name = m.groups()[0].strip()
+				uri = URI.froms(m.groups()[1].strip())
+				param_data = m.groupdict()["params"]
+				if param_data == None:
+					return (
+						m.end(),
+						{
+							"display_name": display_name,
+							"uri": uri
+						}
+					)
+
+				params = {}
+				for param in re.split(b" *; *", param_data):
+					n,s,v = param.partition(b"=")
+					params[n.strip()] = v.strip()
+
+				return (
+					m.end(),
+					{
+						"display_name": display_name,
+						"params": params,
+						"uri": uri
+					}
+				)
+
+		return (0, {})
+
 class URI(object):
 	"""
-	>>> print(URI(value = b"sip:john@example.org"))
-	sip:john@example.org
-	>>> u = URI(value = b"sip:foo:bar@example.org:5060;transport=udp;novalue;param=pval?header=val&second=sec_val")
+	>>> print(URI.froms(b"sip:john@example.org").dumps())
+	b'sip:john@example.org'
+	>>> u = URI.froms(b"sip:foo:bar@example.org:5060;transport=udp;novalue;param=pval?header=val&second=sec_val")
 	>>> print(u.scheme, u.user, u.password, u.host, u.port, len(u.params), len(u.headers))
-	b'sip foo bar example.org 5060 3 2'
+	b'sip' b'foo' b'bar' b'example.org' 5060 3 2
 	>>> d = u.dumps()
-	>>> u = URI(value = d)
+	>>> u = URI.froms(d)
 	>>> print(u.dumps() == d)
 	True
 	"""
@@ -104,17 +122,14 @@ class URI(object):
 		+ b"(?:\?(?P<headers>.*))?$" # headers
 	)
 
-	def __init__(self, **kwargs):
-		self.scheme = kwargs.get("scheme", None)
-		self.user = kwargs.get("user", None)
-		self.password = kwargs.get("password", None)
-		self.host = kwargs.get("host", None)
-		self.port = kwargs.get("port", None)
-		self.params = kwargs.get("params", {})
-		self.headers = kwargs.get("headers", [])
-		value = kwargs.get("value", None)
-
-		self.loads(value)
+	def __init__(self, scheme = None, user = None, password = None, host = None, port = None, params = {}, headers = []):
+		self.scheme = scheme
+		self.user = user
+		self.password = password
+		self.host = host
+		self.port = port
+		self.params = params
+		self.headers = headers
 
 	def __repr__(self):
 		return self.dumps()
@@ -140,32 +155,52 @@ class URI(object):
 
 		return r
 
-	def loads(self, value):
-		if value:
-			m = self._syntax.match(value)
-			if not m:
-				# ToDo: error handling
-				return
-			self.scheme = m.group("scheme")
-			self.user = m.group("user")
-			self.password = m.group("password")
-			self.host = m.group("host")
-			self.port = m.group("port")
-			params = m.group("params")
-			headers = m.group("headers")
+	@classmethod
+	def froms(cls, data):
+		return cls(**cls.loads(data)[1])
 
+	@classmethod
+	def loads(cls, data):
+		if data:
+			m = cls._syntax.match(data)
+			if not m:
+				raise ValueError("Data does not match.")
+
+			port = m.group("port")
 			# ToDo: error check
 			try:
-				self.port = int(self.port)
+				if type(port) == bytes or type(port) == str:
+					port = int(port)
 			except:
 				pass
 
-			if params:
-				for param in params.split(b";"):
+			params = {}
+			if m.group("params"):
+				for param in m.group("params").split(b";"):
 					t = param.partition(b"=")
 					n = t[0].strip()
 					v = t[2].strip()
-					self.params[n] = v
+					params[n] = v
 
-			if headers:
-				self.headers = headers.split(b"&")
+			headers = []
+			if m.group("headers"):
+				headers = m.group("headers").split(b"&")
+
+			return (
+				m.end(),
+				{
+					"scheme": m.group("scheme"),
+					"user": m.group("user"),
+					"password": m.group("password"),
+					"host": m.group("host"),
+					"port": port,
+					"headers": headers,
+					"params": params
+				}
+			)
+
+		return (0, {})
+
+if __name__ == '__main__':
+    import doctest
+    doctest.testmod()

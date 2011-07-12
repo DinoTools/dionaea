@@ -333,7 +333,7 @@ class SipCall(connection):
 			# Send 200 OK and pick up the phone
 			msg = self.__msg.create_response(200)
 			# ToDo: add IP6 support
-			msg.sdp = rfc4566.SDP(
+			msg.sdp = rfc4566.SDP.froms(
 				g_sipconfig.get_sdp_by_name(
 					self._user.sdp,
 					unicast_address = self.local.host,
@@ -612,7 +612,7 @@ class SipSession(connection):
 		# feed bistream
 		self.bistream.append(('in', data))
 
-		msg = rfc3261.Message(data)
+		msg = rfc3261.Message.froms(data)
 
 		"""
 		# SIP message incident
@@ -842,11 +842,11 @@ class SipSession(connection):
 					realm = u.realm
 				)
 				res = msg.create_response(401)
-				res.headers.append(rfc3261.Header(self._auth, b"www-authenticate"))
+				res.headers.append(rfc3261.Header(name = b"www-authenticate", value = self._auth))
 				self.send(res.dumps())
 				return
 
-			auth_response = rfc2617.Authentication(value = header_auth[0].value)
+			auth_response = rfc2617.Authentication.froms(header_auth[0].value)
 
 			# ToDo: change realm
 			if self._auth.check(u.username, "test", "REGISTER", auth_response) == False:
@@ -858,7 +858,7 @@ class SipSession(connection):
 					realm = u.realm
 				)
 				res = msg.create_response(401)
-				res.headers.append(rfc3261.Header(self._auth, b"www-authenticate"))
+				res.headers.append(rfc3261.Header(name =  b"www-authenticate", value = self._auth))
 				self.send(res.dumps())
 				return
 
