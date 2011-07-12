@@ -29,7 +29,7 @@
 #include <stdint.h>
 #include <netinet/in.h>
 
-#define PORT_STRLEN 5
+#define PORT_STRLEN 6
 #define IFNAM_STRLEN 16
 #define INET_STRLEN INET6_ADDRSTRLEN 
 

@@ -103,7 +103,7 @@ bool node_info_set(struct node_info *node, struct sockaddr_storage *sa)
 		snprintf(node->node_string,NODE_STRLEN,"%s",node->ip_string);
 	}
 
-	snprintf(node->port_string,7,"%i", ntohs(node->port));
+	snprintf(node->port_string,PORT_STRLEN,"%i", ntohs(node->port));
 
 	return true;
 }
