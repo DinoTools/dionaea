@@ -129,6 +129,12 @@ class SipConfig(object):
 		pass
 
 
+	def get_handlers_by_personality(self, personality):
+		if not personality in self.personalities:
+			personality = "default"
+
+		return self.personalities[personality]["handle"]
+
 	def get_timer(self, name):
 		if not name in self.timers:
 			return False

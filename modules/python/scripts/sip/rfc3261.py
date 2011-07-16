@@ -8,6 +8,8 @@ except:
 	import rfc2396, rfc4566
 	from extras import int2bytes
 
+from dionaea.sip import g_sipconfig
+
 logger = logging.getLogger('sip')
 logger.setLevel(logging.DEBUG)
 
@@ -142,8 +144,13 @@ class Header(object):
 		b"www-authenticate": b"WWW-Authenticate"
 	}
 
-	def __init__(self, name = None, value = None):
+	def __init__(self, name, value = None):
+		if type(name) == str:
+			name = bytes(name, "utf-8")
 		self.name = name.lower()
+
+		if type(value) == str:
+			value = bytes(value, "utf-8")
 		self._value = value
 
 	def dumps(self):
@@ -354,13 +361,14 @@ class Message(object):
 	b'IN IP4 192.168.1.2'
 	"""
 
-	def __init__(self, method = None, uri = None, response_code = None, status_message = None, protocol = None, body = None, headers = None, sdp = None):
+	def __init__(self, method = None, uri = None, response_code = None, status_message = None, protocol = None, body = None, headers = None, sdp = None, personality = "default"):
 		self.method = method
 		self.uri = uri
 		self.response_code = response_code
 		self.status_message = status_message
 		self.protocol = protocol
 		self._body = body
+		self._personality = personality
 
 		if headers == None:
 			headers = Headers()
@@ -368,8 +376,12 @@ class Message(object):
 		self.headers = headers
 		self.sdp = sdp
 
-	def create_response(self, code, message = None):
+	def create_response(self, code, message = None, personality = None):
 		logger.info("Creating Response: code={}, message={}".format(code, message))
+
+		if personality != None:
+			self._personality = personality
+
 		res = Message()
 		res.protocol = b"SIP/2.0"
 		res.response_code = code
@@ -399,9 +411,9 @@ class Message(object):
 		contact = Header(name = b"contact", value = cont_addr)
 		res.headers.append(contact)
 
-		# ToDo:
-		res.headers.append(Header(name = b"Allow", value = b"INVITE, ACK, CANCEL, OPTIONS, BYE, REFER, SUBSCRIBE, NOTIFY, INFO"))
+		handler = g_sipconfig.get_handlers_by_personality(self._personality)
 
+		res.headers.append(Header(name = b"allow", value = ", ".join(handler)))
 		res.headers.append(Header(name = b"content-length", value = 0))
 
 		return res
@@ -512,6 +524,8 @@ class Message(object):
 			}
 		)
 
+	def set_personality(self, personality):
+		self._personality = personality
 
 
 class Via(object):

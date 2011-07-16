@@ -45,10 +45,14 @@ import tempfile
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from dionaea import pyev
 
+from dionaea.sip.extras import int2bytes, SipConfig
+
+# load config before loading the other sip modules
+g_sipconfig = SipConfig(g_dionaea.config()['modules']['python'].get("sip", {}))
+
 from dionaea.sip import rfc3261
 from dionaea.sip import rfc4566
 from dionaea.sip import rfc2617 # auth
-from dionaea.sip.extras import int2bytes, SipConfig
 
 
 g_default_loop = pyev.default_loop()
@@ -58,7 +62,6 @@ logger.setLevel(logging.DEBUG)
 
 _SipCall_sustain_timeout = 20
 
-g_sipconfig = SipConfig(g_dionaea.config()['modules']['python'].get("sip", {}))
 
 # SIP headers have short forms
 shortHeaders = {"call-id": "i",
@@ -615,6 +618,7 @@ class SipSession(connection):
 		self.bistream.append(('in', data))
 
 		msg = rfc3261.Message.froms(data)
+		msg.set_personality(self.personality)
 
 		"""
 		# SIP message incident
@@ -816,9 +820,8 @@ class SipSession(connection):
 
 		# ToDo: add Contact
 		res = msg.create_response(200)
-		res.headers.append(rfc3261.Header("INVITE, ACK, CANCEL, OPTIONS, BYE", "Allow"))
-		res.headers.append(rfc3261.Header("application/sdp", "Accept"))
-		res.headers.append(rfc3261.Header("en", "Accept-Language"))
+		res.headers.append(rfc3261.Header(name = "Accept", value = "application/sdp"))
+		res.headers.append(rfc3261.Header(name = "Accept-Language", value = "en"))
 
 		self.send(res.dumps())
 
