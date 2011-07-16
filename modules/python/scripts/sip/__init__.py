@@ -138,16 +138,18 @@ g_reg_manager = RegistrationManager()
 class RtpUdpStream(connection):
 	"""RTP stream that can send data and writes the whole conversation to a
 	file"""
-	def __init__(self, localAddress, remoteAddress, port):
+	def __init__(self, session, local_address, local_port, remote_address, remote_port):
 		connection.__init__(self, 'udp')
 
+		self._session = session
+
 		# Bind to free random port for incoming RTP traffic
-		self.bind(localAddress, 0)
-		self.connect(remoteAddress, int(port))
+		self.bind(local_address, local_port)
+		self.connect(remote_address, remote_port)
 
 		# The address and port of the remote host
-		self.remote.host = remoteAddress
-		self.remote.port = int(port)
+		self.remote.host = remote_address
+		self.remote.port = remote_port
 
 		# Send byte buffer
 		self.__sendBuffer = b''
@@ -155,29 +157,29 @@ class RtpUdpStream(connection):
 		# Create a stream dump file with date and time and random ID in case of
 		# flooding attacks
 		global g_sipconfig
-		self.__streamDumpIn = None
-		dumpDate = time.strftime('%Y-%m-%d')
-		dumpTime = time.strftime('%H:%M:%S')
-		dumpDir = 'var/dionaea/rtp/{}/'.format(dumpDate)
 
-		# Construct dump file name
-		self.__streamDumpFileIn = dumpDir + '{t}_{h}_{p}_in.rtp'.format(
-			t=dumpTime, h=self.remote.host, p=self.remote.port)
+		# generate path where to dump the rtp stream
+		self._rtp = g_sipconfig.get_rtp()
+		self._rtp.open(
+			personality = self._session.personality,
+			remote_host = self.remote.host,
+			remote_port = self.remote.port
+		)
+
 
 		# Report incident
-		i = incident("dionaea.modules.python.sip.rtp")
-		i.con = self
-		i.dumpfile = self.__streamDumpFileIn
-		i.report()
+		# ToDo:
+		#i = incident("dionaea.modules.python.sip.rtp")
+		#i.con = self
+		#i.dumpfile = self.__streamDumpFileIn
+		#i.report()
 
 		logger.info("Created RTP channel on ports :{} <-> :{}".format(
 			self.local.port, self.remote.port))
 
 	def close(self):
-		if self.__streamDumpIn:
-			logger.debug("Closing stream dump (in)")
-			self.__streamDumpIn.close()
-
+		logger.debug("Closing stream dump (in)")
+		self._rtp.close()
 		connection.close(self)
 
 	def handle_timeout_idle(self):
@@ -189,25 +191,20 @@ class RtpUdpStream(connection):
 	def handle_io_in(self, data):
 		logger.debug("Incoming RTP data (length {})".format(len(data)))
 
-		if g_sipconfig['record_rtp']:
-			# Create stream dump file only if not previously failed
-			if not self.__streamDumpIn and self.__streamDumpFileIn:
-				self.__startRecording()
-
-			# Write incoming data to disk
-			if self.__streamDumpIn:
-				self.__streamDumpIn.write(data)
+		self._rtp.write(data)
 
 		return len(data)
 
 	def handle_io_out(self):
-		logger.debug("Outdoing RTP data (length {})".format(len(data)))
+		pass
+		#logger.debug("Outdoing RTP data (length {})".format(len(data)))
 
-		bytesSent = self.send(self.__sendBuffer)
+		#bytesSent = self.send(self.__sendBuffer)
 
 		# Shift sending window for next send operation
-		self.__sendBuffer = self.__sendBuffer[bytesSent:]
+		#self.__sendBuffer = self.__sendBuffer[bytesSent:]
 
+	"""
 	def __startRecording(self):
 		dumpDir = self.__streamDumpFileIn.rsplit('/', 1)[0]
 
@@ -228,6 +225,8 @@ class RtpUdpStream(connection):
 			self.__streamDumpFileIn = None
 		else:
 			logger.debug("Created RTP dump file")
+
+	"""
 
 class SipCall(connection):
 	"""Usually, a new SipSession instance is created when the SIP server
@@ -320,7 +319,9 @@ class SipCall(connection):
 			# Create RTP stream instance and pass address and port of listening
 			# remote RTP host
 			self._rtp_stream = RtpUdpStream(
+				self.__session,
 				self.__session.local.host,
+				0, # random port
 				self.__remote_address,
 				self.__remote_rtp_port
 			)
@@ -337,6 +338,7 @@ class SipCall(connection):
 				g_sipconfig.get_sdp_by_name(
 					self._user.sdp,
 					unicast_address = self.local.host,
+					media_port = self._rtp_stream.local.port,
 					addrtype = "IP4"
 				)
 			)

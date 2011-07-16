@@ -255,7 +255,8 @@ modules = {
 			users = "var/dionaea/sipaccounts.sqlite"
 			rtp = {
 				enable = "yes"
-				dumps = "var/dionaea/rtp/$(personality)/%Y-%M-%d/"
+				path = "var/dionaea/rtp/{personality}/%Y-%m-%d/"
+				filename = "%H:%M:%S_{remote_host}_{remote_port}_in.rtp"
 			}
 			personalities = {
 				default = {

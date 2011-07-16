@@ -1,6 +1,7 @@
 """
 Some helper functions.
 """
+import datetime
 import logging
 import os
 import pprint
@@ -16,7 +17,7 @@ o=- 1304279835 1 IN {addrtype} {unicast_address}
 s=SIP Session
 c=IN {addrtype} {unicast_address}
 t=0 0
-m=audio 5074 RTP/AVP 111 0 8 9 101 120
+m=audio {media_port} RTP/AVP 111 0 8 9 101 120
 a=sendrecv
 a=rtpmap:111 Speex/16000/1
 a=fmtp:111 sr=16000,mode=any
@@ -96,15 +97,14 @@ class SipConfig(object):
 			}
 		}
 
-		rtp = config.get("rtp", {})
+		self._rtp = config.get("rtp", {})
 
-		rtp_enable = rtp.get("enable", "no")
-		if rtp_enable.lower() != "yes":
-			self.rtp_enable = True
+		rtp_enable = self._rtp.get("enable", "no")
+		if rtp_enable.lower() == "yes":
+			self._rtp["enable"] = True
 		else:
-			self.rtp_enable = False
+			self._rtp["enable"] = False
 
-		self.rtp_dumps = os.path.join(self.root_path, rtp.get("dumps", "var/dionaea/rtp/$(personality)/%Y-%M-%d/"))
 		self.actions = config.get("actions", {})
 
 
@@ -181,6 +181,14 @@ class SipConfig(object):
 		return "default"
 
 
+	def get_rtp(self):
+		return RTP(
+			path = self._rtp.get("path", "var/dionaea/rtp/{personality}/%Y-%m-%d/"),
+			filename = self._rtp.get("filename", "%H:%M:%S_{remote_host}_{remote_port}_in.rtp"),
+			enable = self._rtp.get("enable", False)
+		)
+
+
 	def get_sdp_by_name(self, name, **params):
 		"""
 		Fetch the SDP content from the database and add missing values.
@@ -200,6 +208,44 @@ class SipConfig(object):
 		sdp = data[0]
 		sdp = sdp.format(**params)
 		return bytes(sdp, "utf-8")
+
+
+class RTP(object):
+	def __init__(self, path, filename, enable = False):
+		self.path = path
+		self.filename = filename
+		self.enable = enable
+		self._in = None
+
+	def close(self):
+		if self._in == None:
+			return
+
+		# ToDo: convert
+		self._in.close()
+
+	def open(self, **params):
+		if self.enable == False:
+			logger.info("RTP-Capture NOT enabled")
+			return
+
+		path = self.path.format(**params)
+		today = datetime.datetime.now()
+		path = today.strftime(path)
+		#'%H:%M:%S_{remote_host}_{remote_port}_in.rtp'
+		filename = today.strftime(self.filename)
+		filename = filename.format(**params)
+		# ToDo: error check
+		os.makedirs(path)
+		self._in = open(os.path.join(path, filename), "wb")
+
+	def write(self, data):
+		if self._in == None:
+			return
+		data = data[12:]
+		print("---", len(data))
+		self._in.write(data)
+
 
 
 class Timer(object):
