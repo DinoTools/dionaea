@@ -59,7 +59,10 @@ class SipConfig(object):
 
 		if not self._table_exists("users"):
 			self._cur.execute("CREATE TABLE IF NOT EXISTS users (username STRING, password STRING, personality STRING, pickup_delay_min INTEGER, pickup_delay_max INTEGER, action STRING, sdp STRING)")
+			# example without password
 			self._cur.execute("INSERT INTO users (username, password, personality, pickup_delay_min, pickup_delay_max, action, sdp) VALUES ('^[1-9][0-9]{0,4}$', '', 'default', 5, 10, 'default', 'default')")
+			# example with password
+			self._cur.execute("INSERT INTO users (username, password, personality, pickup_delay_min, pickup_delay_max, action, sdp) VALUES ('^pw[1-9][0-9]{0,4}$', 'password', 'default', 5, 10, 'default', 'default')")
 
 		if not self._table_exists("sdp"):
 			self._cur.execute("CREATE TABLE IF NOT EXISTS sdp (name STRING, sdp STRING)")
@@ -169,6 +172,10 @@ class SipConfig(object):
 		if row == None:
 			return None
 
+		password = row[1]
+		if type(password) == int:
+			password = str(password)
+
 		sdp = row[5]
 		if sdp == '' or sdp == None:
 			sdp = self.personalities[personality].default_sdp
@@ -176,7 +183,7 @@ class SipConfig(object):
 		return User(
 			username = username,
 			username_regex = row[0],
-			password = row[1],
+			password = password,
 			pickup_delay_min = row[2],
 			pickup_delay_max = row[3],
 			action = row[4],
@@ -260,8 +267,14 @@ class RTP(object):
 		filename = today.strftime(self.filename)
 		filename = filename.format(**params)
 		# ToDo: error check
-		os.makedirs(path)
-		self._in = open(os.path.join(path, filename), "wb")
+		try:
+			os.makedirs(path)
+		except:
+			logger.info("Can't create RTP-Dump dir: {}", path)
+		try:
+			self._in = open(os.path.join(path, filename), "wb")
+		except:
+			logger.warning("Can't create RTP-Dump file: {}", os.path.join(path, filename))
 
 	def write(self, data):
 		if self._in == None:

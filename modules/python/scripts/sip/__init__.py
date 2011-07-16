@@ -842,7 +842,7 @@ class SipSession(connection):
 
 		u = g_sipconfig.get_user_by_username(self.personality, user_id)
 
-		if u.password != None:
+		if u.password != None and u.password != "":
 			header_auth = msg.headers.get(b"authorization", None)
 			if header_auth == None or self._auth == None:
 				# ToDo: change nonce
@@ -860,7 +860,7 @@ class SipSession(connection):
 			auth_response = rfc2617.Authentication.froms(header_auth[0].value)
 
 			# ToDo: change realm
-			if self._auth.check(u.username, "test", "REGISTER", auth_response) == False:
+			if self._auth.check(u.username, u.password, "REGISTER", auth_response) == False:
 				# ToDo: change nonce
 				self._auth = rfc2617.Authentication(
 					method = "digest",
