@@ -1,9 +1,13 @@
+import logging
 import re
 
 try:
 	from dionaea.sip.extras import int2bytes
 except:
 	from extras import int2bytes
+
+logger = logging.getLogger('sip')
+logger.setLevel(logging.DEBUG)
 
 class Address(object):
 	"""
@@ -135,6 +139,9 @@ class URI(object):
 		return self.dumps()
 
 	def dumps(self):
+		if self.scheme == None:
+			return b"*"
+
 		r = self.scheme + b":"
 		if self.user:
 			r = r + self.user
@@ -164,7 +171,13 @@ class URI(object):
 		if data:
 			m = cls._syntax.match(data)
 			if not m:
-				raise ValueError("Data does not match.")
+				try:
+					data = bytes(data, "utf-8")
+					logger.info("Can't parse the URI: {}", data)
+				except:
+					logger.info("Can't parse or convert the URI.")
+
+				return (0, {})
 
 			port = m.group("port")
 			# ToDo: error check
