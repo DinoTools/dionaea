@@ -545,7 +545,7 @@ class SipSession(connection):
 		# as all sip traffic shares a single connection
 		self.bistream = []
 
-		self._auth = []
+		self._auth = None
 
 
 	def __handle_idle_timeout(self, watcher, events):
