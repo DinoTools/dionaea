@@ -632,8 +632,14 @@ class SipSession(connection):
 		# reset idle timer
 		self._timers["idle"].reset()
 
+		handler_name = msg.method.decode("utf-8").upper()
+
+		if not g_sipconfig.is_handled_by_personality(handler_name, self.personality):
+			self.handle_unknown(msg)
+			return len(data)
+
 		try:
-			func = getattr(self, "handle_" + msg.method.decode("utf-8").upper(), None)
+			func = getattr(self, "handle_" + handler_name, None)
 		except:
 			func = None
 

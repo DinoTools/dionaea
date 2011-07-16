@@ -72,7 +72,8 @@ class SipConfig(object):
 				"name": "",
 				"personality": "generic",
 				"serve": [],
-				"default_sdp": "default"
+				"default_sdp": "default",
+				"handle": ["REGISTER", "OPTIONS", "INVITE", "CANCEL", "BYE", "ACK"]
 			}
 		}
 
@@ -80,10 +81,14 @@ class SipConfig(object):
 			if not pers_name in self.personalities:
 				self.personalities[pers_name] = {}
 
-			for n in ["domain", "name", "personality", "serve", "default_sdp"]:
+			for n in ["domain", "name", "personality", "serve", "default_sdp", "handle"]:
 				v = personality.get(n, self.personalities["default"][n])
 				if type(v) != type(self.personalities["default"][n]):
 					v = self.personalities["default"][n]
+				# convert values
+				if n == "handle":
+					# convert all values to uppercase
+					v = [t.upper() for t in v]
 
 				self.personalities[pers_name][n] = v
 
@@ -208,6 +213,19 @@ class SipConfig(object):
 		sdp = data[0]
 		sdp = sdp.format(**params)
 		return bytes(sdp, "utf-8")
+
+
+	def is_handled_by_personality(self, handler_name, personality = "default"):
+		"""
+		Check if dionaea handles the given SIP-Method
+		"""
+		if personality in self.personalities:
+			personality = "default"
+
+		if handler_name.upper() in self.personalities[personality]["handle"]:
+			return True
+
+		return False
 
 
 class RTP(object):

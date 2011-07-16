@@ -271,6 +271,7 @@ modules = {
 					personality = "generic"
 					serve = ["10.0.0.1"]
 					default_sdp = "default"
+					handle = ["REGISTER", "INVITE", "BYE", "CANCEL", "ACK"]
 				}
 
 				*/
