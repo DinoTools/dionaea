@@ -103,8 +103,16 @@ function sipp_run() {
 		fi
 	fi
 
-	echo -n "REGISTER: "
+	echo -n "REGISTER(w/o password): "
 	(cd sipp && ${TOOL_SIPP} -sf register.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 -inf user.csv ${RHOST} &> /dev/null)
+	if [ $? == 0 ]; then
+		print_ok "OK"
+	else
+		print_error "Failed"
+	fi
+
+	echo -n "REGISTER(with password): "
+	(cd sipp && ${TOOL_SIPP} -sf register_pw.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 -inf user_pw.csv ${RHOST} &> /dev/null)
 	if [ $? == 0 ]; then
 		print_ok "OK"
 	else
