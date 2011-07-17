@@ -62,30 +62,6 @@ logger.setLevel(logging.DEBUG)
 
 _SipCall_sustain_timeout = 20
 
-
-# SIP headers have short forms
-shortHeaders = {"call-id": "i",
-                "contact": "m",
-                "content-encoding": "e",
-                "content-length": "l",
-                "content-type": "c",
-                "from": "f",
-                "subject": "s",
-                "to": "t",
-                "via": "v",
-				"cseq": "cseq",
-				"accept": "accept",
-				"user-agent": "user-agent",
-				"max-forwards": "max-forwards",
-				"www-authentication": "www-authentication",
-				"authorization": "authorization"
-                }
-
-longHeaders = {}
-for k, v in shortHeaders.items():
-	longHeaders[v] = k
-del k, v
-
 class SipParsingError(Exception):
 	"""Exception class for errors occuring during SIP message parsing"""
 

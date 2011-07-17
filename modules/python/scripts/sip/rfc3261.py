@@ -144,6 +144,19 @@ class Header(object):
 		b"www-authenticate": b"WWW-Authenticate"
 	}
 
+	_header_compact2long = {
+		b"c": b"content-type",
+		b"e": b"content-encoding",
+		b"f": b"from",
+		b"i": b"call-id",
+		b"k": b"supported",
+		b"l": b"content-length",
+		b"m": b"contact", # m = moved
+		b"s": b"subject",
+		b"t": b"to",
+		b"v": b"via"
+	}
+
 	def __init__(self, name, value = None):
 		if type(name) == str:
 			name = bytes(name, "utf-8")
@@ -177,6 +190,7 @@ class Header(object):
 			data = d[1].strip()
 
 		name = name.lower()
+		name = cls._header_compact2long.get(name, name)
 
 		if type(data) != bytes:
 			value = data
