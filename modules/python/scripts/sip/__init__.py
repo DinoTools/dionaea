@@ -141,6 +141,8 @@ class RtpUdpStream(connection):
 		self._rtp = g_sipconfig.get_rtp()
 		self._rtp.open(
 			personality = self._session.personality,
+			local_host = self.local.host,
+			local_port = self.local.port,
 			remote_host = self.remote.host,
 			remote_port = self.remote.port
 		)
@@ -158,7 +160,6 @@ class RtpUdpStream(connection):
 
 	def close(self):
 		logger.debug("Closing stream dump (in)")
-		self._rtp.close()
 		connection.close(self)
 
 	def handle_timeout_idle(self):
@@ -183,6 +184,9 @@ class RtpUdpStream(connection):
 		# Shift sending window for next send operation
 		#self.__sendBuffer = self.__sendBuffer[bytesSent:]
 
+
+	def handle_disconnect(self):
+		self._rtp.close()
 	"""
 	def __startRecording(self):
 		dumpDir = self.__streamDumpFileIn.rsplit('/', 1)[0]

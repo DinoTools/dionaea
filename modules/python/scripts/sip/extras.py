@@ -7,6 +7,9 @@ import os
 import pprint
 import re
 import sqlite3
+import tempfile
+
+from dionaea.core import g_dionaea
 
 logger = logging.getLogger('sip')
 logger.setLevel(logging.DEBUG)
@@ -203,7 +206,8 @@ class SipConfig(object):
 		return RTP(
 			path = self._rtp.get("path", "var/dionaea/rtp/{personality}/%Y-%m-%d/"),
 			filename = self._rtp.get("filename", "%H:%M:%S_{remote_host}_{remote_port}_in.rtp"),
-			enable = self._rtp.get("enable", False)
+			enable = self._rtp.get("enable", False),
+			modes = self._rtp.get("mode", ["bistream"])
 		)
 
 
@@ -242,24 +246,57 @@ class SipConfig(object):
 
 
 class RTP(object):
-	def __init__(self, path, filename, enable = False):
+	def __init__(self, path, filename, enable = False, mode = ["bistream"]):
 		self.path = path
 		self.filename = filename
 		self.enable = enable
 		self._in = None
+		self._modes = mode
+		if type(self._modes) != list:
+			self.modes = [self._modes]
+
+		self._params = {}
+		for n in ["personality", "local_host", "local_port", "remote_host", "remote_port"]:
+			self._params[n] = n
+
+		self._bistream = []
 
 	def close(self):
+		# ToDo: dump to file
+		"""
 		if self._in == None:
 			return
 
 		# ToDo: convert
 		self._in.close()
+		"""
+		if "bistream" in self._modes:
+			logger.debug("SipCall: RTP.close() write bistream")
+			if len(self._bistream) > 0:
+				now = datetime.datetime.now()
+				dirname = "%04i-%02i-%02i" % (now.year, now.month, now.day)
+				bistream_path = os.path.join(g_dionaea.config()['bistreams']['python']['dir'], dirname)
+				if not os.path.exists(bistream_path):
+					os.makedirs(bistream_path)
+
+				fp = tempfile.NamedTemporaryFile(
+					delete = False,
+					prefix = "SipCall-{local_port}-{remote_host}:{remote_port}-".format(**self._params),
+					dir = bistream_path
+				)
+				fp.write(b"stream = ")
+				fp.write(str(self._bistream).encode())
+				fp.close()
 
 	def open(self, **params):
 		if self.enable == False:
 			logger.info("RTP-Capture NOT enabled")
 			return
 
+		self._params.update(params)
+
+		# ToDo: dump to file
+		"""
 		path = self.path.format(**params)
 		today = datetime.datetime.now()
 		path = today.strftime(path)
@@ -275,13 +312,20 @@ class RTP(object):
 			self._in = open(os.path.join(path, filename), "wb")
 		except:
 			logger.warning("Can't create RTP-Dump file: {}", os.path.join(path, filename))
+		"""
 
 	def write(self, data):
+		if "bistream" in self._modes:
+			self._bistream.append(("in", data))
+
+		# ToDo: dump to file
+		"""
 		if self._in == None:
 			return
 		data = data[12:]
 		print("---", len(data))
 		self._in.write(data)
+		"""
 
 
 
