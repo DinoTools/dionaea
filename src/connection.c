@@ -140,6 +140,7 @@ struct connection *connection_new(enum connection_transport type)
 	refcount_init(&con->refcount);
 	con->events.close_timeout.repeat = 10.0;
 	con->events.connecting_timeout.repeat = 5.0;
+	con->events.handshake_timeout.repeat = 10.0;
 	con->events.free.repeat = 0.5;
 	return con;
 }
