@@ -7,7 +7,9 @@ import os
 import pprint
 import re
 import sqlite3
+import struct
 import tempfile
+import time
 
 from dionaea.core import g_dionaea
 
@@ -207,7 +209,7 @@ class SipConfig(object):
 			path = self._rtp.get("path", "var/dionaea/rtp/{personality}/%Y-%m-%d/"),
 			filename = self._rtp.get("filename", "%H:%M:%S_{remote_host}_{remote_port}_in.rtp"),
 			enable = self._rtp.get("enable", False),
-			modes = self._rtp.get("mode", ["bistream"])
+			mode = self._rtp.get("mode", ["pcap"])
 		)
 
 
@@ -246,12 +248,15 @@ class SipConfig(object):
 
 
 class RTP(object):
-	def __init__(self, path, filename, enable = False, mode = ["bistream"]):
+	"""
+	PCAP-Format see: http://wiki.wireshark.org/Development/LibpcapFileFormat
+	"""
+	def __init__(self, path, filename, enable = False, mode = ["pcap"]):
 		self.path = path
 		self.filename = filename
 		self.enable = enable
-		self._in = None
 		self._modes = mode
+
 		if type(self._modes) != list:
 			self.modes = [self._modes]
 
@@ -261,15 +266,23 @@ class RTP(object):
 
 		self._bistream = []
 
-	def close(self):
-		# ToDo: dump to file
-		"""
-		if self._in == None:
-			return
+		self._pcap = None
 
-		# ToDo: convert
-		self._in.close()
-		"""
+	def _carry_arround_add(self, a, b):
+		c = a + b
+		return (c & 0xffff) + (c >> 16)
+
+	def _ip_checksum(self, data):
+		s = 0
+		for i in range(0, len(data), 2):
+			word = data[i] + (data[i + 1] << 8)
+			s = self._carry_arround_add(s, word)
+		return ~s & 0xffff
+
+	def close(self):
+		if self._pcap != None:
+			self._pcap.close()
+
 		if "bistream" in self._modes:
 			logger.debug("SipCall: RTP.close() write bistream")
 			if len(self._bistream) > 0:
@@ -295,39 +308,77 @@ class RTP(object):
 
 		self._params.update(params)
 
-		# ToDo: dump to file
-		"""
-		path = self.path.format(**params)
-		today = datetime.datetime.now()
-		path = today.strftime(path)
-		#'%H:%M:%S_{remote_host}_{remote_port}_in.rtp'
-		filename = today.strftime(self.filename)
-		filename = filename.format(**params)
-		# ToDo: error check
-		try:
-			os.makedirs(path)
-		except:
-			logger.info("Can't create RTP-Dump dir: {}", path)
-		try:
-			self._in = open(os.path.join(path, filename), "wb")
-		except:
-			logger.warning("Can't create RTP-Dump file: {}", os.path.join(path, filename))
-		"""
+		if "pcap" in self._modes:
+			path = self.path.format(**params)
+			today = datetime.datetime.now()
+			path = today.strftime(path)
+			#'%H:%M:%S_{remote_host}_{remote_port}_in.rtp'
+			filename = today.strftime(self.filename)
+			filename = filename.format(**params)
+			# ToDo: error check
+			try:
+				os.makedirs(path)
+			except:
+				logger.info("Can't create RTP-Dump dir: {}".format(path))
+			try:
+				self._pcap = open(os.path.join(path, filename), "wb")
+			except:
+				logger.warning("Can't create RTP-Dump file: {}".format(os.path.join(path, filename)))
+
+			# write pcap global header
+			self._pcap.write(b"\xd4\xc3\xb2\xa1")
+			# version 2.4
+			self._pcap.write(b"\x02\x00\x04\x00")
+			# GMT to local correction
+			self._pcap.write(b"\x00\x00\x00\x00")
+			# accuracy of timestamps
+			self._pcap.write(b"\x00\x00\x00\x00")
+			# max length of captured packets, in octets
+			self._pcap.write(b"\xff\xff\x00\x00")
+			# data link type (1 = Ethernet) http://www.tcpdump.org/linktypes.html
+			self._pcap.write(b"\x01\x00\x00\x00")
 
 	def write(self, data):
+		t = time.time()
+		ts = int(t)
+		tm = int((t - ts) * 1000000)
 		if "bistream" in self._modes:
 			self._bistream.append(("in", data))
 
-		# ToDo: dump to file
-		"""
-		if self._in == None:
-			return
-		data = data[12:]
-		print("---", len(data))
-		self._in.write(data)
-		"""
+		if self._pcap != None:
+			# udp packet
+			udp = struct.pack(">H", 5061)  # port src
+			udp = udp + struct.pack(">H", 5061) # port dst
+			udp = udp + struct.pack(">H", len(data) + 8) # length
+			udp = udp + struct.pack(">H", 0) # checksum
+			udp = udp + data
 
+			ip = b"\x45" # version + header length 20bytes
+			ip = ip + b"\x00"
+			ip = ip + struct.pack(">H", len(udp) + 20) # pkt length
+			ip = ip + b"\x00\x00" # identification
+			ip = ip + b"\x40\x00" # flags(do not fragment) + fragment offset(0)
+			ip = ip + b"\x40\x11" # ttl(64) + protocol(udp)
+			ip = ip + b"\x00\x00" # header checksum
+			ip = ip + b"\x0A\x00\x00\x01" # ip src
+			ip = ip + b"\x0A\x00\x00\x02" # ip dst
 
+			# add checksum to ip header
+			ip = ip[:10] + struct.pack("<H", self._ip_checksum(ip)) + ip[12:]
+
+			ether = b"\x00\x00\x00\x00\x00\x02" # MAC src
+			ether = ether + b"\x00\x00\x00\x00\x00\x01" # MAC dst
+			ether = ether + b"\x08\x00" # pkt type IPv4
+
+			pkt = ether + ip + udp
+			# pcap packet header
+			pcap = struct.pack("i", ts) # time seconds
+			pcap = pcap + struct.pack("i", tm) # microseconds
+			pcap = pcap + struct.pack("i", len(pkt)) # length captured
+			pcap = pcap + struct.pack("i", len(pkt)) # real length
+			pcap = pcap + pkt
+
+			self._pcap.write(pcap)
 
 class Timer(object):
 	def __init__(self, **kwargs):
