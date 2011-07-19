@@ -148,6 +148,7 @@ class xmppclient(connection):
 		self.elements = []
 		self.connect(server,port)
 		self.timeouts.reconnect = 10.0
+		self.timeouts.handshake = 10.0
 		self.channels = channels
 		self.resource = resource
 		self.joined = 0
