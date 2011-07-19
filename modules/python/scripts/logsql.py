@@ -413,6 +413,10 @@ class logsqlhandler(ihandler):
 				-- CONSTRAINT mysql_commands_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
 			)""")
 
+		for idx in ["command"]:
+			self.cursor.execute("""CREATE INDEX IF NOT EXISTS mysql_command_args_%s_idx 
+			ON mysql_command_args (mysql_%s)""" % (idx, idx))
+
 		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
 			mysql_command_ops (
 				mysql_command_op INTEGER PRIMARY KEY,
@@ -445,7 +449,7 @@ class logsqlhandler(ihandler):
 
 
 		# connection index for all 
-		for idx in ["dcerpcbinds", "dcerpcrequests", "emu_profiles", "emu_services", "offers", "downloads", "p0fs", "logins", "mssql_fingerprints", "mssql_commands"]:
+		for idx in ["dcerpcbinds", "dcerpcrequests", "emu_profiles", "emu_services", "offers", "downloads", "p0fs", "logins", "mssql_fingerprints", "mssql_commands","mysql_commands"]:
 			self.cursor.execute("""CREATE INDEX IF NOT EXISTS %s_connection_idx	ON %s (connection)""" % (idx, idx))
 
 
