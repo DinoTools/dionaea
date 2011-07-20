@@ -117,11 +117,11 @@ g_reg_manager = RegistrationManager()
 class RtpUdpStream(connection):
 	"""RTP stream that can send data and writes the whole conversation to a
 	file"""
-	def __init__(self, session, local_address, local_port, remote_address, remote_port):
+	def __init__(self, session, local_address, local_port, remote_address, remote_port, rtp):
 		connection.__init__(self, 'udp')
 
 		self._session = session
-
+		self._rtp = rtp
 		# Bind to free random port for incoming RTP traffic
 		self.bind(local_address, local_port)
 		self.connect(remote_address, remote_port)
@@ -133,13 +133,8 @@ class RtpUdpStream(connection):
 		# Send byte buffer
 		self.__sendBuffer = b''
 
-		# Create a stream dump file with date and time and random ID in case of
-		# flooding attacks
-		global g_sipconfig
-
 		# generate path where to dump the rtp stream
-		self._rtp = g_sipconfig.get_rtp()
-		self._rtp.open(
+		self._rtp_idx = self._rtp.add(
 			personality = self._session.personality,
 			local_host = self.local.host,
 			local_port = self.local.port,
@@ -171,7 +166,7 @@ class RtpUdpStream(connection):
 	def handle_io_in(self, data):
 		logger.debug("Incoming RTP data (length {})".format(len(data)))
 
-		self._rtp.write(data)
+		self._rtp.write(self._rtp_idx, data)
 
 		return len(data)
 
@@ -184,32 +179,9 @@ class RtpUdpStream(connection):
 		# Shift sending window for next send operation
 		#self.__sendBuffer = self.__sendBuffer[bytesSent:]
 
-
 	def handle_disconnect(self):
-		self._rtp.close()
-	"""
-	def __startRecording(self):
-		dumpDir = self.__streamDumpFileIn.rsplit('/', 1)[0]
+		self._rtp.remove(self._rtp_idx)
 
-		# Create directories if necessary
-		try:
-			os.mkdir(dumpDir)
-		except OSError as e:
-			# If directory didn't exist already, rethrow exception
-			if e.errno != errno.EEXIST:
-				raise e
-
-		# Catch IO errors
-		try:
-			self.__streamDumpIn = open(self.__streamDumpFileIn, "wb")
-		except IOError as e:
-			logger.error("RtpStream: Could not open stream dump file: {}".format(e))
-			self.__streamDumpIn = None
-			self.__streamDumpFileIn = None
-		else:
-			logger.debug("Created RTP dump file")
-
-	"""
 
 class SipCall(connection):
 	"""Usually, a new SipSession instance is created when the SIP server
@@ -227,6 +199,9 @@ class SipCall(connection):
 		self.__remote_sip_port = conInfo[1]
 		self.__remote_rtp_port = rtpPort
 		self.__msg = invite_message
+		# list of messages
+		self._msg_stack = []
+
 		self.__call_id = invite_message.headers.get(b"call-id").value
 		self._rtp_stream = None
 
@@ -275,7 +250,7 @@ class SipCall(connection):
 
 			msg = self.__msg.create_response(100)
 
-			self.send(msg.dumps())
+			self.send(msg)
 
 			self.__state = SipCall.INVITE_TRYING
 			# Wait up to two seconds
@@ -288,7 +263,7 @@ class SipCall(connection):
 			logger.debug("Send RINGING")
 			msg = self.__msg.create_response(180)
 
-			self.send(msg.dumps())
+			self.send(msg)
 
 			delay = random.randint(self._user.pickup_delay_min, self._user.pickup_delay_max)
 			logger.info("Choosing ring delay between {} and {} seconds: {}".format(self._user.pickup_delay_min, self._user.pickup_delay_max, delay))
@@ -299,6 +274,13 @@ class SipCall(connection):
 
 		if self.__state == SipCall.INVITE_RINGING:
 			logger.debug("Send OK")
+
+			# Create a stream dump file with date and time and random ID in case of
+			# flooding attacks
+			global g_sipconfig
+
+			rtp = g_sipconfig.get_rtp()
+
 			# Create RTP stream instance and pass address and port of listening
 			# remote RTP host
 			self._rtp_stream = RtpUdpStream(
@@ -306,7 +288,8 @@ class SipCall(connection):
 				self.__session.local.host,
 				0, # random port
 				self.__remote_address,
-				self.__remote_rtp_port
+				self.__remote_rtp_port,
+				rtp = rtp
 			)
 
 			i = incident("dionaea.connection.link")
@@ -326,7 +309,15 @@ class SipCall(connection):
 				)
 			)
 
-			self.send(msg.dumps())
+
+			msg_stack = self._msg_stack
+			msg_stack.append(("out", msg))
+
+			rtp.open(
+				msg_stack = msg_stack
+			)
+
+			self.send(msg)
 
 			self.__state = SipCall.CALL
 
@@ -369,13 +360,17 @@ class SipCall(connection):
 		msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
 		"""
 
-		self.send(msg.dumps())
+		self.send(msg)
 
 		# Stop timer
 		#self._timers[2].stop()
 
-	def send(self, s):
-		self.__session.send(s)
+	def send(self, msg):
+		if type(msg) == rfc3261.Message:
+			self._msg_stack.append(("out", msg))
+			msg = msg.dumps()
+
+		self.__session.send(msg)
 
 	def close(self):
 		logger.debug("SipCall.close {} Session {}".format(self, self.__session))
@@ -403,6 +398,7 @@ class SipCall(connection):
 
 
 	def handle_INVITE(self, msg):
+		self._msg_stack.append(("in", msg))
 		self.__state = SipCall.INVITE
 		self._timers["invite_handler"].set(0.1, 0)
 		self._timers["invite_handler"].data = msg
@@ -410,6 +406,7 @@ class SipCall(connection):
 		return 0
 
 	def handle_ACK(self, msg_ack):
+		self._msg_stack.append(("in", msg_ack))
 		# does this ACK belong to a CANCEL request?
 		if not self.__state == SipCall.INVITE_CANCEL:
 			logger.info("No method to cancel")
@@ -428,6 +425,7 @@ class SipCall(connection):
 
 
 	def handle_CANCEL(self, msg_cancel):
+		self._msg_stack.append(("in", msg_cancel))
 		# Todo:
 		#self.__authenticate(headers)
 		if not (self.__state == SipCall.INVITE or self.__state == SipCall.INVITE_TRYING or self.__state == SipCall.INVITE_RINGING):
@@ -454,6 +452,7 @@ class SipCall(connection):
 		self.send(msg.dumps())
 
 	def handle_BYE(self, msg_bye):
+		self._msg_stack.append(("in", msg_bye))
 		if not self.__state == SipCall.CALL:
 			logger.info("BYE without call")
 			return

@@ -1,5 +1,6 @@
 import re
 import logging
+import time
 
 try:
 	from dionaea.sip import rfc2396, rfc4566
@@ -389,6 +390,8 @@ class Message(object):
 
 		self.headers = headers
 		self.sdp = sdp
+		#: time of package creation
+		self.time = time.time()
 
 	def create_response(self, code, message = None, personality = None):
 		logger.info("Creating Response: code={}, message={}".format(code, message))

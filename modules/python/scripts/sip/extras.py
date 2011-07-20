@@ -204,10 +204,11 @@ class SipConfig(object):
 		return "default"
 
 
-	def get_rtp(self):
+	def get_rtp(self, msg_stack = []):
+		pcap_conf = self._rtp.get("pcap", {})
 		return RTP(
-			path = self._rtp.get("path", "var/dionaea/rtp/{personality}/%Y-%m-%d/"),
-			filename = self._rtp.get("filename", "%H:%M:%S_{remote_host}_{remote_port}_in.rtp"),
+			path = pcap_conf.get("path", "var/dionaea/rtp/{personality}/%Y-%m-%d/"),
+			filename = pcap_conf.get("filename", "%H:%M:%S_{remote_host}_{remote_port}_in.pcap"),
 			enable = self._rtp.get("enable", False),
 			mode = self._rtp.get("mode", ["pcap"])
 		)
@@ -260,11 +261,12 @@ class RTP(object):
 		if type(self._modes) != list:
 			self.modes = [self._modes]
 
-		self._params = {}
-		for n in ["personality", "local_host", "local_port", "remote_host", "remote_port"]:
-			self._params[n] = n
+		self._params = []
+		#for n in ["personality", "local_host", "local_port", "remote_host", "remote_port"]:
+		#	self._params[n] = n
 
-		self._bistream = []
+		self._active = []
+		self._bistreams = []
 
 		self._pcap = None
 
@@ -279,13 +281,27 @@ class RTP(object):
 			s = self._carry_arround_add(s, word)
 		return ~s & 0xffff
 
+	def add(self, **params):
+		"""
+		Add a new rtp stream.
+		"""
+		idx = len(self._params)
+		self._params.append(params)
+		self._bistreams.append([])
+		self._active.append(idx)
+		return idx
+
 	def close(self):
 		if self._pcap != None:
 			self._pcap.close()
+			self._pcap = None
 
 		if "bistream" in self._modes:
 			logger.debug("SipCall: RTP.close() write bistream")
-			if len(self._bistream) > 0:
+			for idx, bistream in enumerate(self._bistreams):
+				if len(bistream) == 0:
+					continue
+
 				now = datetime.datetime.now()
 				dirname = "%04i-%02i-%02i" % (now.year, now.month, now.day)
 				bistream_path = os.path.join(g_dionaea.config()['bistreams']['python']['dir'], dirname)
@@ -294,36 +310,37 @@ class RTP(object):
 
 				fp = tempfile.NamedTemporaryFile(
 					delete = False,
-					prefix = "SipCall-{local_port}-{remote_host}:{remote_port}-".format(**self._params),
+					prefix = "SipCall-{local_port}-{remote_host}:{remote_port}-".format(**self._params[idx]),
 					dir = bistream_path
 				)
 				fp.write(b"stream = ")
-				fp.write(str(self._bistream).encode())
+				fp.write(str(bistream).encode())
 				fp.close()
 
-	def open(self, **params):
+	def open(self, msg_stack):
 		if self.enable == False:
 			logger.info("RTP-Capture NOT enabled")
 			return
 
-		self._params.update(params)
-
 		if "pcap" in self._modes:
-			path = self.path.format(**params)
+			path = self.path.format(**self._params[0])
 			today = datetime.datetime.now()
 			path = today.strftime(path)
 			#'%H:%M:%S_{remote_host}_{remote_port}_in.rtp'
 			filename = today.strftime(self.filename)
-			filename = filename.format(**params)
+			filename = filename.format(**self._params[0])
 			# ToDo: error check
 			try:
 				os.makedirs(path)
 			except:
 				logger.info("Can't create RTP-Dump dir: {}".format(path))
+
 			try:
 				self._pcap = open(os.path.join(path, filename), "wb")
 			except:
 				logger.warning("Can't create RTP-Dump file: {}".format(os.path.join(path, filename)))
+
+		if self._pcap != None:
 
 			# write pcap global header
 			self._pcap.write(b"\xd4\xc3\xb2\xa1")
@@ -338,47 +355,92 @@ class RTP(object):
 			# data link type (1 = Ethernet) http://www.tcpdump.org/linktypes.html
 			self._pcap.write(b"\x01\x00\x00\x00")
 
-	def write(self, data):
+			for msg in msg_stack:
+				t = msg[1].time
+				ts = int(t)
+				tm = int((t - ts) * 1000000)
+
+				src_port = 5060
+				dst_port = 5060
+				if msg[0] == "in":
+					src_ether = b"\x00\x00\x00\x00\x00\x02"
+					src_host = b"\x0A\x00\x00\x02" # 10.0.0.2
+					dst_ether = b"\x00\x00\x00\x00\x00\x01"
+					dst_host = b"\x0A\x00\x00\x01" # 10.0.0.1
+				else:
+					src_ether = b"\x00\x00\x00\x00\x00\x01"
+					src_host = b"\x0A\x00\x00\x01" # 10.0.0.1
+					dst_ether = b"\x00\x00\x00\x00\x00\x02"
+					dst_host = b"\x0A\x00\x00\x02" # 10.0.0.2
+
+				self._write_pcap(ts, tm, src_ether, src_host, src_port, dst_ether, dst_host, dst_port, msg[1].dumps())
+
+	def remove(self, idx):
+		"""
+		Remove rtp stream.
+		"""
+		self._active.remove(idx)
+		if len(self._active) == 0:
+			self.close()
+
+	def write(self, idx, data):
 		t = time.time()
 		ts = int(t)
 		tm = int((t - ts) * 1000000)
 		if "bistream" in self._modes:
-			self._bistream.append(("in", data))
+			self._bistreams[idx].append(("in", data))
 
 		if self._pcap != None:
-			# udp packet
-			udp = struct.pack(">H", 5061)  # port src
-			udp = udp + struct.pack(">H", 5061) # port dst
-			udp = udp + struct.pack(">H", len(data) + 8) # length
-			udp = udp + struct.pack(">H", 0) # checksum
-			udp = udp + data
+			src_ether = b"\x00\x00\x00\x00\x00\x02"
+			src_host = b"\x0A\x00\x00\x02" # 10.0.0.2
+			src_port = self._params[idx].get("remote_port")
+			dst_ether = b"\x00\x00\x00\x00\x00\x01"
+			dst_host = b"\x0A\x00\x00\x01" # 10.0.0.1
+			dst_port = self._params[idx].get("local_port")
 
-			ip = b"\x45" # version + header length 20bytes
-			ip = ip + b"\x00"
-			ip = ip + struct.pack(">H", len(udp) + 20) # pkt length
-			ip = ip + b"\x00\x00" # identification
-			ip = ip + b"\x40\x00" # flags(do not fragment) + fragment offset(0)
-			ip = ip + b"\x40\x11" # ttl(64) + protocol(udp)
-			ip = ip + b"\x00\x00" # header checksum
-			ip = ip + b"\x0A\x00\x00\x01" # ip src
-			ip = ip + b"\x0A\x00\x00\x02" # ip dst
+			self._write_pcap(ts, tm, src_ether, src_host, src_port, dst_ether, dst_host, dst_port, data)
 
-			# add checksum to ip header
-			ip = ip[:10] + struct.pack("<H", self._ip_checksum(ip)) + ip[12:]
 
-			ether = b"\x00\x00\x00\x00\x00\x02" # MAC src
-			ether = ether + b"\x00\x00\x00\x00\x00\x01" # MAC dst
-			ether = ether + b"\x08\x00" # pkt type IPv4
+	def _write_pcap(self, ts, tm, src_ether, src_host, src_port, dst_ether, dst_host, dst_port, data):
+		if self._pcap == None:
+			return
 
-			pkt = ether + ip + udp
-			# pcap packet header
-			pcap = struct.pack("i", ts) # time seconds
-			pcap = pcap + struct.pack("i", tm) # microseconds
-			pcap = pcap + struct.pack("i", len(pkt)) # length captured
-			pcap = pcap + struct.pack("i", len(pkt)) # real length
-			pcap = pcap + pkt
+		# udp header
+		udp = struct.pack(">H", src_port)  # port src
+		udp = udp + struct.pack(">H", dst_port) # port dst
+		udp = udp + struct.pack(">H", len(data) + 8) # length
+		udp = udp + struct.pack(">H", 0) # checksum
+		udp = udp + data
 
-			self._pcap.write(pcap)
+		# IPv4 header
+		ip = b"\x45" # version + header length 20bytes
+		ip = ip + b"\x00"
+		ip = ip + struct.pack(">H", len(udp) + 20) # pkt length
+		ip = ip + b"\x00\x00" # identification
+		ip = ip + b"\x40\x00" # flags(do not fragment) + fragment offset(0)
+		ip = ip + b"\x40\x11" # ttl(64) + protocol(udp)
+		ip = ip + b"\x00\x00" # header checksum
+		ip = ip + dst_host #b"\x0A\x00\x00\x01" # ip src
+		ip = ip + src_host #b"\x0A\x00\x00\x02" # ip dst
+
+		# add checksum to ip header
+		ip = ip[:10] + struct.pack("<H", self._ip_checksum(ip)) + ip[12:]
+
+		# ethernet header
+		ether = src_ether # MAC src
+		ether = ether + dst_ether # MAC dst
+		ether = ether + b"\x08\x00" # pkt type IPv4
+
+		pkt = ether + ip + udp
+
+		# pcap packet header
+		pcap = struct.pack("i", ts) # time seconds
+		pcap = pcap + struct.pack("i", tm) # microseconds
+		pcap = pcap + struct.pack("i", len(pkt)) # length captured
+		pcap = pcap + struct.pack("i", len(pkt)) # real length
+		pcap = pcap + pkt
+
+		self._pcap.write(pcap)
 
 class Timer(object):
 	def __init__(self, **kwargs):

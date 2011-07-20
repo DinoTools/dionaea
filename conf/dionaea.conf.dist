@@ -255,13 +255,15 @@ modules = {
 			users = "var/dionaea/sipaccounts.sqlite"
 			rtp = {
 				enable = "yes"
-				path = "var/dionaea/rtp/{personality}/%Y-%m-%d/"
-				filename = "%H:%M:%S_{remote_host}_{remote_port}_in.rtp"
 				/* how to dump the rtp stream
 				   bistream = dump as bistream
 				*/
+				mode = ["bistream", "pcap"]
 
-				mode = ["bistream"]
+				pcap = {
+					path = "var/dionaea/rtp/{personality}/%Y-%m-%d/"
+					filename = "%H:%M:%S_{remote_host}_{remote_port}_in.pcap"
+				}
 			}
 			personalities = {
 				default = {
