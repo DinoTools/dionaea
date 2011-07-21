@@ -117,11 +117,11 @@ g_reg_manager = RegistrationManager()
 class RtpUdpStream(connection):
 	"""RTP stream that can send data and writes the whole conversation to a
 	file"""
-	def __init__(self, session, local_address, local_port, remote_address, remote_port, rtp):
+	def __init__(self, session, local_address, local_port, remote_address, remote_port, bistream_enabled = False, pcap = None):
 		connection.__init__(self, 'udp')
 
 		self._session = session
-		self._rtp = rtp
+		self._pcap = pcap
 		# Bind to free random port for incoming RTP traffic
 		self.bind(local_address, local_port)
 		self.connect(remote_address, remote_port)
@@ -130,10 +130,14 @@ class RtpUdpStream(connection):
 		self.remote.host = remote_address
 		self.remote.port = remote_port
 
+		self._bistream = []
+		self._bistream_enabled = bistream_enabled
+
 		# Send byte buffer
 		self.__sendBuffer = b''
 
 		# generate path where to dump the rtp stream
+		"""
 		self._rtp_idx = self._rtp.add(
 			personality = self._session.personality,
 			local_host = self.local.host,
@@ -141,6 +145,7 @@ class RtpUdpStream(connection):
 			remote_host = self.remote.host,
 			remote_port = self.remote.port
 		)
+		"""
 
 
 		# Report incident
@@ -157,6 +162,26 @@ class RtpUdpStream(connection):
 		logger.debug("Closing stream dump (in)")
 		connection.close(self)
 
+		if len(self._bistream) == 0:
+			return
+
+		global g_dionaea
+
+		now = datetime.datetime.now()
+		dirname = "%04i-%02i-%02i" % (now.year, now.month, now.day)
+		bistream_path = os.path.join(g_dionaea.config()['bistreams']['python']['dir'], dirname)
+		if not os.path.exists(bistream_path):
+			os.makedirs(bistream_path)
+
+		fp = tempfile.NamedTemporaryFile(
+			delete = False,
+			prefix = "SipCall-{local_port}-{remote_host}:{remote_port}-".format(local_port = self.local.port, remote_host = self.remote.host, remote_port = self.remote.port),
+			dir = bistream_path
+		)
+		fp.write(b"stream = ")
+		fp.write(str(self._bistream).encode())
+		fp.close()
+
 	def handle_timeout_idle(self):
 		return True
 
@@ -166,7 +191,10 @@ class RtpUdpStream(connection):
 	def handle_io_in(self, data):
 		logger.debug("Incoming RTP data (length {})".format(len(data)))
 
-		self._rtp.write(self._rtp_idx, data)
+		if self._bistream_enabled == True:
+			self._bistream.append(("in", data))
+		if self._pcap != None:
+			self._pcap.write(src_port = self.remote.port, dst_port = self.local.port, data = data)
 
 		return len(data)
 
@@ -180,7 +208,7 @@ class RtpUdpStream(connection):
 		#self.__sendBuffer = self.__sendBuffer[bytesSent:]
 
 	def handle_disconnect(self):
-		self._rtp.remove(self._rtp_idx)
+		self._pcap.close()
 
 
 class SipCall(connection):
@@ -203,7 +231,7 @@ class SipCall(connection):
 		self._msg_stack = []
 
 		self.__call_id = invite_message.headers.get(b"call-id").value
-		self._rtp_stream = None
+		self._rtp_streams = {}
 
 		self.local.host = self.__session.local.host
 		self.local.port = self.__session.local.port
@@ -279,42 +307,69 @@ class SipCall(connection):
 			# flooding attacks
 			global g_sipconfig
 
-			rtp = g_sipconfig.get_rtp()
+			pcap = g_sipconfig.get_pcap()
 
 			# Create RTP stream instance and pass address and port of listening
 			# remote RTP host
-			self._rtp_stream = RtpUdpStream(
-				self.__session,
-				self.__session.local.host,
-				0, # random port
-				self.__remote_address,
-				self.__remote_rtp_port,
-				rtp = rtp
-			)
 
+			sdp = self.__msg.sdp
+
+			media_port_names = g_sipconfig.get_sdp_media_port_names(self._user.sdp)
+
+
+			media_ports = {}
+
+			for name in media_port_names:
+				media_ports[name] = None
+
+			bistream_enabled = False
+			if "bistream" in g_sipconfig._rtp.get("mode"):
+				bistream_enabled = True
+
+			for name in media_port_names:
+				for media in sdp.get(b"m"):
+					if media.media.lower() == bytes(name[:5], "utf-8"):
+						self._rtp_streams[name] = RtpUdpStream(
+							self.__session,
+							self.__session.local.host,
+							0, # random port
+							self.__remote_address,
+							media.port,
+							pcap = pcap,
+							bistream_enabled = bistream_enabled
+						)
+						media_ports[name] = self._rtp_streams[name].local.port
+
+			"""
 			i = incident("dionaea.connection.link")
 			i.parent = self
 			i.child = self._rtp_stream
 			i.report()
+			"""
 
 			# Send 200 OK and pick up the phone
 			msg = self.__msg.create_response(200)
+
 			# ToDo: add IP6 support
 			msg.sdp = rfc4566.SDP.froms(
 				g_sipconfig.get_sdp_by_name(
 					self._user.sdp,
 					unicast_address = self.local.host,
-					media_port = self._rtp_stream.local.port,
-					addrtype = "IP4"
+					addrtype = "IP4",
+					media_ports = media_ports
 				)
 			)
-
 
 			msg_stack = self._msg_stack
 			msg_stack.append(("out", msg))
 
-			rtp.open(
-				msg_stack = msg_stack
+			pcap.open(
+				msg_stack = msg_stack,
+				personality = self.__session.personality,
+				local_host = self.local.host,
+				local_port = self.local.port,
+				remote_host = self.remote.host,
+				remote_port = self.remote.port
 			)
 
 			self.send(msg)
@@ -379,9 +434,13 @@ class SipCall(connection):
 			del self.__session._callids[self.__call_id]
 
 		# close rtpStream
-		if self._rtp_stream != None:
-			self._rtp_stream.close()
-			self._rtp_stream = None
+		for n,v in self._rtp_streams.items():
+			if v != None:
+				v.close()
+
+			self._rtp_streams[n] = None
+
+		self._rtp_streams = {}
 
 		# stop timers
 		for name, timer in self._timers.items():

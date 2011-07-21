@@ -22,7 +22,8 @@ o=- 1304279835 1 IN {addrtype} {unicast_address}
 s=SIP Session
 c=IN {addrtype} {unicast_address}
 t=0 0
-m=audio {media_port} RTP/AVP 111 0 8 9 101 120
+[audio_port]
+m=audio {audio_port} RTP/AVP 111 0 8 9 101 120
 a=sendrecv
 a=rtpmap:111 Speex/16000/1
 a=fmtp:111 sr=16000,mode=any
@@ -33,6 +34,16 @@ a=rtpmap:101 telephone-event/8000
 a=fmtp:101 0-16,32,36
 a=rtpmap:120 NSE/8000
 a=fmtp:120 192-193
+[/audio_port]
+[video_port]
+m=video {video_port} RTP/AVP 34 96 97
+c=IN {addrtype} {unicast_address}
+a=rtpmap:34 H263/90000
+a=fmtp:34 QCIF=2
+a=rtpmap:96 H263-1998/90000
+a=fmtp:96 QCIF=2
+a=rtpmap:97 H263-N800/90000
+[/video_port]
 """
 
 
@@ -213,8 +224,15 @@ class SipConfig(object):
 			mode = self._rtp.get("mode", ["pcap"])
 		)
 
+	def get_pcap(self):
+		pcap_conf = self._rtp.get("pcap", {})
+		return PCAP(
+			path = pcap_conf.get("path", "var/dionaea/rtp/{personality}/%Y-%m-%d/"),
+			filename = pcap_conf.get("filename", "%H:%M:%S_{remote_host}_{remote_port}_in.pcap"),
+		)
 
-	def get_sdp_by_name(self, name, **params):
+
+	def get_sdp_by_name(self, name, media_ports, **params):
 		"""
 		Fetch the SDP content from the database and add missing values.
 		"""
@@ -231,9 +249,33 @@ class SipConfig(object):
 			data = (DEFAULT_SDP,)
 
 		sdp = data[0]
+		for n,v in media_ports.items():
+			if v == None:
+				re.sub("\[" + n +"\].*\[\/" + n + "\]", "", sdp, 0, re.DOTALL)
+			else:
+				params[n] = v
+
 		sdp = sdp.format(**params)
 		return bytes(sdp, "utf-8")
 
+	def get_sdp_media_port_names(self, name):
+		"""
+		Find all media ports.
+		"""
+		ret = self._cur.execute("SELECT sdp FROM sdp WHERE name='?'")
+		data = ret.fetchone()
+
+		if data == None:
+			# try to fetch the default sdp from the db
+			ret = self._cur.execute("SELECT sdp FROM sdp WHERE name='default'")
+			data = ret.fetchone()
+
+		if data == None:
+			data = (DEFAULT_SDP,)
+
+		media_ports = re.findall("{(audio_port[0-9]*|video_port[0-9]*)}", data[0])
+
+		return media_ports
 
 	def is_handled_by_personality(self, handler_name, personality = "default"):
 		"""
@@ -247,28 +289,15 @@ class SipConfig(object):
 
 		return False
 
-
-class RTP(object):
-	"""
-	PCAP-Format see: http://wiki.wireshark.org/Development/LibpcapFileFormat
-	"""
-	def __init__(self, path, filename, enable = False, mode = ["pcap"]):
+class PCAP(object):
+	def __init__(self, path, filename):
 		self.path = path
 		self.filename = filename
-		self.enable = enable
-		self._modes = mode
+		self._fp = None
 
-		if type(self._modes) != list:
-			self.modes = [self._modes]
-
-		self._params = []
-		#for n in ["personality", "local_host", "local_port", "remote_host", "remote_port"]:
-		#	self._params[n] = n
-
-		self._active = []
-		self._bistreams = []
-
-		self._pcap = None
+	def __del__(self):
+		if self._fp != None:
+			self._fp.close()
 
 	def _carry_arround_add(self, a, b):
 		c = a + b
@@ -281,129 +310,78 @@ class RTP(object):
 			s = self._carry_arround_add(s, word)
 		return ~s & 0xffff
 
-	def add(self, **params):
-		"""
-		Add a new rtp stream.
-		"""
-		idx = len(self._params)
-		self._params.append(params)
-		self._bistreams.append([])
-		self._active.append(idx)
-		return idx
-
 	def close(self):
-		if self._pcap != None:
-			self._pcap.close()
-			self._pcap = None
+		if self._fp != None:
+			self._fp.close()
+		self._fp = None
 
-		if "bistream" in self._modes:
-			logger.debug("SipCall: RTP.close() write bistream")
-			for idx, bistream in enumerate(self._bistreams):
-				if len(bistream) == 0:
-					continue
+	def open(self, msg_stack, **params):
+		path = self.path.format(**params)
+		today = datetime.datetime.now()
+		path = today.strftime(path)
+		#'%H:%M:%S_{remote_host}_{remote_port}_in.rtp'
+		filename = today.strftime(self.filename)
+		filename = filename.format(**params)
+		# ToDo: error check
+		try:
+			os.makedirs(path)
+		except:
+			logger.info("Can't create RTP-Dump dir: {}".format(path))
 
-				now = datetime.datetime.now()
-				dirname = "%04i-%02i-%02i" % (now.year, now.month, now.day)
-				bistream_path = os.path.join(g_dionaea.config()['bistreams']['python']['dir'], dirname)
-				if not os.path.exists(bistream_path):
-					os.makedirs(bistream_path)
+		try:
+			self._fp = open(os.path.join(path, filename), "wb")
+		except:
+			logger.warning("Can't create RTP-Dump file: {}".format(os.path.join(path, filename)))
 
-				fp = tempfile.NamedTemporaryFile(
-					delete = False,
-					prefix = "SipCall-{local_port}-{remote_host}:{remote_port}-".format(**self._params[idx]),
-					dir = bistream_path
-				)
-				fp.write(b"stream = ")
-				fp.write(str(bistream).encode())
-				fp.close()
+		if self._fp == None:
+			return False
 
-	def open(self, msg_stack):
-		if self.enable == False:
-			logger.info("RTP-Capture NOT enabled")
+		# write pcap global header
+		self._fp.write(b"\xd4\xc3\xb2\xa1")
+		# version 2.4
+		self._fp.write(b"\x02\x00\x04\x00")
+		# GMT to local correction
+		self._fp.write(b"\x00\x00\x00\x00")
+		# accuracy of timestamps
+		self._fp.write(b"\x00\x00\x00\x00")
+		# max length of captured packets, in octets
+		self._fp.write(b"\xff\xff\x00\x00")
+		# data link type (1 = Ethernet) http://www.tcpdump.org/linktypes.html
+		self._fp.write(b"\x01\x00\x00\x00")
+
+		for msg in msg_stack:
+			t = msg[1].time
+			ts = int(t)
+			tm = int((t - ts) * 1000000)
+
+			src_port = 5060
+			dst_port = 5060
+			if msg[0] == "in":
+				src_ether = b"\x00\x00\x00\x00\x00\x02"
+				src_host = b"\x0A\x00\x00\x02" # 10.0.0.2
+				dst_ether = b"\x00\x00\x00\x00\x00\x01"
+				dst_host = b"\x0A\x00\x00\x01" # 10.0.0.1
+			else:
+				src_ether = b"\x00\x00\x00\x00\x00\x01"
+				src_host = b"\x0A\x00\x00\x01" # 10.0.0.1
+				dst_ether = b"\x00\x00\x00\x00\x00\x02"
+				dst_host = b"\x0A\x00\x00\x02" # 10.0.0.2
+
+			self.write(ts = ts, tm = tm, src_ether = src_ether, src_host = src_host, src_port = src_port, dst_ether = dst_ether, dst_host = dst_host, dst_port = dst_port, data = msg[1].dumps())
+
+	def write(self, ts = None, tm = None, src_ether = b"\x00\x00\x00\x00\x00\x02", src_host = b"\x0A\x00\x00\x02", src_port = 5060, dst_ether = b"\x00\x00\x00\x00\x00\x01", dst_host = b"\x0A\x00\x00\x01", dst_port = 5060, data = b""):
+		if self._fp == None:
 			return
 
-		if "pcap" in self._modes:
-			path = self.path.format(**self._params[0])
-			today = datetime.datetime.now()
-			path = today.strftime(path)
-			#'%H:%M:%S_{remote_host}_{remote_port}_in.rtp'
-			filename = today.strftime(self.filename)
-			filename = filename.format(**self._params[0])
-			# ToDo: error check
-			try:
-				os.makedirs(path)
-			except:
-				logger.info("Can't create RTP-Dump dir: {}".format(path))
+		if ts == None or tm == None:
+			t = time.time()
+			ts = int(t)
+			tm = int((t - ts) * 1000000)
 
-			try:
-				self._pcap = open(os.path.join(path, filename), "wb")
-			except:
-				logger.warning("Can't create RTP-Dump file: {}".format(os.path.join(path, filename)))
-
-		if self._pcap != None:
-
-			# write pcap global header
-			self._pcap.write(b"\xd4\xc3\xb2\xa1")
-			# version 2.4
-			self._pcap.write(b"\x02\x00\x04\x00")
-			# GMT to local correction
-			self._pcap.write(b"\x00\x00\x00\x00")
-			# accuracy of timestamps
-			self._pcap.write(b"\x00\x00\x00\x00")
-			# max length of captured packets, in octets
-			self._pcap.write(b"\xff\xff\x00\x00")
-			# data link type (1 = Ethernet) http://www.tcpdump.org/linktypes.html
-			self._pcap.write(b"\x01\x00\x00\x00")
-
-			for msg in msg_stack:
-				t = msg[1].time
-				ts = int(t)
-				tm = int((t - ts) * 1000000)
-
-				src_port = 5060
-				dst_port = 5060
-				if msg[0] == "in":
-					src_ether = b"\x00\x00\x00\x00\x00\x02"
-					src_host = b"\x0A\x00\x00\x02" # 10.0.0.2
-					dst_ether = b"\x00\x00\x00\x00\x00\x01"
-					dst_host = b"\x0A\x00\x00\x01" # 10.0.0.1
-				else:
-					src_ether = b"\x00\x00\x00\x00\x00\x01"
-					src_host = b"\x0A\x00\x00\x01" # 10.0.0.1
-					dst_ether = b"\x00\x00\x00\x00\x00\x02"
-					dst_host = b"\x0A\x00\x00\x02" # 10.0.0.2
-
-				self._write_pcap(ts, tm, src_ether, src_host, src_port, dst_ether, dst_host, dst_port, msg[1].dumps())
-
-	def remove(self, idx):
-		"""
-		Remove rtp stream.
-		"""
-		self._active.remove(idx)
-		if len(self._active) == 0:
-			self.close()
-
-	def write(self, idx, data):
-		t = time.time()
-		ts = int(t)
-		tm = int((t - ts) * 1000000)
-		if "bistream" in self._modes:
-			self._bistreams[idx].append(("in", data))
-
-		if self._pcap != None:
-			src_ether = b"\x00\x00\x00\x00\x00\x02"
-			src_host = b"\x0A\x00\x00\x02" # 10.0.0.2
-			src_port = self._params[idx].get("remote_port")
-			dst_ether = b"\x00\x00\x00\x00\x00\x01"
-			dst_host = b"\x0A\x00\x00\x01" # 10.0.0.1
-			dst_port = self._params[idx].get("local_port")
-
-			self._write_pcap(ts, tm, src_ether, src_host, src_port, dst_ether, dst_host, dst_port, data)
-
-
-	def _write_pcap(self, ts, tm, src_ether, src_host, src_port, dst_ether, dst_host, dst_port, data):
-		if self._pcap == None:
-			return
+		src_ether = b"\x00\x00\x00\x00\x00\x02"
+		src_host = b"\x0A\x00\x00\x02" # 10.0.0.2
+		dst_ether = b"\x00\x00\x00\x00\x00\x01"
+		dst_host = b"\x0A\x00\x00\x01" # 10.0.0.1
 
 		# udp header
 		udp = struct.pack(">H", src_port)  # port src
@@ -440,7 +418,8 @@ class RTP(object):
 		pcap = pcap + struct.pack("i", len(pkt)) # real length
 		pcap = pcap + pkt
 
-		self._pcap.write(pcap)
+		self._fp.write(pcap)
+
 
 class Timer(object):
 	def __init__(self, **kwargs):
