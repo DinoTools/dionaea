@@ -236,7 +236,7 @@ class SipConfig(object):
 		"""
 		Fetch the SDP content from the database and add missing values.
 		"""
-		logger.debug("Loading sdp with: {}".format(pprint.pformat(params)))
+		logger.debug("Loading sdp with: params = {}, media_ports {}".format(pprint.pformat(params), pprint.pformat(media_ports)))
 		ret = self._cur.execute("SELECT sdp FROM sdp WHERE name='?'")
 		data = ret.fetchone()
 
@@ -251,7 +251,7 @@ class SipConfig(object):
 		sdp = data[0]
 		for n,v in media_ports.items():
 			if v == None:
-				re.sub("\[" + n +"\].*\[\/" + n + "\]", "", sdp, 0, re.DOTALL)
+				sdp = re.sub("\[" + n +"\].*\[\/" + n + "\]", "", sdp, 0, re.DOTALL)
 			else:
 				params[n] = v
 
