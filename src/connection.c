@@ -341,7 +341,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 			   */
 
 				int r = -1; errno = ENOPROTOOPT;
-#ifdef IPv6_RECVPKTINFO
+#ifdef IPV6_RECVPKTINFO
 				r = setsockopt(con->socket, SOL_IPV6, IPV6_RECVPKTINFO, &sockopt, sizeof(sockopt));
 #endif
 #ifdef IPV6_2292PKTINFO
