@@ -77,7 +77,7 @@ class virustotalhandler(ihandler):
 		# comment on files which were submitted at least 60 seconds ago
 		sfs = self.cursor.execute("""SELECT backlogfile, md5_hash, path FROM backlogfiles WHERE status = 'comment' AND submit_time < strftime("%s",'now')-1*60 LIMIT 1""")
 		for sf in sfs:
-			self.cursor.execute("UPDATE backlogfiles SET status = 'comment-' WHERE backlogfile = ?""", (sf[0],))
+			self.cursor.execute("""UPDATE backlogfiles SET status = 'comment-' WHERE backlogfile = ?""", (sf[0],))
 			self.dbh.commit()
 			self.make_comment(sf[0], sf[1], sf[2], 'comment')
 			return
@@ -85,7 +85,7 @@ class virustotalhandler(ihandler):
 		# try to receive reports for files we submitted
 		sfs = self.cursor.execute("""SELECT backlogfile, md5_hash, path FROM backlogfiles WHERE status = 'query' AND submit_time < strftime("%s",'now')-15*60 AND lastcheck_time < strftime("%s",'now')-15*60 LIMIT 1""")
 		for sf in sfs:
-			self.cursor.execute("UPDATE backlogfiles SET status = 'query-' WHERE backlogfile = ?""", (sf[0],))
+			self.cursor.execute("""UPDATE backlogfiles SET status = 'query-' WHERE backlogfile = ?""", (sf[0],))
 			self.dbh.commit()
 			self.get_file_report(sf[0], sf[1], sf[2], 'query')
 			return
@@ -93,7 +93,7 @@ class virustotalhandler(ihandler):
 		# submit files not known to virustotal
 		sfs = self.cursor.execute("""SELECT backlogfile, md5_hash, path FROM backlogfiles WHERE status = 'submit' LIMIT 1""")
 		for sf in sfs:
-			self.cursor.execute("UPDATE backlogfiles SET status = 'submit-' WHERE backlogfile = ?""", (sf[0],))
+			self.cursor.execute("""UPDATE backlogfiles SET status = 'submit-' WHERE backlogfile = ?""", (sf[0],))
 			self.dbh.commit()
 			self.scan_file(sf[0], sf[1], sf[2], 'submit')
 			return
@@ -101,7 +101,7 @@ class virustotalhandler(ihandler):
 		# query new files
 		sfs = self.cursor.execute("""SELECT backlogfile, md5_hash, path FROM backlogfiles WHERE status = 'new' ORDER BY timestamp DESC LIMIT 1""")
 		for sf in sfs:
-			self.cursor.execute("UPDATE backlogfiles SET status = 'new-' WHERE backlogfile = ?""", (sf[0],))
+			self.cursor.execute("""UPDATE backlogfiles SET status = 'new-' WHERE backlogfile = ?""", (sf[0],))
 			self.dbh.commit()
 			self.get_file_report(sf[0], sf[1], sf[2], 'new')
 			return
