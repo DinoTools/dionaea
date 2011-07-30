@@ -3578,6 +3578,7 @@ void connection_udp_disconnect(struct connection *con)
 }
 
 /*
+int _SSL_connection_index;
  *
  * connection resolve
  *

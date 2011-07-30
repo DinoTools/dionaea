@@ -87,7 +87,7 @@ extern struct processor proc_unicode;
 extern struct processor proc_emu;
 extern struct processor proc_cspm;
 extern struct processor proc_streamdumper;
-
+extern int _SSL_connection_index;
 
 
 struct options
@@ -663,6 +663,7 @@ opt->stdOUT.filter);
 	// ssl
 	SSL_load_error_strings();
 	SSL_library_init();
+	_SSL_connection_index = SSL_get_ex_new_index(0, "connection", NULL, NULL, NULL);
 	SSL_COMP_add_compression_method(0xe0, COMP_zlib());
 	g_message("%s", SSLeay_version(SSLEAY_VERSION));
 
