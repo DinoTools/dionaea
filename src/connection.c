@@ -2423,13 +2423,12 @@ static void callback(int p, int n, void *arg)
 	fputc(c,stderr);
 }
 
-bool connection_tls_mkcert(struct connection *con)
+
+bool mkcert(SSL_CTX *ctx)
 {
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	int bits = 512*4;
 	int serial = time(NULL);
 	int days = 365;
-
 
 	X509 *x;
 	EVP_PKEY *pk;
@@ -2480,25 +2479,29 @@ bool connection_tls_mkcert(struct connection *con)
 		goto err;
 
 
-	int ret = SSL_CTX_use_PrivateKey(con->transport.tls.ctx, pk);
+	int ret = SSL_CTX_use_PrivateKey(ctx, pk);
 	if( ret != 1 )
 	{
 		perror("SSL_CTX_use_PrivateKey");
 		return false;
 	}
 
-	ret = SSL_CTX_use_certificate(con->transport.tls.ctx, x);
+	ret = SSL_CTX_use_certificate(ctx, x);
 	if( ret != 1 )
 	{
 		perror("SSL_CTX_use_certificate");
 		return false;
 	}
 
-
 	return true;
 	err:
 	return false;
+}
 
+bool connection_tls_mkcert(struct connection *con)
+{
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+	return mkcert(con->transport.tls.ctx);
 }
 
 void connection_tls_io_out_cb(EV_P_ struct ev_io *w, int revents)
