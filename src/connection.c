@@ -885,7 +885,7 @@ void connection_connect_next_addr(struct connection *con)
 				if( ret == 0 )
 			{
 				connection_set_state(con, connection_state_handshake);
-				connection_tls_connect_again_cb(CL, &con->events.io_in, 0);
+				connection_tls_connect_again_cb(CL, &con->events.io_in, EV_READ);
 				return;
 			}
 
