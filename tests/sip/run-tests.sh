@@ -30,6 +30,10 @@ if [ "${TOOL_SIPP}" == "" ]; then
 	TOOL_SIPP=sipp
 fi
 
+if [ "${TRANSPORT}" == "" ]; then
+	TRANSPORT="udp"
+fi
+
 function help_print() {
 	echo "Help"
 	echo "$0 run|clean|help"
@@ -40,9 +44,10 @@ function help_print() {
 	echo -e "\trun:   run all tests"
 	echo ""
 	echo "Environment vars"
-	echo -e "\tLHOST:   The IP Address of the local computer"
-	echo -e "\tRHOST:   The IP Address of the SIP server"
-	echo -e "\tVERBOSE: Verbosity from 0(no logging) to 2(more logging)"
+	echo -e "\tLHOST:     The IP Address of the local computer"
+	echo -e "\tRHOST:     The IP Address of the SIP server"
+	echo -e "\tTRANSPORT: Transport mode. (tcp|udp)"
+	echo -e "\tVERBOSE:   Verbosity from 0(no logging) to 2(more logging)"
 	echo -e "\tTools:"
 	echo -e "\t\tTOOL_SIPP - sipp tool"
 	echo -e "\t\tTOOL_SMAP - smap tool"
@@ -101,6 +106,12 @@ function sipp_run() {
 		if [ "${VERBOSE}" -gt "1" ]; then
 			SIPP_PARAMS=-trace_msg -trace_err -trace_screen
 		fi
+		if [ "${TRANSPORT}" == "udp" ]; then
+			SIPP_PARAMS=$SIPP_PARAMS" -t un"
+		fi
+		if [ "${TRANSPORT}" == "tcp" ]; then
+			SIPP_PARAMS=$SIPP_PARAMS" -t tn"
+		fi
 	fi
 
 	echo -n "REGISTER(w/o password): "
@@ -152,9 +163,19 @@ function smap_clean() {
 
 function smap_run() {
 	echo -e "\n=== SMAP ===\n"
+	if [ "${SMAP_PARAMS}" == "" ]; then
+		if [ "${TRANSPORT}" == "udp" ]; then
+			# -u doesn't work
+			SMAP_PARAMS=$SMAP_PARAMS""
+		fi
+		if [ "${TRANSPORT}" == "tcp" ]; then
+			print_warning "TCP support seams to be a little bit buggy"
+			SMAP_PARAMS=$SMAP_PARAMS" -t"
+		fi
+	fi
 	echo -n "Scanning ... "
 	FILE=$PWD/smap-$DATETIME.log
-	(cd ${TOOL_SMAP_BASE} && ${TOOL_SMAP} -d -o ${RHOST} &> $FILE)
+	(cd ${TOOL_SMAP_BASE} && ${TOOL_SMAP} ${SMAP_PARAMS} -d -o ${RHOST} &> $FILE)
 	awk "/^$RHOST.*, SIP enabled/{exit 1} /^$RHOST.*, SIP disabled/{exit 2}" $FILE
 	case $? in
 		1)
