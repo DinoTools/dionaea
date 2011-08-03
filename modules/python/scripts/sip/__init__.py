@@ -524,17 +524,17 @@ class SipCall(connection):
 
 class SipServer(connection):
 	"""Only UDP connections are supported at the moment"""
-	def __init__(self):
-		connection.__init__(self, 'udp')
+	def __init__(self, proto = "udp"):
+		connection.__init__(self, proto)
 		self._sessions = {}
 
 	def handle_io_in(self, data):
 		session_key = (self.local.host, self.local.port, self.remote.host, self.remote.port)
 		if session_key not in self._sessions:
-			logger.info("Creating new SipSession: {}".format(session_key))
-			self._sessions[session_key] = SipSession(self, session_key)
+			logger.info("Creating new SipSessionUDP: {}".format(session_key))
+			self._sessions[session_key] = SipSessionUDP(self, session_key)
 		else:
-			logger.info("Using existing SipSession: {}".format(session_key))
+			logger.info("Using existing SipSessionUDP: {}".format(session_key))
 
 		session = self._sessions[session_key]
 		logger.debug("{}: {}".format(session_key, data))
@@ -543,17 +543,9 @@ class SipServer(connection):
 
 
 class SipSession(connection):
-	def __init__(self, server, sessionkey):
-		connection.__init__(self, 'udp')
-		# we send everything via the servers connection
-		self.server = server
-		self.sessionkey = sessionkey
-		self.remote.host = server.remote.host
-		self.remote.port = server.remote.port
-		self.local.host = server.local.host
-		self.local.port = server.local.port
+	def __init__(self):
+		self.personality = g_sipconfig.get_personality_by_address(self.local.host)
 
-		self.personality = g_sipconfig.get_personality_by_address(server.local.host)
 		# fake a connection entry
 		i = incident("dionaea.connection.udp.connect")
 		i.con = self
@@ -564,20 +556,7 @@ class SipSession(connection):
 
 		logger.info("SIP Session created with personality '{}'".format(self.personality))
 
-		# Setup timers
-		global g_default_loop
-
-		self._timers = {
-			"idle": pyev.Timer(
-				g_sipconfig.get_timer("idle").timeout,
-				g_sipconfig.get_timer("idle").timeout,
-				g_default_loop,
-				self.__handle_idle_timeout
-			)
-		}
-
-		# start idle timer for this session
-		self._timers["idle"].start()
+		self._timers = {}
 
 		# we have to create a 'special' bistream for this
 		# as all sip traffic shares a single connection
@@ -597,7 +576,7 @@ class SipSession(connection):
 
 
 	def handle_disconnect(self):
-		logger.debug("SipSession.handle_disconnect {}".format(self))
+		logger.debug("SipSessionUDP.handle_disconnect {}".format(self))
 		if len(self.bistream) > 0:
 			now = datetime.datetime.now()
 			dirname = "%04i-%02i-%02i" % (now.year, now.month, now.day)
@@ -610,8 +589,11 @@ class SipSession(connection):
 			self.fileobj.close()
 		return False
 
+	def handle_io_in(self, data):
+		pass
+
 	def close(self):
-		logger.debug("SipSession.close {}".format(self))
+		logger.debug("SipSessionUDP.close {}".format(self))
 		# remove session from server
 		if self.sessionkey in self.server._sessions:
 			del self.server._sessions[self.sessionkey]
@@ -621,10 +603,10 @@ class SipSession(connection):
 #			logger.debug("closing callid {} call {}".format(callid, self._callids[callid]))
 			self._callids[callid].close()
 		self._callids = {}
-		
+
 		# stop timers
 		for name, timer in self._timers.items():
-			logger.debug("SipSession timer {} name {} active {} pending {}".format(timer,name, timer.active,timer.pending))
+			logger.debug("SipSessionUDP timer {} name {} active {} pending {}".format(timer,name, timer.active,timer.pending))
 			if timer.active == True or t.pending == True:
 #				logger.debug("SipSession Stopping {}".format(t))
 				timer.stop()
@@ -632,66 +614,7 @@ class SipSession(connection):
 		connection.close(self)
 
 	def send(self, s):
-		"""
-		The SipSession is not connected, we have to use the origin connection of the server to send.
-		"""
-		logger.debug('Sending message "{}" to ({}:{})'.format(
-			s, self.remote.host, self.remote.port))
-
-		# feed bistream
-		self.bistream.append(('out', s))
-
-		# SIP response incident
-#		i = incident("dionaea.modules.python.sip.out")
-#		i.con = self
-#		i.direction = "out"
-#		i.msgType = "RESPONSE"
-#		i.message = s
-#		i.report()
-		self.server.send(s, local=(self.local.host,self.local.port),remote=(self.remote.host,self.remote.port))
-
-	def handle_io_in(self, data):
-
-		# feed bistream
-		self.bistream.append(('in', data))
-
-		msg = rfc3261.Message.froms(data)
-		msg.set_personality(self.personality)
-
-		"""
-		# SIP message incident
-#		i = incident("dionaea.modules.python.sip.in")
-#		i.con = self
-#		i.direction = "in"
-#		i.msgType = msgType
-#		i.firstLine = firstLine
-#		i.sipHeaders = headers
-#		i.sipBody = body
-#		i.report()
-
-		"""
-
-		# reset idle timer
-		self._timers["idle"].reset()
-
-		handler_name = msg.method.decode("utf-8").upper()
-
-		if not g_sipconfig.is_handled_by_personality(handler_name, self.personality):
-			self.handle_unknown(msg)
-			return len(data)
-
-		try:
-			func = getattr(self, "handle_" + handler_name, None)
-		except:
-			func = None
-
-		if func is not None and callable(func) == True:
-			func(msg)
-		else:
-			self.handle_unknown(msg)
-
-		logger.debug("io_in: returning {}".format(len(data)))
-		return len(data)
+		pass
 
 	def handle_unknown(self, msg):
 		logger.warn("Unknown SIP header: {}".format(repr(msg.method)))
@@ -938,7 +861,170 @@ class SipSession(connection):
 		res = msg.create_response(200)
 		self.send(res.dumps())
 
+class SipSessionTCP(SipSession):
+	def __init__(self, proto = "tcp"):
+		connection.__init__(self, proto)
+		SipSession.__init__(self)
 
-	def sip_RESPONSE(self, statusLine, headers, body):
-		logger.info("Received a response")
+	def handle_io_in(self, data):
+		# feed bistream
+		self.bistream.append(('in', data))
 
+		(parsed_len, data_load) = rfc3261.Message.loads(data)
+		msg = rfc3261.Message(**data_load)
+		logger.debug("Got {} bytes, Used {} bytes".format(len(data), parsed_len))
+		msg.set_personality(self.personality)
+
+		"""
+		# SIP message incident
+#		i = incident("dionaea.modules.python.sip.in")
+#		i.con = self
+#		i.direction = "in"
+#		i.msgType = msgType
+#		i.firstLine = firstLine
+#		i.sipHeaders = headers
+#		i.sipBody = body
+#		i.report()
+
+		"""
+
+		# reset idle timer
+		if "idle" in self._timers:
+			self._timers["idle"].reset()
+
+		handler_name = msg.method.decode("utf-8").upper()
+
+		if not g_sipconfig.is_handled_by_personality(handler_name, self.personality):
+			self.handle_unknown(msg)
+			return len(data)
+
+		try:
+			func = getattr(self, "handle_" + handler_name, None)
+		except:
+			func = None
+
+		if func is not None and callable(func) == True:
+			func(msg)
+		else:
+			self.handle_unknown(msg)
+
+		logger.debug("io_in: returning {}".format(len(data)))
+		return parsed_len
+
+	def send(self, s):
+		logger.debug('Sending message "{}" to ({}:{})'.format(
+			s, self.remote.host, self.remote.port))
+
+		# feed bistream
+		self.bistream.append(('out', s))
+
+		# SIP response incident
+#		i = incident("dionaea.modules.python.sip.out")
+#		i.con = self
+#		i.direction = "out"
+#		i.msgType = "RESPONSE"
+#		i.message = s
+#		i.report()
+
+		connection.send(self, s)
+
+class SipSessionUDP(SipSession):
+	def __init__(self, server, sessionkey):
+		connection.__init__(self, 'udp')
+		# we send everything via the servers connection
+		self.server = server
+		self.sessionkey = sessionkey
+		self.remote.host = server.remote.host
+		self.remote.port = server.remote.port
+		self.local.host = server.local.host
+		self.local.port = server.local.port
+
+		SipSession.__init__(self)
+
+		global g_sipconfig
+
+		# Setup timers
+		global g_default_loop
+
+		self._timers.update({
+			"idle": pyev.Timer(
+				g_sipconfig.get_timer("idle").timeout,
+				g_sipconfig.get_timer("idle").timeout,
+				g_default_loop,
+				self.__handle_idle_timeout
+			)
+		})
+
+		# start idle timer for this session
+		self._timers["idle"].start()
+	def __handle_idle_timeout(self, watcher, events):
+		logger.debug("self {} SipSession IDLE TIMEOUT watcher".format(self))
+
+		# are there active calls
+		if len(self._callids) > 0:
+			return
+
+		self.close()
+
+	def handle_io_in(self, data):
+		data_len = len(data)
+		# feed bistream
+		self.bistream.append(('in', data))
+
+		msg = rfc3261.Message.froms(data)
+		msg.set_personality(self.personality)
+
+		"""
+		# SIP message incident
+#		i = incident("dionaea.modules.python.sip.in")
+#		i.con = self
+#		i.direction = "in"
+#		i.msgType = msgType
+#		i.firstLine = firstLine
+#		i.sipHeaders = headers
+#		i.sipBody = body
+#		i.report()
+
+		"""
+
+		# reset idle timer
+		if "idle" in self._timers:
+			self._timers["idle"].reset()
+
+		handler_name = msg.method.decode("utf-8").upper()
+
+		if not g_sipconfig.is_handled_by_personality(handler_name, self.personality):
+			self.handle_unknown(msg)
+			return len(data)
+
+		try:
+			func = getattr(self, "handle_" + handler_name, None)
+		except:
+			func = None
+
+		if func is not None and callable(func) == True:
+			func(msg)
+		else:
+			self.handle_unknown(msg)
+
+		logger.debug("io_in: returning {}".format(len(data)))
+		return data_len
+
+
+	def send(self, s):
+		logger.debug('Sending message "{}" to ({}:{})'.format(
+			s, self.remote.host, self.remote.port))
+
+		# feed bistream
+		self.bistream.append(('out', s))
+
+		# SIP response incident
+#		i = incident("dionaea.modules.python.sip.out")
+#		i.con = self
+#		i.direction = "out"
+#		i.msgType = "RESPONSE"
+#		i.message = s
+#		i.report()
+
+		# The SipSession is not connected, we have to use the origin connection of the server to send.
+		self.server.send(s, local=(self.local.host,self.local.port),remote=(self.remote.host,self.remote.port))

@@ -27,6 +27,7 @@
 
 
 import imp
+import logging
 import sys
 import traceback
 
@@ -42,6 +43,8 @@ from dionaea.smb import smb
 import dionaea.sip
 from dionaea.mssql import mssql
 from dionaea.mysql import mysql
+
+logger = logging.getLogger('services')
 
 # reload service imports
 #imp.reload(dionaea.http)
@@ -176,9 +179,31 @@ class epmapservice(service):
 	def stop(self, daemon):
 		daemon.close()
 
-class sipservice(service):
+class siptcpservice(service):
 	def start(self, addr, iface=None):
-		port = int(g_dionaea.config()['modules']['python']['sip']['port'])
+		port = int(g_dionaea.config()['modules']['python']['sip'].get('port_tcp', 5060))
+		daemon = dionaea.sip.SipSessionTCP(proto = 'tcp')
+		daemon.bind(addr, port, iface=iface)
+		daemon.listen()
+		return daemon
+
+	def stop(self, daemon):
+		daemon.close()
+
+class siptcptlsservice(service):
+	def start(self, addr, iface=None):
+		port = int(g_dionaea.config()['modules']['python']['sip'].get('port_tcp_tls', 5061))
+		daemon = dionaea.sip.SipSessionTCP(proto = 'tls')
+		daemon.bind(addr, port, iface=iface)
+		daemon.listen()
+		return daemon
+
+	def stop(self, daemon):
+		daemon.close()
+
+class sipudpservice(service):
+	def start(self, addr, iface=None):
+		port = int(g_dionaea.config()['modules']['python']['sip'].get('port_udp', 5060))
 		daemon = dionaea.sip.SipServer()
 		daemon.bind(addr, port, iface=iface)
 		return daemon
@@ -262,7 +287,21 @@ def new():
 		g_slave.services.append(epmapservice)
 
 	if "sip" in g_dionaea.config()['modules']['python']['services']['serve']:
-		g_slave.services.append(sipservice)
+		port_udp = g_dionaea.config()['modules']['python']['sip'].get('port_udp', None)
+		port_tcp = g_dionaea.config()['modules']['python']['sip'].get('port_tcp', None)
+		port_tcp_tls = g_dionaea.config()['modules']['python']['sip'].get('port_udp', None)
+
+		if g_dionaea.config()['modules']['python']['sip'].get('port', None) != None:
+			logger.warning("WARNING: Please update your sip config. Use 'port_udp' instead of 'port'")
+
+		if g_dionaea.config()['modules']['python']['sip'].get('port_udp', None):
+			g_slave.services.append(sipudpservice)
+
+		if g_dionaea.config()['modules']['python']['sip'].get('port_tcp', None):
+			g_slave.services.append(siptcpservice)
+
+		if g_dionaea.config()['modules']['python']['sip'].get('port_tcp_tls', None):
+			g_slave.services.append(siptcptlsservice)
 
 	if "mssql" in g_dionaea.config()['modules']['python']['services']['serve']:
 		g_slave.services.append(mssqlservice)
