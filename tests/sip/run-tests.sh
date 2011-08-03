@@ -59,8 +59,21 @@ function help_print() {
 	echo ""
 }
 
+
+function print_debug() {
+	if [ $VERBOSE -gt 1 ]; then
+		print_msg "$1" "blue"
+	fi
+}
+
 function print_error() {
 	print_msg "$1" "red"
+}
+
+function print_info() {
+	if [ $VERBOSE -gt 0 ]; then
+		print_msg "$1" "blue"
+	fi
 }
 
 function print_ok() {
@@ -72,12 +85,16 @@ function print_warning() {
 }
 	
 function print_msg() {
+	TXTBLUE="\e[0;34m"
 	TXTGREEN="\e[0;32m"
 	TXTRED="\e[0;31m"
 	TXTYELLOW="\e[0;33m"
 	TXTRESET="\e[0m"
 
 	case $2 in
+		"blue")
+			echo -ne $TXTBLUE
+			;;
 		"red")
 			echo -ne $TXTRED
 			;;
@@ -104,7 +121,7 @@ function sipp_run() {
 			SIPP_PARAMS=-trace_err
 		fi
 		if [ "${VERBOSE}" -gt "1" ]; then
-			SIPP_PARAMS=-trace_msg -trace_err -trace_screen
+			SIPP_PARAMS="-trace_msg -trace_err -trace_screen"
 		fi
 		if [ "${TRANSPORT}" == "udp" ]; then
 			SIPP_PARAMS=$SIPP_PARAMS" -t un"
@@ -115,7 +132,9 @@ function sipp_run() {
 	fi
 
 	echo -n "REGISTER(w/o password): "
-	(cd sipp && ${TOOL_SIPP} -sf register.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 -inf user.csv ${RHOST} &> /dev/null)
+	CMD="cd sipp && ${TOOL_SIPP} -sf register.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 -inf user.csv ${RHOST}"
+	print_debug "$CMD"
+	(eval $CMD &> /dev/null)
 	if [ $? == 0 ]; then
 		print_ok "OK"
 	else
@@ -123,15 +142,20 @@ function sipp_run() {
 	fi
 
 	echo -n "REGISTER(with password): "
-	(cd sipp && ${TOOL_SIPP} -sf register_pw.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 -inf user_pw.csv ${RHOST} &> /dev/null)
+	CMD="cd sipp && ${TOOL_SIPP} -sf register_pw.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 -inf user_pw.csv ${RHOST}"
+	print_debug "$CMD"
+	(eval $CMD &> /dev/null)
 	if [ $? == 0 ]; then
 		print_ok "OK"
 	else
+		print_warning "Authentication requires OpenSSL support! Please re-check manually."
 		print_error "Failed"
 	fi
 
 	echo -n "INVITE ACK BYE: "
-	(cd sipp && ${TOOL_SIPP} -sn uac -s 500 -m 1 -l 1 -d 500 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 ${RHOST} &> /dev/null)
+	CMD="cd sipp && ${TOOL_SIPP} -sn uac -s 500 -m 1 -l 1 -d 500 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 ${RHOST}"
+	print_debug "$CMD"
+	(eval $CMD &> /dev/null)
 	if [ $? == 0 ]; then 
 		print_ok "OK"
 	else
@@ -139,7 +163,9 @@ function sipp_run() {
 	fi
 
 	echo -n "NEWMETHOD: "
-	(cd sipp && ${TOOL_SIPP} -sf newmethod.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 ${RHOST} &> /dev/null)
+	CMD="cd sipp && ${TOOL_SIPP} -sf newmethod.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 -inf user.csv ${RHOST}"
+	print_debug "$CMD"
+	(eval $CMD &> /dev/null)
 	if [ $? == 0 ]; then
 		print_ok "OK"
 	else
@@ -147,7 +173,9 @@ function sipp_run() {
 	fi
 
 	echo -n "OPTIONS: "
-	(cd sipp && ${TOOL_SIPP} -sf options.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 ${RHOST} &> /dev/null)
+	CMD="cd sipp && ${TOOL_SIPP} -sf options.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 -inf user.csv ${RHOST}"
+	print_debug "$CMD"
+	(eval $CMD &> /dev/null)
 	if [ $? == 0 ]; then
 		print_ok "OK"
 	else
@@ -175,7 +203,9 @@ function smap_run() {
 	fi
 	echo -n "Scanning ... "
 	FILE=$PWD/smap-$DATETIME.log
-	(cd ${TOOL_SMAP_BASE} && ${TOOL_SMAP} ${SMAP_PARAMS} -d -o ${RHOST} &> $FILE)
+	CMD="cd ${TOOL_SMAP_BASE} && ${TOOL_SMAP} ${SMAP_PARAMS} -d -o ${RHOST}"
+	print_debug "$CMD"
+	(eval $CMD &> $FILE)
 	awk "/^$RHOST.*, SIP enabled/{exit 1} /^$RHOST.*, SIP disabled/{exit 2}" $FILE
 	case $? in
 		1)
