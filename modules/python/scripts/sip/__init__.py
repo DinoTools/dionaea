@@ -971,6 +971,18 @@ class SipSessionUDP(SipSession):
 		# feed bistream
 		self.bistream.append(('in', data))
 
+		# Header must be terminated by an empty line.
+		# If empty line is missing add it.
+		# This works only for sip over udp but not for sip over tcp,
+		# because one UDP package is exactly one sip message.
+		# SIP-Servers like Asterisk do it the same way.
+		if not b"\n\r\n" in data and not b"\n\n" in data:
+			data = data + b"\n\r\n"
+
+		# all lines must end with \r\n
+		data = data.replace(b"\r\n", b"\n")
+		data = data.replace(b"\n", b"\r\n")
+
 		msg = rfc3261.Message.froms(data)
 		msg.set_personality(self.personality)
 
