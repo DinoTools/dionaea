@@ -271,12 +271,12 @@ class SipCall(connection):
 			#self.__authenticate(headers)
 
 			if self._user == None:
-				msg = self.__msg.create_response(404)
+				msg = self.__msg.create_response(rfc3261.NOT_FOUND)
 				self.send(msg.dumps())
 				self.__state = SipCall.NO_SESSION
 				return
 
-			msg = self.__msg.create_response(100)
+			msg = self.__msg.create_response(rfc3261.TRYING)
 
 			self.send(msg)
 
@@ -289,7 +289,7 @@ class SipCall(connection):
 		if self.__state == SipCall.INVITE_TRYING:
 			# Send 180 Ringing to make honeypot appear more human-like
 			logger.debug("Send RINGING")
-			msg = self.__msg.create_response(180)
+			msg = self.__msg.create_response(rfc3261.RINGING)
 
 			self.send(msg)
 
@@ -348,7 +348,7 @@ class SipCall(connection):
 			"""
 
 			# Send 200 OK and pick up the phone
-			msg = self.__msg.create_response(200)
+			msg = self.__msg.create_response(rfc3261.OK)
 
 			# ToDo: add IP6 support
 			msg.sdp = rfc4566.SDP.froms(
@@ -395,7 +395,7 @@ class SipCall(connection):
 		#headers = watcher.data
 		#localRtpPort = self._rtpStream.local.port
 
-		msg = self.__msg.create_response(200)
+		msg = self.__msg.create_response(rfc3261.OK)
 
 		"""
 		msgLines = []
@@ -505,9 +505,9 @@ class SipCall(connection):
 		# RFC3261 send 487 Request Terminated after cancel
 		# old RFC2543 don't send 487
 		#ToDo: use timeout to close the session
-		msg = self.__msg.create_response(487)
+		msg = self.__msg.create_response(rfc3261.REQUEST_TERINATED)
 		self.send(msg.dumps())
-		msg = msg_cancel.create_response(200)
+		msg = msg_cancel.create_response(rfc3261.OK)
 		self.send(msg.dumps())
 
 	def handle_BYE(self, msg_bye):
@@ -516,7 +516,7 @@ class SipCall(connection):
 			logger.info("BYE without call")
 			return
 
-		msg = msg_bye.create_response(200)
+		msg = msg_bye.create_response(rfc3261.OK)
 		self.send(msg.dumps())
 		self.close()
 		return
@@ -619,7 +619,7 @@ class SipSession(connection):
 	def handle_unknown(self, msg):
 		logger.warn("Unknown SIP header: {}".format(repr(msg.method)))
 
-		res = msg.create_response(501)
+		res = msg.create_response(rfc3261.NOT_IMPLEMENTED)
 		d = res.dumps()
 		self.send(res.dumps())
 
@@ -780,7 +780,7 @@ class SipSession(connection):
 		logger.info("Received OPTIONS")
 
 		# ToDo: add Contact
-		res = msg.create_response(200)
+		res = msg.create_response(rfc3261.OK)
 		res.headers.append(rfc3261.Header(name = "Accept", value = "application/sdp"))
 		res.headers.append(rfc3261.Header(name = "Accept-Language", value = "en"))
 
@@ -805,7 +805,7 @@ class SipSession(connection):
 
 		# given user not found
 		if u == None:
-			res = msg.create_response(404)
+			res = msg.create_response(rfc3261.NOT_FOUND)
 			self.send(res.dumps())
 			return
 
@@ -819,7 +819,7 @@ class SipSession(connection):
 					nonce = "foobar123",
 					realm = u.realm
 				)
-				res = msg.create_response(401)
+				res = msg.create_response(rfc3261.UNAUTHORIZED)
 				res.headers.append(rfc3261.Header(name = b"www-authenticate", value = self._auth))
 				self.send(res.dumps())
 				return
@@ -835,7 +835,7 @@ class SipSession(connection):
 					nonce = b"foobar123",
 					realm = u.realm
 				)
-				res = msg.create_response(401)
+				res = msg.create_response(rfc3261.UNAUTHORIZED)
 				res.headers.append(rfc3261.Header(name =  b"www-authenticate", value = self._auth))
 				self.send(res.dumps())
 				return
@@ -864,7 +864,7 @@ class SipSession(connection):
 		user = User(user_id, msg = msg)
 		g_reg_manager.register(user)
 
-		res = msg.create_response(200)
+		res = msg.create_response(rfc3261.OK)
 		self.send(res.dumps())
 
 class SipSessionTCP(SipSession):
