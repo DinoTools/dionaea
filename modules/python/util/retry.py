@@ -4,6 +4,7 @@ from optparse import OptionParser
 import socket
 import os
 import shutil
+import sys
 import time
 
 parser = OptionParser()
@@ -21,6 +22,7 @@ if os.path.exists(options.tempfile):
 	os.unlink(options.tempfile)
 shutil.copy (options.filename, options.tempfile + ".py")
 
+sys.path.append(".")
 import_string = "from " + options.tempfile + " import stream"
 exec(import_string)
 
