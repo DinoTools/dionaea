@@ -153,7 +153,7 @@ function sipp_run() {
 	fi
 
 	echo -n "INVITE ACK BYE: "
-	CMD="cd sipp && ${TOOL_SIPP} -sn uac -s 500 -m 1 -l 1 -d 500 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 ${RHOST}"
+	CMD="cd sipp && ${TOOL_SIPP} -sf uac.xml -s 500 -m 1 -l 1 -d 500 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 ${RHOST}"
 	print_debug "$CMD"
 	(eval $CMD &> /dev/null)
 	if [ $? == 0 ]; then 
