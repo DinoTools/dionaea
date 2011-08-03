@@ -803,6 +803,12 @@ class SipSession(connection):
 
 		u = g_sipconfig.get_user_by_username(self.personality, user_id)
 
+		# given user not found
+		if u == None:
+			res = msg.create_response(404)
+			self.send(res.dumps())
+			return
+
 		if u.password != None and u.password != "":
 			header_auth = msg.headers.get(b"authorization", None)
 			if header_auth == None or self._auth == None:
