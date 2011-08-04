@@ -505,7 +505,7 @@ class SipCall(connection):
 		# RFC3261 send 487 Request Terminated after cancel
 		# old RFC2543 don't send 487
 		#ToDo: use timeout to close the session
-		msg = self.__msg.create_response(rfc3261.REQUEST_TERINATED)
+		msg = self.__msg.create_response(rfc3261.REQUEST_TERMINATED)
 		self.send(msg.dumps())
 		msg = msg_cancel.create_response(rfc3261.OK)
 		self.send(msg.dumps())
