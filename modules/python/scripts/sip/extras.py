@@ -324,7 +324,8 @@ class PCAP(object):
 		filename = filename.format(**params)
 		# ToDo: error check
 		try:
-			os.makedirs(path)
+			if not os.path.exists(path):
+				os.makedirs(path)
 		except:
 			logger.info("Can't create RTP-Dump dir: {}".format(path))
 
