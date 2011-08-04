@@ -444,7 +444,9 @@ bool connection_listen(struct connection *con, int len)
 
 	case connection_transport_udp:
 		con->type = connection_type_listen;
+		con->transport.udp.type.server.peers = g_hash_table_new_full(connection_addrs_hash, connection_addrs_cmp, NULL, NULL);
 		break;
+
 	case connection_transport_dtls:
 		con->type = connection_type_listen;
 		con->transport.dtls.type.server.peers = g_hash_table_new_full(connection_addrs_hash, connection_addrs_cmp, NULL, NULL);
@@ -1585,9 +1587,11 @@ void connection_established(struct connection *con)
 	case connection_transport_udp:
 		// inform protocol about new connection
 		con->protocol.established(con);
-		ev_io_init(&con->events.io_in, connection_udp_io_in_cb, con->socket, EV_READ);
-		ev_io_start(CL, &con->events.io_in);
-
+		if( con->type == connection_type_connect || con->type == connection_type_bind )
+		{
+			ev_io_init(&con->events.io_in, connection_udp_io_in_cb, con->socket, EV_READ);
+			ev_io_start(CL, &con->events.io_in);
+		}
 		// timers
 		if( con->events.idle_timeout.repeat >= 0. )
 			ev_timer_again(CL,  &con->events.idle_timeout);
@@ -3523,10 +3527,51 @@ void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	{
 		node_info_set(&con->remote, &con->remote.addr);
 		node_info_set(&con->local, &con->local.addr);
-//		g_debug("%s -> %s %.*s", con->remote.node_string, con->local.node_string, ret, buf);
-		con->protocol.io_in(con, con->protocol.ctx, buf, ret);
-		memset(buf, 0, 64*1024);
+
+
+		struct connection *peer;
+		switch( con->type )
+		{
+		case connection_type_listen:
+			/* we are a server -> find the peer */
+			if( (peer = g_hash_table_lookup(con->transport.udp.type.server.peers, con)) == NULL )
+			{ /* no peer? create a new one */
+				peer = connection_new(connection_transport_udp);
+				peer->transport.udp.type.client.parent = con;
+				peer->type = connection_type_accept;
+				peer->state = connection_state_established;
+				memcpy(&peer->local.addr, &con->local.addr, sizeof(struct sockaddr_storage));
+				memcpy(&peer->remote.addr, &con->remote.addr, sizeof(struct sockaddr_storage));
+				node_info_set(&peer->remote, &peer->remote.addr);
+				node_info_set(&peer->local, &peer->local.addr);
+				g_debug("new udp peer %s %s", peer->local.node_string, peer->remote.node_string);
+				peer->transport.udp.type.client.parent = con;
+				connection_protocol_set(peer, &peer->transport.udp.type.client.parent->protocol);
+
+				ev_timer_init(&peer->events.idle_timeout, connection_udp_idle_timeout_cb, 0. ,con->events.idle_timeout.repeat);
+				ev_timer_init(&peer->events.sustain_timeout, connection_udp_sustain_timeout_cb, 0. ,con->events.sustain_timeout.repeat);
+				peer->protocol.ctx = peer->transport.udp.type.client.parent->protocol.ctx_new(peer);
+
+				// teach new connection about parent
+				if( peer->transport.udp.type.client.parent->protocol.origin != NULL )
+					peer->transport.udp.type.client.parent->protocol.origin(peer, peer->transport.udp.type.client.parent);
+
+				connection_established(peer);
+
+				g_hash_table_insert(con->transport.udp.type.server.peers, peer, peer);
+			}
+			g_debug("%s -> %s %i bytes", peer->remote.node_string, peer->local.node_string, ret);
+			break;
+		case connection_type_bind:
+		case connection_type_connect:
+			peer = con;
+			break;
+		default:
+			return;
+		}
+		peer->protocol.io_in(peer, peer->protocol.ctx, buf, ret);
 	}
+
 	if( ret == -1 && errno != EAGAIN && errno != EWOULDBLOCK )
 	{
 		g_warning("connection error %i %s", ret, strerror(errno));
@@ -3559,7 +3604,22 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 		 * and as we can't distinguish from bound/unbound connected/unconnected sockets at this point 
 		 * udp does not work for openbsd 
 		 */
-		ret = sendtofrom(con->socket, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size, (struct sockaddr *)&packet->from, size);
+
+		int fd = 0;
+		switch( con->type )
+		{
+		case connection_type_connect:
+		case connection_type_bind:
+			fd = con->socket;
+			break;
+		case connection_type_accept:
+			fd = con->transport.udp.type.client.parent->socket;
+			break;
+		default:
+			g_warning("Invalid connection type!");
+		}
+
+		ret = sendtofrom(fd, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size, (struct sockaddr *)&packet->from, size);
 
 		if( ret == -1 )
 		{
@@ -3636,7 +3696,31 @@ void connection_udp_disconnect(struct connection *con)
 {
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	connection_set_state(con, connection_state_close);
-	con->protocol.disconnect(con, con->protocol.ctx);
+	switch( con->type )
+	{
+	case connection_type_accept:
+		g_hash_table_remove(con->transport.udp.type.client.parent->transport.udp.type.server.peers, con);
+	case connection_type_connect:
+	case connection_type_bind:
+		con->protocol.disconnect(con, con->protocol.ctx);
+		break;
+	case connection_type_listen:
+		{
+			GHashTableIter iter;
+			gpointer key, value;
+			g_hash_table_iter_init (&iter, con->transport.udp.type.server.peers);
+			while( g_hash_table_iter_next (&iter, &key, &value) )
+			{
+				struct connection *peer = value;
+				connection_udp_disconnect(peer);
+				g_hash_table_iter_init (&iter, con->transport.udp.type.server.peers);
+			}
+		}
+		break;
+	default:
+		break;
+	}
+
 	connection_disconnect(con);
 	connection_free(con);
 }

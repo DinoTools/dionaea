@@ -142,11 +142,19 @@ struct connection
 	{
 		struct
 		{
-			struct node_info src; 
-			struct node_info dst; 
-
 			GList *io_in; 
-			GList *io_out; 
+			GList *io_out;
+			union
+			{
+				struct
+				{
+					GHashTable *peers;
+				}server;
+				struct
+				{
+					struct connection *parent;
+				}client;
+			}type;
 		} udp;
 
 		struct
