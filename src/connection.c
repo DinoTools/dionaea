@@ -3578,14 +3578,11 @@ void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	}
 }
 
-void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
+void _connection_send_packets(int fd, GList **packets)
 {
-	struct connection *con = CONOFF_IO_OUT(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-
 	GList *elem;
 
-	while( (elem = g_list_first(con->transport.udp.io_out)) != NULL )
+	while( (elem = g_list_first(*packets)) != NULL )
 	{
 		struct udp_packet *packet = elem->data;
 		socklen_t size = ((struct sockaddr *)&packet->to)->sa_family == PF_INET ? sizeof(struct sockaddr_in) : 
@@ -3605,20 +3602,6 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 		 * udp does not work for openbsd 
 		 */
 
-		int fd = 0;
-		switch( con->type )
-		{
-		case connection_type_connect:
-		case connection_type_bind:
-			fd = con->socket;
-			break;
-		case connection_type_accept:
-			fd = con->transport.udp.type.client.parent->socket;
-			break;
-		default:
-			g_warning("Invalid connection type!");
-		}
-
 		ret = sendtofrom(fd, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size, (struct sockaddr *)&packet->from, size);
 
 		if( ret == -1 )
@@ -3632,7 +3615,7 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 				g_warning("sendtofrom failed %s",  strerror(errno));
 				g_string_free(packet->data, TRUE);
 				g_free(packet);
-				con->transport.udp.io_out = g_list_delete_link(con->transport.udp.io_out, elem);
+				*packets = g_list_delete_link(*packets, elem);
 			}
 			break;
 		} else
@@ -3640,17 +3623,39 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 		{
 			g_string_free(packet->data, TRUE);
 			g_free(packet);
-			con->transport.udp.io_out = g_list_delete_link(con->transport.udp.io_out, elem);
+			*packets = g_list_delete_link(*packets, elem);
 		} else
 		{
 			g_warning("sendtofrom failed %s",  strerror(errno));
 			g_string_free(packet->data, TRUE);
 			g_free(packet);
-			con->transport.udp.io_out = g_list_delete_link(con->transport.udp.io_out, elem);
+			*packets = g_list_delete_link(*packets, elem);
 			break;
 		}
 	}
-//	g_debug(" done");
+}
+
+void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
+{
+	struct connection *con = CONOFF_IO_OUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+
+	int fd = 0;
+	switch( con->type )
+	{
+	case connection_type_connect:
+	case connection_type_bind:
+		fd = con->socket;
+		break;
+	case connection_type_accept:
+		fd = con->transport.udp.type.client.parent->socket;
+		break;
+	default:
+		g_warning("Invalid connection type!");
+	}
+
+	_connection_send_packets(fd, &con->transport.udp.io_out);
+
 	if( g_list_length(con->transport.udp.io_out) > 0 )
 	{
 		if( !ev_is_active(&con->events.io_out) )
@@ -4087,70 +4092,20 @@ void connection_dtls_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revent
 	struct connection *con = CONOFF_IO_OUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
-	GList *elem;
-
-	while( (elem = g_list_first(con->transport.dtls.io_out)) != NULL )
+	int fd = 0;
+	switch( con->type )
 	{
-		struct udp_packet *packet = elem->data;
-		socklen_t size = ((struct sockaddr *)&packet->to)->sa_family == PF_INET ? sizeof(struct sockaddr_in) : 
-						 ((struct sockaddr *)&packet->to)->sa_family == PF_INET6 ? sizeof(struct sockaddr_in6) : 
-						 ((struct sockaddr *)&packet->to)->sa_family == AF_UNIX ? sizeof(struct sockaddr_un) : -1;
-
-		int ret;
-		/*
-		 * for whatever reason 
-		 * * send 
-		 *   - works on udp sockets which were connect()'ed before (linux)
-		 *   - works not on udp sockets which were bind()'ed before (linux)
-		 * * sendto 
-		 *   - does not work on connect()'ed sockets on (openbsd)
-		 *  
-		 * and as we can't distinguish from bound/unbound connected/unconnected sockets at this point 
-		 * udp does not work for openbsd 
-		 */
-
-		int fd = 0;
-		switch( con->type )
-		{
-		case connection_type_connect:
-			fd = con->socket;
-			break;
-		case connection_type_accept:
-			fd = con->transport.dtls.type.client.parent->socket;
-			break;
-		default:
-			g_warning("Invalid connection type!");
-		}
-		ret = sendtofrom(fd, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size, (struct sockaddr *)&packet->from, size);
-		if( ret == -1 )
-		{
-			if( errno == EAGAIN )
-			{
-				break;
-			} else
-			{
-				g_debug("domain %i size %i", ((struct sockaddr *)&packet->to)->sa_family, size);
-				g_warning("sendtofrom failed %s",  strerror(errno));
-				g_string_free(packet->data, TRUE);
-				g_free(packet);
-				con->transport.dtls.io_out = g_list_delete_link(con->transport.dtls.io_out, elem);
-			}
-			break;
-		} else
-		if( ret == packet->data->len )
-		{
-			g_string_free(packet->data, TRUE);
-			g_free(packet);
-			con->transport.dtls.io_out = g_list_delete_link(con->transport.dtls.io_out, elem);
-		} else
-		{
-			g_warning("sendtofrom failed %s",  strerror(errno));
-			g_string_free(packet->data, TRUE);
-			g_free(packet);
-			con->transport.dtls.io_out = g_list_delete_link(con->transport.dtls.io_out, elem);
-			break;
-		}
+	case connection_type_connect:
+		fd = con->socket;
+		break;
+	case connection_type_accept:
+		fd = con->transport.dtls.type.client.parent->socket;
+		break;
+	default:
+		g_warning("Invalid connection type!");
 	}
+	_connection_send_packets(fd, &con->transport.dtls.io_out);
+
 //	g_debug(" done");
 	if( g_list_length(con->transport.dtls.io_out) > 0 )
 	{
