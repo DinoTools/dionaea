@@ -64,6 +64,7 @@ enum connection_transport
 	connection_transport_udp,
 	connection_transport_tcp,
 	connection_transport_tls,
+	connection_transport_dtls,
 	connection_transport_io,
 };
 
@@ -178,6 +179,32 @@ struct connection
 
 			void           *pTmpKeys[SSL_TMP_KEY_MAX];
 		} tls;
+		struct
+		{
+			const SSL_METHOD	*meth;
+			SSL_CTX				*ctx;
+			SSL *ssl;
+			BIO *reading;
+			BIO *writing;
+			unsigned long ssl_error;
+			char ssl_error_string[256];
+			GList *io_out; 
+			union
+			{
+				struct
+				{
+					GHashTable *peers;
+#define DTLS_COOKIE_SECRET_LENGTH 16
+					unsigned char cookie_secret[DTLS_COOKIE_SECRET_LENGTH];
+				}server;
+				struct
+				{
+					struct connection *parent;
+					int flags;
+#define DTLS_HAS_SEEN_THE_COOKIE (1<<0)
+				}client;
+			}type;
+		} dtls;
 	}transport;
 
 	struct connection_stats_info stats;
@@ -344,6 +371,19 @@ void connection_tls_disconnect(struct connection *con);
 void connection_tls_error(struct connection *con);
 
 void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents);
+
+
+guint connection_addrs_hash(gconstpointer key);
+gboolean connection_addrs_cmp(gconstpointer a, gconstpointer b);
+int dtls_generate_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len);
+int dtls_verify_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int cookie_len);
+void connection_dtls_accept_again(struct ev_loop *loop, struct ev_io *w, int revents);
+void connection_dtls_connect_again(struct ev_loop *loop, struct ev_io *w, int revents);
+void connection_dtls_error(struct connection *con);
+void connection_dtls_drain_bio(struct connection *con);
+bool connection_dtls_mkcert(struct connection *con);
+void connection_dtls_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
+void connection_dtls_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 
 bool connection_transport_from_string(const char *type_str, enum connection_transport *type);
 const char *connection_transport_to_string(enum connection_transport trans);

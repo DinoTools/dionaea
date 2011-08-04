@@ -447,6 +447,7 @@ void async_connection_accept(void *data)
 		ev_io_start(CL, &con->events.io_in);
 		break;
 
+	case connection_transport_dtls:
 	case connection_transport_io:
 	case connection_transport_udp:
 		break;
@@ -810,6 +811,7 @@ uint32_t user_hook_listen(struct emu_env *env, struct emu_env_hook *hook, ...)
 
 		break;
 
+	case connection_transport_dtls:
 	case connection_transport_tls:
 	case connection_transport_io:
 	case connection_transport_udp:
@@ -849,6 +851,7 @@ void async_connection_io_in(void *data)
 			connection_sustain_timeout_set(con, ev_timer_remaining(CL, &con->events.sustain_timeout));
 		break;
 
+	case connection_transport_dtls:
 	case connection_transport_tls:
 	case connection_transport_io:
 	case connection_transport_udp:
