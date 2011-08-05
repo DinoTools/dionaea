@@ -136,18 +136,7 @@ class RtpUdpStream(connection):
 		# Send byte buffer
 		self.__sendBuffer = b''
 
-		# generate path where to dump the rtp stream
-		"""
-		self._rtp_idx = self._rtp.add(
-			personality = self._session.personality,
-			local_host = self.local.host,
-			local_port = self.local.port,
-			remote_host = self.remote.host,
-			remote_port = self.remote.port
-		)
-		"""
-
-
+		# ToDo:
 		# Report incident
 		# ToDo:
 		#i = incident("dionaea.modules.python.sip.rtp")
@@ -212,8 +201,10 @@ class RtpUdpStream(connection):
 
 
 class SipCall(connection):
-	"""Usually, a new SipSession instance is created when the SIP server
-	receives an INVITE message"""
+	"""
+	Usually, a new SipCall instance is created when the SIPSession
+	receives an INVITE message
+	"""
 	NO_SESSION, SESSION_SETUP, ACTIVE_SESSION, SESSION_TEARDOWN, INVITE, INVITE_TRYING, INVITE_RINGING, INVITE_CANCEL, CALL = range(9)
 
 	def __init__(self, proto, session, conInfo, rtpPort, invite_message):
@@ -339,13 +330,12 @@ class SipCall(connection):
 							bistream_enabled = bistream_enabled
 						)
 						media_ports[name] = self._rtp_streams[name].local.port
-
-			"""
-			i = incident("dionaea.connection.link")
-			i.parent = self
-			i.child = self._rtp_stream
-			i.report()
-			"""
+			# ToDo: report
+			#
+			# i = incident("dionaea.connection.link")
+			# i.parent = self
+			# i.child = self._rtp_stream
+			# i.report()
 
 			# Send 200 OK and pick up the phone
 			msg = self.__msg.create_response(rfc3261.OK)
@@ -389,36 +379,9 @@ class SipCall(connection):
 		self.close()
 
 	def __handle_invite_timeout(self, watcher, events):
-		# Send our RTP port to the remote host as a 200 OK response to the
-		# remote host's INVITE request
-		#logger.debug("SipCall: {} CallID {}".format(self, self.__callId))
-		#headers = watcher.data
-		#localRtpPort = self._rtpStream.local.port
-
 		msg = self.__msg.create_response(rfc3261.OK)
 
-		"""
-		msgLines = []
-		msgLines.append("SIP/2.0 " + RESPONSE[OK])
-		msgLines.append("Via: " + self.__sipVia)
-		msgLines.append("Max-Forwards: 70")
-		msgLines.append("To: " + self.__sipTo)
-		msgLines.append("From: " + self.__sipFrom)
-		msgLines.append("Call-ID: {}".format(self.__callId))
-		msgLines.append("CSeq: " + headers['cseq'])
-		msgLines.append("Contact: " + self.__sipContact)
-		msgLines.append("User-Agent: " + g_sipconfig['useragent'])
-		msgLines.append("Content-Type: application/sdp")
-		msgLines.append("\nv=0")
-		msgLines.append("o=... 0 0 IN IP4 localhost")
-		msgLines.append("t=0 0")
-		msgLines.append("m=audio {} RTP/AVP 0".format(localRtpPort))
-		"""
-
 		self.send(msg)
-
-		# Stop timer
-		#self._timers[2].stop()
 
 	def send(self, msg):
 		if type(msg) == rfc3261.Message:
@@ -547,6 +510,7 @@ class SipSession(connection):
 		global g_default_loop
 
 		self._timers = {
+# ToDo:
 #			"idle": pyev.Timer(
 #				g_sipconfig.get_timer("idle").timeout,
 #				g_sipconfig.get_timer("idle").timeout,
@@ -563,12 +527,12 @@ class SipSession(connection):
 		self.processors()
 
 	def handle_io_in(self, data):
-		# Header must be terminated by an empty line.
-		# If empty line is missing add it.
-		# This works only for sip over udp but not for sip over tcp,
-		# because one UDP package is exactly one sip message.
-		# SIP-Servers like Asterisk do it the same way.
 		if self.transport == "udp":
+			# Header must be terminated by an empty line.
+			# If empty line is missing add it.
+			# This works only for sip over udp but not for sip over tcp,
+			# because one UDP package is exactly one sip message.
+			# SIP-Servers like Asterisk do it the same way.
 			len_used = len(data)
 
 			if not b"\n\r\n" in data and not b"\n\n" in data:
@@ -586,7 +550,7 @@ class SipSession(connection):
 
 		msg.set_personality(self.personality)
 
-		"""
+		# ToDo: report
 		# SIP message incident
 #		i = incident("dionaea.modules.python.sip.in")
 #		i.con = self
@@ -597,19 +561,13 @@ class SipSession(connection):
 #		i.sipBody = body
 #		i.report()
 
-		"""
-
-		"""
-		# reset idle timer
-		if "idle" in self._timers:
-			self._timers["idle"].reset()
-		"""
-
 		handler_name = msg.method.decode("utf-8").upper()
 
 		if not g_sipconfig.is_handled_by_personality(handler_name, self.personality):
 			self.handle_unknown(msg)
 			return len(data)
+
+		logger.info("Received: {}".format(handler_name))
 
 		try:
 			func = getattr(self, "handle_" + handler_name, None)
@@ -696,7 +654,7 @@ class SipSession(connection):
 	def handle_CANCEL(self, msg):
 		logger.info("Received CANCEL")
 
-		# Check mandatory headers
+		# ToDo: Check mandatory headers, check for problems with some scanners
 		#if self.__checkForMissingHeaders(headers):
 		#	return
 
@@ -717,11 +675,6 @@ class SipSession(connection):
 
 	def handle_INVITE(self, msg):
 		global g_sipconfig
-
-		# Print SIP header
-		#logger.info("Received INVITE")
-		#for k, v in headers.items():
-	#		logger.debug("SIP header {}: {}".format(k, v))
 
 		# ToDo: content-length? also for udp or only for tcp?
 		if not msg.headers_exist([b"content-type"]):
@@ -805,7 +758,6 @@ class SipSession(connection):
 	def handle_OPTIONS(self, msg):
 		logger.info("Received OPTIONS")
 
-		# ToDo: add Contact
 		res = msg.create_response(rfc3261.OK)
 		res.headers.append(rfc3261.Header(name = "Accept", value = "application/sdp"))
 		res.headers.append(rfc3261.Header(name = "Accept-Language", value = "en"))
@@ -818,7 +770,7 @@ class SipSession(connection):
 		:See: http://tools.ietf.org/html/rfc3261#section-10
 		"""
 
-		# b"request-uri"
+		# ToDo: check for request-uri?
 		if not msg.headers_exist([b"to", b"from", b"call-id", b"cseq"]):
 			logger.warn("REGISTER, header missing")
 			# ToDo: return error
@@ -866,26 +818,16 @@ class SipSession(connection):
 				self.send(res.dumps())
 				return
 
-		"""
+			# ToDo: Report authentication incident
+			#i = incident("dionaea.modules.python.sip.authentication")
+			#i.authenticationSuccessful = expected == authLineDict['response']
+			#i.realm = realm
+			#i.uri = uri
+			#i.nonce = authLineDict['nonce']
+			#i.challengeResponse = authLineDict['response']
+			#i.expected = expected
+			#i.report()
 
-
-			# Report authentication incident
-			i = incident("dionaea.modules.python.sip.authentication")
-			i.authenticationSuccessful = expected == authLineDict['response']
-			i.realm = realm
-			i.uri = uri
-			i.nonce = authLineDict['nonce']
-			i.challengeResponse = authLineDict['response']
-			i.expected = expected
-			i.report()
-
-			if expected != authLineDict['response']:
-				sendUnauthorized(authLineDict['nonce'])
-				raise AuthenticationError("Authorization failed")
-
-			logger.info("Authorization succeeded")
-
-		"""
 
 		user = User(user_id, msg = msg)
 		g_reg_manager.register(user)
@@ -897,7 +839,7 @@ class SipSession(connection):
 		logger.debug('Sending message "{}" to ({}:{})'.format(
 			s, self.remote.host, self.remote.port))
 
-		# SIP response incident
+		# ToDo: SIP response incident
 #		i = incident("dionaea.modules.python.sip.out")
 #		i.con = self
 #		i.direction = "out"
