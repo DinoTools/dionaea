@@ -182,7 +182,7 @@ class epmapservice(service):
 class siptcpservice(service):
 	def start(self, addr, iface=None):
 		port = int(g_dionaea.config()['modules']['python']['sip'].get('port_tcp', 5060))
-		daemon = dionaea.sip.SipSessionTCP(proto = 'tcp')
+		daemon = dionaea.sip.SipSession(proto = 'tcp')
 		daemon.bind(addr, port, iface=iface)
 		daemon.listen()
 		return daemon
@@ -193,7 +193,7 @@ class siptcpservice(service):
 class siptcptlsservice(service):
 	def start(self, addr, iface=None):
 		port = int(g_dionaea.config()['modules']['python']['sip'].get('port_tcp_tls', 5061))
-		daemon = dionaea.sip.SipSessionTCP(proto = 'tls')
+		daemon = dionaea.sip.SipSession(proto = 'tls')
 		daemon.bind(addr, port, iface=iface)
 		daemon.listen()
 		return daemon
@@ -204,8 +204,9 @@ class siptcptlsservice(service):
 class sipudpservice(service):
 	def start(self, addr, iface=None):
 		port = int(g_dionaea.config()['modules']['python']['sip'].get('port_udp', 5060))
-		daemon = dionaea.sip.SipServer()
+		daemon = dionaea.sip.SipSession(proto = 'udp')
 		daemon.bind(addr, port, iface=iface)
+		daemon.listen()
 		return daemon
 
 	def stop(self, daemon):
