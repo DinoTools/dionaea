@@ -3569,6 +3569,10 @@ void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 		default:
 			return;
 		}
+
+		if( peer->type == connection_type_accept && peer->processor_data != NULL )
+			processors_io_in(peer, buf, ret);
+
 		peer->protocol.io_in(peer, peer->protocol.ctx, buf, ret);
 	}
 
@@ -3578,7 +3582,7 @@ void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 	}
 }
 
-void _connection_send_packets(int fd, GList **packets)
+void _connection_send_packets(struct connection *con, int fd, GList **packets)
 {
 	GList *elem;
 
@@ -3601,6 +3605,8 @@ void _connection_send_packets(int fd, GList **packets)
 		 * and as we can't distinguish from bound/unbound connected/unconnected sockets at this point 
 		 * udp does not work for openbsd 
 		 */
+		if( con->type == connection_type_accept && con->processor_data != NULL )
+			processors_io_out(con, packet->data->str, packet->data->len);
 
 		ret = sendtofrom(fd, packet->data->str, packet->data->len, 0, (struct sockaddr *)&packet->to, size, (struct sockaddr *)&packet->from, size);
 
@@ -3654,7 +3660,7 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 		g_warning("Invalid connection type!");
 	}
 
-	_connection_send_packets(fd, &con->transport.udp.io_out);
+	_connection_send_packets(con, fd, &con->transport.udp.io_out);
 
 	if( g_list_length(con->transport.udp.io_out) > 0 )
 	{
@@ -4106,7 +4112,7 @@ void connection_dtls_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revent
 	default:
 		g_warning("Invalid connection type!");
 	}
-	_connection_send_packets(fd, &con->transport.dtls.io_out);
+	_connection_send_packets(con, fd, &con->transport.dtls.io_out);
 
 //	g_debug(" done");
 	if( g_list_length(con->transport.dtls.io_out) > 0 )
