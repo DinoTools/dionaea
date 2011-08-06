@@ -281,9 +281,6 @@ void connection_connect(struct connection* con, const char* addr, uint16_t port,
 void connection_connect_next_addr(struct connection *con);
 void connection_close(struct connection *con);
 void connection_close_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
-void connection_idle_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
-void connection_sustain_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
-void connection_connecting_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 void connection_reconnect(struct connection *con);
 void connection_established(struct connection *con);
 
@@ -311,41 +308,35 @@ void connection_send_string(struct connection *con, const char *str);
 void connection_set_type(struct connection *con, enum connection_type type);
 void connection_set_state(struct connection *con, enum connection_state state);
 
-void connection_reconnect_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
-
 void connection_listen_timeout_set(struct connection *con, double timeout_interval_nms);
 double connection_listen_timeout_get(struct connection *con);
 void connection_listen_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
 void connection_sustain_timeout_set(struct connection *con, double timeout_interval_ms);
 double connection_sustain_timeout_get(struct connection *con);
-
+void connection_sustain_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
 void connection_idle_timeout_set(struct connection *con, double timeout_interval_ms);
 double connection_idle_timeout_get(struct connection *con);
+void connection_idle_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
 void connection_handshake_timeout_set(struct connection *con, double timeout_interval_ms);
 double connection_handshake_timeout_get(struct connection *con);
 
 void connection_connecting_timeout_set(struct connection *con, double timeout_interval_ms);
 double connection_connecting_timeout_get(struct connection *con);
+void connection_connecting_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
 void connection_reconnect_timeout_set(struct connection *con, double timeout_interval_ms);
 double connection_reconnect_timeout_get(struct connection *con);
-
-bool connection_tls_set_certificate(struct connection *con, const char *path, int type);
-bool connection_tls_set_key(struct connection *con, const char *path, int type);
-bool connection_tls_mkcert(struct connection *con);
+void connection_reconnect_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
 void connection_disconnect(struct connection *con);
 
-
 void connection_tcp_accept_cb (struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tcp_connecting_cb(struct ev_loop *loop, struct ev_io *w, int revents);
-
 void connection_tcp_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tcp_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents);
-
 void connection_tcp_disconnect(struct connection *con);
 
 void connection_udp_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
@@ -355,20 +346,17 @@ void connection_udp_disconnect(struct connection *con);
 void connection_tls_accept_cb (struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_accept_again_cb (struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_accept_again_timeout_cb (struct ev_loop *loop, struct ev_timer *w, int revents);
-
 void connection_tls_connecting_cb(struct ev_loop *loop, struct ev_io *w, int revents);
-
 void connection_tls_connect_again_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_connect_again_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
-
 void connection_tls_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents);
-
 void connection_tls_shutdown_cb(struct ev_loop *loop, struct ev_io *w, int revents);
-
 void connection_tls_disconnect(struct connection *con);
-
 void connection_tls_error(struct connection *con);
+bool connection_tls_set_certificate(struct connection *con, const char *path, int type);
+bool connection_tls_set_key(struct connection *con, const char *path, int type);
+bool connection_tls_mkcert(struct connection *con);
 
 
 guint connection_addrs_hash(gconstpointer key);
@@ -377,11 +365,12 @@ int dtls_generate_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int *cooki
 int dtls_verify_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int cookie_len);
 void connection_dtls_accept_again(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_dtls_connect_again(struct ev_loop *loop, struct ev_io *w, int revents);
+void connection_dtls_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
+void connection_dtls_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_dtls_error(struct connection *con);
 void connection_dtls_drain_bio(struct connection *con);
 bool connection_dtls_mkcert(struct connection *con);
-void connection_dtls_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
-void connection_dtls_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents);
+
 
 bool connection_transport_from_string(const char *type_str, enum connection_transport *type);
 const char *connection_transport_to_string(enum connection_transport trans);
@@ -399,7 +388,6 @@ void connection_connect_resolve_aaaa_cb(struct dns_ctx *ctx, void *result, void 
 void connection_protocol_set(struct connection *con, struct protocol *proto);
 void *connection_protocol_ctx_get(struct connection *con);
 void connection_protocol_ctx_set(struct connection *con, void *data);
-int my_bind(int fd, struct sockaddr *s, socklen_t size);
 bool bind_local(struct connection *con);
 
 int connection_ref(struct connection *con);
