@@ -344,11 +344,9 @@ void connection_udp_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents
 void connection_udp_disconnect(struct connection *con);
 
 void connection_tls_accept_cb (struct ev_loop *loop, struct ev_io *w, int revents);
-void connection_tls_accept_again_cb (struct ev_loop *loop, struct ev_io *w, int revents);
-void connection_tls_accept_again_timeout_cb (struct ev_loop *loop, struct ev_timer *w, int revents);
+void connection_tls_handshake_again_cb (struct ev_loop *loop, struct ev_io *w, int revents);
+void connection_tls_handshake_again_timeout_cb (struct ev_loop *loop, struct ev_timer *w, int revents);
 void connection_tls_connecting_cb(struct ev_loop *loop, struct ev_io *w, int revents);
-void connection_tls_connect_again_cb(struct ev_loop *loop, struct ev_io *w, int revents);
-void connection_tls_connect_again_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 void connection_tls_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_shutdown_cb(struct ev_loop *loop, struct ev_io *w, int revents);

@@ -905,7 +905,9 @@ void connection_connect_next_addr(struct connection *con)
 				if( ret == 0 )
 			{
 				connection_set_state(con, connection_state_handshake);
-				connection_tls_connect_again_cb(CL, &con->events.io_in, EV_READ);
+				SSL_set_connect_state(con->transport.tls.ssl);
+				con->events.io_in.events = EV_READ;
+				connection_tls_handshake_again_cb(CL, &con->events.io_in, 0);
 				return;
 			}
 
@@ -3095,14 +3097,13 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 		SSL_set_tmp_dh_callback(accepted->transport.tls.ssl,  ssl_callback_TmpDH);
 
 
-		ev_timer_init(&accepted->events.handshake_timeout, connection_tls_accept_again_timeout_cb, 0., con->events.handshake_timeout.repeat);
-		ev_timer_init(&accepted->events.idle_timeout, connection_tls_accept_again_timeout_cb, 0., con->events.idle_timeout.repeat);
+		ev_timer_init(&accepted->events.handshake_timeout, connection_tls_handshake_again_timeout_cb, 0., con->events.handshake_timeout.repeat);
+//		ev_timer_init(&accepted->events.idle_timeout, connection_tls_accept_again_timeout_cb, 0., con->events.idle_timeout.repeat);
 
 
 		// create protocol specific data
 		accepted->protocol.ctx = accepted->protocol.ctx_new(accepted);
 
-		accepted->events.io_in.events = EV_READ;
 
 		accepted->stats.io_in.throttle.max_bytes_per_second = con->stats.io_in.throttle.max_bytes_per_second;
 		accepted->stats.io_out.throttle.max_bytes_per_second = con->stats.io_out.throttle.max_bytes_per_second;
@@ -3112,7 +3113,10 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 			con->protocol.origin(accepted, con);
 
 		connection_set_state(accepted, connection_state_handshake);
-		connection_tls_accept_again_cb(EV_A_ &accepted->events.io_in, 0);
+		SSL_set_accept_state(accepted->transport.tls.ssl);
+
+		accepted->events.io_in.events = EV_READ;
+		connection_tls_handshake_again_cb(EV_A_ &accepted->events.io_in, 0);
 	}
 
 	if( ev_is_active(&con->events.listen_timeout) )
@@ -3122,21 +3126,21 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 	}
 }
 
-void connection_tls_accept_again_cb (EV_P_ struct ev_io *w, int revents)
+
+void connection_tls_handshake_again_cb(EV_P_ struct ev_io *w, int revents)
 {
 	struct connection *con = NULL;
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	if( w->events == EV_READ )
 		con = CONOFF_IO_IN(w);
 	else
 		con	= CONOFF_IO_OUT(w);
-
+	g_debug("%s con %p %i %p %p",__PRETTY_FUNCTION__, con, revents, CONOFF_IO_IN(w), CONOFF_IO_OUT(w));
 
 	ev_io_stop(EV_A_ &con->events.io_in);
 	ev_io_stop(EV_A_ &con->events.io_out);
 
-	int err = SSL_accept(con->transport.tls.ssl);
+	int err = SSL_do_handshake(con->transport.tls.ssl);
 	connection_tls_error(con);
 	if( err != 1 )
 	{
@@ -3144,30 +3148,27 @@ void connection_tls_accept_again_cb (EV_P_ struct ev_io *w, int revents)
 		ev_timer_again(EV_A_ &con->events.handshake_timeout);
 
 		int action = SSL_get_error(con->transport.tls.ssl, err);
-		g_debug("SSL_accept failed %i %i read:%i write:%i", err, action, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE);
+		g_debug("SSL_do_handshake failed %i %i read:%i write:%i", err, action, SSL_ERROR_WANT_READ, SSL_ERROR_WANT_WRITE);
 
 		connection_tls_error(con);
 		switch( action )
 		{
-//		default:
-		
-
 		case SSL_ERROR_NONE:
-			g_debug("%s:%i", __FILE__,  __LINE__);
+			g_debug("SSL_ERROR_NONE %s:%i", __FILE__,  __LINE__);
 			break;
 		case SSL_ERROR_ZERO_RETURN:
-			g_debug("%s:%i", __FILE__,  __LINE__);
+			g_debug("SSL_ERROR_ZERO_RETURN %s:%i", __FILE__,  __LINE__);
 			break;
 
 		case SSL_ERROR_WANT_READ:
 			g_debug("SSL_WANT_READ %s:%i", __FILE__,  __LINE__);
-			ev_io_init(&con->events.io_in, connection_tls_accept_again_cb, con->socket, EV_READ);
+			ev_io_init(&con->events.io_in, connection_tls_handshake_again_cb, con->socket, EV_READ);
 			ev_io_start(EV_A_ &con->events.io_in);
 			break;
 
 		case SSL_ERROR_WANT_WRITE:
 			g_debug("SSL_WANT_WRITE %s:%i", __FILE__,  __LINE__);
-			ev_io_init(&con->events.io_out, connection_tls_accept_again_cb, con->socket, EV_WRITE);
+			ev_io_init(&con->events.io_out, connection_tls_handshake_again_cb, con->socket, EV_WRITE);
 			ev_io_start(EV_A_ &con->events.io_out);
 			break;
 
@@ -3188,26 +3189,38 @@ void connection_tls_accept_again_cb (EV_P_ struct ev_io *w, int revents)
 			g_debug("SSL_ERROR_SSL %s:%i", __FILE__,  __LINE__);
 			connection_tls_disconnect(con);
 			break;
-
 		}
 	} else
 	{
-		g_debug("SSL_accept success");
-
+		g_debug("SSL_do_handshake success");
 		ev_timer_stop(EV_A_ &con->events.handshake_timeout);
-
 		ev_timer_init(&con->events.idle_timeout, connection_idle_timeout_cb, 0. ,con->events.idle_timeout.repeat);
-
 		connection_established(con);
-
 	}
 }
 
-void connection_tls_accept_again_timeout_cb (EV_P_ struct ev_timer *w, int revents)
+void connection_tls_handshake_again_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
 	struct connection *con = CONOFF_HANDSHAKE_TIMEOUT(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-	connection_tls_disconnect(con);
+
+	switch( con->type )
+	{
+	case connection_type_connect:
+		ev_timer_stop(EV_A_ &con->events.handshake_timeout);
+		ev_io_stop(EV_A_ &con->events.io_out);
+		close(con->socket);
+		con->socket = -1;
+		connection_connect_next_addr(con);
+		break;
+	case connection_type_accept:
+		connection_tls_disconnect(con);
+		break;
+	case connection_type_listen:
+	case connection_type_bind:
+	case connection_type_none:
+		break;
+	}
 }
 
 void connection_tls_disconnect(struct connection *con)
@@ -3274,87 +3287,15 @@ void connection_tls_connecting_cb(EV_P_ struct ev_io *w, int revents)
 	con->transport.tls.ssl = SSL_new(con->transport.tls.ctx);
 	SSL_set_fd(con->transport.tls.ssl, con->socket);
 
-	ev_timer_init(&con->events.handshake_timeout, connection_tls_connect_again_timeout_cb, 0., con->events.handshake_timeout.repeat);
+	ev_timer_init(&con->events.handshake_timeout, connection_tls_handshake_again_timeout_cb, 0., con->events.handshake_timeout.repeat);
 
 	connection_set_state(con, connection_state_handshake);
-	connection_tls_connect_again_cb(EV_A_ w, revents);
+
+	SSL_set_connect_state(con->transport.tls.ssl);
+
+	con->events.io_in.events = EV_READ;
+	connection_tls_handshake_again_cb(EV_A_ &con->events.io_in, 0);
 }
-
-void connection_tls_connect_again_cb(EV_P_ struct ev_io *w, int revents)
-{
-	struct connection *con = NULL;
-	if( w->events == EV_READ )
-		con = CONOFF_IO_IN(w);
-	else
-		con	= CONOFF_IO_OUT(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-
-
-	ev_io_stop(EV_A_ &con->events.io_in);
-	ev_io_stop(EV_A_ &con->events.io_out);
-
-
-	int err = SSL_connect(con->transport.tls.ssl);
-	connection_tls_error(con);
-	if( err != 1 )
-	{
-		ev_timer_again(EV_A_ &con->events.handshake_timeout);
-		int action = SSL_get_error(con->transport.tls.ssl, err);
-		connection_tls_error(con);
-
-		switch( action )
-		{
-		case SSL_ERROR_NONE:
-		case SSL_ERROR_ZERO_RETURN:
-			g_debug("%s:%i", __FILE__,  __LINE__);
-			break;
-
-		case SSL_ERROR_WANT_READ:
-			g_debug("SSL_WANT_READ %s:%i", __FILE__,  __LINE__);
-			ev_io_init(&con->events.io_in, connection_tls_connect_again_cb, con->socket, EV_READ);
-			ev_io_start(EV_A_ &con->events.io_in);
-			break;
-
-		case SSL_ERROR_WANT_WRITE:
-			g_debug("SSL_WANT_WRITE %s:%i", __FILE__,  __LINE__);
-			ev_io_init(&con->events.io_out, connection_tls_connect_again_cb, con->socket, EV_WRITE);
-			ev_io_start(EV_A_ &con->events.io_out);
-			break;
-
-		case SSL_ERROR_WANT_ACCEPT:
-		case SSL_ERROR_WANT_X509_LOOKUP:
-			g_debug("SSL_ERROR_WANT_* %i %s:%i", action, __FILE__,  __LINE__);
-			break;
-
-		case SSL_ERROR_SYSCALL:
-		case SSL_ERROR_SSL:
-			g_debug("SSL_ERROR_* %i %s:%i", action, __FILE__,  __LINE__);
-			connection_tls_disconnect(con);
-			break;
-
-		}   
-	} else
-	{
-		g_debug("SSL_connect success");
-		ev_timer_stop(EV_A_ &con->events.handshake_timeout);
-		ev_timer_init(&con->events.idle_timeout, connection_idle_timeout_cb, 0. ,con->events.idle_timeout.repeat);
-		connection_established(con);
-	}
-}
-
-void connection_tls_connect_again_timeout_cb(EV_P_ struct ev_timer *w, int revents)
-{
-	struct connection *con = CONOFF_HANDSHAKE_TIMEOUT(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-
-	ev_timer_stop(EV_A_ &con->events.handshake_timeout);
-	ev_io_stop(EV_A_ &con->events.io_out);
-	close(con->socket);
-	con->socket = -1;
-	connection_connect_next_addr(con);
-}
-
-
 
 void connection_tls_error(struct connection *con)
 {
