@@ -1371,15 +1371,9 @@ void connection_sustain_timeout_set(struct connection *con, double timeout_inter
 	switch( con->trans )
 	{
 	case connection_transport_tcp:
-		ev_timer_init(&con->events.sustain_timeout, connection_tcp_sustain_timeout_cb, 0., timeout_interval_ms);
-		break;
-
 	case connection_transport_tls:
-		ev_timer_init(&con->events.sustain_timeout, connection_tls_sustain_timeout_cb, 0., timeout_interval_ms);
-		break;
-
 	case connection_transport_udp:
-		ev_timer_init(&con->events.sustain_timeout, connection_udp_sustain_timeout_cb, 0., timeout_interval_ms);
+		ev_timer_init(&con->events.sustain_timeout, connection_sustain_timeout_cb, 0., timeout_interval_ms);
 		break;
 
 	default:
@@ -1400,6 +1394,38 @@ void connection_sustain_timeout_set(struct connection *con, double timeout_inter
 double connection_sustain_timeout_get(struct connection *con)
 {
 	return con->events.sustain_timeout.repeat;
+}
+
+void connection_sustain_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
+{
+	struct connection *con = CONOFF_SUSTAIN_TIMEOUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+
+	if( con->protocol.sustain_timeout == NULL || con->protocol.sustain_timeout(con, con->protocol.ctx) == false )
+	{
+		switch( con->trans )
+		{
+		case connection_transport_tcp:
+			connection_tcp_disconnect(con);
+			break;
+		case connection_transport_tls:
+			connection_close(con);
+			break;
+		case connection_transport_udp:
+			connection_udp_disconnect(con);
+			break;
+		case connection_transport_dtls:
+		case connection_transport_io:
+			break;
+		}
+	}
+	else
+	{
+		if( con->state == connection_state_established )
+		{
+			ev_timer_again(EV_A_ &con->events.sustain_timeout);
+		}
+	}
 }
 
 
@@ -1974,17 +2000,6 @@ void connection_tcp_connecting_cb(EV_P_ struct ev_io *w, int revents)
 	g_debug("connection %s -> %s", con->local.node_string, con->remote.node_string);
 
 	connection_established(con);
-}
-
-void connection_tcp_sustain_timeout_cb(EV_P_ struct ev_timer *w, int revents)
-{
-	struct connection *con = CONOFF_SUSTAIN_TIMEOUT(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-
-	if( con->protocol.sustain_timeout == NULL || con->protocol.sustain_timeout(con, con->protocol.ctx) == false )
-		connection_tcp_disconnect(con);
-	else
-		ev_timer_again(EV_A_ &con->events.sustain_timeout);
 }
 
 void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
@@ -3329,17 +3344,6 @@ void connection_tls_connect_again_cb(EV_P_ struct ev_io *w, int revents)
 	}
 }
 
-void connection_tls_sustain_timeout_cb(EV_P_ struct ev_timer *w, int revents)
-{
-	struct connection *con = CONOFF_SUSTAIN_TIMEOUT(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-
-	if( con->protocol.sustain_timeout == NULL || con->protocol.sustain_timeout(con, con->protocol.ctx) == false )
-		connection_close(con);
-	else
-		ev_timer_again(CL, &con->events.sustain_timeout);
-}
-
 void connection_tls_connect_again_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
 	struct connection *con = CONOFF_HANDSHAKE_TIMEOUT(w);
@@ -3551,7 +3555,7 @@ void connection_udp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 				connection_protocol_set(peer, &peer->transport.udp.type.client.parent->protocol);
 
 				ev_timer_init(&peer->events.idle_timeout, connection_idle_timeout_cb, 0. ,con->events.idle_timeout.repeat);
-				ev_timer_init(&peer->events.sustain_timeout, connection_udp_sustain_timeout_cb, 0. ,con->events.sustain_timeout.repeat);
+				ev_timer_init(&peer->events.sustain_timeout, connection_sustain_timeout_cb, 0. ,con->events.sustain_timeout.repeat);
 				peer->protocol.ctx = peer->transport.udp.type.client.parent->protocol.ctx_new(peer);
 
 				// teach new connection about parent
@@ -3677,19 +3681,6 @@ void connection_udp_io_out_cb(EV_P_ struct ev_io *w, int revents)
 	}
 	if( ev_is_active(&con->events.idle_timeout) )
 		ev_timer_again(CL, &con->events.idle_timeout);
-}
-
-void connection_udp_sustain_timeout_cb(EV_P_ struct ev_timer *w, int revents)
-{
-	struct connection *con = CONOFF_SUSTAIN_TIMEOUT(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-
-	if( con->protocol.sustain_timeout == NULL || con->protocol.sustain_timeout(con, con->protocol.ctx) == false )
-	{
-		ev_timer_stop(EV_A_ w);
-		connection_udp_disconnect(con);
-	} else
-		ev_timer_again(CL, &con->events.sustain_timeout);
 }
 
 void connection_udp_disconnect(struct connection *con)
