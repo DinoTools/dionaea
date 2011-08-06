@@ -281,7 +281,7 @@ void connection_connect(struct connection* con, const char* addr, uint16_t port,
 void connection_connect_next_addr(struct connection *con);
 void connection_close(struct connection *con);
 void connection_close_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
-
+void connection_idle_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 void connection_reconnect(struct connection *con);
 void connection_established(struct connection *con);
 
@@ -344,7 +344,6 @@ void connection_tcp_listen_timeout_cb(struct ev_loop *loop, struct ev_timer *w, 
 void connection_tcp_connecting_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tcp_connecting_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 void connection_tcp_sustain_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
-void connection_tcp_idle_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
 void connection_tcp_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tcp_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents);
@@ -354,14 +353,12 @@ void connection_tcp_disconnect(struct connection *con);
 void connection_udp_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_udp_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_udp_sustain_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
-void connection_udp_idle_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 void connection_udp_disconnect(struct connection *con);
 
 void connection_tls_accept_cb (struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_accept_again_cb (struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_accept_again_timeout_cb (struct ev_loop *loop, struct ev_timer *w, int revents);
 void connection_tls_sustain_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
-void connection_tls_idle_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
 void connection_tls_connecting_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_connecting_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
