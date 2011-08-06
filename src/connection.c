@@ -833,7 +833,7 @@ void connection_connect_next_addr(struct connection *con)
 					// set connecting timer
 					if( ev_is_active(&con->events.connecting_timeout) )
 						ev_timer_stop(CL, &con->events.connecting_timeout);
-					ev_timer_init(&con->events.connecting_timeout, connection_tcp_connecting_timeout_cb, 0., con->events.connecting_timeout.repeat);
+					ev_timer_init(&con->events.connecting_timeout, connection_connecting_timeout_cb, 0., con->events.connecting_timeout.repeat);
 					ev_timer_again(CL, &con->events.connecting_timeout);
 
 					ev_io_init(&con->events.io_out, connection_tcp_connecting_cb, con->socket, EV_WRITE);
@@ -887,7 +887,7 @@ void connection_connect_next_addr(struct connection *con)
 					// set connecting timer
 					if( ev_is_active(&con->events.connecting_timeout) )
 						ev_timer_stop(CL, &con->events.connecting_timeout);
-					ev_timer_init(&con->events.connecting_timeout, connection_tls_connecting_timeout_cb, 0., con->events.connecting_timeout.repeat);
+					ev_timer_init(&con->events.connecting_timeout, connection_connecting_timeout_cb, 0., con->events.connecting_timeout.repeat);
 					ev_timer_again(CL, &con->events.connecting_timeout);
 
 					ev_io_init(&con->events.io_out, connection_tls_connecting_cb, con->socket, EV_WRITE);
@@ -1543,7 +1543,7 @@ void connection_connecting_timeout_set(struct connection *con, double timeout_in
 	{
 	case connection_transport_tcp:
 	case connection_transport_tls:
-		ev_timer_init(&con->events.connecting_timeout, NULL, 0., timeout_interval_ms);
+		ev_timer_init(&con->events.connecting_timeout, connection_connecting_timeout_cb, 0., timeout_interval_ms);
 		break;
 
 	case connection_transport_dtls:
@@ -1556,6 +1556,27 @@ void connection_connecting_timeout_set(struct connection *con, double timeout_in
 
 	if( con->state == connection_state_connecting && timeout_interval_ms > 0. )
 		ev_timer_again(CL, &con->events.connecting_timeout);
+}
+
+void connection_connecting_timeout_cb(EV_P_ struct ev_timer *w, int revents)
+{
+	struct connection *con = CONOFF_CONNECTING_TIMEOUT(w);
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
+	switch( con->trans )
+	{
+	case connection_transport_tcp:
+	case connection_transport_tls:
+		ev_io_stop(EV_A_ &con->events.io_out);
+		ev_timer_stop(EV_A_ &con->events.connecting_timeout);
+		close(con->socket);
+		con->socket = -1;
+		connection_connect_next_addr(con);
+		break;
+	case connection_transport_udp:
+	case connection_transport_dtls:
+	case connection_transport_io:
+		break;
+	}
 }
 
 /**
@@ -1950,19 +1971,6 @@ void connection_tcp_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	connection_disconnect(con);
 
 	connection_free(con);
-}
-
-
-void connection_tcp_connecting_timeout_cb(EV_P_ struct ev_timer *w, int revents)
-{
-	struct connection *con = CONOFF_CONNECTING_TIMEOUT(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-
-	ev_timer_stop(EV_A_ &con->events.connecting_timeout);
-	ev_io_stop(EV_A_ &con->events.io_out);
-	close(con->socket);
-	con->socket = -1;
-	connection_connect_next_addr(con);
 }
 
 void connection_tcp_connecting_cb(EV_P_ struct ev_io *w, int revents)
@@ -3269,17 +3277,6 @@ void connection_tls_connecting_cb(EV_P_ struct ev_io *w, int revents)
 
 	connection_set_state(con, connection_state_handshake);
 	connection_tls_connect_again_cb(EV_A_ w, revents);
-}
-
-void connection_tls_connecting_timeout_cb(EV_P_ struct ev_timer *w, int revents)
-{
-	struct connection *con = CONOFF_CONNECTING_TIMEOUT(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-	ev_io_stop(EV_A_ &con->events.io_out);
-	ev_timer_stop(EV_A_ &con->events.connecting_timeout);
-	close(con->socket);
-	con->socket = -1;
-	connection_connect_next_addr(con);
 }
 
 void connection_tls_connect_again_cb(EV_P_ struct ev_io *w, int revents)
