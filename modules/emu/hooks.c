@@ -457,7 +457,7 @@ void async_connection_accept(void *data)
 
 	if( con->events.listen_timeout.repeat > 0. )
 	{
-		ev_timer_init(&con->events.listen_timeout, connection_tcp_listen_timeout_cb, 0., con->events.listen_timeout.repeat);
+		ev_timer_init(&con->events.listen_timeout, connection_listen_timeout_cb, 0., con->events.listen_timeout.repeat);
 		ev_timer_again(CL, &con->events.listen_timeout);
 	}
 }

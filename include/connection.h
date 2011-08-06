@@ -315,6 +315,7 @@ void connection_reconnect_timeout_cb(struct ev_loop *loop, struct ev_timer *w, i
 
 void connection_listen_timeout_set(struct connection *con, double timeout_interval_nms);
 double connection_listen_timeout_get(struct connection *con);
+void connection_listen_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
 
 void connection_sustain_timeout_set(struct connection *con, double timeout_interval_ms);
 double connection_sustain_timeout_get(struct connection *con);
@@ -340,9 +341,6 @@ void connection_disconnect(struct connection *con);
 
 
 void connection_tcp_accept_cb (struct ev_loop *loop, struct ev_io *w, int revents);
-
-void connection_tcp_listen_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
-
 void connection_tcp_connecting_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 
 void connection_tcp_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
@@ -371,8 +369,6 @@ void connection_tls_shutdown_cb(struct ev_loop *loop, struct ev_io *w, int reven
 void connection_tls_disconnect(struct connection *con);
 
 void connection_tls_error(struct connection *con);
-
-void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents);
 
 
 guint connection_addrs_hash(gconstpointer key);

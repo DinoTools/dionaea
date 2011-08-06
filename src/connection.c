@@ -1451,13 +1451,8 @@ void connection_listen_timeout_set(struct connection *con, double timeout_interv
 	switch( con->trans )
 	{
 	case connection_transport_tcp:
-		ev_timer_init(&con->events.listen_timeout, connection_tcp_listen_timeout_cb, 0., timeout_interval_ms);
-//		ev_timer_again(CL, &con->events.listen_timeout);
-		break;
-
 	case connection_transport_tls:
-		ev_timer_init(&con->events.listen_timeout, connection_tls_listen_timeout_cb, 0., timeout_interval_ms);
-//		ev_timer_again(CL, &con->events.listen_timeout);
+		ev_timer_init(&con->events.listen_timeout, connection_listen_timeout_cb, 0., timeout_interval_ms);
 		break;
 
 	default:
@@ -1467,6 +1462,33 @@ void connection_listen_timeout_set(struct connection *con, double timeout_interv
 	if( con->type == connection_type_listen && timeout_interval_ms >= 0. )
 		ev_timer_again(CL, &con->events.sustain_timeout);
 }
+
+void connection_listen_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int revents)
+{
+	struct connection *con = CONOFF_LISTEN_TIMEOUT(w);
+	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
+
+	switch( con->trans )
+	{
+	case connection_transport_tcp:
+	case connection_transport_tls:
+		if( con->protocol.listen_timeout  != NULL && con->protocol.listen_timeout(con, con->protocol.ctx) == true )
+		{
+			ev_timer_again(loop, &con->events.listen_timeout);
+			return;
+		}
+
+		connection_set_state(con, connection_state_close);
+		connection_disconnect(con);
+		connection_free(con);
+		break;
+	case connection_transport_dtls:
+	case connection_transport_udp:
+	case connection_transport_io:
+		break;
+	}
+}
+
 
 /**
  * Get the connections listen timeout
@@ -1950,27 +1972,6 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 		ev_clear_pending(EV_A_ &con->events.listen_timeout);
 		ev_timer_again(EV_A_  &con->events.listen_timeout);
 	}
-}
-
-
-
-void connection_tcp_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
-{
-	struct connection *con = CONOFF_LISTEN_TIMEOUT(w);
-	g_debug("%s con %p", __PRETTY_FUNCTION__, con);
-
-
-	if( con->protocol.listen_timeout  != NULL && 
-		con->protocol.listen_timeout(con, con->protocol.ctx) == true )
-	{
-		ev_timer_again(loop, &con->events.listen_timeout);
-		return;
-	}
-
-	connection_set_state(con, connection_state_close);
-	connection_disconnect(con);
-
-	connection_free(con);
 }
 
 void connection_tcp_connecting_cb(EV_P_ struct ev_io *w, int revents)
@@ -3361,23 +3362,6 @@ void connection_tls_error(struct connection *con)
 	ERR_error_string(con->transport.tls.ssl_error, con->transport.tls.ssl_error_string);
 	if( con->transport.tls.ssl_error != 0 )
 		g_debug("SSL ERROR %s\t%s", con->transport.tls.ssl_error_string, SSL_state_string_long(con->transport.tls.ssl));
-}
-
-void connection_tls_listen_timeout_cb(EV_P_ struct ev_timer *w, int revents)
-{
-	struct connection *con = CONOFF_LISTEN_TIMEOUT(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
-
-	if( con->protocol.listen_timeout  != NULL && 
-		con->protocol.listen_timeout(con, con->protocol.ctx) == true )
-	{
-		ev_timer_again(loop, &con->events.listen_timeout);
-		return;
-	}
-
-	connection_set_state(con, connection_state_close);
-	connection_disconnect(con);
-	connection_free(con);
 }
 
 /*
