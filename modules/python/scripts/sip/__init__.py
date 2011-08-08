@@ -62,9 +62,6 @@ logger.setLevel(logging.DEBUG)
 
 _SipCall_sustain_timeout = 20
 
-class SipParsingError(Exception):
-	"""Exception class for errors occuring during SIP message parsing"""
-
 class AuthenticationError(Exception):
 	"""Exception class for errors occuring during SIP authentication"""
 
@@ -527,6 +524,8 @@ class SipCall(connection):
 		return True
 
 class SipSession(connection):
+	ESTABLISHED, CLOSED = range(2)
+
 	def __init__(self, proto = None):
 		logger.debug("{:s} __init__".format(self))
 
@@ -548,6 +547,8 @@ class SipSession(connection):
 
 		self._auth = None
 
+		self._state = None
+
 		global g_sipconfig
 
 		# Setup timers
@@ -568,6 +569,7 @@ class SipSession(connection):
 
 	def handle_established(self):
 		logger.debug("{:s} handle_established".format(self))
+		self._state = SipSession.ESTABLISHED
 
 		self.timeouts.idle = 10
 		self.processors()
@@ -584,6 +586,10 @@ class SipSession(connection):
 		return True
 
 	def handle_io_in(self, data):
+		if self._state == SipSession.CLOSED:
+			# Don't process any data while the connection is closed.
+			return len(data)
+
 		logger.debug("{:s} handle_io_in".format(self))
 
 		if self.transport == "udp":
@@ -600,10 +606,23 @@ class SipSession(connection):
 			# all lines must end with \r\n
 			data = data.replace(b"\r\n", b"\n")
 			data = data.replace(b"\n", b"\r\n")
-			msg = rfc3261.Message.froms(data)
+			try:
+				msg = rfc3261.Message.froms(data)
+			except rfc3261.SipParsingError:
+				self.close()
+				return len_used
 
 		elif self.transport == "tcp":
-			(len_used, data_load) = rfc3261.Message.loads(data)
+			try:
+				(len_used, data_load) = rfc3261.Message.loads(data)
+			except rfc3261.SipParsingError:
+				self.close()
+				return len(data)
+
+			# this is not the complete message, wait for the rest
+			if len_used == 0:
+				return 0
+
 			msg = rfc3261.Message(**data_load)
 			logger.debug("Got {} bytes, Used {} bytes".format(len(data), len_used))
 
@@ -642,6 +661,8 @@ class SipSession(connection):
 		return len_used
 
 	def close(self):
+		self._state = SipSession.CLOSED
+
 		logger.debug("{:s} close".format(self))
 
 		logger.debug("SipSession.close {}".format(self))

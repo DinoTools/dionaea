@@ -143,6 +143,11 @@ status_messages = {
 	606: b"Not Acceptable",
 }
 
+class SipParsingError(Exception):
+	"""
+	Exception class for errors occurring during SIP message parsing
+	"""
+
 class CSeq(object):
 	"""
 	Hold the value of an CSeq attribute
@@ -542,22 +547,30 @@ class Message(object):
 		"""
 		# End Of Head
 		if type(data) == bytes:
-			eoh = data.find(b"\r\n\r\n")
+			pos = re.search(b"\r?\n\r?\n", data)
 		else:
-			eoh = data.find("\r\n\r\n")
+			pos = re.search("\r?\n\r?\n", data)
 			
-
-		if eoh == -1:
+		if pos == None:
 			return (0, {})
 
 		# length of used data
-		l = eoh + 4
-		header = data[:eoh]
-		headers_data = header.split(b"\r\n")
-		body = data[eoh+4:]
+		l = pos.end()
+
+		# header without empty line
+		header = data[:pos.start()]
+		headers_data = re.split(b"\r?\n", header)
+
+		# body without empty line
+		body = data[pos.end():]
 
 		# remove first line and parse it
-		h1, h2, h3 = headers_data[0].split(b" ", 2)
+		try:
+			h1, h2, h3 = headers_data[0].split(b" ", 2)
+		except:
+			logger.warning("Can't parse first line of sip message: {}".format(repr(headers_data[0])))
+			raise SipParsingError
+
 		del headers_data[0]
 
 		response_code = None
@@ -565,7 +578,6 @@ class Message(object):
 		try:
 			response_code, protocol, status_message = int(h2), h1, h3
 		except:
-			# ToDo: parse h2 as uri
 			method, uri, protocol = h1, rfc2396.Address.froms(h2), h3
 		
 		# ToDo: check protocol
