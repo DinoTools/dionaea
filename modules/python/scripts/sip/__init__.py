@@ -284,15 +284,29 @@ class SipCall(connection):
 
 		# Global timers
 		self._timers = {
-			#"idle": pyev.Timer(500, 0, g_default_loop, self.__handle_idle_timeout),
+			"idle": pyev.Timer(60.0, 60.0, g_default_loop, self.__handle_timeout_idle),
 			"invite_handler": pyev.Timer(5.0, 0.0, g_default_loop, self.__handle_invite),
 			#pyev.Timer(3, 0, g_default_loop, self.__handle_invite_timeout),
 			#"substain": pyev.Timer(_SipCall_sustain_timeout, 0, g_default_loop, self.__handle_sustain_timeout),
 		}
 
-		#self._timers["idle"].start()
+		self._timers["idle"].start()
+
+	def __handle_timeout_idle(self, watcher, events):
+		logger.debug("{:s} __handle_timeout_idle".format(self))
+
+		# check if at least one rtp stream is active
+		for v in self._rtp_streams.values():
+			if v != None:
+				return
+
+		logger.info("All RTP-Streams closed, closing call")
+		# no active rtp stream, close call
+		self.close()
 
 	def __handle_invite(self, watcher, events):
+		logger.debug("{:s} __handle_invite".format(self))
+
 		logger.info("Handle invite")
 		if self.__state == SipCall.INVITE:
 			logger.debug("Send TRYING")
@@ -429,6 +443,8 @@ class SipCall(connection):
 	def send(self, msg):
 		logger.debug("{:s} send".format(self))
 
+		self._timers["idle"].reset()
+
 		if type(msg) == rfc3261.Message:
 			self._msg_stack.append(("out", msg))
 			msg = msg.dumps()
@@ -477,6 +493,8 @@ class SipCall(connection):
 	def handle_ACK(self, msg_ack):
 		logger.debug("{:s} handle_ACK".format(self))
 
+		self._timers["idle"].reset()
+
 		self._msg_stack.append(("in", msg_ack))
 		# does this ACK belong to a CANCEL request?
 		if not self.__state == SipCall.INVITE_CANCEL:
@@ -497,6 +515,8 @@ class SipCall(connection):
 	def handle_BYE(self, msg_bye):
 		logger.debug("{:s} handle_BYE".format(self))
 
+		self._timers["idle"].reset()
+
 		self._msg_stack.append(("in", msg_bye))
 		if not self.__state == SipCall.CALL:
 			logger.info("BYE without call")
@@ -509,6 +529,8 @@ class SipCall(connection):
 
 	def handle_CANCEL(self, msg_cancel):
 		logger.debug("{:s} handle_CANCEL".format(self))
+
+		self._timers["idle"].reset()
 
 		self._msg_stack.append(("in", msg_cancel))
 		# Todo:
@@ -538,6 +560,8 @@ class SipCall(connection):
 
 	def handle_INVITE(self, msg):
 		logger.debug("{:s} handle_INVITE".format(self))
+
+		self._timers["idle"].reset()
 
 		self._msg_stack.append(("in", msg))
 		self.__state = SipCall.INVITE
