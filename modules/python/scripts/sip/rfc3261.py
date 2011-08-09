@@ -577,7 +577,7 @@ class Message(object):
 		try:
 			h1, h2, h3 = headers_data[0].split(b" ", 2)
 		except:
-			logger.warning("Can't parse first line of sip message: {}".format(repr(headers_data[0])))
+			logger.warning("Can't parse first line of sip message: {}".format(repr(headers_data[0])[:128]))
 			raise SipParsingError
 
 		del headers_data[0]
