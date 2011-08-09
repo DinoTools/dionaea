@@ -753,9 +753,11 @@ class SipSession(connection):
 		cseq = msg.headers.get(b"cseq").get_raw()
 
 		# Find SipSession and delete it
-		if call_id not in self._callids:
+		if call_id not in self._callids or self._callids[call_id] == None:
 			logger.warn("CANCEL request does not match any existing SIP session")
+			self.send(msg.create_response(rfc3261.CALL_TRANSACTION_DOSE_NOT_EXIST).dumps())
 			return
+
 		try:
 			self._callids[call_id].handle_CANCEL(msg)
 		except AuthenticationError:
