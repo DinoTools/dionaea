@@ -223,7 +223,7 @@ class SipCall(connection):
 	"""
 	NO_SESSION, SESSION_SETUP, ACTIVE_SESSION, SESSION_TEARDOWN, INVITE, INVITE_TRYING, INVITE_RINGING, INVITE_CANCEL, CALL = range(9)
 
-	def __init__(self, proto, call_id, session, conInfo, rtpPort, invite_message):
+	def __init__(self, proto, call_id, session, conInfo, invite_message):
 		logger.debug("{:s} __init__".format(self))
 
 		logger.debug("SipCall {} session {} ".format(self, session))
@@ -234,7 +234,6 @@ class SipCall(connection):
 		self.__state = SipCall.SESSION_SETUP
 		self.__remote_address = conInfo[0]
 		self.__remote_sip_port = conInfo[1]
-		self.__remote_rtp_port = rtpPort
 		self.__msg = invite_message
 		# list of messages
 		self._msg_stack = []
@@ -706,9 +705,8 @@ class SipSession(connection):
 		# ToDo: check if call-id header exist
 		call_id = msg.headers.get(b"call-id").value
 
-		if call_id not in self._callids:
-			logger.warn("Given Call-ID does not belong to any session: exit")
-			# ToDo: error
+		if call_id not in self._callids or self._callids[call_id] == None:
+			logger.warn("Given Call-ID does not belong to any session: {}".format(call_id[:128]))
 			return
 
 		try:
@@ -722,14 +720,16 @@ class SipSession(connection):
 	def handle_BYE(self, msg):
 		logger.debug("{:s} handle_BYE".format(self))
 
-		#if self.__checkForMissingHeaders(headers):
-		#	return
+		# check if Call-ID header exist
+		if not msg.header_exist(b"call-id"):
+			return
 
 		# Check if session (identified by Call-ID) exists
 		call_id = msg.headers.get(b"call-id").value
-		if call_id not in self._callids:
-			logger.warn("Given Call-ID does not belong to any session: exit")
-			# ToDo: error
+
+		if call_id not in self._callids or self._callids[call_id] == None:
+			logger.warn("Given Call-ID does not belong to any session: {}".format(call_id[:128]))
+			self.send(msg.create_response(rfc3261.CALL_TRANSACTION_DOSE_NOT_EXIST).dumps())
 			return
 
 		try:
@@ -743,14 +743,15 @@ class SipSession(connection):
 	def handle_CANCEL(self, msg):
 		logger.debug("{:s} handle_CANCEL".format(self))
 
-		# ToDo: Check mandatory headers, check for problems with some scanners
-		#if self.__checkForMissingHeaders(headers):
-		#	return
+		# check if Call-ID header exist
+		if not msg.header_exist(b"call-id"):
+			return
 
 		# Get Call-Id and check if there's already a SipSession
 		call_id = msg.headers.get(b"call-id").value
 
-		cseq = msg.headers.get(b"cseq").get_raw()
+		# ToDo: remove? we don't use it
+		# cseq = msg.headers.get(b"cseq").get_raw()
 
 		# Find SipSession and delete it
 		if call_id not in self._callids or self._callids[call_id] == None:
@@ -769,57 +770,18 @@ class SipSession(connection):
 
 		global g_sipconfig
 
-		# ToDo: content-length? also for udp or only for tcp?
-		if not msg.headers_exist([b"content-type"]):
-			logger.warn("INVITE without accept and content-type")
-			# ToDo: return error
-			return
-
-		# Header has to define Content-Type: application/sdp if body contains
-		# SDP message. Also, Accept has to be set to sdp so that we can send
-		# back a SDP response.
-		if msg.headers.get("content-type").value.lower() != b"application/sdp":
-			# ToDo: error
-			logger.warn("INVITE without SDP message: exit")
-			return
-
-		#if msg.headers.get("accept").value.lower() != "application/sdp":
-		#	logger.warn("INVITE without SDP message: exit")
-			# ToDo: error
-		#	return
-
-		if msg.sdp == None:
-			logger.warn("INVITE without SDP message: exit")
-			# ToDo: error
-			return
-
-		# Get RTP port from SDP media description
-		medias = msg.sdp[b"m"]
-		if len(medias) < 1:
-			logger.warn("SDP message has to include a media description: exit")
-			# ToDo: error
-			return
-
-		audio = None
-		for media in medias:
-			if media.media.lower() == b"audio":
-				audio = media
-				# ToDo: parse the rest to find the best one
-				break
-
-		if audio == None:
-			logger.warn("SDP media description has to be of audio type: exit")
-			return
-
 		# Read Call-ID field and create new SipCall instance on first INVITE
 		# request received (remote host might send more than one because of time
 		# outs or because he wants to flood the honeypot)
 		logger.debug("Currently active sessions: {}".format(self._callids))
+
+		if not msg.header_exist(b"call-id"):
+			return
+
 		call_id = msg.headers.get(b"call-id").value
 
-		if call_id in self._callids:
-			logger.warn("SIP session with Call-ID {} already exists".format(
-				call_id))
+		if call_id in self._callids and self._callids[call_id] == None:
+			logger.warn("SIP session with Call-ID {} already exists".format(call_id[:128]))
 			# ToDo: error
 			return
 
@@ -829,7 +791,6 @@ class SipSession(connection):
 			call_id,
 			self,
 			(self.remote.host, self.remote.port),
-			audio.port,
 			msg
 		)
 

@@ -527,6 +527,15 @@ class Message(object):
 	def froms(cls, data):
 		return cls(**cls.loads(data)[1])
 
+	def header_exist(self, header_name):
+		"""
+		Check if a header with the given name exists
+		"""
+		if type(header_name) == str:
+			header_name = bytes(header_name, "utf-8")
+
+		return self.headers_exist([header_name], True)
+
 	def headers_exist(self, headers, overwrite = False):
 		if overwrite == False:
 			headers = headers + [b"to", b"from", b"call-id", b"cseq", b"contact"]
