@@ -606,7 +606,12 @@ class Message(object):
 
 				content_type = headers.get(b"content-type", None)
 				if content_type != None and content_type.value.lower().strip() == b"application/sdp":
-					sdp = rfc4566.SDP.froms(content)
+					try:
+						sdp = rfc4566.SDP.froms(content)
+					except rfc4566.SdpParsingError:
+						# Skip parsing errors
+						pass
+
 				l = l + content_length
 			else:
 				logger.info("Body is to short than the given content-length: Content-Length {}, Body {}".format(content_length, len(body)))

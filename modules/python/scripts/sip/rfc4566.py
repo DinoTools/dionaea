@@ -12,6 +12,9 @@ try:
 except:
 	from extras import int2bytes
 
+class SdpParsingError(Exception):
+	"""Exception class for errors occuring during SDP message parsing"""
+
 class Attribute(object):
 	"""
 	"Attributes are the primary means for extending SDP."
@@ -253,7 +256,12 @@ class Media(object):
 
 	@classmethod
 	def loads(cls, data):
-		media, ports, proto, rest = re.split(b" +", data, 3)
+		try:
+			media, ports, proto, rest = re.split(b" +", data, 3)
+		except:
+			logger.warning("Can't parse SDP Media")
+			raise SdpParsingError()
+
 		# Media: currently defined media are "audio", "video", "text", "application", and "message"
 		# check if we support the type and if not send an error?
 

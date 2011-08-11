@@ -65,9 +65,6 @@ _SipCall_sustain_timeout = 20
 class AuthenticationError(Exception):
 	"""Exception class for errors occuring during SIP authentication"""
 
-class SdpParsingError(Exception):
-	"""Exception class for errors occuring during SDP message parsing"""
-
 
 def cleanup(watcher, events):
 	logger.debug("Cleanup")
