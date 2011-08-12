@@ -271,7 +271,7 @@ AC_DEFUN([AZ_PYTHON_LSPEC],
 import sys
 import sysconfig
 dictConfig = sysconfig.get_config_vars( )
-strLinkSpec =  dictConfig.get('LDFLAGS')
+strLinkSpec =  dictConfig.get('LDFLAGS','')
 
 for k,v in {"LIBPL":"-L","SYSLIBS": "","SHLIBS":"","LINKFORSHARED":""}.items():
 	lib = dictConfig.get(k)
