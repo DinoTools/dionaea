@@ -603,7 +603,8 @@ make
 make install
 </pre>
 
-    <h4 id="install_cython">Cython (all)</h4> We have to use cython from git, there is no release which supports Python3.2 __hash__'s Py_Hash_type for x86. cython 0.14.2 may change this.
+    <h4 id="install_cython">Cython (all)</h4> We have to use cython >= 0.15 as 
+    previous releases do not support Python3.2 __hash__'s Py_Hash_type for x86. 
     <pre>wget http://cython.org/release/Cython-0.15.tar.gz
 tar xfz Cython-0.15.tar.gz
 cd Cython-0.15
