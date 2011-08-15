@@ -373,12 +373,10 @@ class SipCall(connection):
 							bistream_enabled = bistream_enabled
 						)
 						media_ports[name] = self._rtp_streams[name].local.port
-			# ToDo: report
-			#
-			# i = incident("dionaea.connection.link")
-			# i.parent = self
-			# i.child = self._rtp_stream
-			# i.report()
+						i = incident("dionaea.connection.link")
+						i.parent = self
+						i.child = self._rtp_streams[name]
+						i.report()
 
 			# Send 200 OK and pick up the phone
 			msg = self.__msg.create_response(rfc3261.OK)
@@ -733,7 +731,6 @@ class SipSession(connection):
 			self.transport,
 			call_id,
 			self,
-			(self.remote.host, self.remote.port),
 			msg
 		)
 
