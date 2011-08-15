@@ -232,7 +232,7 @@ class SipCall(connection):
 	"""
 	CLOSED, SESSION_SETUP, ACTIVE_SESSION, SESSION_TEARDOWN, INVITE, INVITE_TRYING, INVITE_RINGING, INVITE_CANCEL, CALL = range(9)
 
-	def __init__(self, proto, call_id, session, conInfo, invite_message):
+	def __init__(self, proto, call_id, session, invite_message):
 		logger.debug("{:s} __init__".format(self))
 
 		logger.debug("SipCall {} session {} ".format(self, session))
@@ -241,8 +241,6 @@ class SipCall(connection):
 
 		self.__session = session
 		self.__state = SipCall.SESSION_SETUP
-		self.__remote_address = conInfo[0]
-		self.__remote_sip_port = conInfo[1]
 		self.__msg = invite_message
 		# list of messages
 		self._msg_stack = []
@@ -367,7 +365,7 @@ class SipCall(connection):
 							self.__session,
 							self.__session.local.host,
 							0, # random port
-							self.__remote_address,
+							self.__session.remote.host,
 							media.port,
 							pcap = pcap,
 							bistream_enabled = bistream_enabled
