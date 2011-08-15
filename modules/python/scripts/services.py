@@ -181,7 +181,7 @@ class epmapservice(service):
 
 class siptcpservice(service):
 	def start(self, addr, iface=None):
-		port = int(g_dionaea.config()['modules']['python']['sip'].get('port_tcp', 5060))
+		port = int(g_dionaea.config()['modules']['python']['sip']['tcp'].get('port', 5060))
 		daemon = dionaea.sip.SipSession(proto = 'tcp')
 		daemon.bind(addr, port, iface=iface)
 		daemon.listen()
@@ -190,9 +190,9 @@ class siptcpservice(service):
 	def stop(self, daemon):
 		daemon.close()
 
-class siptcptlsservice(service):
+class siptlsservice(service):
 	def start(self, addr, iface=None):
-		port = int(g_dionaea.config()['modules']['python']['sip'].get('port_tcp_tls', 5061))
+		port = int(g_dionaea.config()['modules']['python']['sip']['tls'].get('port', 5061))
 		daemon = dionaea.sip.SipSession(proto = 'tls')
 		daemon.bind(addr, port, iface=iface)
 		daemon.listen()
@@ -203,7 +203,7 @@ class siptcptlsservice(service):
 
 class sipudpservice(service):
 	def start(self, addr, iface=None):
-		port = int(g_dionaea.config()['modules']['python']['sip'].get('port_udp', 5060))
+		port = int(g_dionaea.config()['modules']['python']['sip']['udp'].get('port', 5060))
 		daemon = dionaea.sip.SipSession(proto = 'udp')
 		daemon.bind(addr, port, iface=iface)
 		daemon.listen()
@@ -288,21 +288,9 @@ def new():
 		g_slave.services.append(epmapservice)
 
 	if "sip" in g_dionaea.config()['modules']['python']['services']['serve']:
-		port_udp = g_dionaea.config()['modules']['python']['sip'].get('port_udp', None)
-		port_tcp = g_dionaea.config()['modules']['python']['sip'].get('port_tcp', None)
-		port_tcp_tls = g_dionaea.config()['modules']['python']['sip'].get('port_udp', None)
-
-		if g_dionaea.config()['modules']['python']['sip'].get('port', None) != None:
-			logger.warning("WARNING: Please update your sip config. Use 'port_udp' instead of 'port'")
-
-		if g_dionaea.config()['modules']['python']['sip'].get('port_udp', None):
-			g_slave.services.append(sipudpservice)
-
-		if g_dionaea.config()['modules']['python']['sip'].get('port_tcp', None):
-			g_slave.services.append(siptcpservice)
-
-		if g_dionaea.config()['modules']['python']['sip'].get('port_tcp_tls', None):
-			g_slave.services.append(siptcptlsservice)
+		for proto,factory in {'tcp': siptcpservice, 'tls': siptlsservice, 'udp': sipudpservice}.items():
+			if proto in g_dionaea.config()['modules']['python']['sip']:
+				g_slave.services.append(factory)
 
 	if "mssql" in g_dionaea.config()['modules']['python']['services']['serve']:
 		g_slave.services.append(mssqlservice)

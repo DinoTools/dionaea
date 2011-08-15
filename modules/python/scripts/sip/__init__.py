@@ -202,7 +202,7 @@ class RtpUdpStream(connection):
 
 	def handle_timeout_sustain(self):
 		logger.debug("{:s} handle_timeout_sustain".format(self))
-		return True
+		return False
 
 	def handle_io_in(self, data):
 		logger.debug("{:s} handle_io_in".format(self))
@@ -217,14 +217,6 @@ class RtpUdpStream(connection):
 
 	def handle_io_out(self):
 		logger.info("{:s} handle_io_out".format(self))
-
-		# ToDo: send rtp data
-		#logger.debug("Outdoing RTP data (length {})".format(len(data)))
-
-		#bytesSent = self.send(self.__sendBuffer)
-
-		# Shift sending window for next send operation
-		#self.__sendBuffer = self.__sendBuffer[bytesSent:]
 
 	def handle_disconnect(self):
 		logger.info("{:s} handle_disconnect".format(self))
@@ -423,18 +415,14 @@ class SipCall(connection):
 
 	def handle_timeout_idle(self):
 		logger.debug("{:s} handle_timeout_idle".format(self))
-#		logger.warn("self {} IDLE TIMEOUT watcher {}".format(self, watcher))
-		self.close()
 		return False
 
 	def handle_timeout_sustain(self):
 		logger.debug("{:s} handle_timeout_sustain".format(self))
-		logger.debug("SipCall.__handle_sustain_timeout self {} watcher {}".format(self, watcher))
-		return True
+		return False
 
 	def __handle_invite_timeout(self, watcher, events):
 		msg = self.__msg.create_response(rfc3261.OK)
-
 		self.send(msg)
 
 	def send(self, msg):
@@ -450,14 +438,11 @@ class SipCall(connection):
 
 	def close(self):
 		logger.debug("{:s} close".format(self))
-
-		global g_call_ids
-
-		self.__state = SipCall.CLOSED
-
 		logger.debug("SipCall.close {} Session {}".format(self, self.__session))
 
+		global g_call_ids
 		g_call_ids[self._call_id] = None
+		self.__state = SipCall.CLOSED
 
 		# stop timers
 		for name, timer in self._timers.items():
@@ -489,10 +474,6 @@ class SipCall(connection):
 
 	def handle_ACK(self, msg_ack):
 		logger.debug("{:s} handle_ACK".format(self))
-
-		self._timers["idle"].reset()
-
-		self._msg_stack.append(("in", msg_ack))
 		# does this ACK belong to a CANCEL request?
 		if not self.__state == SipCall.INVITE_CANCEL:
 			logger.info("No method to cancel")
@@ -511,10 +492,6 @@ class SipCall(connection):
 
 	def handle_BYE(self, msg_bye):
 		logger.debug("{:s} handle_BYE".format(self))
-
-		self._timers["idle"].reset()
-
-		self._msg_stack.append(("in", msg_bye))
 		if not self.__state == SipCall.CALL:
 			logger.info("BYE without call")
 			return
@@ -527,11 +504,6 @@ class SipCall(connection):
 	def handle_CANCEL(self, msg_cancel):
 		logger.debug("{:s} handle_CANCEL".format(self))
 
-		self._timers["idle"].reset()
-
-		self._msg_stack.append(("in", msg_cancel))
-		# Todo:
-		#self.__authenticate(headers)
 		if not (self.__state == SipCall.INVITE or self.__state == SipCall.INVITE_TRYING or self.__state == SipCall.INVITE_RINGING):
 			logger.info("No method to cancel")
 			return
@@ -558,14 +530,25 @@ class SipCall(connection):
 	def handle_INVITE(self, msg):
 		logger.debug("{:s} handle_INVITE".format(self))
 
-		self._timers["idle"].reset()
-
-		self._msg_stack.append(("in", msg))
 		self.__state = SipCall.INVITE
 		self._timers["invite_handler"].set(0.1, 0)
 		self._timers["invite_handler"].data = msg
 		self._timers["invite_handler"].start()
 		return True
+
+	def handle_msg_in(self, msg):
+		self._timers["idle"].reset()
+		self._msg_stack.append(("in", msg))
+
+		handler_name = msg.method.decode("utf-8").upper()
+
+		try:
+			func = getattr(self, "handle_" + handler_name, None)
+		except:
+			func = None
+
+		if func is not None and callable(func) == True:
+			func(msg)
 
 class SipSession(connection):
 	ESTABLISHED, CLOSED = range(2)
@@ -583,36 +566,16 @@ class SipSession(connection):
 		i.report()
 
 		logger.info("SIP Session created with personality '{}'".format(self.personality))
-
-		self._timers = {}
-
 		self._auth = None
-
 		self._state = None
 
-		global g_sipconfig
-
-		# Setup timers
-		global g_default_loop
-
-		self._timers = {
-# ToDo:
-#			"idle": pyev.Timer(
-#				g_sipconfig.get_timer("idle").timeout,
-#				g_sipconfig.get_timer("idle").timeout,
-#				g_default_loop,
-#				self.__handle_idle_timeout
-#			)
-		}
-
-		# start idle timer for this session
-#		self._timers["idle"].start()
 
 	def handle_established(self):
 		logger.debug("{:s} handle_established".format(self))
 		self._state = SipSession.ESTABLISHED
 
 		self.timeouts.idle = 10
+		self.timeouts.sustain = 120
 		self.processors()
 
 	def handle_timeout_sustain(self):
@@ -686,15 +649,17 @@ class SipSession(connection):
 
 		logger.info("Received: {}".format(handler_name))
 
-		try:
-			func = getattr(self, "handle_" + handler_name, None)
-		except:
-			func = None
-
-		if func is not None and callable(func) == True:
-			func(msg)
+		if handler_name in ('ACK','BYE','CANCEL'):
+			self._handle_ABC(msg)
 		else:
-			self.handle_unknown(msg)
+			try:
+				func = getattr(self, "handle_" + handler_name, None)
+			except:
+				func = None
+			if func is not None and callable(func) == True:
+				func(msg)
+			else:
+				self.handle_unknown(msg)
 
 		logger.debug("io_in: returning {}".format(len_used))
 		return len_used
@@ -705,13 +670,6 @@ class SipSession(connection):
 		logger.debug("{:s} close".format(self))
 
 		logger.debug("SipSession.close {}".format(self))
-
-		# stop timers
-		for name, timer in self._timers.items():
-			logger.debug("SipSession timer {} name {} active {} pending {}".format(timer,name, timer.active,timer.pending))
-			if timer.active == True or t.pending == True:
-#				logger.debug("SipSession Stopping {}".format(t))
-				timer.stop()
 
 		connection.close(self)
 
@@ -724,60 +682,9 @@ class SipSession(connection):
 		self.send(res.dumps())
 
 
-	def handle_ACK(self, msg):
-		logger.debug("{:s} handle_ACK".format(self))
-
+	def _handle_ABC(self, msg):
 		global g_call_ids
-
-		#if self.__checkForMissingHeaders(headers):
-		#	return
-
-		# Check if session (identified by Call-ID) exists
-		# ToDo: check if call-id header exist
-		call_id = msg.headers.get(b"call-id").value
-
-		if call_id not in g_call_ids or g_call_ids[call_id] == None:
-			logger.warn("Given Call-ID does not belong to any session: {}".format(call_id[:128]))
-			return
-
-		try:
-			# Handle incoming ACKs depending on current state
-			g_call_ids[call_id].handle_ACK(msg)
-		except AuthenticationError:
-			# ToDo error handling
-			logger.warn("Authentication failed for ACK request")
-
-
-	def handle_BYE(self, msg):
-		logger.debug("{:s} handle_BYE".format(self))
-
-		global g_call_ids
-
-		# check if Call-ID header exist
-		if not msg.header_exist(b"call-id"):
-			return
-
-		# Check if session (identified by Call-ID) exists
-		call_id = msg.headers.get(b"call-id").value
-
-		if call_id not in g_call_ids or g_call_ids[call_id] == None:
-			logger.warn("Given Call-ID does not belong to any session: {}".format(call_id[:128]))
-			self.send(msg.create_response(rfc3261.CALL_TRANSACTION_DOSE_NOT_EXIST).dumps())
-			return
-
-		try:
-			# Handle incoming BYE request depending on current state
-			g_call_ids[call_id].handle_BYE(msg)
-		except AuthenticationError:
-			# ToDo: handle
-			logger.warn("Authentication failed for BYE request")
-
-
-	def handle_CANCEL(self, msg):
-		logger.debug("{:s} handle_CANCEL".format(self))
-
-		global g_call_ids
-
+		handler_name = msg.method.decode("utf-8").upper()
 		# check if Call-ID header exist
 		if not msg.header_exist(b"call-id"):
 			return
@@ -790,14 +697,14 @@ class SipSession(connection):
 
 		# Find SipSession and delete it
 		if call_id not in g_call_ids or g_call_ids[call_id] == None:
-			logger.warn("CANCEL request does not match any existing SIP session")
+			logger.warn("{:s} request does not match any existing SIP session".format(handler_name))
 			self.send(msg.create_response(rfc3261.CALL_TRANSACTION_DOSE_NOT_EXIST).dumps())
 			return
 
 		try:
-			g_call_ids[call_id].handle_CANCEL(msg)
+			g_call_ids[call_id].handle_msg_in(msg)
 		except AuthenticationError:
-			logger.warn("Authentication failed for CANCEL request")
+			logger.warn("Authentication failed for {:s} request".format(handler_name))
 
 
 	def handle_INVITE(self, msg):
@@ -839,7 +746,7 @@ class SipSession(connection):
 		i.report()
 
 		try:
-			r = new_call.handle_INVITE(msg)
+			r = new_call.handle_msg_in(msg)
 		except AuthenticationError:
 			logger.warn("Authentication failed, not creating SIP session")
 			new_call.close()

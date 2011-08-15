@@ -251,9 +251,15 @@ modules = {
 			max-request-size = "32768" // maximum size in kbytes of the request (32MB)
 		}
 		sip = {
-			port_udp = "5060"
-			// uncomment this if dionaea should also listen on tcp
-			// port_tcp = "5060"
+			udp = {
+				port = "5060"
+			}
+			tcp = {
+				port = "5060"
+			}
+			tls = {
+				port = "5061"
+			}
 			users = "var/dionaea/sipaccounts.sqlite"
 			rtp = {
 				enable = "yes"
