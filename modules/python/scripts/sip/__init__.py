@@ -45,7 +45,7 @@ import tempfile
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from dionaea import pyev
 
-from dionaea.sip.extras import int2bytes, SipConfig
+from dionaea.sip.extras import int2bytes, SipConfig, ErrorWithResponse
 
 # load config before loading the other sip modules
 g_sipconfig = SipConfig(g_dionaea.config()['modules']['python'].get("sip", {}))
@@ -609,11 +609,19 @@ class SipSession(connection):
 			except rfc3261.SipParsingError:
 				self.close()
 				return len_used
+			except ErrorWithResponse as response:
+				self.send(response.create_response().dumps())
+				self.close()
+				return len_used
 
 		elif self.transport == "tcp":
 			try:
 				(len_used, data_load) = rfc3261.Message.loads(data)
 			except rfc3261.SipParsingError:
+				self.close()
+				return len(data)
+			except ErrorWithResponse as response:
+				self.send(response.create_response().dumps())
 				self.close()
 				return len(data)
 

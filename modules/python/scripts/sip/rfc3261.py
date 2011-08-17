@@ -4,10 +4,10 @@ import time
 
 try:
 	from dionaea.sip import rfc2396, rfc4566
-	from dionaea.sip.extras import int2bytes
+	from dionaea.sip.extras import int2bytes, ErrorWithResponse
 except:
 	import rfc2396, rfc4566
-	from extras import int2bytes
+	from extras import int2bytes, ErrorWithResponse
 
 from dionaea.sip import g_sipconfig
 
@@ -470,11 +470,16 @@ class Message(object):
 		res = Message()
 		res.protocol = b"SIP/2.0"
 		res.response_code = code
-		if message == None:
+		res.status_message = message
+		if res.status_message == None:
 			if code in status_messages:
 				res.status_message = status_messages[code]
 			else:
 				res.status_message = b""
+
+		if type(res.status_message) == str:
+			res.status_message = bytes(res.status_message, "utf-8")
+
 		for name in [b"cseq", b"call-id", b"via"]:
 			res.headers.append(self.headers.get(name, None), True)
 
@@ -609,8 +614,16 @@ class Message(object):
 					try:
 						sdp = rfc4566.SDP.froms(content)
 					except rfc4566.SdpParsingError:
-						# Skip parsing errors
-						pass
+						msg = Message(**{
+							"method": method,
+							"uri": uri,
+							"response_code": response_code,
+							"status_message": status_message,
+							"protocol": protocol,
+							"body": body,
+							"headers": headers
+						})
+						raise ErrorWithResponse(msg, BAD_REQUEST, "Invalid SIP body")
 
 				l = l + content_length
 			else:

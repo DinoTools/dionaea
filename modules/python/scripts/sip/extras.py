@@ -53,6 +53,15 @@ def int2bytes(value):
 	"""
 	return bytes(str(value), "utf-8")
 
+class ErrorWithResponse(Exception):
+	def __init__(self, msg, response_code, status_message):
+		self._msg = msg
+		self._response_code = response_code
+		self._status_message = status_message
+
+	def create_response(self):
+		return self._msg.create_response(self._response_code, self._status_message)
+
 
 class SipConfig(object):
 	"""

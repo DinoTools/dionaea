@@ -4,6 +4,7 @@ This package implements RFC 4566
 :See: http://tools.ietf.org/html/rfc4566
 """
 
+import logging
 import re
 import time
 
@@ -11,6 +12,9 @@ try:
 	from dionaea.sip.extras import int2bytes
 except:
 	from extras import int2bytes
+
+logger = logging.getLogger('sip')
+logger.setLevel(logging.DEBUG)
 
 class SdpParsingError(Exception):
 	"""Exception class for errors occuring during SDP message parsing"""
@@ -256,16 +260,10 @@ class Media(object):
 
 	@classmethod
 	def loads(cls, data):
-		try:
-			media, ports, proto, rest = re.split(b" +", data, 3)
-		except:
-			logger.warning("Can't parse SDP Media")
-			raise SdpParsingError()
+		media, ports, proto, rest = re.split(b" +", data, 3)
 
 		# Media: currently defined media are "audio", "video", "text", "application", and "message"
 		# check if we support the type and if not send an error?
-
-		# ToDo: error on wrong format?
 		port, sep, ports = ports.partition(b"/")
 		port = int(port)
 		if ports != b"":
@@ -404,40 +402,44 @@ class SDP(object):
 		data_length = len(data)
 		data = data.replace(b"\r\n", b"\n")
 		for line in data.split(b"\n"):
-			k, sep, v = line.partition(b"=")
-			if k == b"v":
-				attributes[k] = int(v)
-			elif k == b"o":
-				attributes[k] = Origin.froms(v)
-			elif k == b"c":
-				attributes[k] = ConnectionData.froms(v)
-			elif k == b"b":
-				attributes[k] = Bandwidth.froms(v)
-			elif k == b"t":
-				attributes[k] = Timing.froms(v)
-			elif k == b"r":
-				# ToDo: parse it
-				attributes[k] = v
-			elif k == b"z":
-				# ToDo: parse it
-				attributes[k] = v
-			elif k == b"a":
-				if attributes[b"m"] == None:
-					# append attribute to session
+			try:
+				k, sep, v = line.partition(b"=")
+				if k == b"v":
+					attributes[k] = int(v)
+				elif k == b"o":
+					attributes[k] = Origin.froms(v)
+				elif k == b"c":
+					attributes[k] = ConnectionData.froms(v)
+				elif k == b"b":
+					attributes[k] = Bandwidth.froms(v)
+				elif k == b"t":
+					attributes[k] = Timing.froms(v)
+				elif k == b"r":
+					# ToDo: parse it
+					attributes[k] = v
+				elif k == b"z":
+					# ToDo: parse it
+					attributes[k] = v
+				elif k == b"a":
+					if attributes[b"m"] == None:
+						# append attribute to session
+						if attributes[k] == None:
+							attributes[k] = Attributes()
+						attributes[k].append(v)
+					else:
+						# append attribute to media
+						attributes[b"m"][-1].attributes.append(v)
+
+				elif k == b"m":
 					if attributes[k] == None:
-						attributes[k] = Attributes()
-					attributes[k].append(v)
-				else:
-					# append attribute to media
-					attributes[b"m"][-1].attributes.append(v)
+						attributes[k] = []
+					attributes[k].append(Media.froms(v))
 
-			elif k == b"m":
-				if attributes[k] == None:
-					attributes[k] = []
-				attributes[k].append(Media.froms(v))
-
-			elif k in cls._attributes_allowed:
-				attributes[k] = v
+				elif k in cls._attributes_allowed:
+					attributes[k] = v
+			except ValueError as error_msg:
+				logger.warning("Can't parse sdp data: '{}':  {:s}".format(repr(line)[:128], error_msg))
+				raise SdpParsingError()
 
 		a = {}
 		for k,v in attributes.items():
