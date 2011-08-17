@@ -181,6 +181,16 @@ function sipp_run() {
 	else
 		print_error "Failed"
 	fi
+
+	echo -n "Wrong SDP: "
+	CMD="cd sipp && ${TOOL_SIPP} -sf error_sdp.xml -m 1 -l 1 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 -inf user.csv ${RHOST}"
+	print_debug "$CMD"
+	(eval $CMD &> /dev/null)
+	if [ $? == 0 ]; then
+		print_ok "OK"
+	else
+		print_error "Failed"
+	fi
 }
 
 
