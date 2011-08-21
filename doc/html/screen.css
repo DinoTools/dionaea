@@ -46,12 +46,21 @@ p, dl, ul {
 	margin-left: 1em;
 }
 
-dt:before {
+dt {
+	font-weight: bold;
+}
+
+dl.faq dt:before {
 	content: "Q: ";
 }
 
-dd:before {
+dl.faq dt {
+	margin-top: 1em;
+}
+
+dl.faq dd:before {
 	content: "A: ";
+	font-weight: bold;
 }
 
 #header {

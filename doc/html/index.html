@@ -1440,73 +1440,55 @@ psql ...
 
     <h2 id="FAQ"><a href="#FAQ">FAQ</a></h2>
 
-    <dl>
+    <dl class="faq">
       <dt>I get <kbd>gcc: command not found</kbd>?</dt>
 
       <dd>install gcc..</dd>
-    </dl>
 
-    <dl>
       <dt>How to uninstall it?</dt>
 
       <dd>rm -rf /opt/dionaea</dd>
-    </dl>
 
-    <dl>
       <dt>I get <kbd>binding.pyx:...: undeclared name not builtin:
       bytes</kbd> during the python modules build</dt>
 
       <dd>Install a recent cython version</dd>
-    </dl>
 
-    <dl>
       <dt>I get <kbd>Python.h not found</kbd> during compiling
       cython</dt>
 
       <dd>Install appropriate headers for your python
       interpreter</dd>
-    </dl>
 
-    <dl>
       <dt>I get <kbd>OperationalError at unable to open database
       file</kbd> when using logsqlite and it does not work at
       all</dt>
 
       <dd>Read the <a href="#logsql">logsql instructions</a></dd>
-    </dl>
 
-    <dl>
       <dt>I get a <kbd>Segmentation Fault</kbd></dt>
 
       <dd>Read the <a href="#segfault">segfault
       instructions</a></dd>
-    </dl>
 
-    <dl>
       <dt>I logrotate, and <kbd>after logrotate dionaea does not
       log anymore</kbd>.</dt>
 
       <dd>Read the <a href="#logging">logrotate
       instructions</a></dd>
-    </dl>
 
-    <dl>
       <dt>I <kbd>do not use ubuntu/debian</kbd> and the
       instructions are useless for me therefore.</dt>
 
       <dd>I use debian/ubuntu, and therefore I can only provide
       instructions for debian/ubuntu, but you are free to <kbd>send
       me a diff for your operating system</kbd></dd>
-    </dl>
 
-    <dl>
       <dt><kbd>p0f does not work</kbd>.</dt>
 
       <dd>Make sure your have p0f 2.0.8 and dionaea does not listen
       on ::, p0f can't deal with IPv6.</dd>
-    </dl>
 
-    <dl>
       <dt>I'm facing a bug, <kbd>it fails, and I can't figure out
       why</kbd> .</dt>
 
@@ -1515,9 +1497,7 @@ psql ...
       a shell/screen and have a look myself, and if it is worth it,
       you'll even get a FAQ entry for some specialties of your
       OS.</dd>
-    </dl>
 
-    <dl>
       <dt>I use <kbd>Redhat/Centos 5</kbd> and the installation is
       frustrating and a mess as nothing works.</dt>
 
