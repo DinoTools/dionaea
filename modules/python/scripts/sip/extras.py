@@ -11,8 +11,6 @@ import struct
 import tempfile
 import time
 
-from dionaea.core import g_dionaea
-
 logger = logging.getLogger('sip')
 logger.setLevel(logging.DEBUG)
 

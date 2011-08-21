@@ -9,8 +9,6 @@ except:
 	import rfc2396, rfc4566
 	from extras import int2bytes, ErrorWithResponse
 
-from dionaea.sip import g_sipconfig
-
 logger = logging.getLogger('sip')
 logger.setLevel(logging.DEBUG)
 
@@ -501,6 +499,7 @@ class Message(object):
 		contact = Header(name = b"contact", value = cont_addr)
 		res.headers.append(contact)
 
+		from dionaea.sip import g_sipconfig
 		handler = g_sipconfig.get_handlers_by_personality(self._personality)
 
 		res.headers.append(Header(name = b"allow", value = ", ".join(handler)))
