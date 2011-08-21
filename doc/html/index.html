@@ -263,9 +263,154 @@ for more information.<br />
         <li>Uses dionaea's incident system to log to SQL
         database</li>
       </ul><br />
-      Currently the module does not really play nice with scanning
-      software like sipvicious, and could really need some love. If
-      you want to volunteer, just send me patches.
+    </div>
+
+    <h5>Personalities</h5>
+
+    <div class="level5">
+      A personality defines how to handle a request. At least the
+      'default' personality MUST exist. The following options are
+      available per personality.
+
+      <dl>
+        <dt>serve</dt>
+        <dd>
+          A list of IP addresses to use this personality for.
+        </dd>
+        <dt>handle</dt>
+        <dd>
+          List of SIP methods to handle.
+        </dd>
+      </dl>
+    </div>
+
+    <h5>SIP Users</h5>
+
+    <div class="level5">
+      You can easily add, change or remove users by editing the SQLite
+      file specified by the 'users = ""' parameter in the config file.
+      All users are specified in the users table.
+
+      <dl>
+        <dt>username</dt>
+        <dd>
+          Specifies the name of the user. This value is treated as
+          regular expression. See
+          <a href="http://docs.python.org/py3k/library/re.html">
+            Python: Regular Expressions
+          </a> for more information.
+        </dd>
+        <dt>password</dt>
+        <dd>
+          The password.
+        </dd>
+        <dt>personality</dt>
+        <dd>
+          The user is only available in the personality specified
+          by this value. You can define a personality in the config
+          file.
+        </dd>
+        <dt>pickup_delay_min</dt>
+        <dd>
+          This is an integer value. Let the phone ring for at
+          least this number of seconds.
+        </dd>
+        <dt>pickup_delay_max</dt>
+        <dd>
+          This is an integer value. Maximum number of seconds
+          to wait before dionaea picks up the phone.
+        </dd>
+        <dt>action</dt>
+        <dd>
+          This value isn't in use, yet.
+        </dd>
+        <dt>sdp</dt>
+        <dd>
+          The name of the SDP to use. See table 'sdp'.
+        </dd>
+      </dl>
+    </div>
+
+    <h5>SDP</h5>
+
+    <div class="level5">
+      All SDPs can be defined in the sdp table in the users database.
+
+      <dl>
+        <dt>name</dt>
+        <dd>Name of the SDP</dd>
+        <dt>sdp</dt>
+        <dd>The value to use as SDP</dd>
+      </dl>
+
+      The following values are available in the SDP definition.
+
+      <dl>
+        <dt>{addrtype}</dt>
+        <dd>
+          Address type. (IP4 or IP6)
+        </dd>
+        <dt>{unicast_address}</dt>
+        <dd>
+          RTP address
+        </dd>
+        <dt>{audio_port}</dt>
+        <dd>
+          Dionaea audio port.
+        </dd>
+        <dt>{video_port}</dt>
+        <dd>
+          Dionaea video port.
+        </dd>
+      </dl>
+
+      The following control parameters are available in the SDP definition.
+
+      <dl>
+        <dt>[audio_port]...content...[/audio_port]</dt>
+        <dd>
+          The content is only available in the output if the audio_port
+          value is set.
+        </dd>
+        <dt>[video_port]...content...[/video_port]</dt>
+        <dd>
+          The content is only available in the output if the video_port
+          value is set.
+        </dd>
+      </dl>
+
+      Example:
+
+      <pre>
+v=0
+o=- 1304279835 1 IN {addrtype} {unicast_address}
+s=SIP Session
+c=IN {addrtype} {unicast_address}
+t=0 0
+[audio_port]
+m=audio {audio_port} RTP/AVP 111 0 8 9 101 120
+a=sendrecv
+a=rtpmap:111 Speex/16000/1
+a=fmtp:111 sr=16000,mode=any
+a=rtpmap:0 PCMU/8000/1
+a=rtpmap:8 PCMA/8000/1
+a=rtpmap:9 G722/8000/1
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-16,32,36
+a=rtpmap:120 NSE/8000
+a=fmtp:120 192-193
+[/audio_port]
+[video_port]
+m=video {video_port} RTP/AVP 34 96 97
+c=IN {addrtype} {unicast_address}
+a=rtpmap:34 H263/90000
+a=fmtp:34 QCIF=2
+a=rtpmap:96 H263-1998/90000
+a=fmtp:96 QCIF=2
+a=rtpmap:97 H263-N800/90000
+[/video_port]
+      </pre>
+
     </div>
 
     <h3>Exploitation</h3>
