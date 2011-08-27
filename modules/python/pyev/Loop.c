@@ -2,6 +2,7 @@
 * utilities
 *******************************************************************************/
 
+void traceback(void);
 /* report errors and bail out if needed */
 void
 set_error_Loop(Loop *self, PyObject *context)
@@ -10,7 +11,8 @@ set_error_Loop(Loop *self, PyObject *context)
         PYEV_EXIT_LOOP(self->loop);
     }
     else {
-        PyErr_WriteUnraisable(context);
+//        PyErr_WriteUnraisable(context);
+        traceback();
     }
 }
 
