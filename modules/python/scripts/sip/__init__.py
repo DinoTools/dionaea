@@ -450,6 +450,7 @@ class SipCall(connection):
 			#	logger.warn("SipCall Stopping {}".format(name))
 
 			timer.stop()
+		self._timers = {}
 
 		# close rtpStream
 		for n,v in self._rtp_streams.items():
