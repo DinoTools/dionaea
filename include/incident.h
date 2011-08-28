@@ -54,7 +54,8 @@ enum opaque_data_type
 	opaque_type_string,
 	opaque_type_int,
 	opaque_type_ptr,
-	opaque_type_list
+	opaque_type_list,
+	opaque_type_dict
 };
 
 struct connection;
@@ -70,6 +71,7 @@ struct opaque_data
 		uintptr_t   ptr;
 		struct connection *con;
 		GList *list;
+		GHashTable *dict;
 	}opaque;
 };
 struct opaque_data *opaque_data_new(void);
@@ -82,6 +84,8 @@ void opaque_data_con_set(struct opaque_data *d, struct connection *val);
 void opaque_data_con_get(struct opaque_data *d, struct connection **val);
 void opaque_data_list_set(struct opaque_data *d, GList *val);
 void opaque_data_list_get(struct opaque_data *d, GList **val);
+void opaque_data_dict_set(struct opaque_data *d, GHashTable *val);
+void opaque_data_dict_get(struct opaque_data *d, GHashTable **val);
 
 struct incident
 {
@@ -101,6 +105,8 @@ bool incident_value_string_set(struct incident *e, const char *name, GString *st
 bool incident_value_string_get(struct incident *e, const char *name, GString **str);
 bool incident_value_list_set(struct incident *e, const char *name, GList *list);
 bool incident_value_list_get(struct incident *e, const char *name, GList **list);
+bool incident_value_dict_set(struct incident *e, const char *name, GHashTable *val);
+bool incident_value_dict_get(struct incident *e, const char *name, GHashTable **val);
 
 void incident_dump(struct incident *e);
 

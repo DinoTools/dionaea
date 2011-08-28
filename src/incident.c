@@ -44,16 +44,35 @@ struct opaque_data *opaque_data_new(void)
 
 void opaque_data_free(struct opaque_data *d)
 {
-	if( d->type == opaque_type_string )
-		g_string_free(d->opaque.string, TRUE);
-	if( d->type == opaque_type_list )
+	switch(d->type)
 	{
-		GList *elem;
-		while( (elem = g_list_first(d->opaque.list)) != NULL )
+	case opaque_type_string:
+		g_string_free(d->opaque.string, TRUE);
+		break;
+	case opaque_type_int:
+	case opaque_type_ptr:
+		break;
+	case opaque_type_list:
 		{
-			opaque_data_free(elem->data);
-			d->opaque.list = g_list_delete_link(d->opaque.list, elem);
+			GList *elem;
+			while( (elem = g_list_first(d->opaque.list)) != NULL )
+			{
+				opaque_data_free(elem->data);
+				d->opaque.list = g_list_delete_link(d->opaque.list, elem);
+			}
 		}
+		break;
+	case opaque_type_dict:
+		{
+			GHashTableIter iter;
+			gpointer key, value;
+
+			g_hash_table_iter_init (&iter, d->opaque.dict);
+			while( g_hash_table_iter_next (&iter, &key, &value) )
+				opaque_data_free(value);
+			g_hash_table_destroy(d->opaque.dict);
+		}
+		break;
 	}
 	g_free(d);
 }
@@ -95,31 +114,53 @@ void opaque_data_list_get(struct opaque_data *d, GList **val)
 	*val = d->opaque.list;
 }
 
+void opaque_data_dict_set(struct opaque_data *d, GHashTable *val)
+{
+	d->type = opaque_type_dict;
+	d->opaque.dict = val;
+}
+void opaque_data_dict_get(struct opaque_data *d, GHashTable **val)
+{
+	*val = d->opaque.dict;
+}
+
+
 void opaque_data_dump(struct opaque_data *d, int indent)
 {
 	char x[1024];
 	memset(x, '\t', indent);
-	if( d->type == opaque_type_int )
+	switch( d->type )
 	{
+	case opaque_type_int:
 		g_snprintf(x+indent, 1023, "%s: (int) %li", d->name, d->opaque.integer);
-	} else
-		if( d->type == opaque_type_string )
-	{
+		break;
+	case opaque_type_string:
 		g_snprintf(x+indent, 1023, "%s: (string) %.*s", d->name, (int)d->opaque.string->len, d->opaque.string->str);
-	} else
-		if( d->type == opaque_type_ptr )
-	{
+		break;
+	case opaque_type_ptr:
 		g_snprintf(x+indent, 1023, "%s: (ptr) %p", d->name, (void *)d->opaque.ptr);
-	}else
-		if( d->type == opaque_type_list )
-	{
-			g_snprintf(x+indent, 1023, "%s: (list) %p", d->name, (void *)d->opaque.ptr);
+		break;
+	case opaque_type_list:
+		g_snprintf(x+indent, 1023, "%s: (list) %p", d->name, (void *)d->opaque.list);
+		g_debug("%s", x);
+		for( GList *it = g_list_first(d->opaque.list); it != NULL; it = g_list_next(it) )
+			opaque_data_dump(it->data, indent+1);
+		return;
+		break;
+	case opaque_type_dict:
+		{
+			g_snprintf(x+indent, 1023, "%s: (dict) %p", d->name, (void *)d->opaque.dict);
 			g_debug("%s", x);
-			for(GList *it = g_list_first(d->opaque.list); it != NULL; it = g_list_next(it))
-				opaque_data_dump(it->data, indent+1);
-			return;
-	}
 
+			GHashTableIter iter;
+			gpointer key, value;
+			g_hash_table_iter_init (&iter, d->opaque.dict);
+			while( g_hash_table_iter_next (&iter, &key, &value) )
+				opaque_data_dump(value, indent+1);
+			return;
+		}
+		break;
+	}
 	g_debug("%s", x);
 }
 
@@ -243,6 +284,24 @@ bool incident_value_list_get(struct incident *e, const char *name, GList **val)
 	if( d == NULL )
 		return false;
 	*val = d->opaque.list;
+	return true;
+}
+
+bool incident_value_dict_set(struct incident *e, const char *name, GHashTable *val)
+{
+	struct opaque_data *d = opaque_data_new();
+	opaque_data_dict_set(d, val);
+	d->name = g_strdup(name);
+	g_hash_table_insert(e->data, (gpointer)d->name, d);
+	return true;
+}
+
+bool incident_value_dict_get(struct incident *e, const char *name, GHashTable **val)
+{
+	struct opaque_data *d = incident_value_get(e, name, opaque_type_dict);
+	if( d == NULL )
+		return false;
+	*val = d->opaque.dict;
 	return true;
 }
 
