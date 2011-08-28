@@ -224,6 +224,8 @@ class RtpUdpStream(connection):
 		self._pcap.close()
 		return False
 
+	def handle_error(self, err):
+		self._call.event_stream_closed(self._name)
 
 class SipCall(connection):
 	"""
