@@ -947,6 +947,7 @@ cdef py_from_opaque(c_opaque_data *value):
 		return stringfrom(s.str, s.len)
 	elif value.type == opaque_type_int:
 		c_opaque_data_int_get(value, &i)
+		return i
 	elif value.type == opaque_type_ptr:
 		c_opaque_data_con_get(value,&cc)
 		c = NEW_C_CONNECTION_CLASS(connection)
