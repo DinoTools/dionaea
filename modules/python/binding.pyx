@@ -842,7 +842,8 @@ def dlhfn(name, number, path, line, msg):
 		msg = msg.encode(u'UTF-8')
 	c_log_wrap(name, number, path, line, msg)
 	
-cdef extern from "../../include/incident.h":
+
+cdef extern from "glib.h": 
 	ctypedef struct c_GString "GString":
 		char *str
 		int len
@@ -851,18 +852,56 @@ cdef extern from "../../include/incident.h":
 	ctypedef struct c_GList "GList":
 		void *data
 
+	ctypedef void *gpointer
+	ctypedef void *gconstpointer
+	ctypedef int gint
+	ctypedef unsigned int guint
+	ctypedef unsigned long gulong
+	ctypedef signed long long gint64
+	ctypedef unsigned long long guint64
+	ctypedef gint gboolean
+	ctypedef gboolean (*GSourceFunc) (gpointer data)
+	ctypedef unsigned int gsize
+	ctypedef signed int gssize
+	ctypedef char gchar
+	ctypedef unsigned char guchar
+
+	ctypedef void (*GCallback) ()
+	ctypedef void (*GDestroyNotify) (gpointer)
+
+	ctypedef guint GHashFunc (gconstpointer)
+	ctypedef gboolean GEqualFunc (gconstpointer, gconstpointer)
+
+	ctypedef struct GHashTable:
+		pass
+	ctypedef struct GHashTableIter:
+		pass
+	void g_hash_table_iter_init(GHashTableIter *iter, GHashTable *hash_table)
+	gboolean g_hash_table_iter_next(GHashTableIter *iter, gpointer *key, gpointer *value)
+	gboolean g_str_equal (gconstpointer, gconstpointer)
+	guint g_str_hash (gconstpointer)
+
+	GHashTable *g_hash_table_new (GHashFunc *, GEqualFunc *)
+	void g_hash_table_destroy (GHashTable*)
+	void g_hash_table_insert (GHashTable*, gpointer, gpointer)
+	gpointer g_hash_table_lookup (GHashTable*, gconstpointer)
+
+
 	c_GList *c_g_list_append "g_list_append" (c_GList *l, void *data)
 	c_GList *c_g_list_first "g_list_first" (c_GList *l)
 	c_GList *c_g_list_next "g_list_next" (c_GList *l)
 
+cdef extern from "../../include/incident.h":
 	ctypedef enum c_opaque_data_type "opaque_data_type":
 		opaque_type_string
 		opaque_type_int
 		opaque_type_ptr
 		opaque_type_list
+		opaque_type_dict
 
 	ctypedef struct c_opaque_data "struct opaque_data":
 		c_opaque_data_type type
+		char *name
 
 	c_opaque_data *c_opaque_data_new "opaque_data_new"()
 	void c_opaque_data_free "opaque_data_free"(c_opaque_data *d)
@@ -870,11 +909,13 @@ cdef extern from "../../include/incident.h":
 	void c_opaque_data_int_set    "opaque_data_int_set"    (c_opaque_data *d, long int val)
 	void c_opaque_data_con_set    "opaque_data_con_set"    (c_opaque_data *d, c_connection *val)
 	void c_opaque_data_list_set   "opaque_data_list_set"   (c_opaque_data *d, c_GList *val)
+	void c_opaque_data_dict_set   "opaque_data_dict_set"   (c_opaque_data *d, GHashTable *val)
 
 	void c_opaque_data_string_get "opaque_data_string_get" (c_opaque_data *d, c_GString **val)
 	void c_opaque_data_int_get    "opaque_data_int_get"    (c_opaque_data *d, long int *val)
 	void c_opaque_data_con_get    "opaque_data_con_get"    (c_opaque_data *d, c_connection **val)
 	void c_opaque_data_list_get   "opaque_data_list_get"   (c_opaque_data *d, c_GList **val)
+	void c_opaque_data_dict_get   "opaque_data_dict_get"   (c_opaque_data *d, GHashTable **val)
 
 	ctypedef struct c_incident "struct incident":
 		char *origin
@@ -892,6 +933,8 @@ cdef extern from "../../include/incident.h":
 	c_bool c_incident_value_string_get "incident_value_string_get" (c_incident *e, char *name, c_GString **str)
 	c_bool c_incident_value_list_set "incident_value_list_set" (c_incident *e, char *name, c_GList *val)
 	c_bool c_incident_value_list_get "incident_value_list_get" (c_incident *e, char *name, c_GList **val)
+	c_bool c_incident_value_dict_set "incident_value_dict_set" (c_incident *e, char *name, GHashTable *val)
+	c_bool c_incident_value_dict_get "incident_value_dict_get" (c_incident *e, char *name, GHashTable **val)
 
 	c_bool c_incident_keys_get "incident_keys_get" (c_incident *e, char ***keys)
 	void c_incident_dump "incident_dump" (c_incident *)
@@ -915,6 +958,31 @@ cdef py_from_glist(c_GList *l):
 		it = c_g_list_next(it)
 	return pl
 
+cdef GHashTable *py_to_ghashtable(d):
+	cdef GHashTable *gd
+	cdef char *kn
+	cdef c_opaque_data *op
+	gd = g_hash_table_new(g_str_hash, g_str_equal)
+	for k,v in d.items():
+		x = repr(k)
+		x = x.encode('ascii')
+		op = py_to_opaque(v)
+		op.name = c_g_strdup(x)
+		g_hash_table_insert(gd, op.name, op)
+	return gd
+
+cdef py_from_ghashtable(GHashTable *h):
+	cdef GHashTableIter iter
+	cdef gpointer key
+	cdef gpointer value
+	a = {}
+	g_hash_table_iter_init (&iter, h)
+	while g_hash_table_iter_next(&iter, &key, &value):
+		skey = <char *>key
+		skey = skey.decode('ascii')
+		a[skey] = py_from_opaque(<c_opaque_data *>value)
+	return a
+
 cdef c_opaque_data *py_to_opaque(value):
 	cdef c_opaque_data *o
 	o = c_opaque_data_new()
@@ -930,6 +998,8 @@ cdef c_opaque_data *py_to_opaque(value):
 		c_opaque_data_string_set(o, c_g_string_new(value))
 	elif isinstance(value, list):
 		c_opaque_data_list_set(o, py_to_glist(value))
+	elif isinstance(value, dict):
+		c_opaque_data_dict_set(o, py_to_ghashtable(value))
 	else:
 		c_opaque_data_free(o)
 		return NULL
@@ -942,6 +1012,7 @@ cdef py_from_opaque(c_opaque_data *value):
 	cdef c_GString *s
 	cdef long int i
 	cdef c_GList *l
+	cdef GHashTable *d
 	if value.type == opaque_type_string:
 		c_opaque_data_string_get(value, &s)
 		return stringfrom(s.str, s.len)
@@ -957,6 +1028,9 @@ cdef py_from_opaque(c_opaque_data *value):
 	elif value.type == opaque_type_list:
 		c_opaque_data_list_get(value,&l)
 		return py_from_glist(l)
+	elif value.type == opaque_type_dict:
+		c_opaque_data_dict_get(value,&d)
+		return py_from_ghashtable(d)
 
 cdef class incident:
 	cdef c_incident *thisptr
@@ -1012,8 +1086,8 @@ cdef class incident:
 			c_incident_value_string_set(self.thisptr, key, c_g_string_new(value))
 		elif isinstance(value, list):
 			c_incident_value_list_set(self.thisptr, key, py_to_glist(value))
-
-
+		elif isinstance(value, dict):
+			c_incident_value_dict_set(self.thisptr, key, py_to_ghashtable(value))
 
 	def __getattr__(self, key):
 		cdef c_uintptr_t x
@@ -1022,6 +1096,7 @@ cdef class incident:
 		cdef c_GString *s
 		cdef long int i
 		cdef c_GList *l
+		cdef GHashTable *d
 		if isinstance(key, unicode):
 			key = key.encode(u'UTF-8')
 		if c_incident_value_con_get(self.thisptr, key, &cc) == True:
@@ -1035,6 +1110,8 @@ cdef class incident:
 			return i
 		elif c_incident_value_list_get(self.thisptr,key,&l) == True:
 			return py_from_glist(l)
+		elif c_incident_value_dict_get(self.thisptr,key,&d) == True:
+			return py_from_ghashtable(d)
 		else:
 			raise AttributeError(u"%s does not exist" % key.decode(u'UTF-8'))
 
