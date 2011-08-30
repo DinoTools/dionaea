@@ -1002,7 +1002,7 @@ cdef c_opaque_data *py_to_opaque(value):
 		c_opaque_data_string_set(o, c_g_string_new(value))
 	elif isinstance(value, bytes):
 		c_opaque_data_string_set(o, c_g_string_new(value))
-	elif isinstance(value, list):
+	elif isinstance(value, list) or isinstance(value, tuple) :
 		c_opaque_data_list_set(o, py_to_glist(value))
 	elif isinstance(value, dict):
 		c_opaque_data_dict_set(o, py_to_ghashtable(value))
