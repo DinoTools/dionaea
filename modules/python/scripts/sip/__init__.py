@@ -621,7 +621,7 @@ class SipSession(connection):
 				self.close()
 				return len_used
 
-		elif self.transport == "tcp":
+		elif self.transport in ("tcp","tls"):
 			try:
 				(len_used, data_load) = rfc3261.Message.loads(data)
 			except rfc3261.SipParsingError:
