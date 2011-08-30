@@ -115,14 +115,141 @@ def print_dcerpcrequests(cursor, connection, indent):
 			dcerpcrequest['dcerpcserviceop_name'], 
 			dcerpcrequest['dcerpcserviceop_vuln']) )
 
-def print_siprequest(cursor, connection, indent):
-	pass
+def print_sip_commands(cursor, connection, indent):
+	r = cursor.execute("""
+		SELECT
+			sip_command,
+			sip_command_method,
+			sip_command_call_id,
+			sip_command_user_agent
+		FROM
+			sip_commands
+		WHERE
+			connection = ?""", (connection, ))
+	sipcommands = resolve_result(r)
+	for cmd in sipcommands:
+		print("{:s} Method:{:s}".format(
+			' ' * indent,
+			cmd['sip_command_method']))
+		print("{:s} Call-ID:{:s}".format(
+			' ' * indent,
+			cmd['sip_command_call_id']))
+		print("{:s} User-Agent:{:s}".format(
+			' ' * indent,
+			cmd['sip_command_user_agent']))
+		print_sip_addrs(cursor, cmd['sip_command'], indent+2)
+		print_sip_vias(cursor, cmd['sip_command'], indent+2)
+		print_sip_sdp_origins(cursor, cmd['sip_command'], indent+2)
+		print_sip_sdp_connectiondatas(cursor, cmd['sip_command'], indent+2)
+		print_sip_sdp_medias(cursor, cmd['sip_command'], indent+2)
 
-def print_sipresponse(cursor, connection, indent):
-	pass
+def print_sip_addrs(cursor, sip_command, indent):
+	r = cursor.execute("""
+		SELECT
+			sip_addr_type,
+			sip_addr_display_name,
+			sip_addr_uri_scheme,
+			sip_addr_uri_user,
+			sip_addr_uri_host,
+			sip_addr_uri_port
+		FROM
+			sip_addrs
+		WHERE
+			sip_command = ?""", (sip_command, ))
+	addrs = resolve_result(r)
+	for addr in addrs:
+		print("{:s} {:s}: <{}> '{:s}:{:s}@{:s}:{}'".format(
+			' ' * indent,
+			addr['sip_addr_type'],
+			addr['sip_addr_display_name'],
+			addr['sip_addr_uri_scheme'],
+			addr['sip_addr_uri_user'],
+			addr['sip_addr_uri_host'],
+			addr['sip_addr_uri_port']))
 
-def print_rtpstream(cursor, connection, indent):
-	pass
+def print_sip_vias(cursor, sip_command, indent):
+	r = cursor.execute("""
+		SELECT
+			sip_via_protocol,
+			sip_via_address,
+			sip_via_port
+		FROM
+			sip_vias
+		WHERE
+			sip_command = ?""", (sip_command, ))
+	vias = resolve_result(r)
+	for via in vias:
+		print("{:s} via:'{:s}/{:s}:{}'".format(
+			' ' * indent,
+			via['sip_via_protocol'],
+			via['sip_via_address'],
+			via['sip_via_port']))
+
+def print_sip_sdp_origins(cursor, sip_command, indent):
+	r = cursor.execute("""
+		SELECT
+			sip_sdp_origin_username,
+			sip_sdp_origin_sess_id,
+			sip_sdp_origin_sess_version,
+			sip_sdp_origin_nettype,
+			sip_sdp_origin_addrtype,
+			sip_sdp_origin_unicast_address
+		FROM
+			sip_sdp_origins
+		WHERE
+			sip_command = ?""", (sip_command, ))
+	vias = resolve_result(r)
+	for via in vias:
+		print("{:s} o:'{} {} {} {} {} {}'".format(
+			' ' * indent,
+			via['sip_sdp_origin_username'],
+			via['sip_sdp_origin_sess_id'],
+			via['sip_sdp_origin_sess_version'],
+			via['sip_sdp_origin_nettype'],
+			via['sip_sdp_origin_addrtype'],
+			via['sip_sdp_origin_unicast_address']))
+
+def print_sip_sdp_connectiondatas(cursor, sip_command, indent):
+	r = cursor.execute("""
+		SELECT
+			sip_sdp_connectiondata_nettype,
+			sip_sdp_connectiondata_addrtype,
+			sip_sdp_connectiondata_connection_address,
+			sip_sdp_connectiondata_ttl,
+			sip_sdp_connectiondata_number_of_addresses
+		FROM
+			sip_sdp_connectiondatas
+		WHERE
+			sip_command = ?""", (sip_command, ))
+	vias = resolve_result(r)
+	for via in vias:
+		print("{:s} c:'{} {} {} {} {}'".format(
+			' ' * indent,
+			via['sip_sdp_connectiondata_nettype'],
+			via['sip_sdp_connectiondata_addrtype'],
+			via['sip_sdp_connectiondata_connection_address'],
+			via['sip_sdp_connectiondata_ttl'],
+			via['sip_sdp_connectiondata_number_of_addresses']))
+
+def print_sip_sdp_medias(cursor, sip_command, indent):
+	r = cursor.execute("""
+		SELECT
+			sip_sdp_media_media,
+			sip_sdp_media_port,
+			sip_sdp_media_number_of_ports,
+			sip_sdp_media_proto
+		FROM
+			sip_sdp_medias
+		WHERE
+			sip_command = ?""", (sip_command, ))
+	vias = resolve_result(r)
+	for via in vias:
+		print("{:s} m:'{} {} {} {}'".format(
+			' ' * indent,
+			via['sip_sdp_media_media'],
+			via['sip_sdp_media_port'],
+			via['sip_sdp_media_number_of_ports'],
+			via['sip_sdp_media_proto']))
 
 def print_logins(cursor, connection, indent):
 	r = cursor.execute("""
@@ -240,6 +367,7 @@ def recursive_print(cursor, connection, indent):
 		print_offers(cursor, c['connection'], indent+2)
 		print_downloads(cursor, c['connection'], indent+2)
 		print_services(cursor, c['connection'], indent+2)
+		print_sip_commands(cursor, c['connection'], indent+2)
 		recursive_print(cursor, c['connection'], indent+2)
 
 def print_db(opts, args):
@@ -334,6 +462,7 @@ WHERE
 			print_mssql_fingerprints(cursor, c['connection'], 2)
 			print_mssql_commands(cursor, c['connection'], 2)
 			print_mysql_commands(cursor, c['connection'], 2)
+			print_sip_commands(cursor, c['connection'], 2)
 			recursive_print(cursor, c['connection'], 2)
 
 		offset += limit
