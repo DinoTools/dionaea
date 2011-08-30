@@ -1629,9 +1629,11 @@ void connection_established(struct connection *con)
 	ev_io_stop(CL, &con->events.io_in);
 	ev_io_stop(CL, &con->events.io_out);
 
-	connection_node_set_local(con);
-	connection_node_set_remote(con);
-
+	if( con->socket != -1 )
+	{
+		connection_node_set_local(con);
+		connection_node_set_remote(con);
+	}
 
 	connection_set_state(con, connection_state_established);
 
