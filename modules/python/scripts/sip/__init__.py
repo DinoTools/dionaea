@@ -274,8 +274,6 @@ class SipCall(connection):
 		self._timers = {
 			"idle": pyev.Timer(60.0, 60.0, g_default_loop, self.__handle_timeout_idle),
 			"invite_handler": pyev.Timer(5.0, 0.0, g_default_loop, self.__handle_invite),
-			#pyev.Timer(3, 0, g_default_loop, self.__handle_invite_timeout),
-			#"substain": pyev.Timer(_SipCall_sustain_timeout, 0, g_default_loop, self.__handle_sustain_timeout),
 		}
 
 		self._timers["idle"].start()
@@ -665,12 +663,8 @@ class SipSession(connection):
 		return len_used
 
 	def close(self):
-		self._state = SipSession.CLOSED
-
 		logger.debug("{:s} close".format(self))
-
-		logger.debug("SipSession.close {}".format(self))
-
+		self._state = SipSession.CLOSED
 		connection.close(self)
 
 	def handle_unknown(self, msg):
@@ -856,13 +850,4 @@ class SipSession(connection):
 
 		logger.debug('Sending message "{}" to ({}:{})'.format(
 			s, self.remote.host, self.remote.port))
-
-		# ToDo: SIP response incident
-#		i = incident("dionaea.modules.python.sip.out")
-#		i.con = self
-#		i.direction = "out"
-#		i.msgType = "RESPONSE"
-#		i.message = s
-#		i.report()
-
 		connection.send(self, s)
