@@ -444,3 +444,94 @@ class User(object):
 		self.pickup_delay_max = kwargs.get("pickup_delay_max", 10)
 		self.action = kwargs.get("action", "default")
 		self.sdp = kwargs.get("sdp", "default")
+
+
+def msg_to_icd(msg,d=None):
+	def via_to_dict(v,d=None):
+		if d is None: d = {}
+		for i in ['protocol',
+				  'address',
+				  'port',
+				  '_params'
+				  ]:
+			d[i] = v.__dict__[i]
+		return d
+	def uri_to_dict(u,d=None):
+		if d is None: d = {}
+		for i in ['scheme',
+				  'user',
+				  'password',
+				  'host',
+				  'port',
+				  'params',
+				  'headers']:
+			d[i] = u.__dict__[i]
+		return d
+	def addr_to_dict(a,d=None):
+		if d is None: d = {}
+		for k,v in {'display_name':None,
+					'uri':uri_to_dict,
+					#'must_quote':None,
+					'params':None
+					}.items():
+			if v is None:
+				d[k] = a.__dict__[k]
+			else:
+				d[k] = v(a.__dict__[k])
+		return d
+	def connectiondata_to_dict(c,d=None):
+		if d is None: d = {}
+		for i in ['nettype',
+				  'addrtype',
+				  'connection_address',
+				  'ttl',
+				  'number_of_addresses']:
+			d[i] = c.__dict__[i]
+		return d
+	def origin_to_dict(o,d=None):
+		if d is None: d = {}
+		for i in  ['username',
+				   'sess_id',
+				   'sess_version',
+				   'nettype',
+				   'addrtype',
+				   'unicast_address']:
+			d[i] = o.__dict__[i]
+		return d
+	def media_to_dict(m,d=None):
+		if d is None: d = {}
+		for i in ['media',
+				  'port',
+				  'number_of_ports',
+				  'proto',
+				  'fmt',
+#				  'attributes'
+				  ]:
+			d[i] = m.__dict__[i]
+		return d
+	def sdp_to_dict(b,d=None):
+		if d is None: d = {}
+		if b is None:
+			return None
+		d['c']= connectiondata_to_dict(b[b'c'])
+		d['o']= origin_to_dict(b[b'o'])
+		d['m']= [media_to_dict(i) for i in b[b'm']]
+		return d
+	if d is None: d = {}
+#	d={}
+	d.set('method', msg.method)
+	d.set('call_id', msg.headers.get('call-id').value)
+	d.set('addr', addr_to_dict(msg.uri))
+	d.set('via', [via_to_dict(i._value) for i in msg.headers.get('via')])
+	d.set('to', addr_to_dict(msg.headers.get('to')._value))
+	d.set('contact', addr_to_dict(msg.headers.get('to')._value))
+	d.set('from', [addr_to_dict(f._value) for f in msg.headers.get('from')])
+	d.set('sdp', sdp_to_dict(msg.sdp))
+	if msg.headers.get('allow') is not None:
+		d.set('allow', msg.headers.get('allow')[0]._value.decode('ascii').split(", "))
+	if msg.headers.get('user-agent') is not None:
+		d.set('user_agent', msg.headers.get('user-agent')._value)
+	else:
+		d.set('user_agent','')
+	print(d)
+	return d

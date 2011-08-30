@@ -45,7 +45,7 @@ import tempfile
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from dionaea import pyev
 
-from dionaea.sip.extras import int2bytes, SipConfig, ErrorWithResponse
+from dionaea.sip.extras import msg_to_icd, int2bytes, SipConfig, ErrorWithResponse
 
 # load config before loading the other sip modules
 g_sipconfig = SipConfig(g_dionaea.config()['modules']['python'].get("sip", {}))
@@ -53,7 +53,6 @@ g_sipconfig = SipConfig(g_dionaea.config()['modules']['python'].get("sip", {}))
 from dionaea.sip import rfc3261
 from dionaea.sip import rfc4566
 from dionaea.sip import rfc2617 # auth
-
 
 g_default_loop = pyev.default_loop()
 
@@ -539,6 +538,11 @@ class SipCall(connection):
 		self._timers["idle"].reset()
 		self._msg_stack.append(("in", msg))
 
+		icd = incident("dionaea.modules.python.sip.command")
+		icd.con = self
+		msg_to_icd(msg,d=icd)
+		icd.report()
+
 		handler_name = msg.method.decode("utf-8").upper()
 
 		try:
@@ -637,17 +641,6 @@ class SipSession(connection):
 
 		msg.set_personality(self.personality)
 
-		# ToDo: report
-		# SIP message incident
-#		i = incident("dionaea.modules.python.sip.in")
-#		i.con = self
-#		i.direction = "in"
-#		i.msgType = msgType
-#		i.firstLine = firstLine
-#		i.sipHeaders = headers
-#		i.sipBody = body
-#		i.report()
-
 		handler_name = msg.method.decode("utf-8").upper()
 
 		if not g_sipconfig.is_handled_by_personality(handler_name, self.personality):
@@ -684,6 +677,11 @@ class SipSession(connection):
 		logger.debug("{:s} unknown".format(self))
 		logger.warn("Unknown SIP header: {}".format(repr(msg.method)[:128]))
 
+		icd = incident("dionaea.modules.python.sip.command")
+		icd.con = self
+		msg_to_icd(msg,d=icd)
+		icd.report()
+
 		res = msg.create_response(rfc3261.NOT_IMPLEMENTED)
 		d = res.dumps()
 		self.send(res.dumps())
@@ -705,6 +703,10 @@ class SipSession(connection):
 		# Find SipSession and delete it
 		if call_id not in g_call_ids or g_call_ids[call_id] == None:
 			logger.warn("{:s} request does not match any existing SIP session".format(handler_name))
+			icd = incident("dionaea.modules.python.sip.command")
+			icd.con = self
+			msg_to_icd(msg,d=icd)
+			icd.report()
 			self.send(msg.create_response(rfc3261.CALL_TRANSACTION_DOSE_NOT_EXIST).dumps())
 			return
 
@@ -761,6 +763,10 @@ class SipSession(connection):
 
 	def handle_OPTIONS(self, msg):
 		logger.debug("{:s} handle_OPTIONS".format(self))
+		icd = incident("dionaea.modules.python.sip.command")
+		icd.con = self
+		msg_to_icd(msg,d=icd)
+		icd.report()
 
 		res = msg.create_response(rfc3261.OK)
 		res.headers.append(rfc3261.Header(name = "Accept", value = "application/sdp"))
@@ -774,6 +780,11 @@ class SipSession(connection):
 		:See: http://tools.ietf.org/html/rfc3261#section-10
 		"""
 		logger.debug("{:s} handle_REGISTER".format(self))
+
+		icd = incident("dionaea.modules.python.sip.command")
+		icd.con = self
+		msg_to_icd(msg,d=icd)
+		icd.report()
 
 		# ToDo: check for request-uri?
 		if not msg.headers_exist([b"to", b"from", b"call-id", b"cseq"]):
