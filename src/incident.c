@@ -49,6 +49,7 @@ void opaque_data_free(struct opaque_data *d)
 	case opaque_type_string:
 		g_string_free(d->opaque.string, TRUE);
 		break;
+	case opaque_type_none:
 	case opaque_type_int:
 	case opaque_type_ptr:
 		break;
@@ -123,7 +124,14 @@ void opaque_data_dict_get(struct opaque_data *d, GHashTable **val)
 {
 	*val = d->opaque.dict;
 }
-
+void opaque_data_none_set(struct opaque_data *d)
+{
+	d->type = opaque_type_none;
+}
+void opaque_data_none_get(struct opaque_data *d)
+{
+	return;
+}
 
 void opaque_data_dump(struct opaque_data *d, int indent)
 {
@@ -131,6 +139,9 @@ void opaque_data_dump(struct opaque_data *d, int indent)
 	memset(x, '\t', indent);
 	switch( d->type )
 	{
+	case opaque_type_none:
+		g_snprintf(x+indent, 1023, "%s: (none)", d->name);
+		break;
 	case opaque_type_int:
 		g_snprintf(x+indent, 1023, "%s: (int) %li", d->name, d->opaque.integer);
 		break;
@@ -304,6 +315,24 @@ bool incident_value_dict_get(struct incident *e, const char *name, GHashTable **
 	*val = d->opaque.dict;
 	return true;
 }
+
+bool incident_value_none_set(struct incident *e, const char *name)
+{
+	struct opaque_data *d = opaque_data_new();
+	opaque_data_none_set(d);
+	d->name = g_strdup(name);
+	g_hash_table_insert(e->data, (gpointer)d->name, d);
+	return true;
+}
+
+bool incident_value_none_get(struct incident *e, const char *name)
+{
+	struct opaque_data *d = incident_value_get(e, name, opaque_type_none);
+	if( d == NULL )
+		return false;
+	return true;
+}
+
 
 bool incident_keys_get(struct incident *e, char ***keys)
 {

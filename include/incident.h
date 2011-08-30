@@ -51,6 +51,7 @@ void ihandler_free(struct ihandler *i);
 
 enum opaque_data_type
 {
+	opaque_type_none,
 	opaque_type_string,
 	opaque_type_int,
 	opaque_type_ptr,
@@ -86,6 +87,8 @@ void opaque_data_list_set(struct opaque_data *d, GList *val);
 void opaque_data_list_get(struct opaque_data *d, GList **val);
 void opaque_data_dict_set(struct opaque_data *d, GHashTable *val);
 void opaque_data_dict_get(struct opaque_data *d, GHashTable **val);
+void opaque_data_none_set(struct opaque_data *d);
+void opaque_data_none_get(struct opaque_data *d);
 
 struct incident
 {
@@ -107,6 +110,8 @@ bool incident_value_list_set(struct incident *e, const char *name, GList *list);
 bool incident_value_list_get(struct incident *e, const char *name, GList **list);
 bool incident_value_dict_set(struct incident *e, const char *name, GHashTable *val);
 bool incident_value_dict_get(struct incident *e, const char *name, GHashTable **val);
+bool incident_value_none_set(struct incident *e, const char *name);
+bool incident_value_none_get(struct incident *e, const char *name);
 
 void incident_dump(struct incident *e);
 
