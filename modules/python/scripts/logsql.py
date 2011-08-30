@@ -434,6 +434,79 @@ class logsqlhandler(ihandler):
 			except:
 				pass
 
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			sip_commands (
+				sip_command INTEGER PRIMARY KEY,
+				connection INTEGER,
+				sip_command_method ,
+				sip_command_call_id ,
+				sip_command_user_agent ,
+				sip_command_allow INTEGER
+			-- CONSTRAINT sip_commands_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
+		)""")
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			sip_addrs (
+				sip_addr INTEGER PRIMARY KEY,
+				sip_command INTEGER,
+				sip_addr_type ,
+				sip_addr_display_name,
+				sip_addr_uri_scheme,
+				sip_addr_uri_user,
+				sip_addr_uri_password,
+				sip_addr_uri_host,
+				sip_addr_uri_port
+				-- CONSTRAINT sip_addrs_command_fkey FOREIGN KEY (sip_command) REFERENCES sip_commands (sip_command)
+			)""")
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			sip_vias (
+				sip_via INTEGER PRIMARY KEY,
+				sip_command INTEGER,
+				sip_via_protocol,
+				sip_via_address,
+				sip_via_port
+				-- CONSTRAINT sip_vias_command_fkey FOREIGN KEY (sip_command) REFERENCES sip_commands (sip_command)
+			)""")
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			sip_sdp_origins (
+				sip_sdp_origin INTEGER PRIMARY KEY,
+				sip_command INTEGER,
+				sip_sdp_origin_username,
+				sip_sdp_origin_sess_id,
+				sip_sdp_origin_sess_version,
+				sip_sdp_origin_nettype,
+				sip_sdp_origin_addrtype,
+				sip_sdp_origin_unicast_address
+				-- CONSTRAINT sip_sdp_origins_fkey FOREIGN KEY (sip_command) REFERENCES sip_commands (sip_command)
+			)""")
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			sip_sdp_connectiondatas (
+				sip_sdp_connectiondata INTEGER PRIMARY KEY,
+				sip_command INTEGER,
+				sip_sdp_connectiondata_nettype,
+				sip_sdp_connectiondata_addrtype,
+				sip_sdp_connectiondata_connection_address,
+				sip_sdp_connectiondata_ttl,
+				sip_sdp_connectiondata_number_of_addresses  
+				-- CONSTRAINT sip_sdp_connectiondatas_fkey FOREIGN KEY (sip_command) REFERENCES sip_commands (sip_command)
+			)""")
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			sip_sdp_medias (
+				sip_sdp_media INTEGER PRIMARY KEY,
+				sip_command INTEGER,
+				sip_sdp_media_media,
+				sip_sdp_media_port,
+				sip_sdp_media_number_of_ports,
+				sip_sdp_media_proto
+--				sip_sdp_media_fmt,
+--				sip_sdp_media_attributes
+				-- CONSTRAINT sip_sdp_medias_fkey FOREIGN KEY (sip_command) REFERENCES sip_commands (sip_command)
+			)""")
+
 #		self.cursor.execute("""CREATE TABLE IF NOT EXISTS 
 #			httpheaders (
 #				httpheader INTEGER PRIMARY KEY,
@@ -759,6 +832,93 @@ class logsqlhandler(ihandler):
 					self.cursor.execute("INSERT INTO mysql_command_args (mysql_command, mysql_command_arg_index, mysql_command_arg_data) VALUES (?,?,?)",
 						(cmdid, i, arg))
 			self.dbh.commit()
+
+	def handle_incident_dionaea_modules_python_sip_command(self, icd):
+		con = icd.con
+		if con not in self.attacks:
+			return
+
+		attackid = self.attacks[con][1]
+		self.cursor.execute("INSERT INTO sip_commands (connection, sip_command_method, sip_command_call_id, sip_command_user_agent, sip_command_allow) VALUES (?,?,?,?,?)",
+			(attackid, icd.method, icd.call_id, icd.user_agent, ""))
+		cmdid = self.cursor.lastrowid
+
+		def add_addr(cmd, _type, addr):
+			self.cursor.execute("""INSERT INTO sip_addrs
+				(sip_command, sip_addr_type, sip_addr_display_name,
+				sip_addr_uri_scheme, sip_addr_uri_user, sip_addr_uri_password,
+				sip_addr_uri_host, sip_addr_uri_port) VALUES (?,?,?,?,?,?,?,?)""",
+				(
+					cmd, _type, addr['display_name'],
+					addr['uri']['scheme'], addr['uri']['user'], addr['uri']['password'],
+					addr['uri']['host'], addr['uri']['port']
+				))
+		add_addr(cmdid,'to',icd.get('to'))
+		add_addr(cmdid,'contact',icd.get('contact'))
+		for i in icd.get('from'):
+			add_addr(cmdid,'from',i)
+
+		def add_via(cmd, via):
+			self.cursor.execute("""INSERT INTO sip_vias
+				(sip_command, sip_via_protocol, sip_via_address, sip_via_port)
+				VALUES (?,?,?,?)""",
+				(
+					cmd, via['protocol'],
+					via['address'], via['port']
+
+				))
+
+		for i in icd.get('via'):
+			add_via(cmdid, i)
+
+		def add_sdp(cmd, sdp):
+			def add_origin(cmd, o):
+				self.cursor.execute("""INSERT INTO sip_sdp_origins
+					(sip_command, sip_sdp_origin_username,
+					sip_sdp_origin_sess_id, sip_sdp_origin_sess_version,
+					sip_sdp_origin_nettype, sip_sdp_origin_addrtype,
+					sip_sdp_origin_unicast_address)
+					VALUES (?,?,?,?,?,?,?)""",
+					(
+						cmd, o['username'],
+						o['sess_id'], o['sess_version'],
+						o['nettype'], o['addrtype'],
+						o['unicast_address']
+					))
+			def add_condata(cmd, c):
+				self.cursor.execute("""INSERT INTO sip_sdp_connectiondatas
+					(sip_command, sip_sdp_connectiondata_nettype,
+					sip_sdp_connectiondata_addrtype, sip_sdp_connectiondata_connection_address,
+					sip_sdp_connectiondata_ttl, sip_sdp_connectiondata_number_of_addresses)
+					VALUES (?,?,?,?,?,?)""",
+					(
+						cmd, c['nettype'],
+						c['addrtype'], c['connection_address'],
+						c['ttl'], c['number_of_addresses']
+					))
+			def add_media(cmd, c):
+				self.cursor.execute("""INSERT INTO sip_sdp_medias
+					(sip_command, sip_sdp_media_media,
+					sip_sdp_media_port, sip_sdp_media_number_of_ports,
+					sip_sdp_media_proto)
+					VALUES (?,?,?,?,?)""",
+					(
+						cmd, c['media'],
+						c['port'], c['number_of_ports'],
+						c['proto']
+					))
+			if 'o' in sdp:
+				add_origin(cmd, sdp['o'])
+			if 'c' in sdp:
+				add_condata(cmd, sdp['c'])
+			if 'm' in sdp:
+				for i in sdp['m']:
+					add_media(cmd, i)
+
+		if hasattr(icd,'sdp'):
+			add_sdp(cmdid,icd.sdp)
+
+		self.dbh.commit()
 
 
 
