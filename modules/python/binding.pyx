@@ -948,10 +948,11 @@ cdef extern from "../../include/incident.h":
 
 cdef c_GList *py_to_glist(l):
 	cdef c_GList *gl
+	cdef c_opaque_data *op
 	gl = NULL
 	for i in l:
-		print(i)
-		gl = c_g_list_append(gl, py_to_opaque(i))
+		op = py_to_opaque(i)
+		gl = c_g_list_append(gl, op)
 	return gl
 
 cdef py_from_glist(c_GList *l):
@@ -969,10 +970,10 @@ cdef GHashTable *py_to_ghashtable(d):
 	cdef c_opaque_data *op
 	gd = g_hash_table_new(g_str_hash, g_str_equal)
 	for k,v in d.items():
-		x = repr(k)
-		x = x.encode('ascii')
+		if isinstance(k,str):
+			k = k.encode('ascii')
 		op = py_to_opaque(v)
-		op.name = c_g_strdup(x)
+		op.name = c_g_strdup(k)
 		g_hash_table_insert(gd, op.name, op)
 	return gd
 
