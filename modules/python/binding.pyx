@@ -893,6 +893,7 @@ cdef extern from "glib.h":
 
 cdef extern from "../../include/incident.h":
 	ctypedef enum c_opaque_data_type "opaque_data_type":
+		opaque_type_none
 		opaque_type_string
 		opaque_type_int
 		opaque_type_ptr
@@ -910,12 +911,14 @@ cdef extern from "../../include/incident.h":
 	void c_opaque_data_con_set    "opaque_data_con_set"    (c_opaque_data *d, c_connection *val)
 	void c_opaque_data_list_set   "opaque_data_list_set"   (c_opaque_data *d, c_GList *val)
 	void c_opaque_data_dict_set   "opaque_data_dict_set"   (c_opaque_data *d, GHashTable *val)
+	void c_opaque_data_none_set   "opaque_data_none_get"   (c_opaque_data *d)
 
 	void c_opaque_data_string_get "opaque_data_string_get" (c_opaque_data *d, c_GString **val)
 	void c_opaque_data_int_get    "opaque_data_int_get"    (c_opaque_data *d, long int *val)
 	void c_opaque_data_con_get    "opaque_data_con_get"    (c_opaque_data *d, c_connection **val)
 	void c_opaque_data_list_get   "opaque_data_list_get"   (c_opaque_data *d, c_GList **val)
 	void c_opaque_data_dict_get   "opaque_data_dict_get"   (c_opaque_data *d, GHashTable **val)
+	void c_opaque_data_none_get   "opaque_data_none_get"   (c_opaque_data *d)
 
 	ctypedef struct c_incident "struct incident":
 		char *origin
@@ -935,6 +938,8 @@ cdef extern from "../../include/incident.h":
 	c_bool c_incident_value_list_get "incident_value_list_get" (c_incident *e, char *name, c_GList **val)
 	c_bool c_incident_value_dict_set "incident_value_dict_set" (c_incident *e, char *name, GHashTable *val)
 	c_bool c_incident_value_dict_get "incident_value_dict_get" (c_incident *e, char *name, GHashTable **val)
+	c_bool c_incident_value_none_set "incident_value_none_set"(c_incident *e, char *name)
+	c_bool c_incident_value_none_get "incident_value_none_get"(c_incident *e, char *name)
 
 	c_bool c_incident_keys_get "incident_keys_get" (c_incident *e, char ***keys)
 	void c_incident_dump "incident_dump" (c_incident *)
@@ -1000,6 +1005,8 @@ cdef c_opaque_data *py_to_opaque(value):
 		c_opaque_data_list_set(o, py_to_glist(value))
 	elif isinstance(value, dict):
 		c_opaque_data_dict_set(o, py_to_ghashtable(value))
+	elif value is None:
+		c_opaque_data_none_set(o)
 	else:
 		c_opaque_data_free(o)
 		return NULL
@@ -1031,6 +1038,8 @@ cdef py_from_opaque(c_opaque_data *value):
 	elif value.type == opaque_type_dict:
 		c_opaque_data_dict_get(value,&d)
 		return py_from_ghashtable(d)
+	elif value.type == opaque_type_none:
+		return None
 
 cdef class incident:
 	cdef c_incident *thisptr
