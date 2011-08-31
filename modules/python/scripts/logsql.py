@@ -880,6 +880,7 @@ class logsqlhandler(ihandler):
 					addr['uri']['scheme'], addr['uri']['user'], addr['uri']['password'],
 					addr['uri']['host'], addr['uri']['port']
 				))
+		add_addr(cmdid,'addr',icd.get('addr'))
 		add_addr(cmdid,'to',icd.get('to'))
 		add_addr(cmdid,'contact',icd.get('contact'))
 		for i in icd.get('from'):
