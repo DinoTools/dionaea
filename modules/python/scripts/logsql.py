@@ -838,9 +838,36 @@ class logsqlhandler(ihandler):
 		if con not in self.attacks:
 			return
 
+		def calc_allow(a):
+			b={	b'UNKNOWN'	:(1<<0),
+				'ACK'		:(1<<1),
+				'BYE'		:(1<<2),
+				'CANCEL'	:(1<<3),
+				'INFO'		:(1<<4),
+				'INVITE'	:(1<<5),
+				'MESSAGE'	:(1<<6),
+				'NOTIFY'	:(1<<7),
+				'OPTIONS'	:(1<<8),
+				'PRACK'		:(1<<9),
+				'PUBLISH'	:(1<<10),
+				'REFER'		:(1<<11),
+				'REGISTER'	:(1<<12),
+				'SUBSCRIBE'	:(1<<13),
+				'UPDATE'	:(1<<14)
+				}
+			allow=0
+			for i in a:
+				if i in b:
+					allow |= b[i]
+				else:
+					allow |= b[b'UNKNOWN']
+			return allow
+
 		attackid = self.attacks[con][1]
-		self.cursor.execute("INSERT INTO sip_commands (connection, sip_command_method, sip_command_call_id, sip_command_user_agent, sip_command_allow) VALUES (?,?,?,?,?)",
-			(attackid, icd.method, icd.call_id, icd.user_agent, ""))
+		self.cursor.execute("""INSERT INTO sip_commands
+			(connection, sip_command_method, sip_command_call_id,
+			sip_command_user_agent, sip_command_allow) VALUES (?,?,?,?,?)""",
+			(attackid, icd.method, icd.call_id, icd.user_agent, calc_allow(icd.allow)))
 		cmdid = self.cursor.lastrowid
 
 		def add_addr(cmd, _type, addr):
@@ -915,7 +942,7 @@ class logsqlhandler(ihandler):
 				for i in sdp['m']:
 					add_media(cmd, i)
 
-		if hasattr(icd,'sdp'):
+		if hasattr(icd,'sdp') and icd.sdp is not None:
 			add_sdp(cmdid,icd.sdp)
 
 		self.dbh.commit()
