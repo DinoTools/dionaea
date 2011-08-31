@@ -121,7 +121,8 @@ def print_sip_commands(cursor, connection, indent):
 			sip_command,
 			sip_command_method,
 			sip_command_call_id,
-			sip_command_user_agent
+			sip_command_user_agent,
+			sip_command_allow
 		FROM
 			sip_commands
 		WHERE
