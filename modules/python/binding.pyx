@@ -1098,6 +1098,8 @@ cdef class incident:
 			c_incident_value_list_set(self.thisptr, key, py_to_glist(value))
 		elif isinstance(value, dict):
 			c_incident_value_dict_set(self.thisptr, key, py_to_ghashtable(value))
+		elif value is None:
+			c_incident_value_none_set(self.thisptr, key)
 
 	def __getattr__(self, key):
 		cdef c_uintptr_t x
@@ -1122,6 +1124,8 @@ cdef class incident:
 			return py_from_glist(l)
 		elif c_incident_value_dict_get(self.thisptr,key,&d) == True:
 			return py_from_ghashtable(d)
+		elif c_incident_value_none_get(self.thisptr,key) == True:
+			return None
 		else:
 			raise AttributeError(u"%s does not exist" % key.decode(u'UTF-8'))
 
