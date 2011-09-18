@@ -170,7 +170,7 @@ class xmppclient(connection):
 		print("STATE %s" % self.state)
 
 		if self.state == "connected":
-			mechs = self.xmlroot.iterfind('./stream:features/sasl:mechanisms/sasl:mechanism', namespaces=self.__nsmap__)
+			mechs = self.xmlroot.findall('./stream:features/sasl:mechanisms/sasl:mechanism', namespaces=self.__nsmap__)
 			for auth in mechs:
 				logger.debug("AUTH %s" % auth.text)
 				if auth.text == "DIGEST-MD5":
@@ -185,7 +185,7 @@ class xmppclient(connection):
 			""" the digest auth code is copied from xmpppy and was ported to work with python3"""
 			logger.debug("digest-md5")
 			print(etree.tostring(self.xmlroot))
-			challenges = self.xmlroot.iterfind('./sasl:challenge', namespaces=self.__nsmap__)
+			challenges = self.xmlroot.findall('./sasl:challenge', namespaces=self.__nsmap__)
 			for challenge in challenges:
 				text = challenge.text
 
@@ -262,7 +262,7 @@ class xmppclient(connection):
 				self.state = "features"
 
 		elif self.state == "features":
-			features = self.xmlroot.iterfind('./stream:features', namespaces=self.__nsmap__)
+			features = self.xmlroot.findall('./stream:features', namespaces=self.__nsmap__)
 			for i in features:
 				for j in i:
 					logger.debug(j.tag)
@@ -279,7 +279,7 @@ class xmppclient(connection):
 				self.xmlroot.remove(i)
 
 		elif self.state == "bind":
-			binds = self.xmlroot.iterfind('./jabber:iq/bind:bind/bind:jid', namespaces=self.__nsmap__)
+			binds = self.xmlroot.findall('./jabber:iq/bind:bind/bind:jid', namespaces=self.__nsmap__)
 			for bind in binds:
 				n = etree.Element('iq', attrib={
 					'type' :  'set',
@@ -293,7 +293,7 @@ class xmppclient(connection):
 			# cleanup './jabber:iq/session:session'
 			# cleanup './jabber:iq/bind:bind'
 
-			iqs = self.xmlroot.iterfind('./jabber:iq', namespaces=self.__nsmap__)
+			iqs = self.xmlroot.findall('./jabber:iq', namespaces=self.__nsmap__)
 			for iq in iqs:
 				self.xmlroot.remove(iq)
 
@@ -306,7 +306,7 @@ class xmppclient(connection):
 				logger.info("trying to join %s" % to)
 			self.state = "join"
 		elif self.state == "join":
-			presences = self.xmlroot.iterfind('./jabber:presence', namespaces=self.__nsmap__)
+			presences = self.xmlroot.findall('./jabber:presence', namespaces=self.__nsmap__)
 			for presence in presences:
 #				logger.warn("%s" % etree.tostring(presence, pretty_print=True).decode('ascii'))
 				channel = presence.attrib['from'].split('@')[0]
@@ -329,7 +329,7 @@ class xmppclient(connection):
 
 		if self.state == "online":
 			# we received a file via xmpp
-			files = self.xmlroot.iterfind('./jabber:message/jabber:body/dionaea:dionaea/dionaea:file', namespaces=self.__nsmap__)
+			files = self.xmlroot.findall('./jabber:message/jabber:body/dionaea:dionaea/dionaea:file', namespaces=self.__nsmap__)
 			for i in files:
 				xmlobj = i
 				md5_hash = xmlobj.attrib['md5_hash']
@@ -347,15 +347,15 @@ class xmppclient(connection):
 					icd.report()
 					fileobj.unlink(fileobj.name)
 
-			messages = self.xmlroot.iterfind('./jabber:message', namespaces=self.__nsmap__)
+			messages = self.xmlroot.findall('./jabber:message', namespaces=self.__nsmap__)
 			for message in messages:
 				self.xmlroot.remove(message)
 			
-			presences = self.xmlroot.iterfind('./jabber:presence', namespaces=self.__nsmap__)
+			presences = self.xmlroot.findall('./jabber:presence', namespaces=self.__nsmap__)
 			for presence in presences:
 				self.xmlroot.remove(presence)
 
-			iqs = self.xmlroot.iterfind('./jabber:iq', namespaces=self.__nsmap__)
+			iqs = self.xmlroot.findall('./jabber:iq', namespaces=self.__nsmap__)
 			for iq in iqs:
 				if 'id' in iq.attrib:
 					id = iq.attrib['id']
