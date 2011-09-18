@@ -434,29 +434,10 @@ class logxmpp(ihandler):
 		self.client.quit()
 		self.client = None
 
-	def broadcast(self, i, n):
-		for to in self.config:
-			for r in self.config[to]['pcre']:
-				if r.match(i.origin) is None:
-					continue
-				self.report(i, to, n)
-
-	def broadcast_connection(self, i, t):
-		for to in self.config:
-			if 'anonymous' in self.config[to] and self.config[to]['anonymous'] == 'yes':
-				anon = True
-			else:
-				anon = False
-			for r in self.config[to]['pcre']:
-				if r.match(i.origin) is None:
-					continue
-				self.report_connection(i, to, t, anon=anon)
-
-
 	def report(self, i, to, xmlobj):
 		if self.client is not None and self.client.state != 'online':
 			return
-
+		logger.info("reporting to %s" % to)
 		msg = etree.Element('message', attrib={
 			'type' : 'groupchat',
 			'to' : '%s@%s'% (to, self.muc),
@@ -472,19 +453,41 @@ class logxmpp(ihandler):
 		nick = etree.SubElement(msg, 'nick', attrib={
 			'xmlns' : 'http://jabber.org/protocol/nick'})
 		nick.text = self.username + '-' + self.resource
-
 		self.client.sendxmlobj(msg)
 
+	def handle_incident(self, i):
+		for to in self.config:
+			if 'anonymous' in self.config[to] and self.config[to]['anonymous'] == 'yes':
+				anonymous = True
+			else:
+				anonymous = False
+			logger.debug("ANON %s" % anonymous)
+			for r in self.config[to]['pcre']:
+				if r.match(i.origin) is None:
+					continue
+				try:
+					handler_name = i.origin
+					handler_name = handler_name.replace('.','_')
+					func = getattr(self, "serialize_incident_" + handler_name, None)
+				except:
+					func = None
 
-	def report_connection(self, i, to, connection_type, anon=False):
+				if func is not None and callable(func) == True:
+					msg = func(i, anonymous=anonymous)
+					if msg is None:
+						continue
+					self.report(i, to, msg)
+				else:
+					logger.warning("%s has no function" % handler_name)
+
+
+	def _serialize_connection(self, i, connection_type, anonymous):
 		c = i.con
-#		logger.debug("HOSTS %s %s " % (c.remote.hostname, c.local.host) )
-
 		local_host = c.local.host
 		remote_host = c.remote.host
 		remote_hostname = c.remote.hostname
 
-		if anon == True:
+		if anonymous == True:
 			if c.remote.hostname == c.local.host:
 				remote_host = remote_hostname = local_host = "127.0.0.1"
 			else:
@@ -500,143 +503,109 @@ class logxmpp(ihandler):
 			'remote_hostname' : remote_hostname,
 			'remote_port' : str(c.remote.port),
 			'ref' : str(c.__hash__())})
-		self.report(i, to, n)
+		return n
 
+	def serialize_incident_dionaea_connection_tcp_listen(self, i, anonymous):
+		return self._serialize_connection(i, 'listen', anonymous)
 
-	def handle_incident(self, i):
-		pass
+	def serialize_incident_dionaea_connection_tls_listen(self, i, anonymous):
+		return self._serialize_connection(i, 'listen', anonymous)
 
-	def handle_incident_dionaea_connection_tcp_listen(self, i):
-		self.broadcast_connection(i, 'listen')
+	def serialize_incident_dionaea_connection_tcp_connect(self, i, anonymous):
+		return self._serialize_connection(i, 'connect', anonymous)
 
-	def handle_incident_dionaea_connection_tls_listen(self, i):
-		self.broadcast_connection(i, 'listen')
+	def serialize_incident_dionaea_connection_tls_connect(self, i, anonymous):
+		return self._serialize_connection(i, 'connect', anonymous)
 
-	def handle_incident_dionaea_connection_tcp_connect(self, i):
-		self.broadcast_connection(i, 'connect')
+	def serialize_incident_dionaea_connection_udp_connect(self, i, anonymous):
+		return self._serialize_connection(i, 'connect', anonymous)
 
-	def handle_incident_dionaea_connection_tls_connect(self, i):
-		self.broadcast_connection(i, 'connect')
+	def serialize_incident_dionaea_connection_tcp_accept(self, i, anonymous):
+		return self._serialize_connection(i, 'accept', anonymous)
 
-	def handle_incident_dionaea_connection_udp_connect(self, i):
-		self.broadcast_connection(i, 'connect')
+	def serialize_incident_dionaea_connection_tls_accept(self, i, anonymous):
+		return self._serialize_connection(i, 'accept', anonymous)
 
-	def handle_incident_dionaea_connection_tcp_accept(self, i):
-		self.broadcast_connection(i, 'accept')
+	def serialize_incident_dionaea_connection_tcp_reject(self, i, anonymous):
+		return self._serialize_connection(i, 'reject', anonymous)
 
-	def handle_incident_dionaea_connection_tls_accept(self, i):
-		self.broadcast_connection(i, 'accept')
-
-	def handle_incident_dionaea_connection_tcp_reject(self, i):
-		self.broadcast_connection(i, 'reject')
-
-	def handle_incident_dionaea_connection_link(self, i):
-		child = i.child
-		parent = i.parent
-		n = etree.Element('link', attrib={
-			'child' : str(child.__hash__()),
-			'parent' : str(parent.__hash__())
+	def serialize_incident_dionaea_connection_link(self, i, anonymous):
+		return etree.Element('link', attrib={
+			'child' : str(i.child.__hash__()),
+			'parent' : str(i.parent.__hash__())
 			})
-		self.broadcast(i, n)
 
+	def serialize_incident_dionaea_connection_free(self, i, anonymous):
+		return etree.Element('connection', attrib={
+			'ref' : str(i.con.__hash__())})
 
-	def handle_incident_dionaea_connection_free(self, i):
-		c = i.con
-		n = etree.Element('connection', attrib={
-			'ref' : str(c.__hash__())})
-		self.broadcast(i, n)
-
-
-
-	def handle_incident_dionaea_module_emu_profile(self, i):
-		p = json.loads(i.profile)
-		p = str(p)
-		c = i.con
+	def serialize_incident_dionaea_module_emu_profile(self, i, anonymous):
 		n = etree.Element('profile', attrib={
-			'ref' : str(c.__hash__())})
-		n.text = p
-		self.broadcast(i, n)
+			'ref' : str(i.con.__hash__())})
+		n.text = str(json.loads(i.profile))
+		return n
 
-	def handle_incident_dionaea_download_offer(self, i):
-		c = i.con
-		url = i.url
-		n = etree.Element('offer', attrib={
-			'url' : url,
-			'ref' : str(c.__hash__())})
-		self.broadcast(i, n)
+	def serialize_incident_dionaea_download_offer(self, i, anonymous):
+		return etree.Element('offer', attrib={
+			'url' : i.url,
+			'ref' : str(i.con.__hash__())})
 
-
-	def handle_incident_dionaea_download_complete_hash(self, i):
+	def serialize_incident_dionaea_download_complete_hash(self, i, anonymous):
 		if not hasattr(i, 'con'):
 			return
 
 		# do not announce files gatherd via xmpp
 		if i.con == self.client:
 			return
-
-		c = i.con
-		url = i.url
-		md5hash = i.md5hash
-		n = etree.Element('download', attrib={
-			'url' : url,
-			'md5_hash' : md5hash,
-			'ref' : str(c.__hash__())})
-		self.broadcast(i, n)
+		return etree.Element('download', attrib={
+			'url' : i.url,
+			'md5_hash' : i.md5hash,
+			'ref' : str(i.con.__hash__())})
 
 
-	def handle_incident_dionaea_download_complete_unique(self, i):
+	def serialize_incident_dionaea_download_complete_unique(self, i, anonymous):
 		# do not broadcast files gatherd via xmpp
 		if hasattr(i, 'con') and i.con == self.client:
 			return
 
-		md5hash = i.md5hash
 		n = etree.Element('file', attrib={
-			'md5_hash' : md5hash
+			'md5_hash' : i.md5hash
 			})
 		f = open(i.file, "rb")
 		m = mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ)
 		n.text = base64.b64encode(m.read(m.size()))
 		m.close()
 		f.close()
-		self.broadcast(i, n)
+		return n
 
-	def handle_incident_dionaea_service_shell_listen(self, i):
+	def serialize_incident_dionaea_service_shell_listen(self, i, anonymous):
 		pass
 
-	def handle_incident_dionaea_service_shell_connect(self, i):
+	def serialize_incident_dionaea_service_shell_connect(self, i, anonymous):
 		pass
 
-	def handle_incident_dionaea_modules_python_p0f(self, i):
+	def serialize_incident_dionaea_modules_python_p0f(self, i, anonymous):
 		pass
 
-	def handle_incident_dionaea_modules_python_smb_dcerpc_request(self, i):
-		c = i.con
-		uuid = i.uuid
-		opnum = i.opnum
-		n = etree.Element('dcerpcrequest', attrib={
-			'uuid' : uuid,
-			'opnum' : str(opnum),
-			'ref' : str(c.__hash__())})
-		self.broadcast(i, n)
+	def serialize_incident_dionaea_modules_python_smb_dcerpc_request(self, i, anonymous):
+		return etree.Element('dcerpcrequest', attrib={
+			'uuid' : i.uuid,
+			'opnum' : str(i.opnum),
+			'ref' : str(i.con.__hash__())})
 		
-	def handle_incident_dionaea_modules_python_smb_dcerpc_bind(self, i):
-		c = i.con
-		uuid = i.uuid
-		transfersyntax = i.transfersyntax
-		n = etree.Element('dcerpcbind', attrib={
-			'uuid' : uuid,
-			'transfersyntax' : transfersyntax,
-			'ref' : str(c.__hash__())})
-		self.broadcast(i, n)
+	def serialize_incident_dionaea_modules_python_smb_dcerpc_bind(self, i, anonymous):
+		return etree.Element('dcerpcbind', attrib={
+			'uuid' : i.uuid,
+			'transfersyntax' : i.transfersyntax,
+			'ref' : str(i.con.__hash__())})
 
-	def handle_incident_dionaea_modules_python_mysql_login(self, i):
-		n = etree.Element('mysqllogin', attrib={
+	def serialize_incident_dionaea_modules_python_mysql_login(self, i, anonymous):
+		return etree.Element('mysqllogin', attrib={
 			'username' : i.username,
 			'password' : i.password,
 			'ref' : str(i.con.__hash__())})
-		self.broadcast(i, n)
 
-	def handle_incident_dionaea_modules_python_mysql_command(self, i):
+	def serialize_incident_dionaea_modules_python_mysql_command(self, i, anonymous):
 		n = etree.Element('mysqlcommand', attrib={
 			'cmd' : str(i.command),
 			'ref' : str(i.con.__hash__())})
@@ -646,9 +615,9 @@ class logxmpp(ihandler):
 				arg = etree.SubElement(args, 'arg', attrib={
 					'index' : str(j)})
 				arg.text = i.args[j]
-		self.broadcast(i, n)
+		return n
 
-	def handle_incident_dionaea_modules_python_sip_command(self, icd):
+	def serialize_incident_dionaea_modules_python_sip_command(self, icd, anonymous):
 		def mk_uri(uri):
 			r = etree.Element('uri')
 			for u in ['scheme','user','password','port','host']:
@@ -722,7 +691,7 @@ class logxmpp(ihandler):
 			'method' : str(icd.method),
 			'ref' : str(icd.con.__hash__())})
 
-		if self.anonymous:
+		if anonymous:
 			_replace = lambda x: x.replace(icd.con.local.host,'127.0.0.1')
 		else:
 			_replace = None
@@ -739,5 +708,6 @@ class logxmpp(ihandler):
 		if hasattr(icd,'sdp') and icd.sdp is not None:
 			n.append(mk_sdp(mk_str(icd.sdp,_replace)))
 
-		print(etree.tostring(n, pretty_print=True).decode('ascii'))
+		print(etree.tostring(n).decode('ascii'))
+		return n
 
