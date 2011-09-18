@@ -26,8 +26,7 @@
 #*******************************************************************************/
 
 from dionaea.core import connection, ihandler, g_dionaea, incident
-from lxml import etree as etree
-from lxml.etree import XMLParser
+from xml.etree import ElementTree as etree
 from io import open
 import base64
 import hashlib
@@ -46,13 +45,9 @@ logger = logging.getLogger('logxmpp')
 logger.setLevel(logging.DEBUG)
 
 
-#from xml.sax import saxutils
-
-
 def HH(some): return hashlib.md5(some).hexdigest()
 def H(some): return hashlib.md5(some).digest()
 def C(some): 
-#	logger.debug(some)
 	return b':'.join(some)
 
 __nsmap__ = {
@@ -67,6 +62,9 @@ __nsmap__ = {
 	'xml' : 'http://www.w3.org/XML/1998/namespace'
 }
 
+for i in __nsmap__:
+	etree._namespace_map[ __nsmap__[i]] = i
+
 class xmppparser:
 	"""this is a feed parser using lxml targets
 	ref: http://codespeak.net/lxml/parsing.html#the-feed-parser-interface
@@ -74,12 +72,7 @@ class xmppparser:
 
 	def __init__(self, client):
 		self.client = client
-		self.parser = XMLParser(target=self)
-		# libxml2 <= 2.7.6 is buggy
-		# this may be related to
-		# https://bugs.launchpad.net/lxml/+bug/569957
-		# to avoid having to install libxml2 from source
-		# prime the xml tree with ... nothing and it works
+		self.parser = etree.XMLTreeBuilder(target=self) #XMLParser(target=self)
 		self.parser.feed(b'')
 		self.__nsmap__ = __nsmap__
 
@@ -87,47 +80,27 @@ class xmppparser:
 		self.parser.feed(data)
 
 
-	def start(self, tag, attrib, nsmap):
+	def start(self, tag, attrib):
 		"""we got a starting tag"""
-		logger.debug("START current %s" % self.client.element)
-		e = etree.Element(tag, attrib, self.__nsmap__)
+		if len(self.client.elements) > 0:
+			logger.debug("START current %s" % self.client.elements[-1])
+		e = etree.Element(tag, attrib)#, self.__nsmap__)
 		if self.client.xmlroot == None:
-			# if there is no root element yet, this is our new root element
 			self.client.xmlroot = e
 		else:
-			# else we add this element to the list of pending elements
-			# this lists head is always the current element
-			self.client.elements.append(e)
-			if self.client.element != None:
-				# if we have an active element, the new element is a child element
-				self.client.element.append(e)
-
-		# the new element is our current element
-		self.client.element = e
+			self.client.elements[-1].append(e)
+		self.client.elements.append(e)
 		
-
 	def data(self, data):
-		if self.client.element.text == None:
-			self.client.element.text = data
+		if self.client.elements[-1].text == None:
+			self.client.elements[-1].text = data
 		else:
-			self.client.element.text += data
+			self.client.elements[-1].text += data
 
 	def end(self, tag):
 		"""we got an end tag"""
-		logger.debug("END current %s" % (self.client.element, ))
+		logger.debug("END current %s" % (self.client.elements[-1], ))
 		self.client.elements.pop()
-		# remove the element from the list of elements
-		if len(self.client.elements) == 0:
-			# if the list of elements is 0, we finished a whole subtree
-			logger.debug("APPENDING to root")
-			self.client.xmlroot.append(self.client.element)
-			# assign this new subtree to the root element
-			self.client.element = None
-			# set the current element None, so we can start over
-		else:
-			# there are still elements waiting to be finished in the list
-			# the new element to finish is the last element in the list
-			self.client.element = self.client.elements[-1]
 
 	def close(self):
 #		logger.debug("CLOSE current %s" % self.client.element)
@@ -162,6 +135,7 @@ class xmppclient(connection):
 		self.parser = xmppparser(self)
 		self.xmlroot = None
 		self.element = None
+		self.elements = []
 
 
 	def handle_established(self):
@@ -172,25 +146,24 @@ class xmppclient(connection):
 			'{http://www.w3.org/XML/1998/namespace}lang' : 'en'
 			}, nsmap = __nsmap__)
 		d = """<?xml version="1.0"?>\r\n%s>""" % etree.tostring(n)[:-2].decode('utf-8')
+		self.timeouts.idle = 20.0
 		self.send(d)
 
 	def handle_io_in(self, data):
-#		print(data)
-#		data = data
 		self.parser.feed(data)
 
 #		for element in self.xmlroot:
-#		print("ELEMENT %s" % (ElementTree.tostring(element), ))
+#			print("ELEMENT %s" % (etree.tostring(element), ))
 		if self.xmlroot == None:
 			logger.warn("ROOT IS EMPTY")
 			return len(data)
 
-#		print("%s" % (etree.tostring(self.xmlroot, pretty_print=True).decode('ascii'), ))
-		
+		print("%s" % (etree.tostring(self.xmlroot).decode('ascii'), ))
 		d = "NONE"
-#		print("STATE %s" % self.state)
+		print("STATE %s" % self.state)
+
 		if self.state == "connected":
-			mechs = self.xmlroot.xpath('/stream:stream/stream:features/sasl:mechanisms/sasl:mechanism', namespaces=self.__nsmap__)
+			mechs = self.xmlroot.iterfind('./stream:features/sasl:mechanisms/sasl:mechanism', namespaces=self.__nsmap__)
 			for auth in mechs:
 				logger.debug("AUTH %s" % auth.text)
 				if auth.text == "DIGEST-MD5":
@@ -200,12 +173,13 @@ class xmppclient(connection):
 					d = etree.tostring(n) #.decode('ascii')
 					self.state = "digest-md5"
 					self.send(d)
-				p = auth.getparent()
-				p.remove(auth)
+#				p = auth.getparent()
+#				p.remove(auth)
 		elif self.state == "digest-md5":
 			""" the digest auth code is copied from xmpppy and was ported to work with python3"""
-#			logger.debug("digest-md5")
-			challenges = self.xmlroot.xpath('/stream:stream/sasl:challenge', namespaces=self.__nsmap__)
+			logger.debug("digest-md5")
+			print(etree.tostring(self.xmlroot))
+			challenges = self.xmlroot.iterfind('./sasl:challenge', namespaces=self.__nsmap__)
 			for challenge in challenges:
 				text = challenge.text
 
@@ -251,8 +225,9 @@ class xmppclient(connection):
 					n = etree.Element('response', attrib={
 						'xmlns' :'urn:ietf:params:xml:ns:xmpp-sasl'})
 #					logger.debug(sasl_data)
-					n.text = base64.b64encode(sasl_data.encode('ascii'))
+					n.text = base64.b64encode(sasl_data.encode('ascii')).decode('ascii')
 					d = etree.tostring(n) #.decode('ascii')
+					print(d)
 					self.state = "digest-md5"
 					self.send(d)
 				elif 'rspauth' in chal:
@@ -262,13 +237,12 @@ class xmppclient(connection):
 					self.state = "sasl"
 					self.send(d)
 
-
-				challenge.getparent().remove(challenge)
+				self.xmlroot.remove(challenge)
 
 		# rspauth is optional
 		# http://www.ietf.org/rfc/rfc2831.txt
 		if self.state == "sasl" or self.state == "digest-md5":
-			sasl = self.xmlroot.xpath('/stream:stream/sasl:success', namespaces=self.__nsmap__)
+			sasl = self.xmlroot.findall('./sasl:success', namespaces=self.__nsmap__)
 			if len(sasl) == 1:
 				self.xmlroot = None
 				self.element = None
@@ -283,13 +257,13 @@ class xmppclient(connection):
 				d = """<?xml version="1.0"?>\r\n%s>""" % etree.tostring(n)[:-2].decode('utf-8')
 				self.send(d)
 				self.state = "features"
-				sasl[0].getparent().remove(sasl[0])
+				self.xmlroot.remove(sasl[0])
 
 		elif self.state == "features":
-			features = self.xmlroot.xpath('/stream:stream/stream:features', namespaces=self.__nsmap__)
+			features = self.xmlroot.iterfind('./stream:features', namespaces=self.__nsmap__)
 			for i in features:
 				for j in i:
-#					logger.debug(j.tag)
+					logger.debug(j.tag)
 					if j.tag == '{urn:ietf:params:xml:ns:xmpp-bind}bind':
 						n = etree.Element('iq', attrib={
 							'type' :  'set',
@@ -303,10 +277,10 @@ class xmppclient(connection):
 						d = etree.tostring(n)
 						self.state = "bind"
 						self.send(d)
-				i.getparent().remove(i)
+				self.xmlroot.remove(i)
 
 		elif self.state == "bind":
-			binds = self.xmlroot.xpath('/stream:stream/jabber:iq/bind:bind/bind:jid', namespaces=self.__nsmap__)
+			binds = self.xmlroot.iterfind('./jabber:iq/bind:bind/bind:jid', namespaces=self.__nsmap__)
 			for bind in binds:
 				n = etree.Element('iq', attrib={
 					'type' :  'set',
@@ -316,18 +290,13 @@ class xmppclient(connection):
 				d = etree.tostring(n)
 				self.state = "session"
 				self.send(d)
-				self.xmlroot.remove(bind.getparent().getparent())
+				# cleanup './jabber:iq/bind:bind/bind:jid' below via ./jabber:iq
 
 		elif self.state == "session":
-			sessions = self.xmlroot.xpath('/stream:stream/jabber:iq/session:session', namespaces=self.__nsmap__)
-			for session in sessions:
-				self.xmlroot.remove(session.getparent())
+			# cleanup './jabber:iq/session:session'
+			# cleanup './jabber:iq/bind:bind'
 
-			binds = self.xmlroot.xpath('/stream:stream/jabber:iq/bind:bind', namespaces=self.__nsmap__)
-			for bind in binds:
-				self.xmlroot.remove(bind.getparent())
-
-			iqs = self.xmlroot.xpath('/stream:stream/jabber:iq', namespaces=self.__nsmap__)
+			iqs = self.xmlroot.iterfind('./jabber:iq', namespaces=self.__nsmap__)
 			for iq in iqs:
 				self.xmlroot.remove(iq)
 
@@ -341,7 +310,7 @@ class xmppclient(connection):
 				self.send(d)
 			self.state = "join"
 		elif self.state == "join":
-			presences = self.xmlroot.xpath('/stream:stream/jabber:presence', namespaces=self.__nsmap__)
+			presences = self.xmlroot.iterfind('./jabber:presence', namespaces=self.__nsmap__)
 			for presence in presences:
 #				logger.warn("%s" % etree.tostring(presence, pretty_print=True).decode('ascii'))
 				channel = presence.attrib['from'].split('@')[0]
@@ -349,13 +318,9 @@ class xmppclient(connection):
 				me = '%s@%s/%s' % (self.username, self.server, self.resource)
 #				logger.warn("%s %s -> %s" % (me, to, channel) )
 				if to == me and channel in self.channels:
-					muis = presence.xpath('count(./mucuser:x/mucuser:item[@jid="%s"])' % to, namespaces=self.__nsmap__)
-					self.joined = self.joined + int(muis)
-#					for mui in muis:
-#						if mui.attrib['jid'] == me:
-#							logger.info("%s joined %s" % (to, presence.attrib['from']) )
-#							self.joined = self.joined + 1
-					errors = presence.xpath('./error', namespaces=self.__nsmap__)
+					muis = presence.findall('./mucuser:x/mucuser:item[@jid="%s"]' % to, namespaces=self.__nsmap__)
+					self.joined = self.joined + len(muis)
+					errors = presence.iterfind('./error', namespaces=self.__nsmap__)
 					for error in errors:
 						logger.warn("could not join %s\n%s" % (to, etree.tostring(error, pretty_print=True).decode('ascii')))
 
@@ -368,7 +333,7 @@ class xmppclient(connection):
 
 		if self.state == "online":
 			# we received a file via xmpp
-			files = self.xmlroot.xpath('/stream:stream/jabber:message/jabber:body/dionaea:dionaea/dionaea:file', namespaces=self.__nsmap__)
+			files = self.xmlroot.iterfind('./jabber:message/jabber:body/dionaea:dionaea/dionaea:file', namespaces=self.__nsmap__)
 			for i in files:
 				xmlobj = i
 				md5_hash = xmlobj.attrib['md5_hash']
@@ -385,24 +350,16 @@ class xmppclient(connection):
 					icd.url = "logxmpp://" + md5_hash
 					icd.report()
 					fileobj.unlink(fileobj.name)
-				self.xmlroot.remove(i.getparent().getparent().getparent())
 
-			messages = self.xmlroot.xpath('/stream:stream/jabber:message/jabber:body', namespaces=self.__nsmap__)
+			messages = self.xmlroot.iterfind('./jabber:message', namespaces=self.__nsmap__)
 			for message in messages:
-#				logger.debug("proper del %s" % message)
-				self.xmlroot.remove(message.getparent())
-
-			subjects = self.xmlroot.xpath('/stream:stream/jabber:message/jabber:subject', namespaces=self.__nsmap__)
-			for subject in subjects:
-#				logger.debug("proper del %s" % subject)
-				self.xmlroot.remove(subject.getparent())
+				self.xmlroot.remove(message)
 			
-			presences = self.xmlroot.xpath('/stream:stream/jabber:presence', namespaces=self.__nsmap__)
+			presences = self.xmlroot.iterfind('./jabber:presence', namespaces=self.__nsmap__)
 			for presence in presences:
-#				logger.debug("proper del %s" % presence)
 				self.xmlroot.remove(presence)
 
-			iqs = self.xmlroot.xpath('/stream:stream/jabber:iq', namespaces=self.__nsmap__)
+			iqs = self.xmlroot.iterfind('./jabber:iq', namespaces=self.__nsmap__)
 			for iq in iqs:
 				if 'id' in iq.attrib:
 					id = iq.attrib['id']
@@ -415,7 +372,7 @@ class xmppclient(connection):
 
 		if self.xmlroot is not None:
 			for i in self.xmlroot:
-				logger.debug("unknown/unhandled xml element: removing %s\n%s\n" % (i, etree.tostring(i, pretty_print=True).decode('ascii')) )
+				logger.debug("unknown/unhandled xml element: removing %s\n%s\n" % (i, etree.tostring(i).decode('ascii')) )
 				self.xmlroot.remove(i)
 	
 		return len(data)
@@ -472,8 +429,8 @@ class logxmpp(ihandler):
 		self.username = username.split('@')[0]
 		self.client = xmppclient(server=server, port=port, username=username, password=password, resource=resource, muc=muc, channels=list(self.config.keys()))
 		ihandler.__init__(self, '*')
-		if 'anonymous' in self.config[to] and self.config[to]['anonymous'] == 'yes':
-			self.anonymous = True
+#		if 'anonymous' in self.config[to] and self.config[to]['anonymous'] == 'yes':
+		self.anonymous = True
 
 	def __del__(self):
 		self.muc = None
