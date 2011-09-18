@@ -84,12 +84,15 @@ class xmppparser:
 		"""we got a starting tag"""
 		if len(self.client.elements) > 0:
 			logger.debug("START current %s" % self.client.elements[-1])
+		else:
+			logger.debug("START current %s" % None)
 		e = etree.Element(tag, attrib)#, self.__nsmap__)
 		if self.client.xmlroot == None:
 			self.client.xmlroot = e
 		else:
-			self.client.elements[-1].append(e)
-		self.client.elements.append(e)
+			if len(self.client.elements) > 0:
+				self.client.elements[-1].append(e)
+			self.client.elements.append(e)
 		
 	def data(self, data):
 		if self.client.elements[-1].text == None:
@@ -100,7 +103,9 @@ class xmppparser:
 	def end(self, tag):
 		"""we got an end tag"""
 		logger.debug("END current %s" % (self.client.elements[-1], ))
-		self.client.elements.pop()
+		e = self.client.elements.pop()
+		if len(self.client.elements) == 0:
+			self.client.xmlroot.append(e)
 
 	def close(self):
 #		logger.debug("CLOSE current %s" % self.client.element)
