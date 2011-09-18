@@ -40,6 +40,7 @@ import tempfile
 import logging
 from random import choice
 import string
+import copy
 
 logger = logging.getLogger('logxmpp')
 logger.setLevel(logging.DEBUG)
@@ -471,6 +472,8 @@ class logxmpp(ihandler):
 		self.username = username.split('@')[0]
 		self.client = xmppclient(server=server, port=port, username=username, password=password, resource=resource, muc=muc, channels=list(self.config.keys()))
 		ihandler.__init__(self, '*')
+		if 'anonymous' in self.config[to] and self.config[to]['anonymous'] == 'yes':
+			self.anonymous = True
 
 	def __del__(self):
 		self.muc = None
@@ -699,4 +702,98 @@ class logxmpp(ihandler):
 				args.append(arg)
 			n.append(args)
 		self.broadcast(i, n)
+
+	def handle_incident_dionaea_modules_python_sip_command(self, icd):
+		def mk_uri(uri):
+			r = etree.Element('uri')
+			for u in ['scheme','user','password','port','host']:
+				if u not in uri or uri[u] is None:
+					continue
+				r.set(u, uri[u])
+			return r
+
+		def mk_addr(_type, addrs):
+			r = etree.Element(_type)
+			for addr in addrs:
+				a = etree.SubElement(r,'addr')
+				if addr['display_name'] is not None:
+					a.set('display_name',addr['display_name'])
+				a.append(mk_uri(addr['uri']))
+			return r
+
+		def mk_via(vias):
+			r = etree.Element('vias')
+			for via in vias:
+				s = etree.SubElement(r,'via')
+				for u in ['address','port','protocol','port','host']:
+					if u not in via or via[u] is None:
+						continue
+					s.set(u, via[u])
+			return r
+
+		def mk_sdp(sdp):
+			s=etree.Element('sdp')
+			if 'o' in sdp:
+				s.append(etree.Element('origin', attrib=sdp['o']))
+			if 'c' in sdp:
+				s.append(etree.Element('connectiondata', attrib=sdp['c']))
+			if 'm' in sdp:
+				m = etree.Element('medialist')
+				s.append(m)
+				for media in sdp['m']:
+					x = etree.SubElement(m,'media')
+					for u in ['proto','port','media','number_of_ports']:
+						if u not in media or media[u] is None:
+							continue
+						x.set(u, media[u])
+			return s
+
+		def mk_str(d,_replace):
+			def mk_v(v,_replace):
+				if isinstance(v,dict) or isinstance(v,list):
+					return mk_str(v, _replace=_replace)
+				elif isinstance(v,bytes):
+					s = v.decode('ascii')
+				elif isinstance(v, int):
+					s = str(v)
+				else:
+					s = v
+				if _replace is not None:
+					s = _replace(s)
+				return s
+
+			if isinstance(d,dict):
+				b={}
+				for k,v in d.items():
+					if v is not None:
+						b[k] = mk_v(v, _replace)
+				return b
+			elif isinstance(d,list):
+				return [mk_v(v, _replace) for v in filter(lambda x:x is not None,d)]
+			else:
+				return mk_v(d, _replace)
+
+
+		n = etree.Element('sipcommand', attrib={
+			'method' : str(icd.method),
+			'ref' : str(icd.con.__hash__())})
+
+		if self.anonymous:
+			_replace = lambda x: x.replace(icd.con.local.host,'127.0.0.1')
+		else:
+			_replace = None
+		
+		if hasattr(icd,'user_agent') and icd.user_agent is not None:
+			n.set('user_agent', mk_str(icd.user_agent,_replace))
+		n.set('call_id',mk_str(icd.call_id,_replace))
+		n.append(mk_addr('address',[mk_str(icd.get('addr'), _replace)]))
+		n.append(mk_addr('to',[mk_str(icd.get('to'), _replace)]))
+		n.append(mk_addr('contact',[mk_str(icd.get('contact'), _replace)]))
+		n.append(mk_addr('from',mk_str(icd.get('from'), _replace)))
+		n.append(mk_via(mk_str(icd.get('via'), _replace)))
+
+		if hasattr(icd,'sdp') and icd.sdp is not None:
+			n.append(mk_sdp(mk_str(icd.sdp,_replace)))
+
+		print(etree.tostring(n, pretty_print=True).decode('ascii'))
 
