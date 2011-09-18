@@ -255,7 +255,6 @@ class xmppclient(connection):
 				d = """<?xml version="1.0"?>\r\n%s>""" % etree.tostring(n)[:-2].decode('utf-8')
 				self.send(d)
 				self.state = "features"
-				self.xmlroot.remove(sasl[0])
 
 		elif self.state == "features":
 			features = self.xmlroot.iterfind('./stream:features', namespaces=self.__nsmap__)
@@ -266,12 +265,10 @@ class xmppclient(connection):
 						n = etree.Element('iq', attrib={
 							'type' :  'set',
 							'id' : 'bind_1'})
-						b = etree.Element('bind', attrib={
+						b = etree.SubElement(n,'bind', attrib={
 							'xmlns' :'urn:ietf:params:xml:ns:xmpp-bind'})
-						r = etree.Element('resource')
+						r = etree.SubElement(b,'resource')
 						r.text = self.resource
-						b.append(r)
-						n.append(b)
 						self.sendxmlobj(n)
 						self.state = "bind"
 				self.xmlroot.remove(i)
@@ -282,8 +279,7 @@ class xmppclient(connection):
 				n = etree.Element('iq', attrib={
 					'type' :  'set',
 					'id' : 'bind_1'})
-				s = etree.Element('session', attrib = { 'xmlns' : "urn:ietf:params:xml:ns:xmpp-session" })
-				n.append(s)
+				s = etree.SubElement(n, 'session', attrib = { 'xmlns' : "urn:ietf:params:xml:ns:xmpp-session" })
 				self.sendxmlobj(n)
 				self.state = "session"
 				# cleanup './jabber:iq/bind:bind/bind:jid' below via ./jabber:iq
@@ -382,10 +378,9 @@ class xmppclient(connection):
 			'to' : self.server,
 			'type': 'get',
 			'id' : xid})
-		ping = etree.Element('ping', attrib={
+		ping = etree.SubElement(n, 'ping', attrib={
 			'xmlns' : 'urn:xmpp:ping'
 			})
-		n.append(ping)
 		self.sendxmlobj(n)
 		self.ids[xid] = 'ping'
 		return True
@@ -456,29 +451,25 @@ class logxmpp(ihandler):
 	def report(self, i, to, xmlobj):
 		if self.client is not None and self.client.state != 'online':
 			return
-		m = etree.Element('message', attrib={
+
+		msg = etree.Element('message', attrib={
 			'type' : 'groupchat',
 			'to' : '%s@%s'% (to, self.muc),
 			'{http://www.w3.org/XML/1998/namespace}lang' : 'en'
 			})
-		b =  etree.Element('body')
-		x = etree.Element('dionaea', attrib={
+		body =  etree.SubElement(msg,'body')
+		dio = etree.SubElement(body,'dionaea', attrib={
 			'xmlns' : "http://dionaea.carnivore.it",
 			'incident' : i.origin
 			})
-		x.append(xmlobj)
-		# if you want readable dumps in your xmpp client
-		# append as text instead of child
-		# b.text = etree.tostring(x, pretty_print=True).decode('ascii')
-		b.append(x)
-		n = etree.Element('nick', attrib={
+		dio.append(xmlobj)
+
+		nick = etree.SubElement(msg, 'nick', attrib={
 			'xmlns' : 'http://jabber.org/protocol/nick'})
-		n.text = self.username + '-' + self.resource
-		m.append(b)
-		m.append(n)
-		d = etree.tostring(m, pretty_print=True)
-		self.client.send(d)
-#		logger.debug("XMPP-INCIDENT %s" % d)
+		nick.text = self.username + '-' + self.resource
+
+		self.client.sendxmlobj(msg)
+
 
 	def report_connection(self, i, to, connection_type, anon=False):
 		c = i.con
@@ -645,13 +636,11 @@ class logxmpp(ihandler):
 			'cmd' : str(i.command),
 			'ref' : str(i.con.__hash__())})
 		if hasattr(i,'args'):
-			args = etree.Element('args')
+			args = etree.SubElement(n,'args')
 			for j in range(len(i.args)):
-				arg = etree.Element('arg', attrib={
+				arg = etree.SubElement(args, 'arg', attrib={
 					'index' : str(j)})
 				arg.text = i.args[j]
-				args.append(arg)
-			n.append(args)
 		self.broadcast(i, n)
 
 	def handle_incident_dionaea_modules_python_sip_command(self, icd):
@@ -685,12 +674,11 @@ class logxmpp(ihandler):
 		def mk_sdp(sdp):
 			s=etree.Element('sdp')
 			if 'o' in sdp:
-				s.append(etree.Element('origin', attrib=sdp['o']))
+				etree.SubElement(s, 'origin', attrib=sdp['o'])
 			if 'c' in sdp:
-				s.append(etree.Element('connectiondata', attrib=sdp['c']))
+				etree.SubElement(s, 'connectiondata', attrib=sdp['c'])
 			if 'm' in sdp:
-				m = etree.Element('medialist')
-				s.append(m)
+				m = etree.SubElement(s, 'medialist')
 				for media in sdp['m']:
 					x = etree.SubElement(m,'media')
 					for u in ['proto','port','media','number_of_ports']:
