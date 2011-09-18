@@ -137,6 +137,8 @@ class xmppclient(connection):
 		self.element = None
 		self.elements = []
 
+	def sendxmlobj(self, xmlobj):
+		self.send(etree.tostring(xmlobj))
 
 	def handle_established(self):
 		self.state = "connected"
@@ -170,9 +172,8 @@ class xmppclient(connection):
 					n = etree.Element('auth', attrib={
 						'xmlns' :'urn:ietf:params:xml:ns:xmpp-sasl',
 						'mechanism' : 'DIGEST-MD5'})
-					d = etree.tostring(n) #.decode('ascii')
+					self.sendxmlobj(n)
 					self.state = "digest-md5"
-					self.send(d)
 #				p = auth.getparent()
 #				p.remove(auth)
 		elif self.state == "digest-md5":
@@ -226,16 +227,13 @@ class xmppclient(connection):
 						'xmlns' :'urn:ietf:params:xml:ns:xmpp-sasl'})
 #					logger.debug(sasl_data)
 					n.text = base64.b64encode(sasl_data.encode('ascii')).decode('ascii')
-					d = etree.tostring(n) #.decode('ascii')
-					print(d)
+					self.sendxmlobj(n)
 					self.state = "digest-md5"
-					self.send(d)
 				elif 'rspauth' in chal:
 					n = etree.Element('response', attrib={
 						'xmlns' :'urn:ietf:params:xml:ns:xmpp-sasl'})
-					d = etree.tostring(n)
+					self.sendxmlobj(n)
 					self.state = "sasl"
-					self.send(d)
 
 				self.xmlroot.remove(challenge)
 
@@ -274,9 +272,8 @@ class xmppclient(connection):
 						r.text = self.resource
 						b.append(r)
 						n.append(b)
-						d = etree.tostring(n)
+						self.sendxmlobj(n)
 						self.state = "bind"
-						self.send(d)
 				self.xmlroot.remove(i)
 
 		elif self.state == "bind":
@@ -287,9 +284,8 @@ class xmppclient(connection):
 					'id' : 'bind_1'})
 				s = etree.Element('session', attrib = { 'xmlns' : "urn:ietf:params:xml:ns:xmpp-session" })
 				n.append(s)
-				d = etree.tostring(n)
+				self.sendxmlobj(n)
 				self.state = "session"
-				self.send(d)
 				# cleanup './jabber:iq/bind:bind/bind:jid' below via ./jabber:iq
 
 		elif self.state == "session":
@@ -305,9 +301,8 @@ class xmppclient(connection):
 				n = etree.Element('presence', attrib={
 					'to' : to })
 				p = etree.Element('x', attrib = { 'xmlns' : "http://jabber.org/protocol/muc" })
-				d = etree.tostring(n)
+				self.sendxmlobj(n)
 				logger.info("trying to join %s" % to)
-				self.send(d)
 			self.state = "join"
 		elif self.state == "join":
 			presences = self.xmlroot.iterfind('./jabber:presence', namespaces=self.__nsmap__)
@@ -391,8 +386,7 @@ class xmppclient(connection):
 			'xmlns' : 'urn:xmpp:ping'
 			})
 		n.append(ping)
-		d = etree.tostring(n)
-		self.send(d)
+		self.sendxmlobj(n)
 		self.ids[xid] = 'ping'
 		return True
 
