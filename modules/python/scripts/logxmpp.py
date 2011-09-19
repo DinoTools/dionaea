@@ -42,7 +42,7 @@ import string
 import copy
 
 logger = logging.getLogger('logxmpp')
-logger.setLevel(logging.DEBUG)
+logger.setLevel(logging.INFO)
 
 
 def HH(some): return hashlib.md5(some).hexdigest()
@@ -153,21 +153,20 @@ class xmppclient(connection):
 			'{http://www.w3.org/XML/1998/namespace}lang' : 'en'
 			}, nsmap = __nsmap__)
 		d = """<?xml version="1.0"?>\r\n%s>""" % etree.tostring(n)[:-2].decode('utf-8')
-		self.timeouts.idle = 20.0
 		self.send(d)
 
 	def handle_io_in(self, data):
 		self.parser.feed(data)
 
-#		for element in self.xmlroot:
-#			print("ELEMENT %s" % (etree.tostring(element), ))
 		if self.xmlroot == None:
 			logger.warn("ROOT IS EMPTY")
 			return len(data)
 
-		print("%s" % (etree.tostring(self.xmlroot).decode('ascii'), ))
-		d = "NONE"
-		print("STATE %s" % self.state)
+#		print("%s" % (etree.tostring(self.xmlroot).decode('ascii'), ))
+#		print("STATE %s" % self.state)
+#		for element in self.xmlroot:
+#			print("ELEMENT %s" % (etree.tostring(element), ))
+
 
 		if self.state == "connected":
 			mechs = self.xmlroot.findall('./stream:features/sasl:mechanisms/sasl:mechanism', namespaces=self.__nsmap__)
@@ -184,7 +183,7 @@ class xmppclient(connection):
 		elif self.state == "digest-md5":
 			""" the digest auth code is copied from xmpppy and was ported to work with python3"""
 			logger.debug("digest-md5")
-			print(etree.tostring(self.xmlroot))
+#			print(etree.tostring(self.xmlroot))
 			challenges = self.xmlroot.findall('./sasl:challenge', namespaces=self.__nsmap__)
 			for challenge in challenges:
 				text = challenge.text
@@ -308,17 +307,15 @@ class xmppclient(connection):
 		elif self.state == "join":
 			presences = self.xmlroot.findall('./jabber:presence', namespaces=self.__nsmap__)
 			for presence in presences:
-#				logger.warn("%s" % etree.tostring(presence, pretty_print=True).decode('ascii'))
 				channel = presence.attrib['from'].split('@')[0]
 				to = presence.attrib['to']
 				me = '%s@%s/%s' % (self.username, self.server, self.resource)
-#				logger.warn("%s %s -> %s" % (me, to, channel) )
 				if to == me and channel in self.channels:
 					muis = presence.findall('./mucuser:x/mucuser:item[@jid="%s"]' % to, namespaces=self.__nsmap__)
 					self.joined = self.joined + len(muis)
 					errors = presence.iterfind('./error', namespaces=self.__nsmap__)
 					for error in errors:
-						logger.warn("could not join %s\n%s" % (to, etree.tostring(error, pretty_print=True).decode('ascii')))
+						logger.warn("could not join %s\n%s" % (to, etree.tostring(error).decode('ascii')))
 
 				self.xmlroot.remove(presence)
 
@@ -383,7 +380,7 @@ class xmppclient(connection):
 			'to' : self.server,
 			'type': 'get',
 			'id' : xid})
-		ping = etree.SubElement(n, 'ping', attrib={
+		etree.SubElement(n, 'ping', attrib={
 			'xmlns' : 'urn:xmpp:ping'
 			})
 		self.sendxmlobj(n)
@@ -409,22 +406,16 @@ class xmppclient(connection):
 
 class logxmpp(ihandler):
 	def __init__(self, server, port, username, password, resource, muc, config):
-		
 		self.muc = muc
 		self.config = config.copy()
 		for e in self.config:
 			self.config[e]['pcre'] = []
 			for p in self.config[e]['events']:
-#				p = p.replace('.','\\.') # workaround liblcfg bug
-				logger.debug(p)
 				self.config[e]['pcre'].append(re.compile(p))
-#		logger.debug(self.config)
 		self.resource = resource
 		self.username = username.split('@')[0]
 		self.client = xmppclient(server=server, port=port, username=username, password=password, resource=resource, muc=muc, channels=list(self.config.keys()))
 		ihandler.__init__(self, '*')
-#		if 'anonymous' in self.config[to] and self.config[to]['anonymous'] == 'yes':
-		self.anonymous = True
 
 	def __del__(self):
 		self.muc = None
@@ -437,7 +428,6 @@ class logxmpp(ihandler):
 	def report(self, i, to, xmlobj):
 		if self.client is not None and self.client.state != 'online':
 			return
-		logger.info("reporting to %s" % to)
 		msg = etree.Element('message', attrib={
 			'type' : 'groupchat',
 			'to' : '%s@%s'% (to, self.muc),
@@ -449,6 +439,7 @@ class logxmpp(ihandler):
 			'incident' : i.origin
 			})
 		dio.append(xmlobj)
+#		dio.text = etree.tostring(xmlobj).decode('ascii')
 
 		nick = etree.SubElement(msg, 'nick', attrib={
 			'xmlns' : 'http://jabber.org/protocol/nick'})
@@ -461,7 +452,6 @@ class logxmpp(ihandler):
 				anonymous = True
 			else:
 				anonymous = False
-			logger.debug("ANON %s" % anonymous)
 			for r in self.config[to]['pcre']:
 				if r.match(i.origin) is None:
 					continue
@@ -477,8 +467,8 @@ class logxmpp(ihandler):
 					if msg is None:
 						continue
 					self.report(i, to, msg)
-				else:
-					logger.warning("%s has no function" % handler_name)
+#				else:
+#					logger.warning("%s has no function" % handler_name)
 
 
 	def _serialize_connection(self, i, connection_type, anonymous):
@@ -662,7 +652,7 @@ class logxmpp(ihandler):
 			return s
 
 		def mk_str(d,_replace):
-			def mk_v(v,_replace):
+			def mk_value(v,_replace):
 				if isinstance(v,dict) or isinstance(v,list):
 					return mk_str(v, _replace=_replace)
 				elif isinstance(v,bytes):
@@ -679,12 +669,12 @@ class logxmpp(ihandler):
 				b={}
 				for k,v in d.items():
 					if v is not None:
-						b[k] = mk_v(v, _replace)
+						b[k] = mk_value(v, _replace)
 				return b
 			elif isinstance(d,list):
-				return [mk_v(v, _replace) for v in filter(lambda x:x is not None,d)]
+				return [mk_value(v, _replace) for v in filter(lambda x:x is not None,d)]
 			else:
-				return mk_v(d, _replace)
+				return mk_value(d, _replace)
 
 
 		n = etree.Element('sipcommand', attrib={
@@ -708,6 +698,5 @@ class logxmpp(ihandler):
 		if hasattr(icd,'sdp') and icd.sdp is not None:
 			n.append(mk_sdp(mk_str(icd.sdp,_replace)))
 
-		print(etree.tostring(n).decode('ascii'))
 		return n
 
