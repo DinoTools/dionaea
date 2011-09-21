@@ -635,6 +635,13 @@ class logxmpp(ihandler):
 					s.set(u, via[u])
 			return r
 
+		def mk_allow(allows):
+			r = etree.Element('allowlist')
+			for a in allows:
+				e = etree.SubElement(r,'allow')
+				e.text = a
+			return r
+
 		def mk_sdp(sdp):
 			s=etree.Element('sdp')
 			if 'o' in sdp:
@@ -694,7 +701,7 @@ class logxmpp(ihandler):
 		n.append(mk_addr('contact',[mk_str(icd.get('contact'), _replace)]))
 		n.append(mk_addr('from',mk_str(icd.get('from'), _replace)))
 		n.append(mk_via(mk_str(icd.get('via'), _replace)))
-
+		n.append(mk_allow(mk_str(icd.get('allow'),_replace)))
 		if hasattr(icd,'sdp') and icd.sdp is not None:
 			n.append(mk_sdp(mk_str(icd.sdp,_replace)))
 

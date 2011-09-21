@@ -517,14 +517,13 @@ def msg_to_icd(msg,d=None):
 		d['o']= origin_to_dict(b[b'o'])
 		d['m']= [media_to_dict(i) for i in b[b'm']]
 		return d
-	def allow_from_list(a):
+	def allow_to_list(a):
 		if a is None:
 			return []
 		allow=[]
-		j=0
 		for value in a:
-			for val in value._value.decode('ascii').split(', '):
-				allow.append(val)
+			for val in value._value.decode('ascii').split(','):
+				allow.append(val.strip())
 		return allow
 
 	if d is None: d = {}
@@ -537,7 +536,7 @@ def msg_to_icd(msg,d=None):
 	d.set('from', [addr_to_dict(f._value) for f in msg.headers.get('from')])
 	d.set('sdp', sdp_to_dict(msg.sdp))
 	if msg.headers.get('allow') is not None:
-		d.set('allow',allow_from_list(msg.headers.get('allow')))
+		d.set('allow',allow_to_list(msg.headers.get('allow')))
 	else:
 		d.set('allow',[])
 	if msg.headers.get('user-agent') is not None:
