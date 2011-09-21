@@ -644,9 +644,6 @@ connection 610 smbd tcp accept 10.69.53.52:445 &lt;- 10.65.34.231:2010
       <li><a href="#install_cython">cython</a> &gt;0.14.1, <a href=
       "http://www.cython.org">cython.org</a></li>
 
-      <li><a href="#install_lxml">lxml</a> &gt;=2.2.4, <a href=
-      "http://codespeak.net/lxml/">codespeak.net</a></li>
-
       <li><a href="#install_udns">libudns</a>, <a href=
       "http://www.corpit.ru/mjt/udns.html">corpit.ru</a></li>
 
@@ -763,33 +760,6 @@ tar xfz Cython-0.15.tar.gz
 cd Cython-0.15
 /opt/dionaea/bin/python3 setup.py install
 cd ..
-</pre>
-
-    <h4 id="install_lxml">lxml (recommended)</h4>Once you have
-    python installed properly, you can install lxml, lxml is a
-    libxslt and libxml2 binding for python. It is likely your
-    distribution will ship lxml, but it is unlikely it will ship
-    lxml for python3, which we need. Therefore we will compile it
-    from source. As lxml relies on libxslt and libxml2, we will
-    resolve the dependencies before.
-
-    <h5 id="install_xml2">libxml2</h5>
-    <pre>
-aptitude install libxml2-dev
-</pre>
-
-    <h5 id="install_xslt">libxslt</h5>
-    <pre>
-aptitude install libxslt1-dev
-</pre>
-
-    <h5>lxml</h5>Compiling lxml takes some time, better get a
-    coffee.
-    <pre>
-wget http://lxml.de/files/lxml-2.3.tgz
-tar xfz lxml-2.3.tgz
-cd lxml-2.3/
-/opt/dionaea/bin/python3 setup.py install
 </pre>
 
     <h4 id="install_udns">udns (!ubuntu)</h4>udns does not use
@@ -1106,8 +1076,7 @@ chown MYUSER:MYGROUP /opt/dionaea/var/dionaea -R
 
     <div class="level5">
       This section controls the logging to xmpp services. If you
-      want to use logxmpp, make sure to install <a href=
-      "#install_lxml">lxml</a> and enable logxmpp in the ihandler
+      want to use logxmpp, make sure to enable logxmpp in the ihandler
       section.<br />
       Using logxmpp allows you to share your new collected files
       with other sensors anonymously.<br />
