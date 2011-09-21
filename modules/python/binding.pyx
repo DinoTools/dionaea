@@ -992,11 +992,16 @@ cdef py_from_ghashtable(GHashTable *h):
 cdef c_opaque_data *py_to_opaque(value):
 	cdef c_opaque_data *o
 	o = c_opaque_data_new()
-	if isinstance(value, connection) :
+	if isinstance(value, connection):
 		con = <connection>value
 		c_opaque_data_con_set(o,con.thisptr)
-	elif isinstance(value, int) :
-		c_opaque_data_int_set(o, value)
+	elif isinstance(value, int):
+		try:
+			c_opaque_data_int_set(o, value)
+		except OverflowError:
+			c_opaque_data_free(o)
+			x = str(value)
+			return py_to_opaque(x)
 	elif isinstance(value, unicode):
 		value = value.encode(u'UTF-8')
 		c_opaque_data_string_set(o, c_g_string_new(value))
