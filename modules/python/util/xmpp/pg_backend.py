@@ -478,6 +478,268 @@ class RoomHandler(MucRoomHandler):
 
 		print("[%s] mysqlcommand ref %i: %i %s" % (user.room_jid.as_unicode(), ref, cmd, args))
 
+	def handle_incident_dionaea_modules_python_sip_command(self, user, xmlobj):
+		def address_from_xml(e):
+			address = {}
+			display_name = e.hasProp('display_name')
+			if display_name is not None:
+				display_name = display_name.content
+			address['display_name'] = display_name
+			c = e.children
+			while c is not None:
+				if c.name == 'uri':
+					address['uri'] = uri_from_xml(c)
+				c = c.next
+			return address
+		def uri_from_xml(e):
+			d={}
+			for u in ['scheme','user','password','port','host']:
+				p = e.hasProp(u)
+				if p is not None:
+					p = p.content
+				d[u] = p
+			return d
+		def via_from_xml(e):
+			via={}
+			for u in ['address','port','protocol','port','host']:
+				p = e.hasProp(u)
+				if p is not None:
+					p = p.content
+				via[u] = p
+			return via
+
+		def allow_from_xml(e):
+			return e.content
+
+		def sdp_from_xml(e):
+			def media_from_xml(e):
+				d = {}
+				for u in ['proto','port','media','number_of_ports']:
+					p = e.hasProp(u)
+					if p is not None:
+						p = p.content
+					d[u] = p
+				return d
+			def connectiondata_from_xml(e):
+				d={}
+				for u in ['connection_address','number_of_addresses','addrtype','nettype','ttl']:
+					p = e.hasProp(u)
+					if p is not None:
+						p = p.content
+					d[u] = p
+				return d
+			def origin_from_xml(e):
+				d={}
+				for u in ['username','unicast_address','nettype','addrtype','sess_id','sess_version']:
+					p = e.hasProp(u)
+					if p is not None:
+						p = p.content
+					d[u] = p
+				return d
+
+			sdp = {}
+			r = xpath_eval(xmlobj, './dionaea:sdp/dionaea:medialist/dionaea:media', namespaces=dionaea_ns)
+			if len(r) > 0:
+				medias = []
+				for i in r:
+					medias.append(media_from_xml(i))
+				sdp['m'] = medias
+
+			r = xpath_eval(xmlobj, './dionaea:sdp/dionaea:origin', namespaces=dionaea_ns)
+			if len(r) > 0:
+				sdp['o'] = origin_from_xml(r[0])
+
+			r = xpath_eval(xmlobj, './dionaea:sdp/dionaea:connectiondata', namespaces=dionaea_ns)
+			if len(r) > 0:
+				sdp['c'] = connectiondata_from_xml(r[0])
+			return sdp
+
+
+		try:
+			ref = int(xmlobj.hasProp('ref').content)
+			method = xmlobj.hasProp('method').content
+			call_id = user_agent = addr = _from = to = contact = via = allow = sdp = None
+			call_id = xmlobj.hasProp('call_id')
+			if call_id is not None:
+				call_id = call_id.content
+			user_agent = xmlobj.hasProp('user_agent')
+			if user_agent is not None:
+				user_agent = user_agent.content
+
+			r = xpath_eval(xmlobj, './dionaea:to/dionaea:addr', namespaces=dionaea_ns)
+			if len(r) > 0:
+				addr = address_from_xml(r[0])
+#			print(addr)
+			r = xpath_eval(xmlobj, './dionaea:from/dionaea:addr', namespaces=dionaea_ns)
+			if len(r) > 0:
+				_from = []
+				for i in r:
+					_from.append(address_from_xml(i))
+#			print(_from)
+
+			r = xpath_eval(xmlobj, './dionaea:to/dionaea:addr', namespaces=dionaea_ns)
+			if len(r) > 0:
+				to = address_from_xml(r[0])
+#			print(to)
+
+			r = xpath_eval(xmlobj, './dionaea:vias/dionaea:via', namespaces=dionaea_ns)
+			if len(r) > 0:
+				via = []
+				for i in r:
+					via.append(via_from_xml(i))
+#			print(via)
+
+			r = xpath_eval(xmlobj, './dionaea:allowlist/dionaea:allow', namespaces=dionaea_ns)
+			if len(r) > 0:
+				allow = []
+				for i in r:
+					allow.append(allow_from_xml(i))
+			print(allow)
+
+			r = xpath_eval(xmlobj, './dionaea:sdp', namespaces=dionaea_ns)
+			if len(r) > 0:
+				sdp = sdp_from_xml(r[0])
+			
+#			print(sdp)
+
+		except Exception as e:
+			import traceback
+			traceback.print_exc()
+			return
+		if dbh is not None and ref in user.attacks:
+			def calc_allow(a):
+				if a is None:
+					return 0
+				b={	b'UNKNOWN'	:(1<<0),
+					'ACK'		:(1<<1),
+					'BYE'		:(1<<2),
+					'CANCEL'	:(1<<3),
+					'INFO'		:(1<<4),
+					'INVITE'	:(1<<5),
+					'MESSAGE'	:(1<<6),
+					'NOTIFY'	:(1<<7),
+					'OPTIONS'	:(1<<8),
+					'PRACK'		:(1<<9),
+					'PUBLISH'	:(1<<10),
+					'REFER'		:(1<<11),
+					'REGISTER'	:(1<<12),
+					'SUBSCRIBE'	:(1<<13),
+					'UPDATE'	:(1<<14)
+					}
+				allow=0
+				for i in a:
+					if i in b:
+						allow |= b[i]
+					else:
+						allow |= b[b'UNKNOWN']
+				return allow
+
+			def add_addr(cmd, _type, addr):
+				if addr is None:
+					return
+				host = None
+				from socket import inet_pton,AF_INET,AF_INET6
+				try:
+					inet_pton(AF_INET, addr['uri']['host'])
+					host = addr['uri']['host']
+				except:
+					pass
+				try:
+					inet_pton(AF_INET6, addr['uri']['host'])
+					host = addr['uri']['host']
+				except:
+					pass
+
+				cursor.execute("""INSERT INTO dionaea.sip_addrs
+					(sip_command, sip_addr_type, sip_addr_display_name,
+					sip_addr_uri_scheme, sip_addr_uri_user, sip_addr_uri_password,
+					sip_addr_uri_hostname, sip_addr_uri_host, sip_addr_uri_port) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)""",
+					(
+						cmd, _type, addr['display_name'],
+						addr['uri']['scheme'], addr['uri']['user'], addr['uri']['password'],
+						addr['uri']['host'], host, addr['uri']['port']
+					))
+
+			def add_via(cmd, via):
+				cursor.execute("""INSERT INTO dionaea.sip_vias
+					(sip_command, sip_via_protocol, sip_via_address, sip_via_port)
+					VALUES (%s,%s,%s,%s)""",
+					(
+						cmd, via['protocol'],
+						via['address'], via['port']
+
+					))
+
+			def add_sdp(cmd, sdp):
+				def add_origin(cmd, o):
+					cursor.execute("""INSERT INTO dionaea.sip_sdp_origins
+						(sip_command, sip_sdp_origin_username,
+						sip_sdp_origin_sess_id, sip_sdp_origin_sess_version,
+						sip_sdp_origin_nettype, sip_sdp_origin_addrtype,
+						sip_sdp_origin_unicast_address)
+						VALUES (%s,%s,%s,%s,%s,%s,%s)""",
+						(
+							cmd, o['username'],
+							o['sess_id'], o['sess_version'],
+							o['nettype'], o['addrtype'],
+							o['unicast_address']
+						))
+
+				def add_condata(cmd, c):
+					cursor.execute("""INSERT INTO dionaea.sip_sdp_connectiondatas
+						(sip_command, sip_sdp_connectiondata_nettype,
+						sip_sdp_connectiondata_addrtype, sip_sdp_connectiondata_connection_address,
+						sip_sdp_connectiondata_ttl, sip_sdp_connectiondata_number_of_addresses)
+						VALUES (%s,%s,%s,%s,%s,%s)""",
+						(
+							cmd, c['nettype'],
+							c['addrtype'], c['connection_address'],
+							c['ttl'], c['number_of_addresses']
+						))
+
+				def add_media(cmd, c):
+					cursor.execute("""INSERT INTO dionaea.sip_sdp_medias
+						(sip_command, sip_sdp_media_media,
+						sip_sdp_media_port, sip_sdp_media_number_of_ports,
+						sip_sdp_media_proto)
+						VALUES (%s,%s,%s,%s,%s)""",
+						(
+							cmd, c['media'],
+							c['port'], c['number_of_ports'],
+							c['proto']
+						))
+				if 'o' in sdp:
+					add_origin(cmd, sdp['o'])
+				if 'c' in sdp:
+					add_condata(cmd, sdp['c'])
+				if 'm' in sdp:
+					for i in sdp['m']:
+						add_media(cmd, i)
+
+			attackid = user.attacks[ref][1]
+			cursor.execute("""INSERT INTO dionaea.sip_commands
+				(connection, sip_command_method, sip_command_call_id,
+				sip_command_user_agent, sip_command_allow) VALUES (%s,%s,%s,%s,%s)""",
+				(attackid, method, call_id, user_agent, calc_allow(allow)))
+			
+			r = cursor.execute("""SELECT CURRVAL('dionaea.sip_commands_sip_command_seq')""")
+			cmdid = cursor.fetchall()[0][0]
+
+
+			add_addr(cmdid,'addr',addr)
+			add_addr(cmdid,'to',to)
+			add_addr(cmdid,'contact',contact)
+			for i in _from:
+				add_addr(cmdid,'from',i)
+
+			for i in via:
+				add_via(cmdid, i)
+
+			if sdp is not None:
+				add_sdp(cmdid,sdp)
+
+		print("[%s] sipcommand ref %i: %s %s" % (user.room_jid.as_unicode(), ref, method, addr))
+
 
 
 class Client(JabberClient):
@@ -686,7 +948,8 @@ while True:
 		print u"exiting..."
 		break
 	except Exception,e:
-		print(e)
+		import traceback
+		traceback.print_exc()
 		continue
 	
 

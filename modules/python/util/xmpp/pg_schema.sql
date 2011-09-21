@@ -583,6 +583,210 @@ ALTER SEQUENCE p0fs_p0f_seq OWNED BY p0fs.p0f;
 
 
 --
+-- Name: sip_addrs; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+--
+
+CREATE TABLE sip_addrs (
+    sip_addr bigint NOT NULL,
+    sip_command bigint NOT NULL,
+    sip_addr_type character varying(8) NOT NULL,
+    sip_addr_display_name character varying(32),
+    sip_addr_uri_scheme character varying(8),
+    sip_addr_uri_user character varying(32),
+    sip_addr_uri_password character varying(32),
+    sip_addr_uri_hostname character varying(64),
+    sip_addr_uri_host inet,
+    sip_addr_uri_port integer
+);
+
+
+--
+-- Name: sip_addrs_sip_addr_seq; Type: SEQUENCE; Schema: dionaea; Owner: -
+--
+
+CREATE SEQUENCE sip_addrs_sip_addr_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+--
+-- Name: sip_addrs_sip_addr_seq; Type: SEQUENCE OWNED BY; Schema: dionaea; Owner: -
+--
+
+ALTER SEQUENCE sip_addrs_sip_addr_seq OWNED BY sip_addrs.sip_addr;
+
+
+--
+-- Name: sip_commands; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+--
+
+CREATE TABLE sip_commands (
+    sip_command bigint NOT NULL,
+    connection bigint NOT NULL,
+    sip_command_method character varying(32) NOT NULL,
+    sip_command_call_id character varying(128),
+    sip_command_user_agent character varying(64),
+    sip_command_allow integer
+);
+
+
+--
+-- Name: sip_commands_sip_command_seq; Type: SEQUENCE; Schema: dionaea; Owner: -
+--
+
+CREATE SEQUENCE sip_commands_sip_command_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+--
+-- Name: sip_commands_sip_command_seq; Type: SEQUENCE OWNED BY; Schema: dionaea; Owner: -
+--
+
+ALTER SEQUENCE sip_commands_sip_command_seq OWNED BY sip_commands.sip_command;
+
+
+--
+-- Name: sip_sdp_connectiondatas; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+--
+
+CREATE TABLE sip_sdp_connectiondatas (
+    sip_sdp_connectiondata bigint NOT NULL,
+    sip_command bigint NOT NULL,
+    sip_sdp_connectiondata_nettype character varying(32),
+    sip_sdp_connectiondata_addrtype character varying(32),
+    sip_sdp_connectiondata_connection_address character varying(32),
+    sip_sdp_connectiondata_ttl smallint,
+    sip_sdp_connectiondata_number_of_addresses smallint
+);
+
+
+--
+-- Name: sip_sdp_connectiondatas_sip_sdp_connectiondata_seq; Type: SEQUENCE; Schema: dionaea; Owner: -
+--
+
+CREATE SEQUENCE sip_sdp_connectiondatas_sip_sdp_connectiondata_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+--
+-- Name: sip_sdp_connectiondatas_sip_sdp_connectiondata_seq; Type: SEQUENCE OWNED BY; Schema: dionaea; Owner: -
+--
+
+ALTER SEQUENCE sip_sdp_connectiondatas_sip_sdp_connectiondata_seq OWNED BY sip_sdp_connectiondatas.sip_sdp_connectiondata;
+
+
+--
+-- Name: sip_sdp_medias; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+--
+
+CREATE TABLE sip_sdp_medias (
+    sip_sdp_media bigint NOT NULL,
+    sip_command bigint NOT NULL,
+    sip_sdp_media_media character varying(32),
+    sip_sdp_media_port integer,
+    sip_sdp_media_number_of_ports smallint,
+    sip_sdp_media_proto character varying(16)
+);
+
+
+--
+-- Name: sip_sdp_medias_sip_sdp_media_seq; Type: SEQUENCE; Schema: dionaea; Owner: -
+--
+
+CREATE SEQUENCE sip_sdp_medias_sip_sdp_media_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+--
+-- Name: sip_sdp_medias_sip_sdp_media_seq; Type: SEQUENCE OWNED BY; Schema: dionaea; Owner: -
+--
+
+ALTER SEQUENCE sip_sdp_medias_sip_sdp_media_seq OWNED BY sip_sdp_medias.sip_sdp_media;
+
+
+--
+-- Name: sip_sdp_origins; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+--
+
+CREATE TABLE sip_sdp_origins (
+    sip_sdp_origin bigint NOT NULL,
+    sip_command bigint NOT NULL,
+    sip_sdp_origin_username character varying(32),
+    sip_sdp_origin_sess_id character varying(32),
+    sip_sdp_origin_sess_version character varying(32),
+    sip_sdp_origin_nettype character varying(16),
+    sip_sdp_origin_addrtype character varying(16),
+    sip_sdp_origin_unicast_address character varying(64)
+);
+
+
+--
+-- Name: sip_sdp_origins_sip_sdp_origin_seq; Type: SEQUENCE; Schema: dionaea; Owner: -
+--
+
+CREATE SEQUENCE sip_sdp_origins_sip_sdp_origin_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+--
+-- Name: sip_sdp_origins_sip_sdp_origin_seq; Type: SEQUENCE OWNED BY; Schema: dionaea; Owner: -
+--
+
+ALTER SEQUENCE sip_sdp_origins_sip_sdp_origin_seq OWNED BY sip_sdp_origins.sip_sdp_origin;
+
+
+--
+-- Name: sip_vias; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+--
+
+CREATE TABLE sip_vias (
+    sip_via bigint NOT NULL,
+    sip_command bigint NOT NULL,
+    sip_via_protocol character varying(16),
+    sip_via_address character varying(64),
+    sip_via_port integer
+);
+
+
+--
+-- Name: sip_vias_sip_via_seq; Type: SEQUENCE; Schema: dionaea; Owner: -
+--
+
+CREATE SEQUENCE sip_vias_sip_via_seq
+    START WITH 1
+    INCREMENT BY 1
+    NO MAXVALUE
+    NO MINVALUE
+    CACHE 1;
+
+
+--
+-- Name: sip_vias_sip_via_seq; Type: SEQUENCE OWNED BY; Schema: dionaea; Owner: -
+--
+
+ALTER SEQUENCE sip_vias_sip_via_seq OWNED BY sip_vias.sip_via;
+
+
+--
 -- Name: virustotals; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
 --
 
@@ -1098,6 +1302,48 @@ ALTER TABLE p0fs ALTER COLUMN p0f SET DEFAULT nextval('p0fs_p0f_seq'::regclass);
 
 
 --
+-- Name: sip_addr; Type: DEFAULT; Schema: dionaea; Owner: -
+--
+
+ALTER TABLE sip_addrs ALTER COLUMN sip_addr SET DEFAULT nextval('sip_addrs_sip_addr_seq'::regclass);
+
+
+--
+-- Name: sip_command; Type: DEFAULT; Schema: dionaea; Owner: -
+--
+
+ALTER TABLE sip_commands ALTER COLUMN sip_command SET DEFAULT nextval('sip_commands_sip_command_seq'::regclass);
+
+
+--
+-- Name: sip_sdp_connectiondata; Type: DEFAULT; Schema: dionaea; Owner: -
+--
+
+ALTER TABLE sip_sdp_connectiondatas ALTER COLUMN sip_sdp_connectiondata SET DEFAULT nextval('sip_sdp_connectiondatas_sip_sdp_connectiondata_seq'::regclass);
+
+
+--
+-- Name: sip_sdp_media; Type: DEFAULT; Schema: dionaea; Owner: -
+--
+
+ALTER TABLE sip_sdp_medias ALTER COLUMN sip_sdp_media SET DEFAULT nextval('sip_sdp_medias_sip_sdp_media_seq'::regclass);
+
+
+--
+-- Name: sip_sdp_origin; Type: DEFAULT; Schema: dionaea; Owner: -
+--
+
+ALTER TABLE sip_sdp_origins ALTER COLUMN sip_sdp_origin SET DEFAULT nextval('sip_sdp_origins_sip_sdp_origin_seq'::regclass);
+
+
+--
+-- Name: sip_via; Type: DEFAULT; Schema: dionaea; Owner: -
+--
+
+ALTER TABLE sip_vias ALTER COLUMN sip_via SET DEFAULT nextval('sip_vias_sip_via_seq'::regclass);
+
+
+--
 -- Name: virustotal; Type: DEFAULT; Schema: dionaea; Owner: -
 --
 
@@ -1321,6 +1567,54 @@ ALTER TABLE ONLY offers
 
 ALTER TABLE ONLY p0fs
     ADD CONSTRAINT p0fs_p0f_pkey PRIMARY KEY (p0f);
+
+
+--
+-- Name: sip_addrs_sip_addr_fkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY sip_addrs
+    ADD CONSTRAINT sip_addrs_sip_addr_fkey PRIMARY KEY (sip_addr);
+
+
+--
+-- Name: sip_commands_sip_command_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY sip_commands
+    ADD CONSTRAINT sip_commands_sip_command_pkey PRIMARY KEY (sip_command);
+
+
+--
+-- Name: sip_sdp_connectiondatas_sip_sdp_connectiondata_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY sip_sdp_connectiondatas
+    ADD CONSTRAINT sip_sdp_connectiondatas_sip_sdp_connectiondata_pkey PRIMARY KEY (sip_sdp_connectiondata);
+
+
+--
+-- Name: sip_sdp_medias_sip_sdp_media_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY sip_sdp_medias
+    ADD CONSTRAINT sip_sdp_medias_sip_sdp_media_pkey PRIMARY KEY (sip_sdp_media);
+
+
+--
+-- Name: sip_sdp_origins_sip_sdp_origin_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY sip_sdp_origins
+    ADD CONSTRAINT sip_sdp_origins_sip_sdp_origin_pkey PRIMARY KEY (sip_sdp_origin);
+
+
+--
+-- Name: sip_vias_sip_via_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+--
+
+ALTER TABLE ONLY sip_vias
+    ADD CONSTRAINT sip_vias_sip_via_pkey PRIMARY KEY (sip_via);
 
 
 --
@@ -1818,6 +2112,54 @@ ALTER TABLE ONLY offers
 
 ALTER TABLE ONLY p0fs
     ADD CONSTRAINT p0fs_connection_fkey FOREIGN KEY (connection) REFERENCES connections(connection) ON UPDATE RESTRICT ON DELETE CASCADE;
+
+
+--
+-- Name: sip_addrs_sip_command_fkey; Type: FK CONSTRAINT; Schema: dionaea; Owner: -
+--
+
+ALTER TABLE ONLY sip_addrs
+    ADD CONSTRAINT sip_addrs_sip_command_fkey FOREIGN KEY (sip_command) REFERENCES sip_commands(sip_command) ON UPDATE RESTRICT ON DELETE CASCADE;
+
+
+--
+-- Name: sip_commands_connection_fkey; Type: FK CONSTRAINT; Schema: dionaea; Owner: -
+--
+
+ALTER TABLE ONLY sip_commands
+    ADD CONSTRAINT sip_commands_connection_fkey FOREIGN KEY (connection) REFERENCES connections(connection) ON UPDATE RESTRICT ON DELETE CASCADE;
+
+
+--
+-- Name: sip_sdp_connectiondatas_sip_command_fkey; Type: FK CONSTRAINT; Schema: dionaea; Owner: -
+--
+
+ALTER TABLE ONLY sip_sdp_connectiondatas
+    ADD CONSTRAINT sip_sdp_connectiondatas_sip_command_fkey FOREIGN KEY (sip_command) REFERENCES sip_commands(sip_command) ON UPDATE RESTRICT ON DELETE CASCADE;
+
+
+--
+-- Name: sip_sdp_medias_sip_command_fkey; Type: FK CONSTRAINT; Schema: dionaea; Owner: -
+--
+
+ALTER TABLE ONLY sip_sdp_medias
+    ADD CONSTRAINT sip_sdp_medias_sip_command_fkey FOREIGN KEY (sip_command) REFERENCES sip_commands(sip_command) ON UPDATE RESTRICT ON DELETE CASCADE;
+
+
+--
+-- Name: sip_sdp_origins_sip_command_fkey; Type: FK CONSTRAINT; Schema: dionaea; Owner: -
+--
+
+ALTER TABLE ONLY sip_sdp_origins
+    ADD CONSTRAINT sip_sdp_origins_sip_command_fkey FOREIGN KEY (sip_command) REFERENCES sip_commands(sip_command) ON UPDATE RESTRICT ON DELETE CASCADE;
+
+
+--
+-- Name: sip_vias_sip_command_fkey; Type: FK CONSTRAINT; Schema: dionaea; Owner: -
+--
+
+ALTER TABLE ONLY sip_vias
+    ADD CONSTRAINT sip_vias_sip_command_fkey FOREIGN KEY (sip_command) REFERENCES sip_commands(sip_command) ON UPDATE RESTRICT ON DELETE CASCADE;
 
 
 --
