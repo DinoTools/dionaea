@@ -645,9 +645,15 @@ class logxmpp(ihandler):
 		def mk_sdp(sdp):
 			s=etree.Element('sdp')
 			if 'o' in sdp:
-				etree.SubElement(s, 'origin', attrib=sdp['o'])
+				o = etree.SubElement(s, 'origin')
+				for u in ['username','unicast_address','nettype','addrtype','sess_id','sess_version']:
+					if u in sdp['o']:
+						o.set(u, sdp['o'][u])
 			if 'c' in sdp:
-				etree.SubElement(s, 'connectiondata', attrib=sdp['c'])
+				c = etree.SubElement(s, 'connectiondata')
+				for u in ['connection_address','number_of_addresses','addrtype','nettype','ttl']:
+					if u in sdp['c']:
+						c.set(u, sdp['c'][u])
 			if 'm' in sdp:
 				m = etree.SubElement(s, 'medialist')
 				for media in sdp['m']:
