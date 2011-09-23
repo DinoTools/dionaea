@@ -738,16 +738,11 @@ cd ..
 
     <h5>Python</h5>
     <pre>
-wget http://python.org/ftp/python/3.2/Python-3.2.tgz
-tar xfz Python-3.2.tgz
-cd Python-3.2/
+wget http://www.python.org/ftp/python/3.2.2/Python-3.2.2.tgz
+tar xfz Python-3.2.2.tgz
+cd Python-3.2.2/
 ./configure --enable-shared --prefix=/opt/dionaea --with-computed-gotos \
-      --enable-ipv6 LDFLAGS="-Wl,-rpath=/opt/dionaea/lib/"
-
-# Python3.2 failed to detect zlib properly on my x86_64 Ubuntu as zlib is located in /lib/x86_64-linux-gnu/
-# edit setup.py:~1199, add the "or True" and it will work (lineno is estimated)
-#
-#   if (self.compiler.find_library_file(lib_dirs, 'z')) or True:
+      --enable-ipv6 LDFLAGS="-Wl,-rpath=/opt/dionaea/lib/ -L/usr/lib/x86_64-linux-gnu/"
 
 make
 make install
