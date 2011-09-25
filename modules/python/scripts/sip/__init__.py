@@ -561,11 +561,6 @@ class SipSession(connection):
 
 		self.personality = g_sipconfig.get_personality_by_address(self.local.host)
 
-		# fake a connection entry
-		i = incident("dionaea.connection.udp.connect")
-		i.con = self
-		i.report()
-
 		logger.info("SIP Session created with personality '{}'".format(self.personality))
 		self._auth = None
 		self._state = None
@@ -578,6 +573,12 @@ class SipSession(connection):
 		self.timeouts.idle = 10
 		self.timeouts.sustain = 120
 		self.processors()
+
+		# fake a connection entry
+		i = incident("dionaea.connection.udp.connect")
+		i.con = self
+		i.report()
+
 
 	def handle_timeout_sustain(self):
 		logger.debug("{:s} handle_timeout_sustain".format(self))
