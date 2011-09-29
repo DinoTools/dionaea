@@ -881,11 +881,13 @@ cdef extern from "glib.h":
 	gboolean g_str_equal (gconstpointer, gconstpointer)
 	guint g_str_hash (gconstpointer)
 
+	GHashTable *g_hash_table_new_full (GHashFunc *, GEqualFunc *, GDestroyNotify, GDestroyNotify)
 	GHashTable *g_hash_table_new (GHashFunc *, GEqualFunc *)
 	void g_hash_table_destroy (GHashTable*)
 	void g_hash_table_insert (GHashTable*, gpointer, gpointer)
 	gpointer g_hash_table_lookup (GHashTable*, gconstpointer)
 
+	void c_g_free "g_free"(gpointer)
 
 	c_GList *c_g_list_append "g_list_append" (c_GList *l, void *data)
 	c_GList *c_g_list_first "g_list_first" (c_GList *l)
@@ -968,7 +970,7 @@ cdef GHashTable *py_to_ghashtable(d):
 	cdef GHashTable *gd
 	cdef char *kn
 	cdef c_opaque_data *op
-	gd = g_hash_table_new(g_str_hash, g_str_equal)
+	gd = g_hash_table_new_full(g_str_hash, g_str_equal, c_g_free, <GDestroyNotify>c_opaque_data_free)
 	for k,v in d.items():
 		if isinstance(k,str):
 			k = k.encode('ascii')

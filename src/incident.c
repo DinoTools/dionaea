@@ -64,15 +64,7 @@ void opaque_data_free(struct opaque_data *d)
 		}
 		break;
 	case opaque_type_dict:
-		{
-			GHashTableIter iter;
-			gpointer key, value;
-
-			g_hash_table_iter_init (&iter, d->opaque.dict);
-			while( g_hash_table_iter_next (&iter, &key, &value) )
-				opaque_data_free(value);
 			g_hash_table_destroy(d->opaque.dict);
-		}
 		break;
 	}
 	g_free(d);
