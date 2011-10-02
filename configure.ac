@@ -759,6 +759,43 @@ if test x$enable_nl = "xyes" ; then
 				LIB_NL_CFLAGS=""
 			fi
 			AC_DEFINE([HAVE_LIBNL], [1], [Define to 1 to compile with nl support])
+			libnl_rtnl_link_alloc_cache_argc="unknown"
+			dnl 2 args
+			if test $libnl_rtnl_link_alloc_cache_argc = "unknown"; then
+				AC_MSG_CHECKING([if rtnl_link_alloc_cache takes 2 args.])
+				AC_COMPILE_IFELSE([
+				AC_LANG_PROGRAM([[
+					#include <netlink/route/link.h>
+					]],[[
+					if(0 != rtnl_link_alloc_cache(NULL, NULL))
+						return 1;
+					]])
+				],[
+					AC_MSG_RESULT([yes])
+					libnl_rtnl_link_alloc_cache_argc=2
+					AC_DEFINE([LIBNL_RTNL_LINK_ALLOC_CACHE_ARGC], 2, [Number of args for rtnl_link_alloc_cache (old version)])
+				],[
+					AC_MSG_RESULT([no])
+				])
+			fi
+			if test $libnl_rtnl_link_alloc_cache_argc = "unknown"; then
+				AC_MSG_CHECKING([if rtnl_link_alloc_cache takes 3 args.])
+				AC_COMPILE_IFELSE([
+				AC_LANG_PROGRAM([[
+					#include <netlink/route/link.h>
+					]],[[
+					if(0 != rtnl_link_alloc_cache(NULL, 0, NULL))
+						return 1;
+					]])
+				],[
+					AC_MSG_RESULT([yes])
+					AC_DEFINE([LIBNL_RTNL_LINK_ALLOC_CACHE_ARGC], 3, [Number of args for rtnl_link_alloc_cache (new version)])
+					libnl_rtnl_link_alloc_cache_argc=3
+				],[
+					AC_MSG_RESULT([no])
+				])
+			fi
+			
 		fi
 	fi
 	CPPFLAGS=${OLD_CPPFLAGS}

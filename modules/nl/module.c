@@ -369,8 +369,11 @@ static bool nl_new(struct dionaea *d)
 	{
 		g_error("Could not allocate neigh cache! (%s)", nl_geterror(err));
 	}
-
+#if LIBNL_RTNL_LINK_ALLOC_CACHE_ARGC == 3
 	if( (err=rtnl_link_alloc_cache(sock, AF_UNSPEC, &nl_runtime.link_cache)) != 0 )
+#elif LIBNL_RTNL_LINK_ALLOC_CACHE_ARGC == 2
+	if( (err=rtnl_link_alloc_cache(sock, &nl_runtime.link_cache)) != 0 )
+#endif
 	{
 		g_error("Could not allocate link cache! (%s)", nl_geterror(err));
 	}
