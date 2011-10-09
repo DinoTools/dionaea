@@ -563,7 +563,7 @@ class logxmpp(ihandler):
 			})
 		f = open(i.file, "rb")
 		m = mmap.mmap(f.fileno(), 0, prot=mmap.PROT_READ)
-		n.text = base64.b64encode(m.read(m.size()))
+		n.text = base64.b64encode(m.read(m.size())).decode('utf-8')
 		m.close()
 		f.close()
 		return n
