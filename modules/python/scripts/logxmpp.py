@@ -116,6 +116,7 @@ class xmppclient(connection):
 	def __init__(self, server='localhost', port=5222, username=None, password=None, resource=None, muc=None, channels=[]):
 		connection.__init__(self, 'tls')
 		self.server = username.split('@')[1]
+		self.port = port
 		self.username = username.split('@')[0]
 		self.password = password
 		self.state = "connecting"
@@ -125,7 +126,6 @@ class xmppclient(connection):
 		self.xmlroot = None
 		self.element = None
 		self.elements = []
-		self.connect(server,port)
 		self.timeouts.reconnect = 10.0
 		self.timeouts.handshake = 10.0
 		self.channels = channels
@@ -424,6 +424,9 @@ class logxmpp(ihandler):
 		self.username = None
 		self.client.quit()
 		self.client = None
+
+	def start(self):
+		self.client.connect(self.client.server,self.client.port)
 
 	def report(self, i, to, xmlobj):
 		if self.client is not None and self.client.state != 'online':
