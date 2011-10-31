@@ -494,6 +494,8 @@ void log_wrap(char *name, int number, char *file, int line, char *msg)
 #else
 	x = asprintf(&log_domain, "%s", name);
 #endif
+	if( x == -1 )
+		return;
 
 	if( number == 0 || number == 10 )
 		log_level = G_LOG_LEVEL_DEBUG;

@@ -654,8 +654,8 @@ void *proc_filter_cfg(struct lcfgx_tree_node *node)
 {
 	struct proc_filter_config *cfg = g_malloc0(sizeof(struct proc_filter_config));
 
-	char *mode = NULL;
-	char *what = NULL;
+//	char *mode = NULL;
+//	char *what = NULL;
 
 	for( struct lcfgx_tree_node *n = node->value.elements; n != NULL; n = n->next)
 	{
@@ -672,12 +672,12 @@ void *proc_filter_cfg(struct lcfgx_tree_node *node)
 
 				if( strcmp(n->key,"allow") == 0 )
 				{
-					mode = "allow";
+//					mode = "allow";
 					cfg->allow = g_list_append(cfg->allow, rule);
 				}else
 				if( strcmp(n->key,"deny") == 0 )
 				{
-					mode = "deny";
+//					mode = "deny";
 					cfg->deny = g_list_append(cfg->deny, rule);
 				}else
 				{
@@ -691,12 +691,12 @@ void *proc_filter_cfg(struct lcfgx_tree_node *node)
 					GList **l;
 					if( strcmp(jt->key, "protocol") == 0 )
 					{
-						what = "protocol";
+//						what = "protocol";
 						l = &rule->protocols;
 					}else
 					if( strcmp(jt->key, "type") == 0 )
 					{
-						what = "type";
+//						what = "type";
 						l = &rule->types;
 					}else
 						continue;

@@ -425,7 +425,6 @@ void session_upload_new(struct incident *i)
 	char *url;
 
 	struct session *session = session_new();
-	CURLMcode rc;
 
 	session->type = session_type_upload;
 			
@@ -529,7 +528,7 @@ void session_upload_new(struct incident *i)
 	curl_easy_setopt(session->easy, CURLOPT_SSL_VERIFYHOST, 0);
 
 	g_debug("Adding easy %p to multi %p (%s)", session->easy, curl_runtime.multi, url);
-	rc = curl_multi_add_handle(curl_runtime.multi, session->easy);
+	curl_multi_add_handle(curl_runtime.multi, session->easy);
 	curl_runtime.queued++;
 	check_run_count();
 }
@@ -539,7 +538,6 @@ static void session_download_new(struct incident *i, char *url)
 	g_debug("%s incident %p", __PRETTY_FUNCTION__, i);
 
 	struct session *session = session_new();
-	CURLMcode rc;
 	session->type = session_type_download;
 
 	
@@ -575,7 +573,7 @@ static void session_download_new(struct incident *i, char *url)
 	g_debug("session %p file %i path %s", session, session->action.download.file->fd, session->action.download.file->path);
 
 	g_debug("Adding easy %p to multi %p (%s)", session->easy, curl_runtime.multi, url);
-	rc = curl_multi_add_handle(curl_runtime.multi, session->easy);
+	curl_multi_add_handle(curl_runtime.multi, session->easy);
 	curl_runtime.queued++;
 	check_run_count();
 }
