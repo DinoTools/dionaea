@@ -178,125 +178,136 @@ def write_index(ranges, _protocols, DSTDIR):
 		w.close()
 	
 
-def get_overview_data(cursor, protofilter, dstfile):
-	r = cursor.execute("""SELECT 
-		strftime('%Y-%m-%d',connection_timestamp,'unixepoch','localtime') AS date,
-		( -- remote hosts
-			SELECT 
-				COUNT(DISTINCT a.remote_host)
-			FROM
-				connections as a
-			{0}
-			GROUP BY 
-				strftime('%Y-%m-%d',a.connection_timestamp,'unixepoch','localtime')
-			HAVING 
-				strftime('%Y-%m-%d',a.connection_timestamp,'unixepoch','localtime') 
-						= strftime('%Y-%m-%d',connections.connection_timestamp,'unixepoch','localtime')
-		) AS hosts,
-		( -- accepted tcp connection
-			SELECT 
-				COUNT(*)
-			FROM
-				connections as a
-			{0}
-			GROUP BY 
-				strftime('%Y-%m-%d',a.connection_timestamp,'unixepoch','localtime')
-			HAVING 
-				strftime('%Y-%m-%d',a.connection_timestamp,'unixepoch','localtime') 
-						= strftime('%Y-%m-%d',connections.connection_timestamp,'unixepoch','localtime')
-		) AS accepts,
-		( -- detected shellcode
-			SELECT 
-				COUNT(*)
-			FROM
-				emu_profiles
-				NATURAL JOIN connections AS a
-			{0}
-			GROUP BY 
-				strftime('%Y-%m-%d',a.connection_timestamp,'unixepoch','localtime')
-			HAVING 
-				strftime('%Y-%m-%d',a.connection_timestamp,'unixepoch','localtime') 
-						= strftime('%Y-%m-%d',connections.connection_timestamp,'unixepoch','localtime')
-		) AS shellcodes,	
-		( -- offers 
-			SELECT 
-				COUNT(*) 
-			FROM 
-				offers
-				NATURAL JOIN connections AS a
-			{0}
-			GROUP BY 
-				strftime('%Y-%m-%d',a.connection_timestamp,'unixepoch','localtime')
-			HAVING 
-				strftime('%Y-%m-%d',a.connection_timestamp,'unixepoch','localtime') 
-						= strftime('%Y-%m-%d',connections.connection_timestamp,'unixepoch','localtime')
-		) AS offers,
-		( -- downloads
-			SELECT 
-				COUNT(*) 
-			FROM 
-				downloads
-				NATURAL JOIN connections AS a
-				NATURAL JOIN offers			
-			{0}
-			GROUP BY 
-				strftime('%Y-%m-%d',a.connection_timestamp,'unixepoch','localtime')
-			HAVING 
-				strftime('%Y-%m-%d',a.connection_timestamp,'unixepoch','localtime') 
-						= strftime('%Y-%m-%d',connections.connection_timestamp,'unixepoch','localtime')
-		) AS downloads,
-		( -- uniq
-			SELECT 
-				COUNT(DISTINCT downloads.download_md5_hash) 
-			FROM 
-				downloads
-				NATURAL JOIN connections AS a
-				NATURAL JOIN offers			
-			{0}
-			GROUP BY 
-				strftime('%Y-%m-%d',a.connection_timestamp,'unixepoch','localtime')
-			HAVING 
-				strftime('%Y-%m-%d',a.connection_timestamp,'unixepoch','localtime') 
-						= strftime('%Y-%m-%d',connections.connection_timestamp,'unixepoch','localtime')
-		) AS uniq,	
-		( -- newfiles
-			SELECT 
-				COUNT(*) 
-			FROM
-				(
-					SELECT
-						b.download_md5_hash
-					FROM 
-						downloads AS b
-						JOIN connections AS a ON(a.connection = b.connection)
-						NATURAL JOIN offers
-						{0}
-					GROUP BY 
-						b.download_md5_hash
-					HAVING 
-						strftime('%Y-%m-%d',MIN(a.connection_timestamp),'unixepoch','localtime') 
-						= strftime('%Y-%m-%d',MAX(connections.connection_timestamp),'unixepoch','localtime')
-				)
-		)AS newfiles
-	FROM 
-		connections
-	GROUP BY
-		date
-	ORDER BY 
-		connection_timestamp DESC;""".format(protofilter))
-
-	r = resolve_result(r)
-	# copy data
+def get_overview_data(cursor, protocol, dstfile):
 	data = {}
-	for i in r:
-		d = i['date']
-		if d not in data:
-			data[d] = i
+	sql = {}
+	sql["downloads"] = """
+		SELECT
+			strftime('%Y-%m-%d',conn.connection_timestamp,'unixepoch','localtime') AS date,
+			count(*) AS num
+		FROM
+			connections AS conn
+			NATURAL JOIN downloads
+		{where}
+		GROUP BY
+			strftime('{time_format}',conn.connection_timestamp,'unixepoch','localtime')
+		ORDER BY
+			conn.connection_timestamp;
+	"""
+	sql["offers"] = """
+		SELECT
+			strftime('%Y-%m-%d',conn.connection_timestamp,'unixepoch','localtime') AS date,
+			count(*) AS num
+		FROM
+			connections AS conn
+			NATURAL JOIN offers
+		{where}
+		GROUP BY
+			strftime('{time_format}',conn.connection_timestamp,'unixepoch','localtime')
+		ORDER BY
+			conn.connection_timestamp;
+	"""
+	sql["shellcodes"] = """
+		SELECT
+			strftime('%Y-%m-%d',conn.connection_timestamp,'unixepoch','localtime') AS date,
+			count(*) AS num
+		FROM
+			connections AS conn
+			NATURAL JOIN emu_profiles
+		{where}
+		GROUP BY
+			strftime('{time_format}',conn.connection_timestamp,'unixepoch','localtime')
+		ORDER BY
+			conn.connection_timestamp;
+	""";
+	sql["accepts"] = """
+		SELECT
+			strftime('%Y-%m-%d',conn.connection_timestamp,'unixepoch','localtime') AS date,
+			count(*) AS num
+		FROM
+			connections AS conn
+		{where}
+		GROUP BY
+			strftime('{time_format}',conn.connection_timestamp,'unixepoch','localtime')
+		ORDER BY
+			conn.connection_timestamp;
+	"""
+	sql["uniq"] = """
+		SELECT
+			strftime('%Y-%m-%d',conn.connection_timestamp,'unixepoch','localtime') AS date,
+			count(DISTINCT downloads.download_md5_hash) as num
+		FROM
+			downloads
+			NATURAL JOIN connections AS conn
+			NATURAL JOIN offers JOIN connections AS root ON(conn.connection_root = root.connection)
+		{where}
+		GROUP BY
+			strftime('{time_format}',conn.connection_timestamp,'unixepoch','localtime')
+		ORDER BY
+			conn.connection_timestamp;
+	"""
+	sql["newfiles"] = """
+		SELECT
+			strftime('%Y-%m-%d',conn.connection_timestamp,'unixepoch','localtime') AS date,
+			count(down.download_md5_hash) AS num
+		FROM
+			downloads AS down
+			JOIN connections AS conn ON(down.connection = conn.connection)
+			NATURAL JOIN offers
+			JOIN connections AS root ON(conn.connection_root = root.connection)
+		{where}
+		GROUP BY
+			down.download_md5_hash
+		ORDER BY
+			conn.connection_timestamp;
+	"""
+	sql["hosts"] = """
+		SELECT
+			strftime('%Y-%m-%d',conn.connection_timestamp,'unixepoch','localtime') AS date,
+			COUNT(DISTINCT conn.remote_host) as num
+		FROM
+			connections as conn
+		{where}
+		GROUP BY
+			strftime('{time_format}',conn.connection_timestamp,'unixepoch','localtime')
+		ORDER BY
+			conn.connection_timestamp;
+	"""
+	where = ""
+	if protocol != "":
+		where ="""
+			WHERE
+				conn.connection_protocol='{protocol}'
+		"""
+
+	where = where.format(
+		protocol=protocol
+	)
+
+	for t in list(sql.keys()):
+		print("Selecting %s ..." % t)
+		db_query = sql[t].format(
+			time_format="%Y-%m-%d",
+			where=where
+		)
+		#print(db_query)
+		db_res = cursor.execute(db_query)
+		db_data = resolve_result(db_res)
+
+		for db_row in db_data:
+			date = db_row["date"]
+			if not date in data:
+				data[date] = {}
+				for k in list(sql.keys()):
+					data[date][k] = 0
+			data[date][t] = str(db_row["num"])
 
 	# fill with zeros
-	for d in dates:
-		if d not in data:
-			data[d] = {'hosts':0,'accepts':0, 'shellcodes':0,'offers':0,'downloads':0,'uniq':0,'newfiles':0}
+	for date in dates:
+		if date not in data:
+			data[date] = {}
+			for k in list(sql.keys()):
+				data[date][k] = 0
 
 	# write data file
 	w = open(dstfile,"wt")
@@ -404,7 +415,8 @@ if __name__ == "__main__":
 	# protocols
 	for p in options.protocols:
 		print("[+] getting data for {} overview".format(p))
-		get_overview_data(cursor, """JOIN connections AS root ON(a.connection_root = root.connection) WHERE root.connection_protocol = '{}' """.format(p), options.tempfile)
+		get_overview_data(cursor, p, options.tempfile)
+		#get_overview_data(cursor, """JOIN connections AS root ON(a.connection_root = root.connection) WHERE root.connection_protocol = '{}' """.format(p), options.tempfile)
 		plot_overview_data(ranges, options.destination, options.tempfile, "-{}".format(p))
 	
 
