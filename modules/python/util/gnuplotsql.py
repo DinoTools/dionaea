@@ -64,14 +64,29 @@ def get_ranges_from_db(cursor):
 	)
 	return (ranges,dates)
 
-def make_directories(ranges, DSTDIR):
+def make_directories(ranges, path_destination):
 	# create directories
 	for r in ranges:
 		if r[0] == 'month':
-			path = os.path.join(DSTDIR, r[1].strftime("%Y"), r[1].strftime("%m"))
+			path = os.path.join(path_destination, r[1].strftime("%Y"), r[1].strftime("%m"))
 #			print(path)
 			if not os.path.exists(path):
 				os.makedirs(path)
+
+	paths = [
+		os.path.join(
+			path_destination,
+			"gnuplot"
+		),
+		os.path.join(
+			path_destination,
+			"gnuplot",
+			"data"
+		)
+	]
+	for path in paths:
+		if not os.path.exists(path):
+			os.makedirs(path)
 	
 def write_index(ranges, _protocols, DSTDIR):
 	# create index.html files
@@ -160,6 +175,46 @@ def write_index(ranges, _protocols, DSTDIR):
 		w.write("""
 		</li>""")
 
+		web_data_links = []
+		for p in ["overview"] + _protocols:
+			path_data = ""
+			if r[0] == 'all':
+				path_data = "gnuplot/data/" + p + ".data"
+			if r[0] == "year":
+				path_data = "../gnuplot/data/" + p + ".data"
+			if r[0] == "month":
+				path_data = "../../gnuplot/data/" + p + ".data"
+
+			web_data_links.append("""<a href="{}">{}</a> """.format(path_data, p))
+
+		rstart = r[1].strftime("%Y-%m-%d")
+		rstop = r[2].strftime("%Y-%m-%d")
+		web_plot_links = []
+		for p in ["overview"] + _protocols:
+			path_data = ""
+			if r[0] == 'all':
+				path_data = "gnuplot"
+			if r[0] == "year":
+				path_data = "../gnuplot"
+			if r[0] == "month":
+				path_data = "../../gnuplot"
+
+			web_plot_links.append(
+				"""
+				<a href="{path_data}/{protocol}_{range}_{start}_{stop}.cmd">{protocol}</a>
+				""".format(
+					path_data=path_data,
+					protocol=p,
+					range=r[0],
+					start=rstart,
+					stop=rstop
+				)
+			)
+
+
+
+		w.write("""<li>Data: {}</li>""".format(" - ".join(web_data_links)))
+		w.write("""<li>Plot: {}</li>""".format(" - ".join(web_plot_links)))
 		w.write("""
 			</ul>""")
 
@@ -167,7 +222,9 @@ def write_index(ranges, _protocols, DSTDIR):
 		w.write("""
 			<h2>Overviews</h2>
 			<h3>Any</h3>
-			<img src="dionaea-overview.png" alt="Overview for Any">""")
+			<img src="dionaea-overview.png" alt="Overview for Any">
+			"""
+		)
 
 		for p in _protocols:
 			w.write("""
@@ -178,7 +235,7 @@ def write_index(ranges, _protocols, DSTDIR):
 		w.close()
 	
 
-def get_overview_data(cursor, protocol, dstfile):
+def get_overview_data(cursor, path_destination, filename_data, protocol):
 	data = {}
 	sql = {}
 	sql["downloads"] = """
@@ -310,7 +367,7 @@ def get_overview_data(cursor, protocol, dstfile):
 				data[date][k] = 0
 
 	# write data file
-	w = open(dstfile,"wt")
+	w = open(filename_data,"wt")
 	for d in dates:
 		a = data[d]
 		w.write("{}|{}|{}|{}|{}|{}|{}|{}\n".format(d,
@@ -323,7 +380,13 @@ def get_overview_data(cursor, protocol, dstfile):
 			a['newfiles']))
 	w.close()
 	
-def plot_overview_data(ranges, DSTDIR, tempfile, suffix):
+def plot_overview_data(ranges, path_destination, filename_data, protocol):
+	suffix = ""
+	prefix = "overview"
+	if protocol != "":
+		suffix = "-{}".format(protocol)
+		prefix = protocol
+
 	for r in ranges:
 		path = ""
 		print(r)
@@ -346,10 +409,20 @@ def plot_overview_data(ranges, DSTDIR, tempfile, suffix):
 			path = os.path.join(xstart.strftime("%Y"),xstart.strftime("%m"))
 			boxwidth = ""
 
-		output = os.path.join(DSTDIR,path,"dionaea-overview{}.png".format(suffix))
+		output = os.path.join(path_destination, path, "dionaea-overview{}.png".format(suffix))
+		filename_gnuplot = os.path.join(
+			path_destination,
+			"gnuplot",
+			"{prefix}_{range}_{start}_{stop}.cmd".format(
+				prefix=prefix,
+				range=r[0],
+				start=rstart,
+				stop=rstop
+			)
+		)
 		print(output)
 	
-		w = open("/tmp/dionaea-gnuplot.cmd","wt")
+		w = open(filename_gnuplot, "wt")
 		w.write("""set terminal png size 600,600 nocrop butt font "/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf" 8
 	set output "{0}"
 	set xdata time
@@ -388,9 +461,10 @@ def plot_overview_data(ranges, DSTDIR, tempfile, suffix):
 	plot '{4}' using 1:2 title "hosts" with boxes fs solid
 
 	unset multiplot
-	""".format(output, xstart, xstop, boxwidth, tempfile))
+	""".format(output, xstart, xstop, boxwidth, filename_data))
+
 		w.close()
-		os.system("gnuplot /tmp/dionaea-gnuplot.cmd")
+		os.system("gnuplot {}".format(filename_gnuplot))
 
 if __name__ == "__main__":
 	parser = OptionParser()
@@ -409,14 +483,35 @@ if __name__ == "__main__":
 
 	# general overview
 	print("[+] getting data for general overview")
-	get_overview_data(cursor, "", options.tempfile)
-	plot_overview_data(ranges, options.destination, options.tempfile, "")
+	filename_data = os.path.join(
+		options.destination,
+		"gnuplot",
+		"data",
+		"overview.data"
+	)
+	get_overview_data(cursor, options.destination, filename_data, "")
+	plot_overview_data(ranges, options.destination, filename_data, "")
 
 	# protocols
-	for p in options.protocols:
-		print("[+] getting data for {} overview".format(p))
-		get_overview_data(cursor, p, options.tempfile)
-		#get_overview_data(cursor, """JOIN connections AS root ON(a.connection_root = root.connection) WHERE root.connection_protocol = '{}' """.format(p), options.tempfile)
-		plot_overview_data(ranges, options.destination, options.tempfile, "-{}".format(p))
+	for protocol in options.protocols:
+		filename_data = os.path.join(
+			options.destination,
+			"gnuplot",
+			"data",
+			protocol + ".data"
+		)
+		print("[+] getting data for {} overview".format(protocol))
+		get_overview_data(
+			cursor,
+			options.destination,
+			filename_data,
+			protocol
+		)
+		plot_overview_data(
+			ranges,
+			options.destination,
+			filename_data,
+			protocol
+		)
 	
 
