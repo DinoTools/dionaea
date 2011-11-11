@@ -89,93 +89,102 @@ def make_directories(ranges, path_destination):
 			os.makedirs(path)
 	
 def write_index(ranges, _protocols, DSTDIR):
+	tpl_html="""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
+		"http://www.w3.org/TR/html4/strict.dtd">
+		<html>
+			<head>
+				<title>Summary for the dionaea honeypot</title>
+			</head>
+			<body>
+				<h1>{headline}</h1>
+				<ul>
+					<li>{menu_all_label}: {menu_all}</li>
+					<li>{menu_timerange_label}: {menu_timerange}</li>
+					<li>{menu_overview_label}: {menu_overview}</li>
+					<li>{menu_data_label}: {menu_data}</li>
+					<li>{menu_plot_label}: {menu_plot}</li>
+				</ul>
+
+				<h2>Overviews</h2>
+				{images}
+			</body>
+		</html>
+	"""
+
 	# create index.html files
 	for r in ranges:
-		w = None
-
+		web_headline = ""
 		if r[0] == 'all':
-			w = open(os.path.join(DSTDIR,"index.html"),"wt")
-		elif r[0] == 'year':
-			w = open(os.path.join(DSTDIR,r[1].strftime("%Y"),"index.html"),"wt")
-		elif r[0] ==  'month':
-			w = open(os.path.join(DSTDIR,r[1].strftime("%Y"),r[1].strftime("%m"),"index.html"),"wt")
-		if w == None:
-			break
-
-		w.write("""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
-	"http://www.w3.org/TR/html4/strict.dtd">
-	<html>
-		<head>
-			<title>Summary for the dionaea honeypot</title>
-		</head>
-		<body>""")
-
-		if r[0] == 'all':
-			w.write("""
-				<h1>All - {} - {}</h1>""".format(r[1].strftime("%Y-%m-%d"),r[2].strftime("%Y-%m-%d")))
+			web_headline = "All - {} - {}".format(
+				r[1].strftime("%Y-%m-%d"),
+				r[2].strftime("%Y-%m-%d")
+			)
 
 		if r[0] == 'year':
-			w.write("""
-				<h1>Year - {}</h1>""".format(r[1].strftime("%Y")))
+			web_headline = "Year - {}".format(
+				r[1].strftime("%Y")
+			)
 
 		if r[0] == 'month':
-			w.write("""
-				<h1>Month - {}</h1>""".format(r[1].strftime("%Y-%m")))
+			web_headnline = "Month - {}".format(
+				r[1].strftime("%Y-%m")
+			)
 
+		web_menu_timerange_label = ""
+		web_menu_timeranges = []
+		if r[0] == "all":
+			web_menu_all_label = "All"
+			web_menu_all = """<a href="index.html">All</a></li>"""
 
-		w.write("""
-			<ul>""")
-
-		if r[0] == 'all':
 			# Years
-			w.write("""
-			<li>Years: """)
+			web_menu_timerange_label = "Years"
 			for y in ranges:
-				if y[0] == 'year':
-					w.write("""
-			<a href="{}/index.html">{}</a> """.format(y[1].strftime("%Y"),y[1].strftime("%Y")))
-			w.write("""
-			</li>""")
-
+				if y[0] != 'year':
+					continue
+				web_menu_timeranges.append(
+					"""<a href="{}/index.html">{}</a> """.format(
+						y[1].strftime("%Y"),
+						y[1].strftime("%Y")
+					)
+				)
 
 		if r[0] == "year":
-			w.write("""
-			<li>All: <a href="../index.html">All</a></li>""")
+			web_menu_all_label = "All"
+			web_menu_all = """<a href="../index.html">All</a></li>"""
 
 			# write months
-			w.write("""
-			<li>Months: """)
+			web_menu_timerange_label = "Months"
 			for y in ranges:
-				if y[0] == 'month' and y[1].year == r[1].year:
-					w.write("""
-			<a href="{}/index.html">{}-{}</a> """.format(
-				y[1].strftime("%m"),
-				y[1].strftime("%Y"),
-				y[1].strftime("%m")))
-			w.write("""
-			</li>""")
+				if y[0] != 'month' or y[1].year != r[1].year:
+					continue
+				web_menu_timeranges.append(
+					"""<a href="{}/index.html">{}-{}</a>""".format(
+						y[1].strftime("%m"),
+						y[1].strftime("%Y"),
+						y[1].strftime("%m")
+					)
+				)
 		if r[0] == "month":
-			w.write("""
-			<li>All: <a href="../../index.html">All</a></li>""")
+			web_menu_all_label = "All"
+			web_menu_all = """<a href="../../index.html">All</a></li>"""
 
-			w.write("""
-			<li>Year: <a href="../index.html">{}</a> """.format(
-				y[1].strftime("%Y")))
-			w.write("""
-			</li>""")
+			web_menu_timerange_label = "Year"
+			web_menu_timeranges.append(
+				"""<a href="../index.html">{}</a> """.format(
+					y[1].strftime("%Y")
+				)
+			)
 
-			
-		
 		# Overviews
-		w.write("""
-		<li>Overview: """)
+		web_menu_overview_label = "Overview"
+		web_menu_overviews = []
 		for p in _protocols:
-			w.write("""
-		<a href="#overview_{}">{}</a>""".format(p,p))
-		w.write("""
-		</li>""")
+			web_menu_overviews.append(
+				"""<a href="#overview_{}">{}</a>""".format(p,p)
+			)
 
-		web_data_links = []
+		web_menu_data_label = "Data"
+		web_menu_datas = []
 		for p in ["overview"] + _protocols:
 			path_data = ""
 			if r[0] == 'all':
@@ -185,11 +194,12 @@ def write_index(ranges, _protocols, DSTDIR):
 			if r[0] == "month":
 				path_data = "../../gnuplot/data/" + p + ".data"
 
-			web_data_links.append("""<a href="{}">{}</a> """.format(path_data, p))
+			web_menu_datas.append("""<a href="{}">{}</a> """.format(path_data, p))
 
 		rstart = r[1].strftime("%Y-%m-%d")
 		rstop = r[2].strftime("%Y-%m-%d")
-		web_plot_links = []
+		web_menu_plot_label = "Plot"
+		web_menu_plots = []
 		for p in ["overview"] + _protocols:
 			path_data = ""
 			if r[0] == 'all':
@@ -199,7 +209,7 @@ def write_index(ranges, _protocols, DSTDIR):
 			if r[0] == "month":
 				path_data = "../../gnuplot"
 
-			web_plot_links.append(
+			web_menu_plots.append(
 				"""
 				<a href="{path_data}/{protocol}_{range}_{start}_{stop}.cmd">{protocol}</a>
 				""".format(
@@ -211,27 +221,46 @@ def write_index(ranges, _protocols, DSTDIR):
 				)
 			)
 
-
-
-		w.write("""<li>Data: {}</li>""".format(" - ".join(web_data_links)))
-		w.write("""<li>Plot: {}</li>""".format(" - ".join(web_plot_links)))
-		w.write("""
-			</ul>""")
-
-	
-		w.write("""
-			<h2>Overviews</h2>
+		web_images = """ 
 			<h3>Any</h3>
 			<img src="dionaea-overview.png" alt="Overview for Any">
-			"""
-		)
+		"""
 
 		for p in _protocols:
-			w.write("""
-			<h3 id="overview_{}">Overview {}</h3>
-			<img src="dionaea-overview-{}.png" alt="Overview for {}">""".format(p,p,p,p))
-		w.write("""	</body>
-	</html>""")
+			web_images = web_images + """
+				<h3 id="overview_{}">Overview {}</h3>
+				<img src="dionaea-overview-{}.png" alt="Overview for {}">
+			""".format(p,p,p,p)
+
+		content = tpl_html.format(
+			headline=web_headline,
+			menu_all_label=web_menu_all_label,
+			menu_all=web_menu_all,
+			menu_timerange_label=web_menu_timerange_label,
+			menu_timerange=" ".join(web_menu_timeranges),
+			menu_overview_label=web_menu_overview_label,
+			menu_overview=" ".join(web_menu_overviews),
+			menu_data_label=web_menu_data_label,
+			menu_data=" ".join(web_menu_datas),
+			menu_plot_label=web_menu_plot_label,
+			menu_plot=" ".join(web_menu_plots),
+			images=web_images
+		)
+			
+
+		w = None
+
+		if r[0] == 'all':
+			w = open(os.path.join(DSTDIR,"index.html"),"wt")
+		elif r[0] == 'year':
+			w = open(os.path.join(DSTDIR,r[1].strftime("%Y"),"index.html"),"wt")
+		elif r[0] ==  'month':
+			w = open(os.path.join(DSTDIR,r[1].strftime("%Y"),r[1].strftime("%m"),"index.html"),"wt")
+
+		if w == None:
+			break
+
+		w.write(content)
 		w.close()
 	
 
