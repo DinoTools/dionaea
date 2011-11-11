@@ -409,19 +409,62 @@ def get_overview_data(cursor, path_destination, filename_data, protocol):
 			a['newfiles']))
 	w.close()
 	
-def plot_overview_data(ranges, path_destination, filename_data, protocol):
+def plot_overview_data(ranges, path_destination, filename_data, protocol, filename_tpl):
 	suffix = ""
 	prefix = "overview"
 	if protocol != "":
 		suffix = "-{}".format(protocol)
 		prefix = protocol
 
+	tpl_gnuplot ="""set terminal png size 600,600 nocrop butt font "/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf" 8
+	set output "{filename_output}"
+	set xdata time
+	set timefmt "%Y-%m-%d"
+	set xrange ["{range_start}":"{range_stop}"]
+	set format x "%b %d"
+	set xlabel "date"
+	set ylabel "count"
+	set y2label "count"
+	set y2tics
+	set grid
+
+	set size 1.0,0.5
+
+	set style line 1 lt rgb "#00C613" # aqua
+	set style line 2 lt rgb "#6AFFA0" #
+	set style line 3 lt rgb "#23FF38"
+	set style line 4 lt rgb "#75BF0F"
+	set style line 5 lt rgb "#A1FF00"
+	set style line 6 lt rgb "red" # "#D6FFBF" # deepskyblue
+
+	unset logscale y
+	set datafile separator "|"
+	set multiplot
+
+	set origin 0.0,0.5
+	plot "{filename_data}" using 1:3 title "accept" with boxes fs solid, \\
+		"" using 1:4 title "shellcode" with boxes fs solid, \\
+		"" using 1:5 title "offers" with boxes fs solid, \\
+		"" using 1:6 title "downloads" with boxes fs solid, \\
+		"" using 1:7 title "uniq" with boxes fs solid, \\
+		"" using 1:8 title "new" with boxes fs solid
+
+	set origin 0.0,0.0
+	plot "{filename_data}" using 1:2 title "hosts" with boxes fs solid
+
+	unset multiplot
+	"""
+
+	if filename_tpl != None and os.path.exists(filename_tpl) and os.path.isfile(filename_tpl):
+		fp = open(filename_tpl, "rt")
+		tpl_gnuplot = fp.read()
+		fp.close()
+
 	for r in ranges:
 		path = ""
 		print(r)
 		xstart = r[1]
 		xstop = r[2]
-		boxwidth = "" #set boxwidth 1"
 		if r[0] == 'all':
 			rstart = xstart.strftime("%Y-%m-%d")
 			rstop = xstop.strftime("%Y-%m-%d")
@@ -436,7 +479,6 @@ def plot_overview_data(ranges, path_destination, filename_data, protocol):
 			rstop = xstop.strftime("%Y-%m-%d")
 			title = 'month {}-{}'.format(rstart,rstop)
 			path = os.path.join(xstart.strftime("%Y"),xstart.strftime("%m"))
-			boxwidth = ""
 
 		output = os.path.join(path_destination, path, "dionaea-overview{}.png".format(suffix))
 		filename_gnuplot = os.path.join(
@@ -449,50 +491,18 @@ def plot_overview_data(ranges, path_destination, filename_data, protocol):
 				stop=rstop
 			)
 		)
-		print(output)
-	
+
 		w = open(filename_gnuplot, "wt")
-		w.write("""set terminal png size 600,600 nocrop butt font "/usr/share/fonts/truetype/ttf-liberation/LiberationSans-Regular.ttf" 8
-	set output "{0}"
-	set xdata time
-	set timefmt "%Y-%m-%d"
-	set xrange ["{1}":"{2}"]
-	set format x "%b %d"
-	set xlabel "date"
-	set ylabel "count"
-	set y2label "count"
-	set y2tics
-	{3}
-	set grid
-
-	set size 1.0,0.5
-
-	set style line 1 lt rgb "#00C613" # aqua
-	set style line 2 lt rgb "#6AFFA0" # 
-	set style line 3 lt rgb "#23FF38"
-	set style line 4 lt rgb "#75BF0F"
-	set style line 5 lt rgb "#A1FF00"
-	set style line 6 lt rgb "red" # "#D6FFBF" # deepskyblue
-
-	unset logscale y
-	set datafile separator "|"
-	set multiplot 
-
-	set origin 0.0,0.5
-	plot '{4}' using 1:3 title "accept" with boxes fs solid, \\
-	"" using 1:4 title "shellcode" with boxes fs solid, \\
-	"" using 1:5 title "offers" with boxes fs solid, \\
-	"" using 1:6 title "downloads" with boxes fs solid, \\
-	"" using 1:7 title "uniq" with boxes fs solid, \\
-	"" using 1:8 title "new" with boxes fs solid
-
-	set origin 0.0,0.0
-	plot '{4}' using 1:2 title "hosts" with boxes fs solid
-
-	unset multiplot
-	""".format(output, xstart, xstop, boxwidth, filename_data))
-
+		w.write(
+			tpl_gnuplot.format(
+				filename_output=output,
+				range_start=xstart,
+				range_stop=xstop,
+				filename_data=filename_data
+			)
+		)
 		w.close()
+
 		os.system("gnuplot {}".format(filename_gnuplot))
 
 if __name__ == "__main__":
@@ -501,6 +511,7 @@ if __name__ == "__main__":
 	parser.add_option("-D", "--destination", action="store", type="string", dest="destination", default="/tmp/dionaea-gnuplot")
 	parser.add_option("-t", "--tempfile", action="store", type="string", dest="tempfile", default="/tmp/dionaea-gnuplotsql.data")
 	parser.add_option('-p', '--protocol', dest='protocols', help='none', 	type="string", action="append")
+	parser.add_option('-g', '--gnuplot-tpl', dest='gnuplot_tpl', help='none', type="string", action="store", default=None)
 	(options, args) = parser.parse_args()
 	
 	dbh = sqlite3.connect(options.database)
@@ -519,7 +530,7 @@ if __name__ == "__main__":
 		"overview.data"
 	)
 	get_overview_data(cursor, options.destination, filename_data, "")
-	plot_overview_data(ranges, options.destination, filename_data, "")
+	plot_overview_data(ranges, options.destination, filename_data, "", options.gnuplot_tpl)
 
 	# protocols
 	for protocol in options.protocols:
@@ -540,7 +551,8 @@ if __name__ == "__main__":
 			ranges,
 			options.destination,
 			filename_data,
-			protocol
+			protocol,
+			options.gnuplot_tpl
 		)
 	
 
