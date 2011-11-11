@@ -88,7 +88,7 @@ def make_directories(ranges, path_destination):
 		if not os.path.exists(path):
 			os.makedirs(path)
 	
-def write_index(ranges, _protocols, DSTDIR):
+def write_index(ranges, _protocols, DSTDIR, image_ext):
 	tpl_html="""<!DOCTYPE HTML PUBLIC "-//W3C//DTD HTML 4.01//EN"
 		"http://www.w3.org/TR/html4/strict.dtd">
 		<html>
@@ -223,14 +223,19 @@ def write_index(ranges, _protocols, DSTDIR):
 
 		web_images = """ 
 			<h3>Any</h3>
-			<img src="dionaea-overview.png" alt="Overview for Any">
-		"""
+			<img src="dionaea-overview.{image_ext}" alt="Overview for Any">
+		""".format(
+			image_ext=image_ext
+		)
 
 		for p in _protocols:
 			web_images = web_images + """
-				<h3 id="overview_{}">Overview {}</h3>
-				<img src="dionaea-overview-{}.png" alt="Overview for {}">
-			""".format(p,p,p,p)
+				<h3 id="overview_{protocol}">Overview {protocol}</h3>
+				<img src="dionaea-overview-{protocol}.{image_ext}" alt="Overview for {protocol}">
+			""".format(
+				protocol=p,
+				image_ext=image_ext
+			)
 
 		content = tpl_html.format(
 			headline=web_headline,
@@ -409,7 +414,7 @@ def get_overview_data(cursor, path_destination, filename_data, protocol):
 			a['newfiles']))
 	w.close()
 	
-def plot_overview_data(ranges, path_destination, filename_data, protocol, filename_tpl):
+def plot_overview_data(ranges, path_destination, filename_data, protocol, filename_tpl, image_ext):
 	suffix = ""
 	prefix = "overview"
 	if protocol != "":
@@ -480,7 +485,7 @@ def plot_overview_data(ranges, path_destination, filename_data, protocol, filena
 			title = 'month {}-{}'.format(rstart,rstop)
 			path = os.path.join(xstart.strftime("%Y"),xstart.strftime("%m"))
 
-		output = os.path.join(path_destination, path, "dionaea-overview{}.png".format(suffix))
+		output = os.path.join(path_destination, path, "dionaea-overview{}.{}".format(suffix, image_ext))
 		filename_gnuplot = os.path.join(
 			path_destination,
 			"gnuplot",
@@ -512,6 +517,7 @@ if __name__ == "__main__":
 	parser.add_option("-t", "--tempfile", action="store", type="string", dest="tempfile", default="/tmp/dionaea-gnuplotsql.data")
 	parser.add_option('-p', '--protocol', dest='protocols', help='none', 	type="string", action="append")
 	parser.add_option('-g', '--gnuplot-tpl', dest='gnuplot_tpl', help='none', type="string", action="store", default=None)
+	parser.add_option('', '--image-ext', dest='image_ext', help='none', type="string", action="store", default="png")
 	(options, args) = parser.parse_args()
 	
 	dbh = sqlite3.connect(options.database)
@@ -519,7 +525,12 @@ if __name__ == "__main__":
 	(ranges,dates) = get_ranges_from_db(cursor)
 	make_directories(ranges, options.destination)
 #	protocols = ["smbd","epmapper","httpd"]
-	write_index(ranges, options.protocols, options.destination)
+	write_index(
+		ranges,
+		options.protocols,
+		options.destination,
+		options.image_ext
+	)
 
 	# general overview
 	print("[+] getting data for general overview")
@@ -530,7 +541,14 @@ if __name__ == "__main__":
 		"overview.data"
 	)
 	get_overview_data(cursor, options.destination, filename_data, "")
-	plot_overview_data(ranges, options.destination, filename_data, "", options.gnuplot_tpl)
+	plot_overview_data(
+		ranges,
+		options.destination,
+		filename_data,
+		"",
+		options.gnuplot_tpl,
+		options.image_ext
+	)
 
 	# protocols
 	for protocol in options.protocols:
@@ -552,7 +570,8 @@ if __name__ == "__main__":
 			options.destination,
 			filename_data,
 			protocol,
-			options.gnuplot_tpl
+			options.gnuplot_tpl,
+			options.image_ext
 		)
 	
 
