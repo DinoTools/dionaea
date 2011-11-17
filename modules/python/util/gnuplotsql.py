@@ -4,6 +4,7 @@ import sqlite3
 import os
 import datetime
 import calendar
+import sys
 from optparse import OptionParser
 
 def resolve_result(resultcursor):
@@ -516,18 +517,32 @@ if __name__ == "__main__":
 	parser.add_option("-D", "--destination", action="store", type="string", dest="destination", default="/tmp/dionaea-gnuplot")
 	parser.add_option("-t", "--tempfile", action="store", type="string", dest="tempfile", default="/tmp/dionaea-gnuplotsql.data")
 	parser.add_option('-p', '--protocol', dest='protocols', help='none', 	type="string", action="append")
+	parser.add_option('', '--all-protocols', dest='all_protocols', help='none', action="store_true", default=False)
 	parser.add_option('-g', '--gnuplot-tpl', dest='gnuplot_tpl', help='none', type="string", action="store", default=None)
 	parser.add_option('', '--image-ext', dest='image_ext', help='none', type="string", action="store", default="png")
 	(options, args) = parser.parse_args()
-	
+
 	dbh = sqlite3.connect(options.database)
 	cursor = dbh.cursor()
+
+	protocols = options.protocols
+	if options.all_protocols == True:
+		protocols = []
+		db_res = cursor.execute("SELECT connection_protocol FROM connections GROUP BY connection_protocol")
+		db_data = resolve_result(db_res)
+		for db_row in db_data:
+			protocols.append(db_row["connection_protocol"])
+
+	if protocols == None or len(protocols) == 0:
+		print("No protocols specified")
+		sys.exit(1)
+
 	(ranges,dates) = get_ranges_from_db(cursor)
 	make_directories(ranges, options.destination)
-#	protocols = ["smbd","epmapper","httpd"]
+
 	write_index(
 		ranges,
-		options.protocols,
+		protocols,
 		options.destination,
 		options.image_ext
 	)
@@ -551,7 +566,7 @@ if __name__ == "__main__":
 	)
 
 	# protocols
-	for protocol in options.protocols:
+	for protocol in protocols:
 		filename_data = os.path.join(
 			options.destination,
 			"gnuplot",
