@@ -38,8 +38,8 @@ from distutils import sysconfig
 # distutils.sysconfig._config_vars dict
 # the proper fix would be not using py2 to build the module but py3 instead
 # thanks to pyllyukko for his incredible patience with me working this out
-if sysconfig.get_config_var('Py_ENABLE_SHARED') == 1:
-	sysconfig._config_vars['Py_ENABLE_SHARED'] = 0
+#if sysconfig.get_config_var('Py_ENABLE_SHARED') == 1:
+#	sysconfig._config_vars['Py_ENABLE_SHARED'] = 0
 
 
 cflags=''

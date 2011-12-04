@@ -273,7 +273,7 @@ import sysconfig
 dictConfig = sysconfig.get_config_vars( )
 strLinkSpec =  dictConfig.get('LDFLAGS','')
 
-for k,v in {"LIBPL":"-L","SYSLIBS": "","SHLIBS":"","LINKFORSHARED":""}.items():
+for k,v in {"SYSLIBS": "","SHLIBS":"","LINKFORSHARED":""}.items():
 	lib = dictConfig.get(k)
 	if lib and lib != "":
 		strLinkSpec += " %s%s" % (v,lib)
