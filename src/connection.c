@@ -3396,11 +3396,6 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 	msg.msg_flags = flags;
 
 
-	if( getsockname(fd, from, &fromlen) != 0)
-	{
-		g_warning("sendtofrom: getsockname failed %s", strerror(errno) );
-		return -1;
-	}
 
 	if( from->sa_family == PF_INET )
 	{ /* IPv4 */
@@ -3414,7 +3409,7 @@ ssize_t sendtofrom(int fd, void *buf, size_t len, int flags, struct sockaddr *to
 		cmsgptr->cmsg_level = SOL_IP;
 		cmsgptr->cmsg_type = IP_PKTINFO;
 		cmsgptr->cmsg_len = CMSG_LEN(sizeof(struct in_pktinfo));
-		memcpy(&((struct in_pktinfo *)(CMSG_DATA(cmsgptr)))->ipi_addr.s_addr, ADDROFFSET(from),  sizeof(struct in_addr) );
+		memcpy(&((struct in_pktinfo *)(CMSG_DATA(cmsgptr)))->ipi_spec_dst.s_addr, ADDROFFSET(from),  sizeof(struct in_addr) );
 		return sendmsg(fd, &msg, 0);
 #endif
 	}else
