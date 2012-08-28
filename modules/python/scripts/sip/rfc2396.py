@@ -33,7 +33,7 @@ class Address(object):
 		self.params = params
 
 	def __repr__(self):
-		return repr(self.dumps())
+		return self.dumps().decode('utf-8')
 
 	def dumps(self):
 		r = b""
@@ -136,7 +136,7 @@ class URI(object):
 		self.headers = headers
 
 	def __repr__(self):
-		return self.dumps()
+		return self.dumps().decode('utf-8')
 
 	def dumps(self):
 		if self.scheme == None:
