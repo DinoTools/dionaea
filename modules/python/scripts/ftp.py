@@ -317,8 +317,7 @@ class ftpd(connection):
 		ip = '%d.%d.%d.%d' % tuple(addr[:4])
 		port = addr[4] << 8 | addr[5]
 		logger.debug("PORT cmd for port %i" % port)
-		hostaddr = self.local.host
-		if hostaddr != ip:
+		if self.remote.host != ip and "::ffff:" + self.remote.host != ip:
 			logger.warn("Potential FTP Bounce Scan detected")
 			return None
 		self.dtp = ftpdataconnect(ip, port, self)
