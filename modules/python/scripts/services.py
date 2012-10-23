@@ -30,6 +30,7 @@ import imp
 import logging
 import sys
 import traceback
+import fnmatch
 
 from dionaea.core import g_dionaea, ihandler
 import tempfile
@@ -92,17 +93,21 @@ class nlslave(ihandler):
 		print("SERVANT!\n")
 		addr = icd.get("addr")
 		iface = icd.get("iface")
-		if icd.origin == "dionaea.module.nl.addr.new" or "dionaea.module.nl.addr.hup":
-			self.daemons[addr] = {}
-			for s in self.services:
-				self.daemons[addr][s] = []
-				d = s.start(s, addr, iface=iface)
-				self.daemons[addr][s].append(d)
-		if icd.origin == "dionaea.module.nl.addr.del":
-			print(icd.origin)
-			for s in self.daemons[addr]:
-				for d in self.daemons[addr][s]:
-					s.stop(s, d)
+		for i in self.ifaces:
+			print("iface:{} pattern:{}".format(iface,i))
+			if fnmatch.fnmatch(iface, i):
+				if icd.origin == "dionaea.module.nl.addr.new" or "dionaea.module.nl.addr.hup":
+					self.daemons[addr] = {}
+					for s in self.services:
+						self.daemons[addr][s] = []
+						d = s.start(s, addr, iface=iface)
+						self.daemons[addr][s].append(d)
+				if icd.origin == "dionaea.module.nl.addr.del":
+					print(icd.origin)
+					for s in self.daemons[addr]:
+						for d in self.daemons[addr][s]:
+							s.stop(s, d)
+				break
 
 	def start(self, addrs):
 		pass
@@ -235,7 +240,7 @@ class mysqlservice(service):
 #addrs = { 'eth0' : ['127.0.0.1', '192.168.47.11'] }
 mode = g_dionaea.config()['listen']['mode']
 addrs = {} 
-
+ifaces = None
 #def start():
 #	global g_slave, mode, addrs
 #	global addrs
@@ -264,6 +269,8 @@ def new():
 		print(addrs)
 	elif mode == 'nl':
 		g_slave = nlslave()
+		g_slave.ifaces = g_dionaea.config()['listen']['interfaces']
+
 
 
 	if "http" in g_dionaea.config()['modules']['python']['services']['serve']:

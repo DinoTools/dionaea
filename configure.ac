@@ -745,13 +745,13 @@ if test x$enable_nl = "xyes" ; then
 		if test x$nl_lib != "xno"; then
 			LDFLAGS="${LDFLAGS}  -L${nl_lib}"
 		fi
-		LDFLAGS="${LDFLAGS} -lnl -lnl-genl -lnl-nf"
-		AC_CHECK_LIB([nl-route],[rtnl_link_get_ifindex],enable_nl="yes", enable_nl="no")
+		LDFLAGS="${LDFLAGS} -lnl-3 -lnl-genl-3 -lnl-nf-3"
+		AC_CHECK_LIB([nl-route-3],[rtnl_link_get_ifindex],enable_nl="yes", enable_nl="no")
 		if test x$enable_nl = "xyes" ; then
 			if test x$nl_lib != "xno"; then
-				LIB_NL_LIBS="-L$nl_lib -lnl -nl-genl -lnl-route -lnl-nf"
+				LIB_NL_LIBS="-L$nl_lib -lnl-3 -nl-genl-3 -lnl-route-3 -lnl-nf-3"
 			else
-				LIB_NL_LIBS="-lnl -nl-genl -lnl-route -lnl-nf"
+				LIB_NL_LIBS="-lnl-3 -nl-genl-3 -lnl-route-3 -lnl-nf-3"
 			fi
 			if test x$nl_inc != "xno"; then
 				LIB_NL_CFLAGS="-I$nl_inc"

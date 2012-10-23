@@ -702,8 +702,13 @@ cd ..
 </pre>
 
     <h4 id="install_nl">libnl (linux &amp;&amp; optional)</h4>
+In case you use Ubuntu, libnl3 may be available in apt,
     <pre>
-git clone git://git.kernel.org/pub/scm/libs/netlink/libnl.git
+apt-get install libnl-3-dev libnl-genl-3-dev libnl-nf-3-dev libnl-route-3-dev
+    </pre>
+else install it from git.
+    <pre>
+git clone git://git.infradead.org/users/tgr/libnl.git
 cd libnl
 autoreconf -vi
 export LDFLAGS=-Wl,-rpath,/opt/dionaea/lib

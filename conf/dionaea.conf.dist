@@ -161,6 +161,12 @@ listen =
 		 addrs = { eth0 = ["::"] }
 		 note: ipv6 does not work with surfids yet, 
 		 as ipv6 addresses are mapped to ipv4 and surfids fails to retrieve the sensor id for ::ffff:1.2.3.4
+	   - nl, will require a list of interfaces 
+	     fnmatch is possible like
+		 interfaces = ["ppp*","tun*"]
+		 and loading the nl module AFTER the python module in the modules section below
+		 nl will use the kernel netlink interface to figure out which addresses exist 
+		 at runtime, and start/stop services dynamically per address per interface
 	*/
 	     
 	mode = "getifaddrs"
@@ -470,6 +476,13 @@ modules = {
 		}
 
 	}
+
+	nl = 
+	{
+		lookup_ethernet_addr = "no" // set to yes in case you are interested in the mac address  of the remote (only works for lan)
+
+	}
+
 
 	/* nc is a test module */
 /*	nc = 
