@@ -302,11 +302,11 @@ class httpd(connection):
 			self.end_headers()
 			self.close()
 		if os.path.exists(apath):
-		       if os.path.isdir(apath):
-			       if self.header.path.endswith('/'):
-				       testpath = os.path.join(apath, "index.html")
-				       if os.path.isfile(testpath):
-					       apath = testpath
+			if os.path.isdir(apath):
+				if self.header.path.endswith('/'):
+					testpath = os.path.join(apath, "index.html")
+					if os.path.isfile(testpath):
+						apath = testpath
 			if os.path.isdir(apath):
 				if not self.header.path.endswith('/'):
 					self.send_response(301)
