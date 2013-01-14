@@ -148,6 +148,8 @@ class EnumElement:
         return "<%s %s[%r]>" % (self.__dict__.get("_name", self.__class__.__name__), self._key, self._value)
     def __getattr__(self, attr):
         return getattr(self._value, attr)
+    def __int__(self):
+        return self._value
     def __str__(self):
         return self._key
     def __eq__(self, other):
