@@ -13,7 +13,7 @@ AC_REVISION([$Id$])
 
 AC_PREFIX_DEFAULT(/opt/dionaea)
 AC_CONFIG_SRCDIR([include/dionaea.h])
-AM_CONFIG_HEADER([config.h])
+AC_CONFIG_HEADERS([config.h])
 # AM_MAINTAINER_MODE
 
 CFLAGS="${CFLAGS} -std=c99 -D_GNU_SOURCE"
