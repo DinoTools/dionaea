@@ -383,6 +383,16 @@ modules = {
 			user = "" 		// username (optional)
 			pass = ""		// password (optional)
 		}
+		hpfeeds = {
+			hp1 = {
+				server = ""
+				port = ""
+				ident = ""
+				secret = ""
+				// dynip_resolve: enable to lookup the sensor ip through a webservice
+				dynip_resolve = "http://hpfeeds.honeycloud.net/ip"
+			}
+		}
 		logsql = {
 			mode = "sqlite" // so far there is only sqlite
 			sqlite = {
@@ -498,6 +508,7 @@ modules = {
 //			"virustotal",
 //			"mwserv",
 //			"submit_http",
+			"hpfeeds",
 //			"logxmpp",
 //			"nfq",
 //			"p0f",
