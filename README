@@ -8,16 +8,17 @@ Dionaea is meant to be a nepenthes successor, embedding python as
 scripting language, using libemu to detect shellcodes, supporting ipv6
 and tls
 
-    * Development <#development>
-    * Compiling & Installation <#compiling>
-    * Running <#running>
-    * Configuration <#configuration>
-    * Honors <#honorem>
-    * Links <#links>
-    * FAQ <#FAQ>
-    * Segfault <#segfault>
-    * Support <#support>
-    * Blog <http://carnivore.it>
+  * Development <#development>
+  * Compiling & Installation <#compiling>
+  * Update <#update>
+  * Running <#running>
+  * Configuration <#configuration>
+  * Honors <#honorem>
+  * Links <#links>
+  * FAQ <#FAQ>
+  * Segfault <#segfault>
+  * Support <#support>
+  * Blog <http://carnivore.it>
 
 ------------------------------------------------------------------------
 
@@ -168,6 +169,13 @@ information.
 Patches would be appreciated.
 
 
+        MySQL
+
+This module implements the MySQL wire stream protocol - backed up by
+sqlite as database. Please refer to 2011-05-15 Extending Dionaea
+<http://carnivore.it/2011/05/15/extending_dionaea> for more information.
+
+
         SIP (VoIP)
 
 This is a VoIP module for the honeypot dionaea. The VoIP protocol used
@@ -182,17 +190,112 @@ module doesn't pass any code to dionaea's code emulation engine. This
 will be implemented if we spot such malicious messages. The main
 features of the VoIP module are:
 
-    * Support for most SIP requests (OPTIONS, INVITE, ACK, CANCEL, BYE)
-    * Support for multiple SIP sessions and RTP audio streams
-    * Record all RTP data (optional)
-    * Set custom SIP username and secret (password)
-    * Set custom useragent to mimic different phone models
-    * Uses dionaea's incident system to log to SQL database
+  * Support for most SIP requests (OPTIONS, INVITE, ACK, CANCEL, BYE)
+  * Support for multiple SIP sessions and RTP audio streams
+  * Record all RTP data (optional)
+  * Set custom SIP username and secret (password)
+  * Set custom useragent to mimic different phone models
+  * Uses dionaea's incident system to log to SQL database
 
 
-Currently the module does not really play nice with scanning software
-like sipvicious, and could really need some love. If you want to
-volunteer, just send me patches.
+          Personalities
+
+A personality defines how to handle a request. At least the 'default'
+personality MUST exist. The following options are available per
+personality.
+
+serve
+    A list of IP addresses to use this personality for. 
+handle
+    List of SIP methods to handle. 
+
+
+          SIP Users
+
+You can easily add, change or remove users by editing the SQLite file
+specified by the 'users = ""' parameter in the config file. All users
+are specified in the users table.
+
+username
+    Specifies the name of the user. This value is treated as regular
+    expression. See Python: Regular Expressions
+    <http://docs.python.org/py3k/library/re.html> for more information. 
+password
+    The password. 
+personality
+    The user is only available in the personality specified by this
+    value. You can define a personality in the config file. 
+pickup_delay_min
+    This is an integer value. Let the phone ring for at least this
+    number of seconds. 
+pickup_delay_max
+    This is an integer value. Maximum number of seconds to wait before
+    dionaea picks up the phone. 
+action
+    This value isn't in use, yet. 
+sdp
+    The name of the SDP to use. See table 'sdp'. 
+
+
+          SDP
+
+All SDPs can be defined in the sdp table in the users database.
+
+name
+    Name of the SDP
+sdp
+    The value to use as SDP
+
+The following values are available in the SDP definition.
+
+{addrtype}
+    Address type. (IP4 or IP6) 
+{unicast_address}
+    RTP address 
+{audio_port}
+    Dionaea audio port. 
+{video_port}
+    Dionaea video port. 
+
+The following control parameters are available in the SDP definition.
+
+[audio_port]...content...[/audio_port]
+    The content is only available in the output if the audio_port value
+    is set. 
+[video_port]...content...[/video_port]
+    The content is only available in the output if the video_port value
+    is set. 
+
+Example:
+
+v=0
+o=- 1304279835 1 IN {addrtype} {unicast_address}
+s=SIP Session
+c=IN {addrtype} {unicast_address}
+t=0 0
+[audio_port]
+m=audio {audio_port} RTP/AVP 111 0 8 9 101 120
+a=sendrecv
+a=rtpmap:111 Speex/16000/1
+a=fmtp:111 sr=16000,mode=any
+a=rtpmap:0 PCMU/8000/1
+a=rtpmap:8 PCMA/8000/1
+a=rtpmap:9 G722/8000/1
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-16,32,36
+a=rtpmap:120 NSE/8000
+a=fmtp:120 192-193
+[/audio_port]
+[video_port]
+m=video {video_port} RTP/AVP 34 96 97
+c=IN {addrtype} {unicast_address}
+a=rtpmap:34 H263/90000
+a=fmtp:34 QCIF=2
+a=rtpmap:96 H263-1998/90000
+a=fmtp:96 QCIF=2
+a=rtpmap:97 H263-N800/90000
+[/video_port]
+      
 
 
       Exploitation
@@ -324,16 +427,16 @@ connection 610 smbd tcp accept 10.69.53.52:445 <- 10.65.34.231:2010
 Additionally, you can query the database for many different things,
 refer to:
 
-    * dionaea sql logging 2009/11/06
-      <http://carnivore.it/2009/11/06/dionaea_sql_logging>
-    * post it yourself 2009/12/08
-      <http://carnivore.it/2009/12/08/post_it_yourself>
-    * sqlite performance 2009/12/12
-      <http://carnivore.it/2009/12/12/sqlite_performance>
-    * virustotal fun 2009/12/14
-      <http://carnivore.it/2009/12/14/virustotal_fun>
-    * Andrew Waite's Blog <http://infosanity.wordpress.com/> for
-      mimic-nepstats.py
+  * dionaea sql logging 2009/11/06
+    <http://carnivore.it/2009/11/06/dionaea_sql_logging>
+  * post it yourself 2009/12/08
+    <http://carnivore.it/2009/12/08/post_it_yourself>
+  * sqlite performance 2009/12/12
+    <http://carnivore.it/2009/12/12/sqlite_performance>
+  * virustotal fun 2009/12/14
+    <http://carnivore.it/2009/12/14/virustotal_fun>
+  * Andrew Waite's Blog <http://infosanity.wordpress.com/> for
+    mimic-nepstats.py
 
 for more examples how to make use of the database.
 
@@ -350,10 +453,9 @@ information about distributed setups using xmpp.
 dionaea initial development was funded by the Honeynet Project
 <http://honeynet.org/> as part of the Honeynets Summer of Code during
 2009. The development process is as open as possible; you can browse
-<http://svn.carnivore.it/browser/dionaea/trunk> the source online and
-subscribe to RSS updates
-<http://svn.carnivore.it/log/dionaea/trunk?verbose=on&format=rss&stop_rev=&limit=100&mode=stop_on_copy>
-and file bugs or submit patches <http://svn.carnivore.it/>.
+<http://src.carnivore.it/dionaea> the source online and subscribe to RSS
+updates <http://src.carnivore.it/dionaea/atom> and submit bugs or
+patches <mailto:nepenthes-devel@lists.sourceforge.net>.
 
 
     Compiling & Installation
@@ -361,31 +463,26 @@ and file bugs or submit patches <http://svn.carnivore.it/>.
 
       Requirements
 
-    * libev <#install_libev> >=3.80, schmorp.de
-      <http://software.schmorp.de/pkg/libev.html>
-    * libglib <#install_glib> >=2.20
-    * libssl <#install_openssl>, openssl.org <http://www.openssl.org>
-    * liblcfg <#install_liblcfg>, liblcfg.carnivore.it
-      <http://liblcfg.carnivore.it>
-    * libemu <#install_libemu>, libemu.carnivore.it
-      <http://libemu.carnivore.it>
-    * python <#install_python> >=3.1.1, python.org <http://www.python.org>
-    *
-          o sqlite <#install_sqlite> >=3.3.6 sqlite.org
-            <http://www.sqlite.org>
-          o readline <#install_readline> >=3 cnswww.cns.cwru.edu
-            <http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html>
-    * cython <#install_cython> >=0.11, cython.org <http://www.cython.org>
-    * lxml <#install_lxml> >=2.2.4, codespeak.net
-      <http://codespeak.net/lxml/>
-    * libudns <#install_udns>, corpit.ru
-      <http://www.corpit.ru/mjt/udns.html>
-    * libcurl <#install_curl> >=7.18, curl.haxx.se <http://curl.haxx.se>
-    * libpcap <#install_pcap> >=1.1.1, tcpdump.org <http://www.tcpdump.org>
-    * libnl <#install_nl> from git, infradead.org
-      <http://www.infradead.org/~tgr/libnl/> (optional)
-    * libgc >=6.8, hp.com <http://linux.maruhn.com/sec/libgc.html>
-      (optional)
+  * libev <#install_libev> >=4.04, schmorp.de
+    <http://software.schmorp.de/pkg/libev.html>
+  * libglib <#install_glib> >=2.20
+  * libssl <#install_openssl>, openssl.org <http://www.openssl.org>
+  * liblcfg <#install_liblcfg>, liblcfg.carnivore.it
+    <http://liblcfg.carnivore.it>
+  * libemu <#install_libemu>, libemu.carnivore.it
+    <http://libemu.carnivore.it>
+  * python <#install_python> >=3.2, python.org <http://www.python.org>
+  *
+      o sqlite <#install_sqlite> >=3.3.6 sqlite.org <http://www.sqlite.org>
+      o readline <#install_readline> >=3 cnswww.cns.cwru.edu
+        <http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html>
+  * cython <#install_cython> >0.14.1, cython.org <http://www.cython.org>
+  * libudns <#install_udns>, corpit.ru <http://www.corpit.ru/mjt/udns.html>
+  * libcurl <#install_curl> >=7.18, curl.haxx.se <http://curl.haxx.se>
+  * libpcap <#install_pcap> >=1.1.1, tcpdump.org <http://www.tcpdump.org>
+  * libnl <#install_nl> from git, infradead.org
+    <http://www.infradead.org/~tgr/libnl/> (optional)
+  * libgc >=6.8, hp.com <http://linux.maruhn.com/sec/libgc.html> (optional)
 
 
       Ubuntu
@@ -410,17 +507,7 @@ directory exists, and you are allowed to write it.
 
         libglib (debian <= etch)
 
-Debian etch does not ship glib 2.20, so you have to install it, if you
-do not want to upgrade to lenny
-
-apt-get install gettext
-wget http://ftp.gnome.org/pub/gnome/sources/glib/2.20/glib-2.20.4.tar.bz2
-tar xfj glib-2.20.4.tar.bz2
-cd glib-2.20.4/
-./configure --prefix=/opt/dionaea
-make
-make install
-cd ..
+If your lack a recent glib, better update your operating system.
 
 
         liblcfg (all)
@@ -430,6 +517,7 @@ cd liblcfg/code
 autoreconf -vi
 ./configure --prefix=/opt/dionaea
 make install
+cd ..
 cd ..
 
 
@@ -445,7 +533,14 @@ cd ..
 
         libnl (linux && optional)
 
-git clone git://git.kernel.org/pub/scm/libs/netlink/libnl.git
+In case you use Ubuntu, libnl3 may be available in apt,
+
+apt-get install libnl-3-dev libnl-genl-3-dev libnl-nf-3-dev libnl-route-3-dev
+    
+
+else install it from git.
+
+git clone git://git.infradead.org/users/tgr/libnl.git
 cd libnl
 autoreconf -vi
 export LDFLAGS=-Wl,-rpath,/opt/dionaea/lib
@@ -457,29 +552,15 @@ cd ..
 
         libev (all)
 
-wget http://dist.schmorp.de/libev/libev-3.9.tar.gz
-tar xfz libev-3.9.tar.gz
-cd libev-3.9
+wget http://dist.schmorp.de/libev/Attic/libev-4.04.tar.gz
+tar xfz libev-4.04.tar.gz
+cd libev-4.04
 ./configure --prefix=/opt/dionaea
 make install
 cd ..
 
 
-        Cython (all)
-
-First, installation Make sure to have headers for your python 2.x
-interpreter availible, for debian/ubuntu users apt-get install
-python2.6-dev will do the trick
-
-wget http://cython.org/release/Cython-0.12.1.tar.gz
-tar xfz Cython-0.12.1.tar.gz
-cd Cython-0.12.1        
-python setup.py build
-sudo python setup.py install
-      
-
-
-        Python 3.1.1
+        Python 3.2
 
 Before installing Python, we will install required dependencies
 
@@ -500,56 +581,33 @@ sqlite version.
 
           Python
 
-wget http://python.org/ftp/python/3.1.2/Python-3.1.2.tgz
-tar xfz Python-3.1.2.tgz
-cd Python-3.1.2/
+wget http://www.python.org/ftp/python/3.2.2/Python-3.2.2.tgz
+tar xfz Python-3.2.2.tgz
+cd Python-3.2.2/
 ./configure --enable-shared --prefix=/opt/dionaea --with-computed-gotos \
-      --enable-ipv6 LDFLAGS="-Wl,-rpath=/opt/dionaea/lib/"
+      --enable-ipv6 LDFLAGS="-Wl,-rpath=/opt/dionaea/lib/ -L/usr/lib/x86_64-linux-gnu/"
+
 make
 make install
 
 
-        lxml (recommended)
+        Cython (all)
 
-Once you have python installed properly, you can install lxml, lxml is a
-libxslt and libxml2 binding for python. It is likely your distribution
-will ship lxml, but it is unlikely it will ship lxml for python3, which
-we need. Therefore we will compile it from source. As lxml relies on
-libxslt and libxml2, we will resolve the dependencies before.
+We have to use cython >= 0.15 as previous releases do not support
+Python3.2 __hash__'s Py_Hash_type for x86.
 
-
-          libxml2
-
-aptitude install libxml2-dev
-
-
-          libxslt
-
-aptitude install libxslt1-dev
-
-
-          lxml
-
-Compiling lxml takes some time, better get a coffee.
-
-wget http://codespeak.net/lxml/lxml-2.2.6.tgz
-tar xfz lxml-2.2.6.tgz
-cd lxml-2.2.6
-
-# fix some py3 issues with lxml
-/opt/dionaea/bin/2to3 -w src/lxml/html/_diffcommand.py
-/opt/dionaea/bin/2to3 -w src/lxml/html/_html5builder.py
-
-# continue the install ...
-/opt/dionaea/bin/python3 setup.py build
+wget http://cython.org/release/Cython-0.15.tar.gz
+tar xfz Cython-0.15.tar.gz
+cd Cython-0.15
 /opt/dionaea/bin/python3 setup.py install
+cd ..
 
 
         udns (!ubuntu)
 
 udns does not use autotools to build.
 
-wget http://www.corpit.ru/mjt/udns/udns_0.0.9.tar.gz
+wget http://www.corpit.ru/mjt/udns/old/udns_0.0.9.tar.gz
 tar xfz udns_0.0.9.tar.gz
 cd udns-0.0.9/
 ./configure
@@ -564,39 +622,14 @@ and the lib to our library directory.
  cp *.so* /opt/dionaea/lib/
 cd /opt/dionaea/lib
 ln -s libudns.so.0 libudns.so
+cd -
 cd ..
-      
 
 
         libcurl (all)
 
 Grabbing curl from your distributions maintainer should work, if you run
-a decent distribution. If not go for the code.
-We will only cover a basic curl install, if you want fancy curl
-features, look at the curl compile docs. A fancy feature I can really
-recommend is compiling curl with c-ares, therefore this is the guide to
-install curl with c-ares.
-
-
-          c-ares
-
-wget http://c-ares.haxx.se/c-ares-1.7.3.tar.gz
-tar xfz c-ares-1.7.3.tar.gz 
-cd c-ares-1.7.3
-./configure --prefix=/opt/dionaea 
-make
-make install
-
-
-          curl
-
-wget http://curl.haxx.se/download/curl-7.20.0.tar.bz2
-tar xfj curl-7.20.0.tar.bz2
-cd curl-7.20.0
-./configure --prefix=/opt/dionaea --enable-ares=/opt/dionaea
-make
-make install
-cd ..
+a decent distribution. If not consider upgrading your operating system.
 
 
         libpcap (most)
@@ -638,8 +671,8 @@ cd dionaea
 autoreconf -vi
 ./configure --with-lcfg-include=/opt/dionaea/include/ \
       --with-lcfg-lib=/opt/dionaea/lib/ \
-      --with-python=/opt/dionaea/bin/python3.1 \
-      --with-cython-dir=/usr/local/bin \
+      --with-python=/opt/dionaea/bin/python3.2 \
+      --with-cython-dir=/opt/dionaea/bin \
       --with-udns-include=/opt/dionaea/include/ \
       --with-udns-lib=/opt/dionaea/lib/ \
       --with-emu-include=/opt/dionaea/include/ \
@@ -649,12 +682,38 @@ autoreconf -vi
       --with-ev-lib=/opt/dionaea/lib \
       --with-nl-include=/opt/dionaea/include \
       --with-nl-lib=/opt/dionaea/lib/ \
-      --with-curl-config=/opt/dionaea/bin/ \
+      --with-curl-config=/usr/bin/ \
       --with-pcap-include=/opt/dionaea/include \
-      --with-pcap-lib=/opt/dionaea/lib/ \
-      --with-glib=/opt/dionaea
+      --with-pcap-lib=/opt/dionaea/lib/ 
 make
 make install
+
+
+    Update dionaea
+
+Most updates boil down to a
+
+git pull;
+make clean install
+
+But, you always want to make sure your config file is up to date, you
+can use
+
+/opt/dionaea/etc/dionaea# diff dionaea.conf dionaea.conf.dist
+
+
+    Packages
+
+The packages below are 3rd party provided, which is appreciated. If you
+have compiled a package for your own distribution, just send me the link.
+
+  * Ubuntu Lucid <https://launchpad.net/~honeynet> - weekly git snapshots
+  * Debian <http://carnivore.it/2010/05/18/debianization> - not really
+    packages, just a guide how to create packages
+  * Arch Linux <http://aur.archlinux.org/packages.php?ID=36944> - build
+    scripts, compile from source, uses git
+  * Slackware <http://maimed.org/~pyllyukko/stuff.shtml> - build
+    scripts, compile from source, uses git
 
 
     Running dionaea
@@ -698,13 +757,13 @@ how it works, therefore please take the time to how it works.
 dionaea.conf is the main configuration file, the file controls consists
 of sections for:
 
-    * logging
-    * processors
-    * downloads
-    * bistreams
-    * submit
-    * listen
-    * modules
+  * logging
+  * processors
+  * downloads
+  * bistreams
+  * submit
+  * listen
+  * modules
 
 
       logging
@@ -802,33 +861,32 @@ gnuplotsql <#gnuplotsql> script.
 
 The blog on logsql:
 
-    * 2009-11-06 dionaea sql logging
-      <http://carnivore.it/2009/11/06/dionaea_sql_logging>
-    * 2009-12-08 post it yourself
-      <http://carnivore.it/2009/12/08/post_it_yourself>
-    * 2009-12-12 sqlite performance
-      <http://carnivore.it/2009/12/12/sqlite_performance>
-    * 2009-12-14 virustotal fun
-      <http://carnivore.it/2009/12/14/virustotal_fun>
-    * 2009-12-15 paris mission pack avs
-      <http://carnivore.it/2009/12/15/paris_mission_pack_avs>
-    * 2010-06-06 data visualisation
-      <http://carnivore.it/2010/06/06/data_visualisation>
+  * 2009-11-06 dionaea sql logging
+    <http://carnivore.it/2009/11/06/dionaea_sql_logging>
+  * 2009-12-08 post it yourself
+    <http://carnivore.it/2009/12/08/post_it_yourself>
+  * 2009-12-12 sqlite performance
+    <http://carnivore.it/2009/12/12/sqlite_performance>
+  * 2009-12-14 virustotal fun
+    <http://carnivore.it/2009/12/14/virustotal_fun>
+  * 2009-12-15 paris mission pack avs
+    <http://carnivore.it/2009/12/15/paris_mission_pack_avs>
+  * 2010-06-06 data visualisation
+    <http://carnivore.it/2010/06/06/data_visualisation>
 
 
           logxmpp <#logxmpp>
 
 This section controls the logging to xmpp services. If you want to use
-logxmpp, make sure to install lxml <#install_lxml> and enable logxmpp in
-the ihandler section.
+logxmpp, make sure to enable logxmpp in the ihandler section.
 Using logxmpp allows you to share your new collected files with other
 sensors anonymously.
 
 The blog on logxmpp:
 
-    * 2010-02-10 xmpp backend <http://carnivore.it/2010/02/10/xmpp_backend>
-    * 2010-05-12 xmpp take #2 <http://carnivore.it/2010/05/12/xmpp_-_take_2>
-    * 2010-02-15 xmpp take #3 <http://carnivore.it/2010/05/15/xmpp_-_take_3>
+  * 2010-02-10 xmpp backend <http://carnivore.it/2010/02/10/xmpp_backend>
+  * 2010-05-12 xmpp take #2 <http://carnivore.it/2010/05/12/xmpp_-_take_2>
+  * 2010-05-15 xmpp take #3 <http://carnivore.it/2010/05/15/xmpp_-_take_3>
 
 pg_backend <#pg_backend> can be used as a backend for xmpp logging sensors.
 
@@ -841,6 +899,8 @@ and start p0f as suggested in the config. It costs nothing, and gives
 some pretty cool, even if outdated, informations about the attackers
 operating system, and you can look them up from the sqlite database,
 even the rejected connections.
+If you face problems, here
+<http://blog.infosanity.co.uk/2010/12/04/dionaea-with-p0f/> are some hints.
 
 
           nfq <#nfq_python>
@@ -868,48 +928,47 @@ Learning from the best, I decided to adopt this technique for dionaea.
 Besides the legal and ethical issues with this approach, there are some
 technical things which have to be mentioned
 
-    * */port scanning/*
-      If your honeypot gets port scanned, it would open a service for
-      each port scanned, in worst case you'd end up with offering 64k
-      services per ip scanned. By default you'd run out of fds at about
-      870 services offerd, and experience weird behaviour. Therefore the
-      impact of port scanning has to be limited.
-      The kiss approach taken here is a sliding window of
-      *throttle.window* seconds size. Each slot in this sliding window
-      represents a second, and we increment this slot for each
-      connection we accept.
-      Before we accept a connection, we check if the sum of all slots is
-      below *throttle.limits.total*, else we do not create a new service.
-      If the sum is below the limit, we check if the current slot is
-      below the slot limit too, if both are given, we create a new service.
-      If one of the condition fails, we do not spawn a new service, and
-      let nfqeueu process the packet. There are two ways to process
-      packets which got throttled:
-          o *NF_ACCEPT* (=1), which will let the packet pass the kernel,
-            and as there is no service listening, the packet gets rejected.
-          o *NF_DROP* (=0), which will drop the packet in the kernel,
-            the remote does not get any answer to his SYN.
+  * */port scanning/*
+    If your honeypot gets port scanned, it would open a service for each
+    port scanned, in worst case you'd end up with offering 64k services
+    per ip scanned. By default you'd run out of fds at about 870
+    services offerd, and experience weird behaviour. Therefore the
+    impact of port scanning has to be limited.
+    The kiss approach taken here is a sliding window of
+    *throttle.window* seconds size. Each slot in this sliding window
+    represents a second, and we increment this slot for each connection
+    we accept.
+    Before we accept a connection, we check if the sum of all slots is
+    below *throttle.limits.total*, else we do not create a new service.
+    If the sum is below the limit, we check if the current slot is below
+    the slot limit too, if both are given, we create a new service.
+    If one of the condition fails, we do not spawn a new service, and
+    let nfqeueu process the packet. There are two ways to process
+    packets which got throttled:
+      o *NF_ACCEPT* (=1), which will let the packet pass the kernel, and
+        as there is no service listening, the packet gets rejected.
+      o *NF_DROP* (=0), which will drop the packet in the kernel, the
+        remote does not get any answer to his SYN.
 
-      I prefer NF_DROP, as port scanners such as nmap tend to limit
-      their scanning speed, once they notice packets get lost.
+    I prefer NF_DROP, as port scanners such as nmap tend to limit their
+    scanning speed, once they notice packets get lost.
 
-    * */recursive-self-connecting/*
-      Assume some shellcode or download instructions makes dionaea to
-          o connect itself on a unbound port
-          o nfq intercepts the attempt
-          o spawns a service
-          o accepts the connection #1
-          o creates mirror connection for connection #1
-            by connecting the remotehost (itself) on the same port #2
-          o accepts connection #2 as connection #3
-          o creates mirror connection for connection #3
-            by connecting the remotehost (itself) on the same port #4
-          o ....
-          o ....
-      Such recursive loop, has to be avoided for obvious reasons.
-      Therefore dionaea checks if the remote host connecting a nfq
-      mirror is a local address using 'getifaddrs' and drops local
-      connections.
+  * */recursive-self-connecting/*
+    Assume some shellcode or download instructions makes dionaea to
+      o connect itself on a unbound port
+      o nfq intercepts the attempt
+      o spawns a service
+      o accepts the connection #1
+      o creates mirror connection for connection #1
+        by connecting the remotehost (itself) on the same port #2
+      o accepts connection #2 as connection #3
+      o creates mirror connection for connection #3
+        by connecting the remotehost (itself) on the same port #4
+      o ....
+      o ....
+    Such recursive loop, has to be avoided for obvious reasons.
+    Therefore dionaea checks if the remote host connecting a nfq mirror
+    is a local address using 'getifaddrs' and drops local connections.
 
 So much about the known problems and workarounds ...
 If you read that far, you want to use it despite the
@@ -923,8 +982,8 @@ iptables -t mangle -A PREROUTING -i eth0 -p tcp --syn -m state --state NEW -j NF
 
 Explanation:
 
-   1. ACCEPT all connections to existing services
-   2. enqueue all other packets to the NFQUEUE
+ 1. ACCEPT all connections to existing services
+ 2. enqueue all other packets to the NFQUEUE
 
 
 If you have dionaea running on your NAT router, I recommend something like:
@@ -935,9 +994,9 @@ iptables -A INPUT -i ppp0 -m mark --mark 0x1 -j NFQUEUE
 
 Explanation:
 
-   1. ACCEPT all connections to existing services in mangle::PREROUTING
-   2. MARK all other packets
-   3. if we see these marked packets on INPUT, queue them
+ 1. ACCEPT all connections to existing services in mangle::PREROUTING
+ 2. MARK all other packets
+ 3. if we see these marked packets on INPUT, queue them
 
 
 Using something like:
@@ -1031,6 +1090,13 @@ To create such images of your own data, run:
 
 ./gnuplotsql.py -d /opt/dionaea/var/dionaea/logsql.sqlite -p smbd -p epmapper -p mssqld -p httpd -p ftpd
 
+The blog got something on gnuplotsql as well:
+
+  * 2010-12-05 sudden death <http://carnivore.it/2010/12/05/sudden_death>
+  * 2010-10-01 Infosanity's Blog: gnuplotsql.py
+    <http://blog.infosanity.co.uk/2010/10/01/gnuplotsql-py/>
+  * 2010-09-19 gnuplotsql <http://carnivore.it/2010/09/19/gnuplotsql>
+
 
           pg_backend <#pg_backend> - modules/python/xmpp/pg_backend.py
 
@@ -1058,43 +1124,33 @@ start backend
 
 I get gcc: command not found?
     install gcc..
-
 How to uninstall it?
     rm -rf /opt/dionaea
-
 I get binding.pyx:...: undeclared name not builtin: bytes during the
 python modules build
     Install a recent cython version
-
 I get Python.h not found during compiling cython
     Install appropriate headers for your python interpreter
-
 I get OperationalError at unable to open database file when using
 logsqlite and it does not work at all
     Read the logsql instructions <#logsql>
-
 I get a Segmentation Fault
     Read the segfault instructions <#segfault>
-
 I logrotate, and after logrotate dionaea does not log anymore.
     Read the logrotate instructions <#logging>
-
 I do not use ubuntu/debian and the instructions are useless for me
 therefore.
     I use debian/ubuntu, and therefore I can only provide instructions
     for debian/ubuntu, but you are free to send me a diff for your
     operating system
-
 p0f does not work.
     Make sure your have p0f 2.0.8 and dionaea does not listen on ::, p0f
     can't deal with IPv6.
-
 I'm facing a bug, it fails, and I can't figure out why .
     Explain the problem, if I'm interested in the nature of the problem,
     as it does not sound like pebcak, I may ask for a shell/screen and
     have a look myself, and if it is worth it, you'll even get a FAQ
     entry for some specialties of your OS.
-
 I use Redhat/Centos 5 and the installation is frustrating and a mess as
 nothing works.
     Thats right, but I did not choose your operating system.
@@ -1494,15 +1550,15 @@ If you are getting frustrated, because things to not work for you and
 you already read the FAQ <#FAQ>, join the ml and share your experience,
 or the chat.
 
-    * Mailing List
-      <https://lists.sourceforge.net/lists/listinfo/nepenthes-devel>
-    * Chat (freenode, #nepenthes) <irc://irc.freenode.org/nepenthes>
+  * Mailing List
+    <https://lists.sourceforge.net/lists/listinfo/nepenthes-devel>
+  * Chat (freenode, #nepenthes) <irc://irc.freenode.org/nepenthes>
 
 
     Links
 
-    * GSoC Project #10 <http://honeynet.org/gsoc/project10>
-    * GSoC Timeline
-      <http://socghop.appspot.com/document/show/program/google/gsoc2009/timeline>
-    * The Honeynet Project <http://honeynet.org/>
+  * GSoC Project #10 <http://honeynet.org/gsoc/project10>
+  * GSoC Timeline
+    <http://socghop.appspot.com/document/show/program/google/gsoc2009/timeline>
+  * The Honeynet Project <http://honeynet.org/>
 
