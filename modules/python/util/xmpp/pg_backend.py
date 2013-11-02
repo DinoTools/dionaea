@@ -435,9 +435,13 @@ class RoomHandler(MucRoomHandler):
 		except Exception as e:
 			print(e)
 			return
-		cursor.execute("INSERT INTO dionaea.virustotals (virustotal_md5_hash, virustotal_timestamp, virustotal_permalink) VALUES (%s,to_timestamp(%s),%s)",(md5_hash, date, permalink))
-		cursor.execute("""SELECT CURRVAL('dionaea.virustotals_virustotal_seq')""")
-		print("[%s] virustotal %s" % (user.room_jid.as_unicode(), md5_hash))
+		try:
+			cursor.execute("INSERT INTO dionaea.virustotals (virustotal_md5_hash, virustotal_timestamp, virustotal_permalink) VALUES (%s,to_timestamp(%s),%s)",(md5_hash, date, permalink))
+			cursor.execute("""SELECT CURRVAL('dionaea.virustotals_virustotal_seq')""")
+			print("[%s] virustotal %s" % (user.room_jid.as_unicode(), md5_hash))
+		except Exception as e:
+			print(e)
+			return
 		r = cursor.fetchall()[0][0]
 		c = xmlobj.children
 		while c is not None:

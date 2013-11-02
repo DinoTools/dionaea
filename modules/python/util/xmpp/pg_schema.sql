@@ -1626,6 +1626,13 @@ ALTER TABLE ONLY virustotals
 
 
 --
+-- Name: FIXME; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
+--
+
+ALTER TABLE virustotals 
+	ADD UNIQUE(virustotal_md5_hash, virustotal_timestamp);
+
+--
 -- Name: virustotalscans_virustotalscan_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
 --
 
