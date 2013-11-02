@@ -578,7 +578,16 @@ class logxmpp(ihandler):
 		pass
 
 	def serialize_incident_dionaea_modules_python_p0f(self, i, anonymous):
-		pass
+		return etree.Element('p0f', attrib={
+			'genre':i.genre,
+			'link':i.link,
+			'detail':i.detail,
+			'uptime':i.uptime,
+			'tos':i.tos,
+			'dist':i.dist,
+			'fw':i.fw,
+			'nat':i.nat,
+			'ref' : str(i.con.__hash__())})
 
 	def serialize_incident_dionaea_modules_python_smb_dcerpc_request(self, i, anonymous):
 		return etree.Element('dcerpcrequest', attrib={

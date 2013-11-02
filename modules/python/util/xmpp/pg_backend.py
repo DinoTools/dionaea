@@ -405,7 +405,26 @@ class RoomHandler(MucRoomHandler):
 		pass
 
 	def handle_incident_dionaea_modules_python_p0f(self, user, xmlobj):
-		pass
+		try:   
+			genre = xmlobj.hasProp('genre').content
+			link = xmlobj.hasProp('link').content
+			detail = xmlobj.hasProp('detail').content
+			uptime = xmlobj.hasProp('uptime').content
+			tos = xmlobj.hasProp('tos').content
+			dist = xmlobj.hasProp('dist').content
+			nat = xmlobj.hasProp('nat').content
+			fw = xmlobj.hasProp('fw').content 
+                        ref = xmlobj.hasProp('ref').content
+                        ref = int(ref)
+		except Exception as e:
+			print(e)
+			return
+
+		if ref in user.attacks:
+			attackid = user.attacks[ref][1]
+			cursor.execute("INSERT INTO dionaea.p0fs (connection, p0f_genre, p0f_link, p0f_detail, p0f_uptime, p0f_tos, p0f_dist, p0f_nat, p0f_fw) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
+				(attackid, genre, link, detail, uptime, tos, dist, nat, fw))
+		print("[%s] p0f ref %i: %s" % (user.room_jid.as_unicode(), ref, genre))
 
 	def handle_incident_dionaea_modules_python_smb_dcerpc_request(self, user, xmlobj):
 		try:
