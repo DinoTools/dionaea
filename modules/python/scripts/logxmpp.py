@@ -28,6 +28,7 @@
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from xml.etree import ElementTree as etree
 from io import open
+import time
 import base64
 import hashlib
 import re
@@ -588,6 +589,23 @@ class logxmpp(ihandler):
 			'fw':i.fw,
 			'nat':i.nat,
 			'ref' : str(i.con.__hash__())})
+
+	def serialize_incident_dionaea_modules_python_virustotal_report(self, i, anonymous):
+		md5 = i.md5hash
+		f = open(i.path, mode='r')
+		j = json.load(f)
+		if j['result'] != 1:
+			return
+		r = etree.Element('virustotal', attrib={
+			'md5_hash':md5, 
+			'permalink':j['permalink'], 
+			'date':str(int(time.mktime(time.strptime(j['report'][0], '%Y-%m-%d %H:%M:%S'))))})
+		scans = j['report'][1]
+		for av,res in scans.items():
+			e = etree.SubElement(r, 'scan', attrib={
+			'scanner':av,
+			'result':res})
+		return r			
 
 	def serialize_incident_dionaea_modules_python_smb_dcerpc_request(self, i, anonymous):
 		return etree.Element('dcerpcrequest', attrib={

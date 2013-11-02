@@ -414,8 +414,8 @@ class RoomHandler(MucRoomHandler):
 			dist = xmlobj.hasProp('dist').content
 			nat = xmlobj.hasProp('nat').content
 			fw = xmlobj.hasProp('fw').content 
-                        ref = xmlobj.hasProp('ref').content
-                        ref = int(ref)
+			ref = xmlobj.hasProp('ref').content
+			ref = int(ref)
 		except Exception as e:
 			print(e)
 			return
@@ -425,6 +425,34 @@ class RoomHandler(MucRoomHandler):
 			cursor.execute("INSERT INTO dionaea.p0fs (connection, p0f_genre, p0f_link, p0f_detail, p0f_uptime, p0f_tos, p0f_dist, p0f_nat, p0f_fw) VALUES (%s,%s,%s,%s,%s,%s,%s,%s,%s)",
 				(attackid, genre, link, detail, uptime, tos, dist, nat, fw))
 		print("[%s] p0f ref %i: %s" % (user.room_jid.as_unicode(), ref, genre))
+
+	def handle_incident_dionaea_modules_python_virustotal_report(self, user, xmlobj):
+		try:
+			md5_hash = xmlobj.hasProp('md5_hash').content
+			permalink = xmlobj.hasProp('permalink').content
+			date = xmlobj.hasProp('date').content
+			date = int(date)
+		except Exception as e:
+			print(e)
+			return
+		cursor.execute("INSERT INTO dionaea.virustotals (virustotal_md5_hash, virustotal_timestamp, virustotal_permalink) VALUES (%s,to_timestamp(%s),%s)",(md5_hash, date, permalink))
+		cursor.execute("""SELECT CURRVAL('dionaea.virustotals_virustotal_seq')""")
+		print("[%s] virustotal %s" % (user.room_jid.as_unicode(), md5_hash))
+		r = cursor.fetchall()[0][0]
+		c = xmlobj.children
+		while c is not None:
+			if c.name != 'scan':
+				c = c.next
+				continue
+			try:
+				scanner = c.hasProp('scanner').content
+				result = c.hasProp('result').content
+			except Exception as e:
+				print(e)
+			else:
+				cursor.execute("INSERT INTO dionaea.virustotalscans (virustotal, virustotalscan_scanner, virustotalscan_result) VALUES (%s, %s,%s)",(r, scanner, result))
+				print("[%s]\t %s %s" % (user.room_jid.as_unicode(), scanner, result))
+			c = c.next 
 
 	def handle_incident_dionaea_modules_python_smb_dcerpc_request(self, user, xmlobj):
 		try:

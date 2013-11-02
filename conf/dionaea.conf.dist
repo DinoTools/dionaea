@@ -399,7 +399,8 @@ modules = {
 									"^dionaea\x5c.module\x5c.emu\x5c.profile$",
 									"^dionaea\x5c.modules\x5c.python\x5c.mysql\x5c.*",
 									"^dionaea\x5c.modules\x5c.python\x5c.sip\x5c.*",
-									"^dionaea\x5c.modules\x5c.python\x5c.p0f\x5c.*"
+									"^dionaea\x5c.modules\x5c.python\x5c.p0f\x5c.*",
+									"^dionaea\x5c.modules\x5c.python\x5c.virustotal\x5creport",
 									]
 
 						/**
