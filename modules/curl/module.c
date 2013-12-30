@@ -232,6 +232,7 @@ static void check_run_count(void)
 						if( session->action.upload.userdata != NULL )
 							incident_value_string_set(i, "_userdata", g_string_new(session->action.upload.userdata));
 						incident_report(i);
+						incident_free(i);
 						tempfile_unlink(session->action.upload.file);
 					} else
 					{
