@@ -662,7 +662,8 @@ static bool curl_new(struct dionaea *d)
 			g_string_append_printf(protocols, ",%s", *proto);
 
 	g_info("curl version %s features:%s protocols:%s ", curlinfo->version, features->str+1, protocols->str+1);
-
+	g_string_free(features, TRUE);
+	g_string_free(protocols, TRUE);
 
 	curl_runtime.multi = curl_multi_init();
 	ev_timer_init(&curl_runtime.timer_event, timer_cb, 0., 0.);
