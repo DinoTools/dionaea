@@ -419,24 +419,23 @@ static int curl_debugfunction_cb(CURL *easy, curl_infotype type, char *data, siz
 
 void session_upload_new(struct incident *i)
 {
-	GHashTableIter iter;
-	gpointer key, value;
 	GString *gstemp;
-	char *url;
-
-	struct session *session = session_new();
-
-	session->type = session_type_upload;
 			
 	if (incident_value_string_get(i, "_url", &gstemp) == false )
 	{
 		g_debug("dionaea.upload.request got no _url in incident!");
 		return;
 	}
-	url = gstemp->str;
 
+	struct session *session = session_new();
+
+	session->type = session_type_upload;
+
+	char *url = gstemp->str;
 	session->url = g_strdup(url);
 
+	GHashTableIter iter;
+	gpointer key, value;
 
 	g_hash_table_iter_init (&iter, i->data);
 
