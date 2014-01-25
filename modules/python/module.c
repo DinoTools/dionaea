@@ -320,7 +320,9 @@ static bool freepy(void)
 			PyErr_Clear();
 		traceback();
 	}
+
 	Py_Finalize();
+	g_hash_table_destroy(runtime.imports);
 	return true;
 }
 
@@ -398,7 +400,7 @@ static bool new(struct dionaea *dionaea)
 	PyRun_SimpleString("from dionaea.core import init_traceables");
 	PyRun_SimpleString("init_traceables()");
 
-	runtime.imports = g_hash_table_new(g_str_hash, g_str_equal);
+	runtime.imports = g_hash_table_new_full(g_str_hash, g_str_equal, g_free, g_free);
 	struct lcfgx_tree_node *files;
 	if( lcfgx_get_list(runtime.config, &files, "imports") == LCFGX_PATH_FOUND_TYPE_OK )
 	{
