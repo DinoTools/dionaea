@@ -291,6 +291,20 @@ bool options_validate(struct options *opt)
 	return true;
 }
 
+static void options_free(struct options *opt)
+{
+	g_free(opt->config);
+	g_free(opt->group.name);
+	g_free(opt->garbage);
+	g_free(opt->stdOUT.levels);
+	g_free(opt->stdOUT.domains);
+	g_free(opt->pidfile);
+	g_free(opt->root);
+	g_free(opt->user.name);
+	g_free(opt->workingdir);
+	free(opt);
+}
+
 void show_version(struct version *ver)
 {
 
@@ -395,13 +409,11 @@ void show_version(struct version *ver)
 			  );
 	}
 
-	if( ver == &x )
-	{
-		g_free(ver->info.node);
-		g_free(ver->info.sys);
-		g_free(ver->info.machine);
-		g_free(ver->info.release);
-	}
+	g_free(ver->info.node);
+	g_free(ver->info.sys);
+	g_free(ver->info.machine);
+	g_free(ver->info.release);
+
 	printf("\n");
 }
 
@@ -804,6 +816,8 @@ opt->stdOUT.filter);
 	{
 		g_error("Could not change user");
 	}
+
+	options_free(opt);
 
 	// start modules - after chroot & setuid
 	modules_start();
