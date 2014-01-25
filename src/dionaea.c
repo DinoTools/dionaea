@@ -828,6 +828,9 @@ opt->stdOUT.filter);
 	ev_signal_init(&d->signals->sigint,  sigint_cb, SIGINT);
 	ev_signal_start(d->loop, &d->signals->sigint);
 
+	ev_signal_init(&d->signals->sigterm,  sigterm_cb, SIGTERM);
+	ev_signal_start(d->loop, &d->signals->sigterm);
+
 	ev_signal_init(&d->signals->sighup,  sighup_cb, SIGHUP);
 	ev_signal_start(d->loop, &d->signals->sighup);
 	signal(SIGSEGV, sigsegv_backtrace_cb);
