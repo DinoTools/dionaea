@@ -89,10 +89,13 @@ struct log_filter *log_filter_new(const char *domains, const char *levels)
 				}
 			}
 			g_error("%s is not a valid message filter flag", flags[i]);
+			g_strfreev(flags);
 			return NULL;
+
 			found_flag:
 			continue;
 		}
+		g_strfreev(flags);
 	}
 
 	struct log_filter *f = g_malloc0(sizeof(struct log_filter));
@@ -112,6 +115,7 @@ struct log_filter *log_filter_new(const char *domains, const char *levels)
 			f->domains[i]->pattern = g_pattern_spec_new(flags[i]);
 			f->domains[i+1] = NULL;
 		}
+		g_strfreev(flags);
 	}
 
 	return f;
