@@ -208,7 +208,7 @@ static int nfqueue_cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nf
 	int nf=0;
 
 	struct nfqnl_msg_packet_hdr *ph;
-	char *payload;
+	unsigned char *payload;
 	int len;
 
 	if( (ph = nfq_get_msg_packet_hdr(nfa)) == NULL)
