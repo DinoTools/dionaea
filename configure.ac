@@ -645,7 +645,7 @@ AC_ARG_WITH(cython-dir,
 				      [cython_dir="$withval"],[cython_dir=$PATH])
 
 if test x$enable_cython = "xyes" ; then
-	AC_PATH_PROG(CYTHON_BIN, cython, "no", $cython_dir)
+	AC_PATH_PROGS(CYTHON_BIN, [cython3 cython], "no", $cython_dir)
 	if test "x$CYTHON_BIN" == "xno" ; then
 		enable_cython="no"
 	fi
