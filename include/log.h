@@ -43,8 +43,10 @@
 #endif /* DEBUG */
 #endif
 
-
+// g_info() was added in glib 2.40
+#ifndef g_info
 #define g_info(...) g_log(G_LOG_DOMAIN,	G_LOG_LEVEL_INFO, __VA_ARGS__)
+#endif
 
 #ifdef NDEBUG
 #undef g_debug
