@@ -41,6 +41,13 @@ AC_FUNC_ERROR_AT_LINE
 AC_TYPE_SIGNAL
 AC_CHECK_FUNCS([strndup inet_ntoa  memmove memset strdup strerror])
 
+# Check for pkg-config program
+m4_define_default([PKG_PROG_PKG_CONFIG], [AC_MSG_CHECKING([pkg-config]) AC_MSG_RESULT([no])])
+
+PKG_PROG_PKG_CONFIG
+
+# If the pkg-config autoconf support isn't installed, just ignore all packages
+m4_define_default([PKG_CHECK_MODULES], [AC_MSG_CHECKING([$1]) AC_MSG_RESULT([no]) $4])
 
 dnl **************************************************
 dnl * bind() ipv4 mapped address?                    *
@@ -512,6 +519,8 @@ if test x$enable_netfilter_queue = "xyes" ; then
 			else
 				LIB_NETFILTER_QUEUE_CFLAGS=""
 			fi
+			# The netfilter lib doesn't provide any version info, so try to detect the version
+			PKG_CHECK_MODULES([libnetfilter_queue], [libnetfilter_queue >= 1.0.0],, [AC_DEFINE([NF_QUEUE_PRE_1_0_0], [1], [netfilter version < 1.0.0])])
 			AC_DEFINE([HAVE_LIBNETFILTER_QUEUE], [1], [Define to 1 to compile with netfilter_queue support])
 		fi
 	fi
