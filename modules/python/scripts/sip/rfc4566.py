@@ -438,7 +438,7 @@ class SDP(object):
 				elif k in cls._attributes_allowed:
 					attributes[k] = v
 			except ValueError as error_msg:
-				logger.warning("Can't parse sdp data: '{}':  {:s}".format(repr(line)[:128], error_msg))
+				logger.warning("Can't parse sdp data: '{}':  {!s}".format(repr(line)[:128], error_msg))
 				raise SdpParsingError()
 
 		a = {}
