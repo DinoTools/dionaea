@@ -65,6 +65,17 @@ struct nlattr;
 
 #define D_LOG_DOMAIN "nl"
 
+#ifndef NLHDR_COMMON
+// This macro has bin moved to a private header file in libnl 3.2.21
+#define NLHDR_COMMON                            \
+        int                     ce_refcnt;      \
+        struct nl_object_ops *  ce_ops;         \
+        struct nl_cache *       ce_cache;       \
+        struct nl_list_head     ce_list;        \
+        int                     ce_msgtype;     \
+        int                     ce_flags;       \
+        uint32_t                ce_mask;
+#endif
 
 static struct 
 {
