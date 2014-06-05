@@ -594,14 +594,17 @@ class logxmpp(ihandler):
 		md5 = i.md5hash
 		f = open(i.path, mode='r')
 		j = json.load(f)
-		if j['result'] != 1:
+		if j['response_code'] != 1:
 			return
 		r = etree.Element('virustotal', attrib={
 			'md5_hash':md5, 
 			'permalink':j['permalink'], 
-			'date':str(int(time.mktime(time.strptime(j['report'][0], '%Y-%m-%d %H:%M:%S'))))})
-		scans = j['report'][1]
-		for av,res in scans.items():
+			'date':str(int(time.mktime(time.strptime(j['scan_date'], '%Y-%m-%d %H:%M:%S'))))})
+		scans = j['scans']
+		for av,val in scans.items():
+			res = val['result']
+			if not res:
+				res = ""
 			e = etree.SubElement(r, 'scan', attrib={
 			'scanner':av,
 			'result':res})
