@@ -270,9 +270,9 @@ class httpd(connection):
 				icd.url = ""
 				fp_tmp.close()
 				icd.report()
-				fp_tmp.unlink(fp_tmp.name)
+				os.unlink(fp_tmp.name)
 
-			self.fp_tmp.unlink(self.fp_tmp.name)
+			os.unlink(self.fp_tmp.name)
 
 		x = self.send_head()
 		if x :
