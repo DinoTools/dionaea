@@ -266,6 +266,7 @@ class httpd(connection):
 
 				icd = incident("dionaea.download.complete")
 				icd.path = fp_tmp.name
+				icd.con = self
 				# We need the url for logging
 				icd.url = ""
 				fp_tmp.close()
