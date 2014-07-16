@@ -420,7 +420,12 @@ static int curl_debugfunction_cb(CURL *easy, curl_infotype type, char *data, siz
 
 void session_upload_new(struct incident *i)
 {
+	GHashTableIter iter;
+	gpointer key, value;
 	GString *gstemp;
+	struct session *session = NULL;
+	char *url = NULL;
+
 			
 	if (incident_value_string_get(i, "_url", &gstemp) == false )
 	{
@@ -428,15 +433,12 @@ void session_upload_new(struct incident *i)
 		return;
 	}
 
-	struct session *session = session_new();
+	session = session_new();
 
 	session->type = session_type_upload;
 
-	char *url = gstemp->str;
+	url = gstemp->str;
 	session->url = g_strdup(url);
-
-	GHashTableIter iter;
-	gpointer key, value;
 
 	g_hash_table_iter_init (&iter, i->data);
 
