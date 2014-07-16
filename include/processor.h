@@ -51,7 +51,7 @@ struct processor
 struct processor_data
 {
 	enum processor_state state;
-	GMutex *mutex;
+	GMutex mutex;
 	struct refcount queued;
 	struct processor *processor;
 	void *ctx;

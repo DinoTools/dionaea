@@ -698,7 +698,7 @@ opt->stdOUT.filter);
 		g_thread_init (NULL);
 
 	// logging continued ...
-	d->logging->lock = g_mutex_new();
+	g_mutex_init(&d->logging->lock);
 
 	// incident handlers
 	d->ihandlers = g_malloc0(sizeof(struct ihandlers));

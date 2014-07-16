@@ -39,7 +39,7 @@ struct pchild
 	 *  
 	 * locking has to be done 'client' side
 	 */
-	GMutex *mutex;
+	GMutex mutex;
 };
 
 

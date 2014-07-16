@@ -81,7 +81,7 @@ struct emu_emulate_ctx
 
 	struct connection *ctxcon;
 
-	GMutex *mutex;
+	GMutex mutex;
 	struct emu *emu;
 	struct emu_env *env;
 

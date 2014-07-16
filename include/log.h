@@ -65,7 +65,7 @@
 
 struct logging
 {
-	GMutex *lock;
+	GMutex lock;
 	GList *loggers;
 };
 

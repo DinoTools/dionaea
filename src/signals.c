@@ -122,7 +122,7 @@ void sigsegv_backtrace_cb(int sig)
 
 	size = backtrace( back, BACKTRACE_SIZE );
 
-	g_mutex_lock(g_dionaea->logging->lock);
+	g_mutex_lock(&g_dionaea->logging->lock);
 	for( GList *it = g_dionaea->logging->loggers; it != NULL; it = it->next )
 	{
 		struct logger *l = it->data;
@@ -145,7 +145,7 @@ void sigsegv_backtrace_cb(int sig)
 			continue;
 		backtrace_symbols_fd(back, size, l->fd);
 	}
-//	g_mutex_unlock(g_dionaea->logging->lock);
+//	g_mutex_unlock(&g_dionaea->logging->lock);
 #endif
 	exit(-1);
 }

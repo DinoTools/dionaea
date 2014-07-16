@@ -49,12 +49,12 @@ struct stream_chunk
 struct bistream
 {
 	GList *stream_sequence;
-	GMutex *mutex;  
+	GMutex mutex;
 
 	struct stream
 	{
 		GList *stream_chunks;
-		GMutex *mutex;
+		GMutex mutex;
 	}streams[2];
 };
 

@@ -33,7 +33,7 @@
 
 struct refcount
 {
-	GMutex *mutex;
+	GMutex mutex;
 	int refs;
 };
 

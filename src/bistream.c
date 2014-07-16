@@ -42,11 +42,11 @@ struct bistream *bistream_new()
 	enum bistream_direction it;
 	for( it = bistream_in; it <= bistream_out; it++ )
 	{
-		bs->streams[it].mutex = g_mutex_new();
+		g_mutex_init(&bs->streams[it].mutex);
 		bs->streams[it].stream_chunks = NULL;
 	}
 	bs->stream_sequence = NULL;
-	bs->mutex = g_mutex_new();
+	g_mutex_init(&bs->mutex);
 	return bs;
 }
 
@@ -55,7 +55,7 @@ void bistream_free(struct bistream *bs)
 	enum bistream_direction dir;
 	for( dir = bistream_in; dir <= bistream_out; dir++ )
 	{
-		g_mutex_free(bs->streams[dir].mutex);
+		g_mutex_clear(&bs->streams[dir].mutex);
 		g_list_free(bs->streams[dir].stream_chunks);
 	}
 
@@ -69,7 +69,7 @@ void bistream_free(struct bistream *bs)
 		bs->stream_sequence = g_list_delete_link(bs->stream_sequence, it);
 	}
 
-	g_mutex_free(bs->mutex);
+	g_mutex_clear(&bs->mutex);
 	g_free(bs);
 }
 
@@ -96,8 +96,8 @@ void bistream_data_add(struct bistream *bs, enum bistream_direction dir, void *d
 	if( laststream != NULL )
 		laststreamsc = laststream->data;
 
-	g_mutex_lock(bs->mutex);
-	g_mutex_lock(bs->streams[dir].mutex);
+	g_mutex_lock(&bs->mutex);
+	g_mutex_lock(&bs->streams[dir].mutex);
 
 	if( lastbistreamsc == laststreamsc && lastbistreamsc == NULL )
 	{
@@ -130,8 +130,8 @@ void bistream_data_add(struct bistream *bs, enum bistream_direction dir, void *d
 		bs->streams[dir].stream_chunks = g_list_append(bs->streams[dir].stream_chunks, sc);
 	}
 
-	g_mutex_unlock(bs->streams[dir].mutex);
-	g_mutex_unlock(bs->mutex);
+	g_mutex_unlock(&bs->streams[dir].mutex);
+	g_mutex_unlock(&bs->mutex);
 }
 
 void print_stream_chunk2(struct stream_chunk *sc)
@@ -228,12 +228,12 @@ void print_stream_chunk(struct stream_chunk *sc)
 void bistream_debug(struct bistream *bs)
 {
 	GList *it;
-	g_mutex_lock(bs->mutex);
+	g_mutex_lock(&bs->mutex);
 	for( it = g_list_first(bs->stream_sequence); it != NULL; it = g_list_next(it) )
 	{
 		print_stream_chunk2(it->data);
 	}
-	g_mutex_unlock(bs->mutex);
+	g_mutex_unlock(&bs->mutex);
 }
 
 uint32_t sizeof_stream_chunks(GList *stream_chunks)
@@ -249,13 +249,13 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 {
 	g_debug("%s bs %p dir %i start %i end %i data %p", __PRETTY_FUNCTION__, bs, dir, start, end, data);
 //	start = 0;
-	g_mutex_lock(bs->streams[dir].mutex);
+	g_mutex_lock(&bs->streams[dir].mutex);
 	GList *last = g_list_last(bs->streams[dir].stream_chunks);
 	GList *first = g_list_first(bs->streams[dir].stream_chunks);
 
 	if( !first || !last )
 	{
-		g_mutex_unlock(bs->streams[dir].mutex);
+		g_mutex_unlock(&bs->streams[dir].mutex);
 		return -1;
 	}
 
@@ -272,7 +272,7 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 */
 	if( end > lastsc->stream_offset + lastsc->data->len || start >= end )
 	{
-		g_mutex_unlock(bs->streams[dir].mutex);
+		g_mutex_unlock(&bs->streams[dir].mutex);
 		return -1;
 	}
 
@@ -324,7 +324,7 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 		if( it == NULL )
 			break;
 	}
-	g_mutex_unlock(bs->streams[dir].mutex);
+	g_mutex_unlock(&bs->streams[dir].mutex);
 	return end - start;
 }
 

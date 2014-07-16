@@ -151,7 +151,7 @@ void processors_clear(struct connection *con)
 struct processor_data *processor_data_new(void)
 {
 	struct processor_data *pd = g_malloc0(sizeof(struct processor_data));
-	pd->mutex = g_mutex_new();
+	g_mutex_init(&pd->mutex);
 	refcount_init(&pd->queued);
 	pd->state = processor_continue;
 	pd->processor = NULL;
@@ -167,7 +167,7 @@ void processor_data_free(struct processor_data *pd)
 		return;
 */
 	bistream_free(pd->bistream);
-	g_mutex_free(pd->mutex);
+	g_mutex_clear(&pd->mutex);
 	refcount_exit(&pd->queued);
 	g_free(pd);
 }
@@ -207,10 +207,10 @@ void processors_io_in_thread(void *data, void *userdata)
 	g_debug("%s data %p userdata %p", __PRETTY_FUNCTION__, data,  userdata);
 	struct connection *con = data;
 	struct processor_data *pd = userdata;
-	g_mutex_lock(pd->mutex);
+	g_mutex_lock(&pd->mutex);
 	refcount_dec(&pd->queued);
 	recurse_io_process(pd, con, bistream_in);
-	g_mutex_unlock(pd->mutex);
+	g_mutex_unlock(&pd->mutex);
 	connection_unref(con);
 }
 
@@ -219,10 +219,10 @@ void processors_io_out_thread(void *data, void *userdata)
 	g_debug("%s data %p userdata %p", __PRETTY_FUNCTION__, data,  userdata);
 	struct connection *con = data;
 	struct processor_data *pd = userdata;
-	g_mutex_lock(pd->mutex);
+	g_mutex_lock(&pd->mutex);
 	refcount_dec(&pd->queued);
 	recurse_io_process(pd, con, bistream_out);
-	g_mutex_unlock(pd->mutex);
+	g_mutex_unlock(&pd->mutex);
 	connection_unref(con);
 }
 
@@ -250,7 +250,7 @@ void processor_io_single(struct connection *con,  struct processor_data *pd, voi
 		struct bistream *bistream = pd->bistream;
 		bistream_data_add(bistream, direction, data, size);
 
-		g_mutex_lock(pd->queued.mutex);
+		g_mutex_lock(&pd->queued.mutex);
 		if( pd->queued.refs == 0 )
 		{
 			pd->queued.refs++;
@@ -260,7 +260,7 @@ void processor_io_single(struct connection *con,  struct processor_data *pd, voi
 			connection_ref(con);
 			g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error);
 		}
-		g_mutex_unlock(pd->queued.mutex);
+		g_mutex_unlock(&pd->queued.mutex);
 	}else
 	if( io != NULL )
 	{
