@@ -693,10 +693,6 @@ opt->stdOUT.filter);
 	g_message("udns version %s",  UDNS_VERSION);
 
 
-	// glib thread init
-	if( !g_thread_supported () )
-		g_thread_init (NULL);
-
 	// logging continued ...
 	g_mutex_init(&d->logging->lock);
 
