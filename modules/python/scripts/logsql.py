@@ -787,18 +787,18 @@ class logsqlhandler(ihandler):
 		f = open(icd.path, mode='r')
 		j = json.load(f)
 
-		if j['result'] == 1: # file was known to virustotal
+		if j['response_code'] == 1: # file was known to virustotal
 			permalink = j['permalink']
-			date = j['report'][0]
+			date = j['scan_date']
 			self.cursor.execute("INSERT INTO virustotals (virustotal_md5_hash, virustotal_permalink, virustotal_timestamp) VALUES (?,?,strftime('%s',?))", 
 				(md5, permalink, date))
 			self.dbh.commit()
 
 			virustotal = self.cursor.lastrowid
 
-			scans = j['report'][1]
-			for av in scans:
-				res = scans[av]
+			scans = j['scans']
+			for av, val in scans.items():
+				res = val['result']
 				# not detected = '' -> NULL
 				if res == '':
 					res = None

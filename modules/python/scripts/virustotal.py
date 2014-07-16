@@ -121,9 +121,9 @@ class virustotalhandler(ihandler):
 		self.cookies[cookie] = vtreport(backlogfile, md5_hash, path, status)
 
 		i = incident("dionaea.upload.request")
-		i._url = "http://www.virustotal.com/api/get_file_report.json"
+		i._url = "https://www.virustotal.com/vtapi/v2/file/report"
 		i.resource = md5_hash
-		i.key = self.apikey
+		i.apikey = self.apikey
 		i._callback = "dionaea.modules.python.virustotal.get_file_report"
 		i._userdata = cookie
 		i.report()
@@ -135,29 +135,26 @@ class virustotalhandler(ihandler):
 		cookie = icd._userdata
 		vtr = self.cookies[cookie]
 
-		if j['result'] == -2:
+		if j['response_code'] == -2:
 			logger.warn("api throttle")
 			self.cursor.execute("""UPDATE backlogfiles SET status = ? WHERE backlogfile = ?""", (vtr.status, vtr.backlogfile))
 			self.dbh.commit()
-		elif j['result'] == -1:
+		elif j['response_code'] == -1:
 			logger.warn("something is wrong with your virustotal api key")
-		elif j['result'] == 0: # file unknown
+		elif j['response_code'] == 0: # file unknown
 			# mark for submit
 			if vtr.status == 'new':
 				self.cursor.execute("""UPDATE backlogfiles SET status = 'submit', lastcheck_time = strftime("%s",'now') WHERE backlogfile = ?""", (vtr.backlogfile,))
 			elif vtr.status == 'query':
 				self.cursor.execute("""UPDATE backlogfiles SET lastcheck_time = strftime("%s",'now') WHERE backlogfile = ?""", (vtr.backlogfile,))
 			self.dbh.commit()
-		elif j['result'] == 1: # file known
+		elif j['response_code'] == 1: # file known
 #			self.cursor.execute("""UPDATE backlogfiles SET status = 'comment', lastcheck_time = strftime("%s",'now') WHERE backlogfile = ?""", (vtr.backlogfile,))
 			self.cursor.execute("""DELETE FROM backlogfiles WHERE backlogfile = ?""", (vtr.backlogfile,) )
 			self.dbh.commit()
 
 			logger.debug("report {}".format(j) )
-			date = j['report'][0]
-			scans = j['report'][1]
-#			for av in scans:
-#				logger.debug("scanner {} result {}".format(av,scans[av]))
+			date = j['scan_date']
 
 			i = incident("dionaea.modules.python.virustotal.report")
 			i.md5hash = vtr.md5hash
@@ -172,8 +169,8 @@ class virustotalhandler(ihandler):
 		self.cookies[cookie] = vtreport(backlogfile, md5_hash, path, status)
 
 		i = incident("dionaea.upload.request")
-		i._url = "http://www.virustotal.com/api/scan_file.json"
-		i.key = self.apikey
+		i._url = "https://www.virustotal.com/vtapi/v2/file/scan"
+		i.apikey = self.apikey
 		i.set('file://file', path)
 		i._callback = "dionaea.modules.python.virustotal_scan_file"
 		i._userdata = cookie
@@ -187,13 +184,13 @@ class virustotalhandler(ihandler):
 		cookie = icd._userdata
 		vtr = self.cookies[cookie]
 		
-		if j['result'] == -2:
+		if j['response_code'] == -2:
 			logger.warn("api throttle")
 			self.cursor.execute("""UPDATE backlogfiles SET status = ? WHERE backlogfile = ?""", (vtr.status, vtr.backlogfile))
 			self.dbh.commit()
-		elif j['result'] == -1:
+		elif j['response_code'] == -1:
 			logger.warn("something is wrong with your virustotal api key")
-		elif j['result'] == 1:
+		elif j['response_code'] == 1:
 			scan_id = j['scan_id']
 			# recycle this entry for the query
 			self.cursor.execute("""UPDATE backlogfiles SET scan_id = ?, status = 'comment', submit_time = strftime("%s",'now') WHERE backlogfile = ?""", (scan_id, vtr.backlogfile,))
@@ -205,11 +202,10 @@ class virustotalhandler(ihandler):
 		self.cookies[cookie] = vtreport(backlogfile, md5_hash, path, status)
 
 		i = incident("dionaea.upload.request")
-		i._url = "http://www.virustotal.com/api/make_comment.json"
-		i.key = self.apikey
-		i.file = md5_hash
-		i.tags = "honeypot;malware;networkworm"
-		i.comment = "This sample was captured in the wild and uploaded by the dionaea honeypot."
+		i._url = "https://www.virustotal.com/vtapi/v2/comments/put"
+		i.apikey = self.apikey
+		i.resource = md5_hash
+		i.comment = "This sample was captured in the wild and uploaded by the dionaea honeypot.\n#honeypot #malware #networkworm"
 		i._callback = "dionaea.modules.python.virustotal_make_comment"
 		i._userdata = cookie
 		i.report()
@@ -220,13 +216,13 @@ class virustotalhandler(ihandler):
 		f = open(icd.path, mode='r')
 		try:
 			j = json.load(f)
-			if j['result'] == -2:
+			if j['response_code'] == -2:
 				logger.warn("api throttle")
 				self.cursor.execute("""UPDATE backlogfiles SET status = ? WHERE backlogfile = ?""", (vtr.status, vtr.backlogfile))
 				self.dbh.commit()
-			elif j['result'] == -1:
+			elif j['response_code'] == -1:
 				logger.warn("something is wrong with your virustotal api key")
-			elif j['result'] == 1:
+			elif j['response_code'] == 1:
 				self.cursor.execute("""UPDATE backlogfiles SET status = 'query' WHERE backlogfile = ? """, (vtr.backlogfile, ))
 				self.dbh.commit()
 
