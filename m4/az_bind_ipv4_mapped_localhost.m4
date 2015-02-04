@@ -2,7 +2,7 @@ AC_DEFUN([AZ_FUNC_BIND_MAPPED_IPV4_LOCALHOST],
 [AC_CHECK_FUNCS(bind)
 AC_MSG_CHECKING([if bind("::ffff:0.0.0.0") works])
 AC_CACHE_VAL(ac_cv_have_bind_ipv4_mapped_localhost,
-[AC_RUN_IFELSE(
+[AC_RUN_IFELSE([AC_LANG_SOURCE(
 [#include <sys/types.h>
 #include <sys/socket.h>
 #include <sys/un.h>
@@ -24,6 +24,6 @@ int main(int argc, char **argv)
 	r = bind(s, (struct sockaddr *)&si6, sizeof(struct sockaddr_in6));
 	close(s);
 	return r;
-}], ac_cv_have_bind_ipv4_mapped_localhost=yes, ac_cv_have_bind_ipv4_mapped_localhost=no, ac_cv_have_bind_ipv4_mapped_localhost=cross)])
+}])], ac_cv_have_bind_ipv4_mapped_localhost=yes, ac_cv_have_bind_ipv4_mapped_localhost=no, ac_cv_have_bind_ipv4_mapped_localhost=cross)])
 AC_MSG_RESULT([$ac_cv_have_bind_ipv4_mapped_localhost])
 ])

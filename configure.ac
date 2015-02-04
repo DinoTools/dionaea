@@ -8,7 +8,7 @@ sinclude(m4/az_bind_ipv4_mapped_localhost.m4)
 
 AC_PREREQ(2.59)
 AC_INIT([dionaea], [0.1.0], [nepenthesdev@gmail.com])
-AM_INIT_AUTOMAKE([dionaea], [0.1.0])
+AM_INIT_AUTOMAKE
 AC_REVISION([$Id$])
 
 AC_PREFIX_DEFAULT(/opt/dionaea)
