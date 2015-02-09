@@ -4363,8 +4363,9 @@ const char *connection_strerror(enum connection_error error)
 		"timeout resolving the domain" , /* ECONDNSTIMEOUT   */ 
 		"could not connect host(s)" ,/* ECONUNREACH       */  
 		"could not resolve domain" , /* ECONNOSUCHDOMAIN */ 
+		"too many connections" , /* ECONMANY */
 	};
-	if( error > ECONMAX )
+	if( error >= ECONMANY )
 		return NULL;
 
 	return myerrormsgs[error];

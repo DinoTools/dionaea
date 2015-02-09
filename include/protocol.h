@@ -41,7 +41,6 @@ enum connection_error
 	ECONUNREACH        = 1,
 	ECONNOSUCHDOMAIN   = 2,
 	ECONMANY		   = 4,
-	ECONMAX            = 5
 };
 
 typedef void (*protocol_handler_established)(struct connection *con);
