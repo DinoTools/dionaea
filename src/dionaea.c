@@ -760,9 +760,15 @@ opt->stdOUT.filter);
 	ev_async_start(d->loop, &d->threads->trigger);
 
 	// chroot
-	if( opt->root != NULL && chroot(opt->root) != 0 )
+	if( opt->root != NULL )
 	{
-		g_error("Could not chroot(\"%s\") (%s)", opt->root, strerror(errno));
+		if ( chroot(opt->root) != 0 )
+		{
+			g_error("Could not chroot(\"%s\") (%s)", opt->root, strerror(errno));
+		} else
+		{
+			chdir("/");
+		}
 	}
 
 	// umask
