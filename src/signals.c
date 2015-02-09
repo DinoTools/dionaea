@@ -94,18 +94,9 @@ void sigsegv_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 	g_warning("%s loop %p w %p revents %i",__PRETTY_FUNCTION__, loop, w, revents);
 //	g_warning("%s sig %i",__PRETTY_FUNCTION__, sig);
 	char cmd[100];
-	char progname[100]; 
-	char *p;
-	int n;
 
-	n = readlink("/proc/self/exe", progname, sizeof(progname));
-	progname[n] = 0;
-
-	p = strrchr(progname, '/');
-	*p = 0;
-
-	snprintf(cmd, sizeof(cmd), "%s/bin/dionaea-backtrace %d > /tmp/segv_%s.%d.out 2>&1", 
-			 PREFIX, (int)getpid(), p+1, (int)getpid());
+	snprintf(cmd, sizeof(cmd), "%s/bin/dionaea-backtrace %d > /tmp/segv_dionaea.%d.out 2>&1",
+			 PREFIX, (int)getpid(), (int)getpid());
 	if( system(cmd) )
 		return;
 	signal(SIGSEGV, SIG_DFL);
