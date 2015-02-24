@@ -293,7 +293,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 		g_free(con->local.hostname);
 	con->local.hostname = g_strdup(laddr);
 	if( iface_scope )
-		strcpy(con->local.iface_scope, iface_scope);
+		snprintf(con->local.iface_scope, sizeof(con->local.iface_scope), "%s", iface_scope);
 
 
 	if( !parse_addr(con->local.hostname, con->local.iface_scope, ntohs(con->local.port), &con->local.addr, &socket_domain, &sizeof_sa) )
@@ -1010,7 +1010,7 @@ void connection_connect(struct connection* con, const char* addr, uint16_t port,
 
 
 	if( iface_scope )
-		strcpy(con->remote.iface_scope, iface_scope);
+		snprintf(con->remote.iface_scope, sizeof(con->remote.iface_scope), "%s", iface_scope);
 	else
 		con->remote.iface_scope[0] = '\0';
 
