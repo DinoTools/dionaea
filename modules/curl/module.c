@@ -162,7 +162,7 @@ static int multi_timer_cb(CURLM *multi, long timeout_ms)
 	ev_timer_stop(g_dionaea->loop, &curl_runtime.timer_event);
 	if( timeout_ms > 0 )
 	{
-		double  t = timeout_ms / 1000;
+		double  t = (double) timeout_ms / 1000.0;
 		ev_timer_init(&curl_runtime.timer_event, timer_cb, t, 0.);
 		ev_timer_start(g_dionaea->loop, &curl_runtime.timer_event);
 	} else
