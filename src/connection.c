@@ -207,6 +207,9 @@ bool bind_local(struct connection *con)
 	if( con->local.hostname == NULL && ntohs(con->local.port) == 0 )
 		return true;
 
+	if( con->local.hostname == NULL )
+		return false;
+
 	if( !parse_addr(con->local.hostname, con->local.iface_scope, ntohs(con->local.port), &sa, &socket_domain, &sizeof_sa) )
 		return false;
 
