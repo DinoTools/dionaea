@@ -103,13 +103,6 @@ struct async_cmd *async_cmd_new(async_cmd_cb function, void *data)
 	return cmd;
 }
 
-void async_cmd_free(struct async_cmd *cmd)
-{
-	g_free(cmd);
-}
-
-
-
 void async_incident_report(void *data)
 {
 	struct incident *i = data;
