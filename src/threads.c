@@ -67,14 +67,6 @@ void trigger_cb(struct ev_loop *loop, struct ev_async *w, int revents)
 	g_async_queue_unref(aq);
 }
 
-void thread_test(gpointer a, gpointer b)
-{
-	int s = rand()%10;
-	g_debug("%p sleeping %i", g_thread_self(), s);
-	sleep(s);
-	g_debug("%p done", g_thread_self());
-}
-
 void surveillance_cb(struct ev_loop *loop, struct ev_periodic *w, int revents)
 {
 /*	g_debug("%s %i %i", 
