@@ -15,16 +15,14 @@ import codecs
 import base64
 import md5
 import optparse
-import time
 import io
 import os
 from pyPgSQL import PgSQL
 
-from pyxmpp.all import JID,Iq,Presence,Message,StreamError
+from pyxmpp.all import JID
 from pyxmpp.jabber.client import JabberClient
 from pyxmpp.jabber.muc import MucRoomManager, MucRoomHandler
-from pyxmpp.xmlextra import replace_ns, common_doc, common_ns, get_node_ns
-from pyxmpp import xmlextra
+from pyxmpp.xmlextra import replace_ns, common_doc
 
 
 # PyXMPP uses `logging` module for its debug output

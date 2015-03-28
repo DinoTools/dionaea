@@ -26,14 +26,11 @@
 #*
 #*******************************************************************************/
 
-from dionaea.core import ihandler, incident, connection, g_dionaea
+from dionaea.core import incident, connection, g_dionaea
 
-import datetime
 import traceback
 import logging
 import tempfile
-import binascii
-import os
 from uuid import UUID
 
 from .include.smbfields import *

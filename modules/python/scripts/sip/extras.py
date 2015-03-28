@@ -8,7 +8,6 @@ import pprint
 import re
 import sqlite3
 import struct
-import tempfile
 import time
 
 logger = logging.getLogger('sip')

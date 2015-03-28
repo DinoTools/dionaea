@@ -4,9 +4,7 @@
 # createdb --owner=xmpp logsql
 # psql -U xmpp logsql < modules/python/util/xmpp/pg_schema.sql
 
-import sys
 import sqlite3
-import postgresql
 import postgresql.driver as pg_driver
 import optparse
 

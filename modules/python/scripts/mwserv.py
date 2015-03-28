@@ -26,11 +26,10 @@
 #*******************************************************************************/
 
 from dionaea.core import ihandler, incident, g_dionaea
-from dionaea.util import md5file, sha512file
+from dionaea.util import sha512file
 from dionaea import pyev
 
 import logging
-import json
 import uuid
 
 logger = logging.getLogger('mwserv')

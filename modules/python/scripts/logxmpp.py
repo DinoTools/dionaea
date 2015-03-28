@@ -40,7 +40,6 @@ import tempfile
 import logging
 from random import choice
 import string
-import copy
 
 logger = logging.getLogger('logxmpp')
 logger.setLevel(logging.INFO)

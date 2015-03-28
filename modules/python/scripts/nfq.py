@@ -28,7 +28,7 @@
 from socket import AF_INET, AF_INET6
 from time import time
 from dionaea.core import ihandler, incident, connection, g_dionaea
-from dionaea.mirror import mirrord, mirrorc
+from dionaea.mirror import mirrorc
 
 import logging
 

@@ -26,11 +26,9 @@
 #*******************************************************************************/
 
 
-from dionaea.core import ihandler, incident, g_dionaea
+from dionaea.core import ihandler, g_dionaea
 
-import os
 import logging
-import random
 import json
 import sqlite3
 import time

@@ -25,17 +25,13 @@
 #*
 #*******************************************************************************/
 
-from dionaea.core import ihandler, incident, connection, g_dionaea
+from dionaea.core import ihandler, incident, connection
 
-import datetime
 import traceback
 import logging
-import binascii
-import os
 import tempfile
 
 from dionaea.smb.include.smbfields import *
-from dionaea.smb.include.packet import Raw
 from .include.tds import *
 
 logger = logging.getLogger('MSSQL')

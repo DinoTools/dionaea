@@ -26,7 +26,6 @@
 #
 
 from random import Random
-import sys
 import copy
 import sqlite3
 import argparse

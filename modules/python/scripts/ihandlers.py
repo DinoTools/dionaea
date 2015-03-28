@@ -27,22 +27,10 @@
 #*******************************************************************************/
 
 import logging
-import os
-import imp
-
 from dionaea.core import g_dionaea
-
-# service imports
-import dionaea.tftp
-import dionaea.cmd
-import dionaea.emu
-import dionaea.store
-import dionaea.test
-import dionaea.ftp
 
 logger = logging.getLogger('ihandlers')
 logger.setLevel(logging.DEBUG)
-
 
 # reload service imports
 #imp.reload(dionaea.tftp)
@@ -72,18 +60,23 @@ def new():
 		g_handlers.append(dionaea.ftp.ftpdownloadhandler('dionaea.download.offer'))
 
 	if "tftpdownload" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import dionaea.tftp
 		g_handlers.append(dionaea.tftp.tftpdownloadhandler('dionaea.download.offer'))
 
 	if "emuprofile" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import dionaea.emu
 		g_handlers.append(dionaea.emu.emuprofilehandler('dionaea.module.emu.profile'))
 
 	if "cmdshell" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import dionaea.cmd
 		g_handlers.append(dionaea.cmd.cmdshellhandler('dionaea.service.shell.*'))
 
 	if "store" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import dionaea.store
 		g_handlers.append(dionaea.store.storehandler('dionaea.download.complete'))
 
 	if "uniquedownload" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
+		import dionaea.test
 		g_handlers.append(dionaea.test.uniquedownloadihandler('dionaea.download.complete.unique'))
 
 	if "surfids" in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:

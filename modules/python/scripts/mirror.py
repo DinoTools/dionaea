@@ -27,11 +27,7 @@
 #*******************************************************************************/
 
 from dionaea.core import connection
-import struct
 import logging
-import os
-import sys
-import datetime
 
 logger = logging.getLogger('mirror')
 logger.setLevel(logging.DEBUG)

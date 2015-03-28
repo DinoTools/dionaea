@@ -27,7 +27,6 @@
 
 
 from dionaea.core import ihandler, incident
-from dionaea.core import connection
 from dionaea.cmd import cmdexe
 import logging
 import json

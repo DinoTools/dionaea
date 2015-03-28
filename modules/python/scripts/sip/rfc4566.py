@@ -6,7 +6,6 @@ This package implements RFC 4566
 
 import logging
 import re
-import time
 
 try:
 	from dionaea.sip.extras import int2bytes

@@ -39,7 +39,7 @@ logger = logging.getLogger('scapy')
 logger.setLevel(logging.DEBUG)
 
 
-from .fieldtypes import StrField,ConditionalField,Emph,PacketListField
+from .fieldtypes import StrField,ConditionalField,Emph
 from .helpers import VolatileValue, Gen, SetGen, BasePacket
 
 

@@ -26,10 +26,9 @@
 #*******************************************************************************/
 
 
-from dionaea.core import ihandler, incident, connection, g_dionaea
+from dionaea.core import ihandler, incident, connection
 from struct import pack, unpack, calcsize
-from socket import inet_aton, htons
-from time import sleep
+from socket import inet_aton
 
 import logging
 

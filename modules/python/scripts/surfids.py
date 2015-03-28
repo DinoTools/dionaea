@@ -25,18 +25,13 @@
 #*
 #*******************************************************************************/
 
-from dionaea.core import ihandler, incident, g_dionaea
+from dionaea.core import ihandler, g_dionaea
 from dionaea.smb import smb
 
-import os
 import logging
-import random
 
-import postgresql
 import postgresql.driver as pg_driver
 from postgresql.exceptions import ConnectionError
-
-from time import sleep
 
 logger = logging.getLogger('surfids')
 logger.setLevel(logging.DEBUG)

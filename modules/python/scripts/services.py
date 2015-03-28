@@ -26,14 +26,10 @@
 #*******************************************************************************/
 
 
-import imp
 import logging
-import sys
-import traceback
 import fnmatch
 
 from dionaea.core import g_dionaea, ihandler
-import tempfile
 
 # service imports
 import dionaea.http

@@ -68,7 +68,6 @@
 
 # ftp server 
 from dionaea.core import connection, ihandler, g_dionaea, incident
-import struct
 import logging
 import os
 import urllib.parse

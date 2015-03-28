@@ -3,7 +3,6 @@ from dionaea.util import md5file, sha512file
 from dionaea import pyev
 
 import logging
-import json
 import uuid
 import struct
 import socket

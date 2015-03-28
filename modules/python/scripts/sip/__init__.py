@@ -35,17 +35,15 @@
 
 
 import logging
-import time
 import random
 import os
-import errno
 import datetime
 import tempfile
 
-from dionaea.core import connection, ihandler, g_dionaea, incident
+from dionaea.core import connection, g_dionaea, incident
 from dionaea import pyev
 
-from dionaea.sip.extras import msg_to_icd, int2bytes, SipConfig, ErrorWithResponse
+from dionaea.sip.extras import msg_to_icd, SipConfig, ErrorWithResponse
 
 # load config before loading the other sip modules
 g_sipconfig = SipConfig(g_dionaea.config()['modules']['python'].get("sip", {}))

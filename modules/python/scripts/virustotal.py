@@ -29,7 +29,6 @@ from dionaea.core import ihandler, incident, g_dionaea
 
 import logging
 import json
-import os
 import uuid
 import sqlite3
 from dionaea import pyev 

@@ -33,8 +33,6 @@
 import logging
 logger = logging.getLogger('asn1')
 
-
-import random
 #from scapy.config import conf
 #from scapy.error import Scapy_Exception,warning
 #from scapy.volatile import RandField
