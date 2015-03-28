@@ -53,14 +53,14 @@ class MIBDict(DADict):
             x = x[1:]
         if not x.endswith("."):
             x += "."
-        max=0
+        max_value = 0
         root="."
         for k in list(self.keys()):
             if x.startswith(self[k]+"."):
-                if max < len(self[k]):
-                    max = len(self[k])
+                if max_value < len(self[k]):
+                    max_value = len(self[k])
                     root = k
-        return root, x[max:-1]
+        return root, x[max_value:-1]
     def _oidname(self, x):
         root,remainder = self._findroot(x)
         return root+remainder
@@ -73,7 +73,10 @@ class MIBDict(DADict):
             return x
         xl[p] = self[xl[p]] 
         return ".".join(xl[p:])
-    def _make_graph(self, other_keys=[], **kargs):
+    def _make_graph(self, other_keys=None, **kargs):
+        if other_keys is None:
+            other_keys = []
+
         nodes = [(k,self[k]) for k in list(self.keys())]
         oids = [self[k] for k in list(self.keys())]
         for k in other_keys:
