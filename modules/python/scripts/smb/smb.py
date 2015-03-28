@@ -54,7 +54,6 @@ registered_services = {}
 
 def register_rpc_service(service):
 	uuid = service.uuid
-	global registered_calls
 	registered_services[uuid] = service
 
 
@@ -556,8 +555,6 @@ class smbd(connection):
 			dcep = DCERPC_Header(buf)
 		else:
 			dcep = buf
-
-		global registered_calls
 
 		outbuf = None
 
