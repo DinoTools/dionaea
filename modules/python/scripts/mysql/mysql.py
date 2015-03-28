@@ -26,7 +26,7 @@
 #*******************************************************************************/
 
 
-from dionaea.core import *
+from dionaea.core import ihandler, incident, connection, g_dionaea
 from .include.packets import *
 import logging
 import sqlite3
