@@ -30,8 +30,14 @@
 #*  This program is published under a GPLv2 license
 #*******************************************************************************
 
-from .asn1packet import *
-from .asn1fields import *
+from .asn1.asn1 import ASN1_Class_UNIVERSAL
+from .asn1.asn1 import ASN1_SEQUENCE
+from .asn1.asn1 import ASN1_Codecs
+from .asn1.ber import BERcodec_SEQUENCE
+from .asn1packet import ASN1_Packet
+from .asn1fields import ASN1F_SEQUENCE, ASN1F_OID, ASN1F_optionnal
+from .asn1fields import ASN1F_CHOICE, ASN1F_SEQUENCE_OF, ASN1F_STRING
+from .asn1fields import ASN1F_ENUMERATED
 
 class ASN1_Class_NegTokenInitValue(ASN1_Class_UNIVERSAL):
     name = "NegTokenInitValue"
