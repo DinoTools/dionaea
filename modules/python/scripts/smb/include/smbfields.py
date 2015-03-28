@@ -29,7 +29,7 @@
 import datetime
 from uuid import UUID
 
-from .packet import *
+from .packet import Packet, bind_bottom_up, bind_top_down
 from .fieldtypes import *
 
 
