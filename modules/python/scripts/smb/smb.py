@@ -115,10 +115,10 @@ class smbd(connection):
 			x.show()
 
 		r = self.process(p)
-		smblog.debug('packet: {0}'.format(p.summary()))
+		smblog.debug("packet: %s" % p.summary())
 
 		if p.haslayer(Raw):
-			smblog.warning('p.haslayer(Raw): {0}'.format(p.getlayer(Raw).build()))
+			smblog.warning("p.haslayer(Raw): %s" % p.getlayer(Raw).build())
 			p.show()
 
 #		i = incident("dionaea.module.python.smb.info")
@@ -132,7 +132,7 @@ class smbd(connection):
 			return len(data)
 
 		if r:
-			smblog.debug('response: {0}'.format(r.summary()))
+			smblog.debug("response: %s" % r.summary())
 			r.show()
 
 #			i = incident("dionaea.module.python.smb.info")
@@ -148,7 +148,7 @@ class smbd(connection):
 			smblog.critical('process() returned None.')
 
 		if p.haslayer(Raw):
-			smblog.warning('p.haslayer(Raw): {0}'.format(p.getlayer(Raw).build()))
+			smblog.warning("p.haslayer(Raw): %s", p.getlayer(Raw).build())
 			p.show()
 			# some rest seems to be not parsed correctly
 			# could be start of some other packet, junk, or failed packet dissection
@@ -455,7 +455,9 @@ class smbd(connection):
 			if TransactionName[-1] == '\0':
 				TransactionName = TransactionName[:-1]
 
-#			print("'{}' == '{}' => {} {} {}".format(TransactionName, '\\PIPE\\',TransactionName == '\\PIPE\\', type(TransactionName) == type('\\PIPE\\'), len(TransactionName)) )
+#			print("'{}' == '{}' => {} {} {}".format(TransactionName, '\\PIPE\\',
+#				TransactionName == '\\PIPE\\', type(TransactionName) == type('\\PIPE\\'),
+#				len(TransactionName)) )
 
 
 			if TransactionName == '\\PIPE\\LANMAN':
@@ -580,7 +582,8 @@ class smbd(connection):
 				if str(transfersyntax_uuid) == '8a885d04-1ceb-11c9-9fe8-08002b104860':
 					if service_uuid.hex in registered_services:
 						service = registered_services[service_uuid.hex]
-						smblog.info('Found a registered UUID (%s). Accepting Bind for %s' % (service_uuid , service.__class__.__name__))
+						smblog.info("Found a registered UUID (%s). Accepting Bind for %s" % \
+									(service_uuid , service.__class__.__name__))
 						self.state['uuid'] = service_uuid.hex
 						# Copy Transfer Syntax to CtxItem
 						ctxitem.AckResult = 0
@@ -646,7 +649,7 @@ class epmapper(smbd):
 			smblog.warning("epmapper - not enough data")
 			return 0
 
-		smblog.debug('packet: {0}'.format(p.summary()))
+		smblog.debug("packet: %s" % p.summary())
 
 		r = self.process_dcerpc_packet(p)
 
@@ -658,12 +661,12 @@ class epmapper(smbd):
 			smblog.critical('dcerpc processing failed. bailing out.')
 			return len(data)
 
-		smblog.debug('response: {0}'.format(r.summary()))
+		smblog.debug("response: %s" % r.summary())
 		r.show()
 		self.send(r.build())
 
 		if p.haslayer(Raw):
-			smblog.warning('p.haslayer(Raw): {0}'.format(p.getlayer(Raw).build()))
+			smblog.warning("p.haslayer(Raw): %s" % p.getlayer(Raw).build())
 			p.show()
 
 		return len(data)
