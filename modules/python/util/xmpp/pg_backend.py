@@ -507,7 +507,6 @@ class RoomHandler(MucRoomHandler):
 			ref = int(ref)
 			cmd = int(xmlobj.hasProp('cmd').content)
 			args = []
-			child = xmlobj.children
 			r = xpath_eval(xmlobj, './dionaea:args/dionaea:arg', namespaces=dionaea_ns)
 			for i in r:
 				args.append((i.hasProp('index').content, i.content))

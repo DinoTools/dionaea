@@ -178,7 +178,6 @@ class TftpPacketWithOptions(object):
         """This method decodes the section of the buffer that contains an
         unknown number of options. It returns a dictionary of option names and
         values."""
-        nulls = 0
         format = "!"
         options = {}
 

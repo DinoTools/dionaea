@@ -69,7 +69,6 @@ def cleanup(watcher, events):
 	global g_call_ids
 
 	# remove closed calls
-	keys = g_call_ids.keys()
 	for key in list(g_call_ids.keys()):
 		if g_call_ids[key] == None:
 			del g_call_ids[key]
@@ -676,7 +675,7 @@ class SipSession(connection):
 		icd.report()
 
 		res = msg.create_response(rfc3261.NOT_IMPLEMENTED)
-		d = res.dumps()
+		res.dumps()
 		self.send(res.dumps())
 
 
@@ -747,7 +746,7 @@ class SipSession(connection):
 		i.report()
 
 		try:
-			r = new_call.handle_msg_in(msg)
+			new_call.handle_msg_in(msg)
 		except AuthenticationError:
 			logger.warn("Authentication failed, not creating SIP session")
 			new_call.close()

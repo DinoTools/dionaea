@@ -55,7 +55,6 @@ class mssqld(connection):
 
 	def handle_io_in(self, data):
 		l=0
-		size = 0
 		chunk = b''
 		while len(data) > l:
 #			logger.warn("len(data) {} l {}".format(len(data),l))
@@ -139,7 +138,6 @@ class mssqld(connection):
 
 	def process(self, PacketType, p, data):
 		r =''
-		rp = None
 		
 		if PacketType == TDS_TYPES_PRE_LOGIN:
 			r = TDS_Prelogin_Response()
@@ -256,9 +254,6 @@ class mssqld(connection):
 				self.buf = b''
 				x.show()
 	
-				r = None
-				
-				r = self.process( self.pendingPacketType, x, self.buf[9:])
+				self.process( self.pendingPacketType, x, self.buf[9:])
 			self.session.close()
 		return False
-

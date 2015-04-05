@@ -153,7 +153,6 @@ class virustotalhandler(ihandler):
 			self.dbh.commit()
 
 			logger.debug("report {}".format(j) )
-			date = j['scan_date']
 
 			i = incident("dionaea.modules.python.virustotal.report")
 			i.md5hash = vtr.md5hash

@@ -289,7 +289,7 @@ def new():
 			for af in afs.keys():
 				if af == 2 or af == 10:
 					configs = afs[af]
-					for config in afs[af]:
+					for config in configs:
 						if iface not in addrs:
 							addrs[iface] = []
 						addrs[iface].append(config['addr'])

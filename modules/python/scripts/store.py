@@ -53,7 +53,7 @@ class storehandler(ihandler):
 		i.report()
 
 		try:
-			f = os.stat(n)
+			os.stat(n)
 			i = incident("dionaea.download.complete.again")
 			logger.debug("file %s already existed" % md5)
 		except OSError:
@@ -66,7 +66,3 @@ class storehandler(ihandler):
 		i.url = icd.url
 		i.md5hash = md5
 		i.report()
-
-		
-
-
