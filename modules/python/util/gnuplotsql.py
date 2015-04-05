@@ -127,7 +127,7 @@ def write_index(ranges, _protocols, DSTDIR, image_ext):
 			)
 
 		if r[0] == 'month':
-			web_headnline = "Month - {}".format(
+			web_headline = "Month - {}".format(
 				r[1].strftime("%Y-%m")
 			)
 
