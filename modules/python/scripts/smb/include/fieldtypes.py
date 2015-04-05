@@ -329,6 +329,8 @@ class LongField(Field):
     def __init__(self, name, default):
         Field.__init__(self, name, default, "Q")
 
+
+# Little endian long field
 class LELongField(Field):
     def __init__(self, name, default):
         Field.__init__(self, name, default, "<Q")
@@ -988,12 +990,6 @@ class MultiEnumField(EnumField):
             return self.i2s_multi[v].get(x,x)
         return x
 
-
-
-# Little endian long field
-class LELongField(Field):
-    def __init__(self, name, default):
-        Field.__init__(self, name, default, "<Q")
 
 # Little endian fixed length field
 class LEFieldLenField(FieldLenField):
