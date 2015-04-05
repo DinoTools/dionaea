@@ -59,7 +59,7 @@ class httpreq:
 			hset = hline.split(b":", 1)
 			self.headers[hset[0].lower()] = hset[1].strip()
 		
-	def print(self):
+	def log_req(self):
 		logger.debug(self.type + b" " + self.path.encode('utf-8') + b" " + self.version)
 		for i in self.headers:
 			logger.debug(i + b":" + self.headers[i])
@@ -116,7 +116,7 @@ class httpd(connection):
 			header = data[0:eoh]
 			data = data[soc:]
 			self.header = httpreq(header)
-			self.header.print()
+			self.header.log_req()
 		
 			if self.header.type == b'GET':
 				self.handle_GET()
