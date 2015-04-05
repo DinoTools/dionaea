@@ -26,7 +26,8 @@
 #*******************************************************************************/
 
 
-from dionaea.smb.include.fieldtypes import *
+from dionaea.smb.include.fieldtypes import IntField, Field, StrField
+import struct
 
 class Int24Field(IntField):
 	def __init__(self, name, default):
@@ -150,4 +151,3 @@ class LengthCodedBinaryField(StrField):
 			s = 8
 			(l,) = struct.unpack("<Q", d[o:o+s])
 		return (l,o,s)
-
