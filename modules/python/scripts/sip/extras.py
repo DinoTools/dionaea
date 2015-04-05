@@ -65,12 +65,14 @@ class SipConfig(object):
 	This class helps to access the config values.
 	"""
 
-	def __init__(self, config = {}):
+	def __init__(self, config=None):
 		"""
 		:param config: The config dict from dionaea
 		:type config: Dict
 
 		"""
+		if config is None:
+			config = {}
 
 		self.root_path = os.getcwd()
 
@@ -221,7 +223,10 @@ class SipConfig(object):
 		return "default"
 
 
-	def get_rtp(self, msg_stack = []):
+	def get_rtp(self, msg_stack=None):
+		if msg_stack is None:
+			msg_stack = []
+
 		pcap_conf = self._rtp.get("pcap", {})
 		return RTP(
 			path = pcap_conf.get("path", "var/dionaea/rtp/{personality}/%Y-%m-%d/"),

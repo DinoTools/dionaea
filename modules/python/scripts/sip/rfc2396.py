@@ -26,7 +26,10 @@ class Address(object):
 		re.compile(b'^[\ \t]*(?P<name>)(?P<uri>[^;]+)( *; *(?P<params>.*))?')
 	]
 
-	def __init__(self, display_name = None, uri = None, must_quote = None, params = {}):
+	def __init__(self, display_name = None, uri = None, must_quote = None, params = None):
+		if params is None:
+			params = {}
+
 		self.display_name = display_name
 		self.uri = uri
 		self.must_quote = must_quote
@@ -126,7 +129,11 @@ class URI(object):
 		+ b"(?:\?(?P<headers>.*))?$" # headers
 	)
 
-	def __init__(self, scheme = None, user = None, password = None, host = None, port = None, params = {}, headers = []):
+	def __init__(self, scheme = None, user = None, password = None, host = None, port = None, params = None, headers = None):
+		if params is None:
+			params = {}
+		if headers is None:
+			headers = []
 		self.scheme = scheme
 		self.user = user
 		self.password = password

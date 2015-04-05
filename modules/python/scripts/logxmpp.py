@@ -113,7 +113,9 @@ class xmppparser:
 
 
 class xmppclient(connection):
-	def __init__(self, server='localhost', port=5222, username=None, password=None, resource=None, muc=None, channels=[]):
+	def __init__(self, server='localhost', port=5222, username=None, password=None, resource=None, muc=None, channels=None):
+		if channels is None:
+			channels = []
 		connection.__init__(self, 'tls')
 		self.server = username.split('@')[1]
 		self.port = port
