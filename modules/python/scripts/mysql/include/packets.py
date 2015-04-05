@@ -26,9 +26,13 @@
 #*******************************************************************************/
 
 
-from dionaea.smb.include.packet import *
-from dionaea.smb.include.fieldtypes import *
-from .fields import *
+from dionaea.smb.include.packet import Packet, bind_bottom_up
+from dionaea.smb.include.fieldtypes import ByteField, StrNullField, IntField
+from dionaea.smb.include.fieldtypes import StrFixedLenField, FlagsField
+from dionaea.smb.include.fieldtypes import LEShortEnumField, LEIntField
+from dionaea.smb.include.fieldtypes import XByteEnumField, StrField
+from dionaea.smb.include.fieldtypes import LEShortField, FieldListField
+from .fields import Int24Field, LengthCodedIntField, LengthCodedBinaryField
 
 CLIENT_LONG_PASSWORD		= 0x00001	# new more secure passwords 
 CLIENT_FOUND_ROWS			= 0x00002	# Found instead of affected rows 
@@ -271,7 +275,9 @@ class MySQL_Server_Greeting(Packet):
 		IntField("ThreadID",4711),
 		StrFixedLenField("ScrambleBuffer","a"*8,8),
 		ByteField("Filler0",0),
-		FlagsField("ServerCapabilities", CLIENT_LONG_FLAG|CLIENT_CONNECT_WITH_DB|CLIENT_COMPRESS|CLIENT_PROTOCOL_41|CLIENT_TRANSACTIONS|CLIENT_SECURE_CONNECTION, -16, MySQL_Capabilities),
+		FlagsField("ServerCapabilities",
+			CLIENT_LONG_FLAG|CLIENT_CONNECT_WITH_DB|CLIENT_COMPRESS|CLIENT_PROTOCOL_41|CLIENT_TRANSACTIONS|CLIENT_SECURE_CONNECTION,
+			-16, MySQL_Capabilities),
 		ByteField("ServerLanguage",33),
 		LEShortEnumField("ServerStatus", SERVER_STATUS_AUTOCOMMIT, MySQL_Server_Status),
 		StrFixedLenField("Unused",b"",13),
