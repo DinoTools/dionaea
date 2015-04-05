@@ -35,7 +35,6 @@ import re
 import random
 import mmap
 import json
-import hashlib
 import tempfile
 import logging
 from random import choice
