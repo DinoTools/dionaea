@@ -774,11 +774,6 @@ class logsqlhandler(ihandler):
 			(attackid, "connectbackshell://"+str(icd.host)+":"+str(icd.port)) )
 		self.dbh.commit()
 
-	def handle_incident_dionaea_detect_attack(self, icd):
-		con=icd.con
-		attackid = self.attacks[con]
-
-
 	def handle_incident_dionaea_modules_python_p0f(self, icd):
 		con=icd.con
 		if con in self.attacks:
