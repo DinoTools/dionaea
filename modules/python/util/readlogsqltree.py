@@ -1,4 +1,4 @@
-#!/opt/dionaea/bin/python3.1
+#!/opt/dionaea/bin/python3.2
 
 from optparse import OptionParser
 import sqlite3
