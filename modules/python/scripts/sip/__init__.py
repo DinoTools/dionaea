@@ -62,11 +62,11 @@ _SipCall_sustain_timeout = 20
 class AuthenticationError(Exception):
 	"""Exception class for errors occuring during SIP authentication"""
 
+# Dictionary with SIP sessions (key is Call-ID)
+g_call_ids = {}
 
 def cleanup(watcher, events):
 	logger.debug("Cleanup")
-
-	global g_call_ids
 
 	# remove closed calls
 	for key in list(g_call_ids.keys()):
@@ -120,9 +120,6 @@ class RegistrationManager(object):
 
 g_reg_manager = RegistrationManager()
 
-# Dictionary with SIP sessions (key is Call-ID)
-g_call_ids = {}
-
 
 class RtpUdpStream(connection):
 	"""RTP stream that can send data and writes the whole conversation to a
@@ -169,8 +166,6 @@ class RtpUdpStream(connection):
 		if len(self._bistream) == 0:
 			return
 
-		global g_dionaea
-
 		now = datetime.datetime.now()
 		dirname = "%04i-%02i-%02i" % (now.year, now.month, now.day)
 		bistream_path = os.path.join(g_dionaea.config()['bistreams']['python']['dir'], dirname)
@@ -179,7 +174,9 @@ class RtpUdpStream(connection):
 
 		fp = tempfile.NamedTemporaryFile(
 			delete = False,
-			prefix = "SipCall-{local_port}-{remote_host}:{remote_port}-".format(local_port = self.local.port, remote_host = self.remote.host, remote_port = self.remote.port),
+			prefix = "SipCall-{local_port}-{remote_host}:{remote_port}-".format(
+				local_port = self.local.port, remote_host = self.remote.host,
+				remote_port = self.remote.port),
 			dir = bistream_path
 		)
 		fp.write(b"stream = ")
@@ -265,8 +262,6 @@ class SipCall(connection):
 		i.con = self
 		i.report()
 
-		global _SipCall_sustain_timeout
-
 		# Global timers
 		self._timers = {
 			"idle": pyev.Timer(60.0, 60.0, g_default_loop, self.__handle_timeout_idle),
@@ -331,8 +326,6 @@ class SipCall(connection):
 
 			# Create a stream dump file with date and time and random ID in case of
 			# flooding attacks
-			global g_sipconfig
-
 			pcap = g_sipconfig.get_pcap()
 
 			# Create RTP stream instance and pass address and port of listening
@@ -432,7 +425,6 @@ class SipCall(connection):
 		logger.debug("{!s} close".format(self))
 		logger.debug("SipCall.close {} Session {}".format(self, self.__session))
 
-		global g_call_ids
 		g_call_ids[self._call_id] = None
 		self.__state = SipCall.CLOSED
 
@@ -680,7 +672,6 @@ class SipSession(connection):
 
 
 	def _handle_ABC(self, msg):
-		global g_call_ids
 		handler_name = msg.method.decode("utf-8").upper()
 		# check if Call-ID header exist
 		if not msg.header_exist(b"call-id"):
@@ -710,9 +701,6 @@ class SipSession(connection):
 
 	def handle_INVITE(self, msg):
 		logger.debug("{!s} handle_INVITE".format(self))
-
-		global g_sipconfig
-		global g_call_ids
 
 		# Read Call-ID field and create new SipCall instance on first INVITE
 		# request received (remote host might send more than one because of time
