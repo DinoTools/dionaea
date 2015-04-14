@@ -145,10 +145,7 @@ class smbd(connection):
 			#r.show2()
 			self.send(r.build())
 		else:
-			if self.state['stop']:
-				smblog.debug('process() returned None.')
-			else:
-				smblog.critical('process() returned None.')
+			smblog.critical('process() returned None.')
 
 		if p.haslayer(Raw):
 			smblog.warning('p.haslayer(Raw): {0}'.format(p.getlayer(Raw).build()))
