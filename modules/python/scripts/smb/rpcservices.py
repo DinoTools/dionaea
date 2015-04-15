@@ -2295,13 +2295,13 @@ class samr(RPCService):
 			r.pack_long(UserInformationClass)
 			# SAMPR_USER_ALL_INFORMATION
 			s = samr.SAMPR_USER_ALL_INFORMATION(r)
-			rpclog.debug("LookupName %s" % LookupName)
+			rpclog.debug("LookupName %s" % cls.LookupName)
 
-			if LookupName in __userinfo__:
-				data = __userinfo__[LookupName]
+			if cls.LookupName in __userinfo__:
+				data = __userinfo__[cls.LookupName]
 				rid  = data["RID"]
 				comment = data["comment"]
-				s.Buffer = [LookupName,'','','','','',comment,'','','','','','']
+				s.Buffer = [cls.LookupName,'','','','','',comment,'','','','','','']
 				s.UserID = rid
 				s.pack()
 
