@@ -84,6 +84,9 @@ class RPCService:
 				except DCERPCValueError as e:
 					rpclog.warn("DCERPCValueError %s" % e)
 					return None
+				except EOFError as e:
+					rpclog.warn("EOFError %s" % e)
+					return None
 
 				if data is None:
 					data = b''
