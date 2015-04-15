@@ -395,9 +395,9 @@ class smbd(connection):
 				if len(self.buf) >= 10:
 					# we got the dcerpc header
 					inpacket = DCERPC_Header(self.buf[:10])
-					smblog.info("got header")
+					smblog.debug("got header")
 					inpacket = DCERPC_Header(self.buf)
-					smblog.info("FragLen %i len(self.buf) %i" % (inpacket.FragLen, len(self.buf)))
+					smblog.debug("FragLen %i len(self.buf) %i" % (inpacket.FragLen, len(self.buf)))
 					if inpacket.FragLen == len(self.buf):
 						outpacket = self.process_dcerpc_packet(self.buf)
 						if outpacket is not None:
@@ -424,7 +424,7 @@ class smbd(connection):
 			rdata = SMB_Data()
 			outbuf = self.outbuf
 			outbuflen = len(outbuf)
-			smblog.info("MaxCountLow %i len(outbuf) %i readcount %i" %(h.MaxCountLow, outbuflen, self.state['readcount']) )
+			smblog.debug("MaxCountLow %i len(outbuf) %i readcount %i" %(h.MaxCountLow, outbuflen, self.state['readcount']) )
 			if h.MaxCountLow < outbuflen-self.state['readcount']:
 				rdata.ByteCount = h.MaxCountLow
 				newreadcount = self.state['readcount']+h.MaxCountLow
@@ -435,7 +435,7 @@ class smbd(connection):
 			rdata.Bytes = outbuf[ self.state['readcount'] : self.state['readcount'] + h.MaxCountLow ]
 			rdata.ByteCount = len(rdata.Bytes)+1
 			r.DataLenLow = len(rdata.Bytes)
-			smblog.info("readcount %i len(rdata.Bytes) %i" %(self.state['readcount'], len(rdata.Bytes)) )
+			smblog.debug("readcount %i len(rdata.Bytes) %i" %(self.state['readcount'], len(rdata.Bytes)) )
 			r /= rdata
 			
 			self.state['readcount'] = newreadcount
