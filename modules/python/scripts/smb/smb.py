@@ -466,6 +466,7 @@ class smbd(connection):
 				rap = RAP_Request(rapbuf)
 				rap.show()
 				rout = RAP_Response()
+				coff = 0
 				if rap.Opcode == RAP_OP_NETSHAREENUM:
 					(InfoLevel,ReceiveBufferSize) = struct.unpack("<HH",rap.Params)
 					print("InfoLevel {} ReceiveBufferSize {}".format(InfoLevel, ReceiveBufferSize) )
@@ -474,7 +475,6 @@ class smbd(connection):
 						rout.OutParams = struct.pack("<HH", l, l)
 					rout.OutData = b""
 					comments = []
-					coff = 0
 					for i in __shares__:
 						rout.OutData += struct.pack("<13sxHHH", 
 							i, # NetworkName
