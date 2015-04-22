@@ -545,7 +545,7 @@ bind_bottom_up(TDS_Header, TDS_PreTDS7_Login_Request, Type=lambda x:x ==0x02)
 bind_bottom_up(TDS_Header, TDS_SQLBatchData, Type=lambda x:x == 0x01)
 
 bind_bottom_up(TDS_Token, TDS_Token_Language, TokenType=lambda x:x == TDS_TOKEN_LANGUAGE)
-bind_bottom_up(TDS_Token, TDS_Token_ReturnStatus, TokenType=lambda x:x == TDS_TOKEN_RETUNSTATUS)
+bind_bottom_up(TDS_Token, TDS_Token_ReturnStatus, TokenType=lambda x:x == TDS_TOKEN_RETURNSTATUS)
 
 
 bind_top_down(TDS_Header, TDS_Prelogin_Request, Type=0x12)
