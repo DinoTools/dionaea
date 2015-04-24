@@ -4,7 +4,6 @@ from __future__ import print_function
 from optparse import OptionParser
 import sqlite3
 import json
-import sys
 
 def resolve_result(resultcursor):
 	names = [resultcursor.description[x][0] for x in range(len(resultcursor.description))]
@@ -372,7 +371,7 @@ def recursive_print(cursor, connection, indent):
 		print_sip_commands(cursor, c['connection'], indent+2)
 		recursive_print(cursor, c['connection'], indent+2)
 
-def print_db(opts, args):
+def print_db(options, args):
 	dbpath = '/opt/dionaea/var/dionaea/logsql.sqlite'
 	if len(args) >= 1:
 		dbpath = args[0]
@@ -450,7 +449,6 @@ WHERE
 		connections = resolve_result(result)
 #		print(connections)	
 		for c in connections:
-			connection = c['connection']
 			print("{:s}".format(c['connection_timestamp']))
 			print_connection(c, 1)
 			print_p0fs(cursor, c['connection'], 2)
