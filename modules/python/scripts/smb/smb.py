@@ -148,7 +148,7 @@ class smbd(connection):
 			smblog.critical('process() returned None.')
 
 		if p.haslayer(Raw):
-			smblog.warning("p.haslayer(Raw): %s", p.getlayer(Raw).build())
+			smblog.warning("p.haslayer(Raw): %s" % p.getlayer(Raw).build())
 			p.show()
 			# some rest seems to be not parsed correctly
 			# could be start of some other packet, junk, or failed packet dissection
