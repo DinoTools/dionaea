@@ -3,7 +3,7 @@ import re
 
 try:
 	from dionaea.sip.extras import int2bytes
-except:
+except Exception:
 	from extras import int2bytes
 
 logger = logging.getLogger('sip')
@@ -180,9 +180,9 @@ class URI(object):
 			if not m:
 				try:
 					data = bytes(data, "utf-8")
-					logger.info("Can't parse the URI: {}", data)
-				except:
 					logger.info("Can't parse the URI: %s" % format(data))
+				except Exception as e:
+					logger.info("Can't parse or convert the URI: %s" % format(e))
 
 				return (0, {})
 
@@ -191,8 +191,8 @@ class URI(object):
 			try:
 				if type(port) == bytes or type(port) == str:
 					port = int(port)
-			except:
-				pass
+			except Exception as e:
+				logger.info("%s" % format(e))
 
 			params = {}
 			if m.group("params"):
