@@ -38,7 +38,9 @@ from .rpcservices import __shares__
 from .include.gssapifields import GSSAPI,SPNEGO, NegTokenTarg
 from .include.ntlmfields import NTLMSSP_Header, NTLM_Negotiate, NTLM_Challenge, NTLMSSP_REQUEST_TARGET
 from .include.packet import Raw
-from .include.asn1.ber import BER_len_dec, BER_len_enc, BER_identifier_dec, BER_CLASS_APP, BER_CLASS_CON,BER_identifier_enc
+from .include.asn1.ber import BER_len_dec, BER_len_enc, BER_identifier_dec
+from .include.asn1.ber import BER_CLASS_APP, BER_CLASS_CON,BER_identifier_enc
+from .include.asn1.ber import BER_Exception
 
 
 smblog = logging.getLogger('SMB')
@@ -245,7 +247,11 @@ class smbd(connection):
                         spnego = SPNEGO(sb)
                         spnego.show()
                         sb = spnego.NegotiationToken.mechToken.__str__()
-                        cls,pc,tag,sb = BER_identifier_dec(sb)
+                        try:
+                            cls,pc,tag,sb = BER_identifier_dec(sb)
+                        except BER_Exception as e:
+                            smblog.warn("%s" % format(e))
+                            return rp
                         l,sb = BER_len_dec(sb)
                         ntlmssp = NTLMSSP_Header(sb)
                         ntlmssp.show()

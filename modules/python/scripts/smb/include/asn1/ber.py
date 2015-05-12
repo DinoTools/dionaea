@@ -137,9 +137,13 @@ def BER_identifier_dec(l):
     val = l[off]
     off += 1
 
-    cls = (val>>6) & 0x03
-    pc = (val>>5) & 0x01;
-    tag = val&0x1F;
+    try:
+        cls = (val>>6) & 0x03
+        pc = (val>>5) & 0x01;
+        tag = val&0x1F;
+    except Exception as e:
+        raise BER_Exception(
+            "BER_Exception: %s, val is %s" % (format(e), format(val)))
 
     if tag == 0x1f:
         tag = 0
