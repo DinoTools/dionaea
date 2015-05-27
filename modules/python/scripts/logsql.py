@@ -948,7 +948,11 @@ class logsqlhandler(ihandler):
 
 		self.dbh.commit()
 
-
-
-
+	def handle_incident_dionaea_modules_python_pptp_connect(self, icd):
+		con = icd.con
+		if con in self.attacks:
+			attackid = self.attacks[con][1]
+			self.cursor.execute("UPDATE connections SET remote_hostname = ? WHERE connection_root = ?",
+					(icd.remote_hostname, attackid) )
+			self.dbh.commit()
 

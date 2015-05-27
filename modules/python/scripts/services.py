@@ -44,6 +44,7 @@ from dionaea.smb import smb
 import dionaea.sip
 from dionaea.mssql import mssql
 from dionaea.mysql import mysql
+from dionaea.pptp import pptp
 
 logger = logging.getLogger('services')
 
@@ -235,6 +236,15 @@ class mysqlservice(service):
 	def stop(self, daemon):
 		daemon.close()
 
+class pptpservice(service):
+	def start(self, addr,  iface=None):
+		daemon = pptp.pptpd()
+		daemon.bind(addr, 1723, iface=iface)
+		daemon.listen()
+		return daemon
+	def stop(self, daemon):
+		daemon.close()
+
 #mode = 'getifaddrs'
 #mode = 'manual'
 #addrs = { 'eth0' : ['127.0.0.1', '192.168.47.11'] }
@@ -304,6 +314,9 @@ def new():
 		
 	if "mysql" in g_dionaea.config()['modules']['python']['services']['serve']:
 		g_slave.services.append(mysqlservice)
+
+	if "pptp" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(pptpservice)
 
 	g_slave.start(addrs)
 
