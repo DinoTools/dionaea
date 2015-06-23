@@ -45,6 +45,7 @@ import dionaea.sip
 from dionaea.mssql import mssql
 from dionaea.mysql import mysql
 from dionaea.pptp import pptp
+from dionaea.mqtt import mqtt
 
 logger = logging.getLogger('services')
 
@@ -245,6 +246,15 @@ class pptpservice(service):
 	def stop(self, daemon):
 		daemon.close()
 
+class mqttservice(service):
+	def start(self, addr,  iface=None):
+		daemon = mqtt.mqttd()
+		daemon.bind(addr, 1883, iface=iface)
+		daemon.listen()
+		return daemon
+	def stop(self, daemon):
+		daemon.close()
+
 #mode = 'getifaddrs'
 #mode = 'manual'
 #addrs = { 'eth0' : ['127.0.0.1', '192.168.47.11'] }
@@ -317,6 +327,9 @@ def new():
 
 	if "pptp" in g_dionaea.config()['modules']['python']['services']['serve']:
 		g_slave.services.append(pptpservice)
+
+	if "mqtt" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(mqttservice)
 
 	g_slave.start(addrs)
 
