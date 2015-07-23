@@ -74,14 +74,35 @@ class mqttd(connection):
 	
 			if self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_CONNECT:
 				x = MQTT_Connect(data)
+
+				i = incident("dionaea.modules.python.mqtt.connect")
+				i.con = self
+				i.clientid = x.ClientID
+				i.willtopic = x.WillTopic
+				i.willmessage = x.WillMessage
+				i.username = x.Username
+				i.password = x.Password
+				i.report()
 				
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
 				x = MQTT_Publish(data)
 
+				i = incident("dionaea.modules.python.mqtt.publish")
+				i.con = self
+				i.publishtopic = x.Topic
+				i.publishmessage = x.Message
+				i.report()
+
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS2) > 0) ) :
 				x = MQTT_Publish(data)
+
+				i = incident("dionaea.modules.python.mqtt.publish")
+				i.con = self
+				i.publishtopic = x.Topic
+				i.publishmessage = x.Message
+				i.report()
 
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISHREL) == 96) &
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
@@ -90,12 +111,30 @@ class mqttd(connection):
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PUBLISH:
 				x = MQTT_Publish(data)
 
+				i = incident("dionaea.modules.python.mqtt.publish")
+				i.con = self
+				i.publishtopic = x.Topic
+				i.publishmessage = x.Message
+				i.report()
+
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE) == 128) &
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
 				x = MQTT_Subscribe(data)
 
+				i = incident("dionaea.modules.python.mqtt.subscribe")
+				i.con = self
+				i.subscribemessageid = x.PacketIdentifier
+				i.subscribetopic = x.Topic
+				i.report()
+
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_SUBSCRIBE:
 				x = MQTT_Subscribe(data)
+
+				i = incident("dionaea.modules.python.mqtt.subscribe")
+				i.con = self
+				i.subscribemessageid = x.PacketIdentifier
+				i.subscribetopic = x.Topic
+				i.report()
 
 			elif self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_PINGREQ:
 				x = MQTT_PingRequest(data)

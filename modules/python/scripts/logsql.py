@@ -520,9 +520,50 @@ class logsqlhandler(ihandler):
 #			self.cursor.execute("""CREATE INDEX IF NOT EXISTS httpheaders_%s_idx 
 #			ON httpheaders (httpheader_%s)""" % (idx, idx))
 
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			mqtt_fingerprints (
+				mqtt_fingerprint INTEGER PRIMARY KEY,
+				connection INTEGER,
+				mqtt_fingerprint_clientid TEXT,
+				mqtt_fingerprint_willtopic TEXT,
+				mqtt_fingerprint_willmessage TEXT,
+				mqtt_fingerprint_username TEXT,
+				mqtt_fingerprint_password TEXT
+				-- CONSTRAINT mqtt_fingerprints_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
+			)""")
+
+		for idx in ["clientid","willtopic","willmessage", "username", "password"]:
+			self.cursor.execute("""CREATE INDEX IF NOT EXISTS mqtt_fingerprints_%s_idx 
+			ON mqtt_fingerprints (mqtt_fingerprint_%s)""" % (idx, idx))
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			mqtt_publish_commands (
+				mqtt_publish_command INTEGER PRIMARY KEY,
+				connection INTEGER,
+				mqtt_publish_command_topic TEXT,
+				mqtt_publish_command_message TEXT
+				-- CONSTRAINT mqtt_publish_commands_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
+			)""")
+
+		for idx in ["topic", "message"]:
+			self.cursor.execute("""CREATE INDEX IF NOT EXISTS mqtt_publish_commands_%s_idx 
+			ON mqtt_publish_commands (mqtt_publish_command_%s)""" % (idx, idx))
+
+		self.cursor.execute("""CREATE TABLE IF NOT EXISTS
+			mqtt_subscribe_commands (
+				mqtt_subscribe_command INTEGER PRIMARY KEY,
+				connection INTEGER,
+				mqtt_subscribe_command_messageid TEXT,
+				mqtt_subscribe_command_topic TEXT
+				-- CONSTRAINT mqtt_subscribe_commands_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
+			)""")
+
+		for idx in ["messageid", "topic"]:
+			self.cursor.execute("""CREATE INDEX IF NOT EXISTS mqtt_subscribe_commands_%s_idx 
+			ON mqtt_subscribe_commands (mqtt_subscribe_command_%s)""" % (idx, idx))
 
 		# connection index for all 
-		for idx in ["dcerpcbinds", "dcerpcrequests", "emu_profiles", "emu_services", "offers", "downloads", "p0fs", "logins", "mssql_fingerprints", "mssql_commands","mysql_commands","sip_commands"]:
+		for idx in ["dcerpcbinds", "dcerpcrequests", "emu_profiles", "emu_services", "offers", "downloads", "p0fs", "logins", "mssql_fingerprints", "mssql_commands","mysql_commands","sip_commands", "mqtt_fingerprints", "mqtt_publish_commands", "mqtt_subscribe_commands"]:
 			self.cursor.execute("""CREATE INDEX IF NOT EXISTS %s_connection_idx	ON %s (connection)""" % (idx, idx))
 
 
@@ -955,4 +996,31 @@ class logsqlhandler(ihandler):
 			self.cursor.execute("UPDATE connections SET remote_hostname = ? WHERE connection_root = ?",
 					(icd.remote_hostname, attackid) )
 			self.dbh.commit()
+
+	def handle_incident_dionaea_modules_python_mqtt_connect(self, icd):
+		con = icd.con
+		if con in self.attacks:
+			attackid = self.attacks[con][1]
+			#self.cursor.execute("INSERT INTO logins (connection, login_username, login_password) VALUES (?,?,?)",
+			#	(attackid, icd.username, icd.password))
+			self.cursor.execute("INSERT INTO mqtt_fingerprints (connection, mqtt_fingerprint_clientid, mqtt_fingerprint_willtopic, mqtt_fingerprint_willmessage,mqtt_fingerprint_username,mqtt_fingerprint_password) VALUES (?,?,?,?,?,?)", 
+				(attackid, icd.clientid, icd.willtopic, icd.willmessage, icd.username, icd.password))
+			self.dbh.commit()
+
+	def handle_incident_dionaea_modules_python_mqtt_publish(self, icd):
+		con = icd.con
+		if con in self.attacks:
+			attackid = self.attacks[con][1]
+			self.cursor.execute("INSERT INTO mqtt_publish_commands (connection, mqtt_publish_command_topic, mqtt_publish_command_message) VALUES (?,?,?)", 
+				(attackid, icd.publishtopic, icd.publishmessage))
+			self.dbh.commit()
+
+	def handle_incident_dionaea_modules_python_mqtt_subscribe(self, icd):
+		con = icd.con
+		if con in self.attacks:
+			attackid = self.attacks[con][1]
+			self.cursor.execute("INSERT INTO mqtt_subscribe_commands (connection, mqtt_subscribe_command_messageid, mqtt_subscribe_command_topic) VALUES (?,?,?)", 
+				(attackid, icd.subscribemessageid, icd.subscribetopic))
+			self.dbh.commit()
+
 
