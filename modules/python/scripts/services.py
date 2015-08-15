@@ -46,6 +46,7 @@ from dionaea.mssql import mssql
 from dionaea.mysql import mysql
 from dionaea.pptp import pptp
 from dionaea.mqtt import mqtt
+from dionaea.upnp import upnp
 
 logger = logging.getLogger('services')
 
@@ -255,6 +256,16 @@ class mqttservice(service):
 	def stop(self, daemon):
 		daemon.close()
 
+class upnpservice(service):
+	def start(self, addr,  iface=None):
+		daemon = upnp.upnpd()
+		daemon.bind(addr, 1900, iface=iface)
+		daemon.chroot(g_dionaea.config()['modules']['python']['upnp']['root'])
+		daemon.listen()
+		return daemon
+	def stop(self, daemon):
+		daemon.close()
+
 #mode = 'getifaddrs'
 #mode = 'manual'
 #addrs = { 'eth0' : ['127.0.0.1', '192.168.47.11'] }
@@ -330,6 +341,9 @@ def new():
 
 	if "mqtt" in g_dionaea.config()['modules']['python']['services']['serve']:
 		g_slave.services.append(mqttservice)
+
+	if "upnp" in g_dionaea.config()['modules']['python']['services']['serve']:
+		g_slave.services.append(upnpservice)
 
 	g_slave.start(addrs)
 
