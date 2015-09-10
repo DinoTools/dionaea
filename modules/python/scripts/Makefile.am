@@ -57,6 +57,17 @@ PYSCRIPTS += mysql/mysql.py
 PYSCRIPTS += mysql/include/packets.py
 PYSCRIPTS += mysql/include/fields.py
 PYSCRIPTS += mysql/include/__init__.py
+PYSCRIPTS += pptp/__init__.py
+PYSCRIPTS += pptp/pptp.py
+PYSCRIPTS += pptp/include/packets.py
+PYSCRIPTS += pptp/include/__init__.py
+PYSCRIPTS += mqtt/__init__.py
+PYSCRIPTS += mqtt/mqtt.py
+PYSCRIPTS += mqtt/include/packets.py
+PYSCRIPTS += mqtt/mqtt.py
+PYSCRIPTS += mqtt/include/__init__.py
+PYSCRIPTS += upnp/__init__.py
+PYSCRIPTS += upnp/upnp.py
 
 
 all: $(PYSCRIPTS)
