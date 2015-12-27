@@ -120,7 +120,7 @@ class upnpd(connection):
 		self.rwchunksize = parent.rwchunksize
 
 	def handle_established(self):
-		logger.debug("{:s} handle_established".format(self))
+		logger.debug("{!s} handle_established".format(self))
 
 		self.timeouts.idle = 10
 		self.timeouts.sustain = 120
