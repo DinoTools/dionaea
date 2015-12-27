@@ -141,6 +141,7 @@ status_messages = {
     606: b"Not Acceptable",
 }
 
+
 class SipParsingError(Exception):
     """
     Exception class for errors occurring during SIP message parsing
@@ -158,7 +159,7 @@ class CSeq(object):
     """
     def __init__(self, data = None, seq = None, method = None):
         # do we need to convert the data?
-        if seq != None and type(seq) == str:
+        if seq is not None and type(seq) == str:
             seq = int(seq)
         if type(method) == str:
             method = bytes(method, "utf-8")
@@ -237,7 +238,7 @@ class Header(object):
         """
         Dump the value with header name.
         """
-        return self.format_name(self.name) + b": "  + self.get_value()
+        return self.format_name(self.name) + b": " + self.get_value()
 
     @classmethod
     def froms(cls, data, name = None):
@@ -250,7 +251,7 @@ class Header(object):
         if type(name) == str:
             name = bytes(name, "utf-8")
 
-        if name == None:
+        if name is None:
             data = data.strip()
             d = re.split(b": *", data, 1)
             name = d[0].strip()
@@ -337,15 +338,15 @@ class Headers(object):
         return iter(self._headers)
 
     def append(self, headers, copy = False, name_new = None):
-        if headers == None:
+        if headers is None:
             return
 
         if type(headers) != list:
             headers = [headers]
         for header in headers:
-            if copy == True:
+            if copy:
                 header = Header.froms(header.dumps())
-            if name_new != None:
+            if name_new is not None:
                 header.name = name_new
 
             if header.name in self._single:
@@ -370,7 +371,7 @@ class Headers(object):
             name = bytes(name, "utf-8")
 
         name = name.lower()
-        if not name in self._headers:
+        if name not in self._headers:
             return default
 
         return self._headers[name]
@@ -450,7 +451,7 @@ class Message(object):
         self._body = body
         self._personality = personality
 
-        if headers == None:
+        if headers is None:
             headers = Headers()
 
         self.headers = headers
@@ -461,14 +462,14 @@ class Message(object):
     def create_response(self, code, message = None, personality = None):
         logger.info("Creating Response: code={}, message={}".format(code, message))
 
-        if personality != None:
+        if personality is not None:
             self._personality = personality
 
         res = Message()
         res.protocol = b"SIP/2.0"
         res.response_code = code
         res.status_message = message
-        if res.status_message == None:
+        if res.status_message is None:
             if code in status_messages:
                 res.status_message = status_messages[code]
             else:
@@ -480,7 +481,7 @@ class Message(object):
         for name in [b"cseq", b"call-id", b"via"]:
             res.headers.append(self.headers.get(name, None), True)
 
-        #copy headers
+        # copy headers
         res.headers.append(self.headers.get(b"from", None), True, b"from")
         res.headers.append(self.headers.get(b"to", None), True, b"to")
 
@@ -495,7 +496,7 @@ class Message(object):
 
         cont_addr = rfc2396.Address(uri = uri)
 
-        contact = Header(name = b"contact", value = cont_addr)
+        contact = Header(name=b"contact", value = cont_addr)
         res.headers.append(contact)
 
         from dionaea.sip import g_sipconfig
@@ -509,15 +510,15 @@ class Message(object):
     def dumps(self):
         # h = Header
         h = []
-        if self.method != None:
+        if self.method is not None:
             h.append(self.method + b" " + self.uri.dumps() + b" " + self.protocol)
-        elif self.response_code != None:
+        elif self.response_code is not None:
             h.append(self.protocol + b" " + int2bytes(self.response_code) + b" " + self.status_message)
         else:
             return None
 
         sdp = b""
-        if self.sdp != None:
+        if self.sdp is not None:
             sdp = self.sdp.dumps()
             self.headers.append(Header(name = b"content-type", value = b"application/sdp"))
             self.headers.append(Header(name = b"content-length", value = len(sdp)))
@@ -540,11 +541,11 @@ class Message(object):
         return self.headers_exist([header_name], True)
 
     def headers_exist(self, headers, overwrite = False):
-        if overwrite == False:
+        if not overwrite:
             headers = headers + [b"to", b"from", b"call-id", b"cseq", b"contact"]
 
         for header in headers:
-            if self.headers.get(header) == None:
+            if self.headers.get(header) is None:
                 logger.warn("Header missing: {}".format(repr(header)))
                 return False
 
@@ -563,7 +564,7 @@ class Message(object):
         else:
             pos = re.search("\r?\n\r?\n", data)
             
-        if pos == None:
+        if pos is None:
             return (0, {})
 
         # length of used data
@@ -603,12 +604,13 @@ class Message(object):
             content_length = int(headers.get(b"content-length", None).value)
         except:
             content_length = None
-        if content_length != None:
+
+        if content_length is not None:
             if content_length <=  len(body):
                 content = body[:content_length]
 
                 content_type = headers.get(b"content-type", None)
-                if content_type != None and content_type.value.lower().strip() == b"application/sdp":
+                if content_type is not None and content_type.value.lower().strip() == b"application/sdp":
                     try:
                         sdp = rfc4566.SDP.froms(content)
                     except rfc4566.SdpParsingError:
@@ -623,7 +625,7 @@ class Message(object):
                         })
                         raise ErrorWithResponse(msg, BAD_REQUEST, "Invalid SIP body")
 
-                l = l + content_length
+                l += content_length
             else:
                 logger.info("Body is to short than the given content-length: Content-Length {}, Body {}".format(content_length, len(body)))
 
@@ -680,13 +682,13 @@ class Via(object):
 
     def dumps(self):
         ret = b"SIP/2.0/" + self.protocol.upper() + b" " + self.address
-        if self.port != None:
+        if self.port is not None:
             ret = ret + b":" + int2bytes(self.port)
 
-        if self._params != None and len(self._params) > 0:
+        if self._params is not None and len(self._params) > 0:
             params = []
             for x in self._params:
-                if x[1] != b"" and x[1] != None:
+                if x[1] != b"" and x[1] is not None:
                     params.append(b"=".join(x))
                 else:
                     params.append(x[0])
@@ -711,7 +713,6 @@ class Via(object):
     def froms(cls, data):
         return cls(**cls.loads(data)[1])
 
-
     @classmethod
     def loads(cls, data):
         m = cls._syntax.match(data)
@@ -721,7 +722,7 @@ class Via(object):
         protocol = m.group("protocol")
         address = m.group("address")
         port = m.group("port")
-        if port != None:
+        if port is not None:
             try:
                 port = int(port)
             except:

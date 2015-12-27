@@ -63,7 +63,7 @@ class Attribute(object):
         return (len(data), {'value':v,'attribute':attribute})
 
     def dumps(self):
-        if self.value == None:
+        if self.value is None:
             return self.attribute
         return b":".join([self.attribute, self.value])
 
@@ -86,7 +86,7 @@ class Attributes(object):
 
         self._attributes.append(value)
 
-    def get(self, name, default = None):
+    def get(self, name, default=None):
         """
         Get the first attribute with the specified name.
         """
@@ -206,24 +206,23 @@ class ConnectionData(object):
         return (
             len(data),
             {
-                'nettype':nettype,
-                'addrtype':addrtype,
-                'connection_address':connection_address,
-                'ttl':ttl,
-                'number_of_addresses':number_of_addresses
+                'nettype': nettype,
+                'addrtype': addrtype,
+                'connection_address': connection_address,
+                'ttl': ttl,
+                'number_of_addresses': number_of_addresses
             }
         )
 
     def dumps(self):
         addr = self.connection_address
         if self.addrtype == b"IP4":
-            if self.ttl != None:
+            if self.ttl is not None:
                 addr = addr + b"/" + int2bytes(self.ttl)
-            if self.ttl != None and self.number_of_addresses != None:
+            if self.ttl is not None and self.number_of_addresses is not None:
                 addr = addr + b"/" + int2bytes(self.number_of_addresses)
 
-        # ToDo: IP6
-
+        # ToDo: IPv6
         return b" ".join([self.nettype, self.addrtype, addr])
 
 
@@ -288,7 +287,6 @@ class Media(object):
                 "fmt": fmt
             }
         )
-
 
     def dumps(self):
         # ToDo: better fmt handling
@@ -425,9 +423,9 @@ class SDP(object):
                     # ToDo: parse it
                     attributes[k] = v
                 elif k == b"a":
-                    if attributes[b"m"] == None:
+                    if attributes[b"m"] is None:
                         # append attribute to session
-                        if attributes[k] == None:
+                        if attributes[k] is None:
                             attributes[k] = Attributes()
                         attributes[k].append(v)
                     else:
@@ -435,7 +433,7 @@ class SDP(object):
                         attributes[b"m"][-1].attributes.append(v)
 
                 elif k == b"m":
-                    if attributes[k] == None:
+                    if attributes[k] is None:
                         attributes[k] = []
                     attributes[k].append(Media.froms(v))
 

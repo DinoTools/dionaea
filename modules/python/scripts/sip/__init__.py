@@ -67,7 +67,7 @@ def cleanup(watcher, events):
 
     # remove closed calls
     for key in list(g_call_ids.keys()):
-        if g_call_ids[key] == None:
+        if g_call_ids[key] is None:
             del g_call_ids[key]
 
 
@@ -86,7 +86,7 @@ class User(object):
         self.expires = kwargs.get("expires", 3600)
         self._msg = kwargs.get("msg", None)
 
-        if self._msg != None:
+        if self._msg is not None:
             self.loads(self._msg)
 
         self.expire_time = datetime.datetime.now(), datetime.datetime.now() + datetime.timedelta(0, self.expires)
@@ -110,7 +110,7 @@ class RegistrationManager(object):
         self._branches = {}
 
     def register(self, user):
-        if not user.id in self._users:
+        if user.id not in self._users:
             self._users[user.id] = []
 
         self._users[user.id].append(user)
@@ -199,9 +199,9 @@ class RtpUdpStream(connection):
         logger.debug("{!s} handle_io_in".format(self))
         #logger.debug("Incoming RTP data (length {})".format(len(data)))
 
-        if self._bistream_enabled == True:
+        if self._bistream_enabled:
             self._bistream.append(("in", data))
-        if self._pcap != None:
+        if self._pcap is not None:
             self._pcap.write(src_port = self.remote.port, dst_port = self.local.port, data = data)
 
         return len(data)
@@ -273,7 +273,7 @@ class SipCall(connection):
 
         # check if at least one rtp stream is active
         for v in self._rtp_streams.values():
-            if v != None:
+            if v is None:
                 return
 
         logger.info("All RTP-Streams closed, closing call")
@@ -289,7 +289,7 @@ class SipCall(connection):
             # ToDo: Check authentication
             #self.__authenticate(headers)
 
-            if self._user == None:
+            if self._user is None:
                 msg = self.__msg.create_response(rfc3261.NOT_FOUND)
                 self.send(msg.dumps())
                 self.close()
@@ -395,7 +395,6 @@ class SipCall(connection):
             # ToDo: Send rtp data?
             return
 
-
     def handle_timeout_idle(self):
         logger.debug("{!s} handle_timeout_idle".format(self))
         return False
@@ -428,7 +427,7 @@ class SipCall(connection):
 
         # stop timers
         for name, timer in self._timers.items():
-            if timer == None:
+            if timer is None:
                 continue
 
             logger.debug("SipCall timer {} active {} pending {}".format(timer,timer.active,timer.pending))
@@ -440,7 +439,7 @@ class SipCall(connection):
 
         # close rtpStream
         for n,v in self._rtp_streams.items():
-            if v != None:
+            if v is not None:
                 v.close()
 
             self._rtp_streams[n] = None
@@ -538,6 +537,7 @@ class SipCall(connection):
         if func is not None and callable(func) == True:
             func(msg)
 
+
 class SipSession(connection):
     ESTABLISHED, CLOSED = range(2)
 
@@ -607,7 +607,7 @@ class SipSession(connection):
                 self.close()
                 return len_used
 
-        elif self.transport in ("tcp","tls"):
+        elif self.transport in ("tcp", "tls"):
             try:
                 (len_used, data_load) = rfc3261.Message.loads(data)
             except rfc3261.SipParsingError:
@@ -642,7 +642,7 @@ class SipSession(connection):
                 func = getattr(self, "handle_" + handler_name, None)
             except:
                 func = None
-            if func is not None and callable(func) == True:
+            if func is not None and callable(func):
                 func(msg)
             else:
                 self.handle_unknown(msg)
@@ -661,13 +661,12 @@ class SipSession(connection):
 
         icd = incident("dionaea.modules.python.sip.command")
         icd.con = self
-        msg_to_icd(msg,d=icd)
+        msg_to_icd(msg, d=icd)
         icd.report()
 
         res = msg.create_response(rfc3261.NOT_IMPLEMENTED)
         res.dumps()
         self.send(res.dumps())
-
 
     def _handle_ABC(self, msg):
         handler_name = msg.method.decode("utf-8").upper()
@@ -682,7 +681,7 @@ class SipSession(connection):
         # cseq = msg.headers.get(b"cseq").get_raw()
 
         # Find SipSession and delete it
-        if call_id not in g_call_ids or g_call_ids[call_id] == None:
+        if call_id not in g_call_ids or g_call_ids[call_id] is None:
             logger.warn("{!s} request does not match any existing SIP session".format(handler_name))
             icd = incident("dionaea.modules.python.sip.command")
             icd.con = self
@@ -710,7 +709,7 @@ class SipSession(connection):
 
         call_id = msg.headers.get(b"call-id").value
 
-        if call_id in g_call_ids and g_call_ids[call_id] == None:
+        if call_id in g_call_ids and g_call_ids[call_id] is None:
             logger.warn("SIP session with Call-ID {} already exists".format(call_id[:128]))
             # ToDo: error
             return
@@ -738,7 +737,6 @@ class SipSession(connection):
             new_call.close()
             del new_call
 
-
     def handle_OPTIONS(self, msg):
         logger.debug("{!s} handle_OPTIONS".format(self))
         icd = incident("dionaea.modules.python.sip.command")
@@ -747,11 +745,10 @@ class SipSession(connection):
         icd.report()
 
         res = msg.create_response(rfc3261.OK)
-        res.headers.append(rfc3261.Header(name = "Accept", value = "application/sdp"))
-        res.headers.append(rfc3261.Header(name = "Accept-Language", value = "en"))
+        res.headers.append(rfc3261.Header(name="Accept", value="application/sdp"))
+        res.headers.append(rfc3261.Header(name="Accept-Language", value="en"))
 
         self.send(res.dumps())
-
 
     def handle_REGISTER(self, msg):
         """
@@ -776,14 +773,14 @@ class SipSession(connection):
         u = g_sipconfig.get_user_by_username(self.personality, user_id)
 
         # given user not found
-        if u == None:
+        if u is None:
             res = msg.create_response(rfc3261.NOT_FOUND)
             self.send(res.dumps())
             return
 
-        if u.password != None and u.password != "":
+        if u.password is not None and u.password != "":
             header_auth = msg.headers.get(b"authorization", None)
-            if header_auth == None or self._auth == None:
+            if header_auth is None or self._auth is None:
                 # ToDo: change nonce
                 self._auth = rfc2617.Authentication(
                     method = "digest",
@@ -792,23 +789,23 @@ class SipSession(connection):
                     realm = u.realm
                 )
                 res = msg.create_response(rfc3261.UNAUTHORIZED)
-                res.headers.append(rfc3261.Header(name = b"www-authenticate", value = self._auth))
+                res.headers.append(rfc3261.Header(name=b"www-authenticate", value=self._auth))
                 self.send(res.dumps())
                 return
 
             auth_response = rfc2617.Authentication.froms(header_auth[0].value)
 
             # ToDo: change realm
-            if self._auth.check(u.username, u.password, "REGISTER", auth_response) == False:
+            if not self._auth.check(u.username, u.password, "REGISTER", auth_response):
                 # ToDo: change nonce
                 self._auth = rfc2617.Authentication(
-                    method = "digest",
-                    algorithm = "md5",
-                    nonce = b"foobar123",
-                    realm = u.realm
+                    method="digest",
+                    algorithm="md5",
+                    nonce=b"foobar123",
+                    realm=u.realm
                 )
                 res = msg.create_response(rfc3261.UNAUTHORIZED)
-                res.headers.append(rfc3261.Header(name =  b"www-authenticate", value = self._auth))
+                res.headers.append(rfc3261.Header(name=b"www-authenticate", value=self._auth))
                 self.send(res.dumps())
                 return
 
@@ -822,8 +819,7 @@ class SipSession(connection):
             #i.expected = expected
             #i.report()
 
-
-        user = User(user_id, msg = msg)
+        user = User(user_id, msg=msg)
         g_reg_manager.register(user)
 
         res = msg.create_response(rfc3261.OK)

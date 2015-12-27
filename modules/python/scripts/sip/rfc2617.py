@@ -73,13 +73,13 @@ class Authentication(object):
 
     def check(self, username, password, method, auth):
         digest = create_digest(
-            algorithm = "md5",
-            method = method,
-            nonce = self.nonce,
-            password = password,
-            realm = self.realm,
-            uri = auth.uri,
-            username = username
+            algorithm="md5",
+            method=method,
+            nonce=self.nonce,
+            password=password,
+            realm=self.realm,
+            uri=auth.uri,
+            username=username
         )
 
         if digest == auth.response:
@@ -92,7 +92,7 @@ class Authentication(object):
             ret = []
             for n in ["realm", "domain", "uri", "algorithm", "nonce", "response"]:
                 v = getattr(self, n)
-                if v == None:
+                if v is None:
                     continue
 
                 if n == "algorithm":
@@ -126,7 +126,7 @@ class Authentication(object):
         }
 
         for part in re.split(b" *, *", data):
-            n,s,v = part.partition(b"=")
+            n, s, v = part.partition(b"=")
             n = n.decode("utf-8")
             if n in cls._quote:
                 ret[n] = unquote(v)

@@ -49,7 +49,7 @@ class Address(object):
         if not self.uri:
             return r
 
-        if self.must_quote or (self.display_name != None and self.display_name != b""):
+        if self.must_quote or (self.display_name is not None and self.display_name != b""):
             r = r + b"<" + self.uri.dumps() + b">"
         else:
             r = r + self.uri.dumps()
@@ -57,7 +57,7 @@ class Address(object):
         if len(self.params) > 0:
             params = []
             for n,v in self.params.items():
-                params.append(b"=".join([n,v]))
+                params.append(b"=".join([n, v]))
 
             r = r + b";" + b";".join(params)
         return r
@@ -74,7 +74,7 @@ class Address(object):
         :return: length used
         :rtype: Integer
         """
-        if data == None:
+        if data is None:
             return (0, {})
 
         for regex in cls._syntax:
@@ -83,7 +83,7 @@ class Address(object):
                 display_name = m.groups()[0].strip()
                 uri = URI.froms(m.groups()[1].strip())
                 param_data = m.groupdict()["params"]
-                if param_data == None:
+                if param_data is None:
                     return (
                         m.end(),
                         {
@@ -147,7 +147,7 @@ class URI(object):
         return self.dumps().decode('utf-8')
 
     def dumps(self):
-        if self.scheme == None:
+        if self.scheme is None:
             return b"*"
 
         r = self.scheme + b":"
