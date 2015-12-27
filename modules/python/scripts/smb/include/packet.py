@@ -1,4 +1,4 @@
-#********************************************************************************
+#*************************************************************************
 #*                               Dionaea
 #*                           - catches bugs -
 #*
@@ -6,30 +6,30 @@
 #*
 #* Copyright (C) 2010  Markus Koetter
 #* Copyright (C) 2009  Paul Baecher & Markus Koetter & Mark Schloesser
-#* 
+#*
 #* This program is free software; you can redistribute it and/or
 #* modify it under the terms of the GNU General Public License
 #* as published by the Free Software Foundation; either version 2
 #* of the License, or (at your option) any later version.
-#* 
+#*
 #* This program is distributed in the hope that it will be useful,
 #* but WITHOUT ANY WARRANTY; without even the implied warranty of
 #* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #* GNU General Public License for more details.
-#* 
+#*
 #* You should have received a copy of the GNU General Public License
 #* along with this program; if not, write to the Free Software
 #* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-#* 
-#* 
-#*             contact nepenthesdev@gmail.com  
+#*
+#*
+#*             contact nepenthesdev@gmail.com
 #*
 #*******************************************************************************/
 #*  This file was part of Scapy
 #*  See http://www.secdev.org/projects/scapy for more informations
 #*  Copyright (C) Philippe Biondi <phil@secdev.org>
 #*  This program is published under a GPLv2 license
-#*******************************************************************************
+#*************************************************************************
 
 import time
 import itertools
@@ -49,11 +49,13 @@ from .helpers import VolatileValue, Gen, SetGen, BasePacket
 
 class Packet_metaclass(type):
     def __new__(cls, name, bases, dct):
-        if "fields_desc" in dct: # perform resolution of references to other packets
+        # perform resolution of references to other packets
+        if "fields_desc" in dct:
             current_fld = dct["fields_desc"]
             resolved_fld = []
             for f in current_fld:
-                if isinstance(f, Packet_metaclass): # reference to another fields_desc
+                # reference to another fields_desc
+                if isinstance(f, Packet_metaclass):
                     for f2 in f.fields_desc:
                         resolved_fld.append(f2)
                 else:
@@ -79,7 +81,7 @@ class Packet_metaclass(type):
         newcls = super(Packet_metaclass, cls).__new__(cls, name, bases, dct)
         if hasattr(newcls,"register_variant"):
             newcls.register_variant()
-        for f in newcls.fields_desc:                
+        for f in newcls.fields_desc:
             f.register_owner(newcls)
         return newcls
 
@@ -114,12 +116,14 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
     @classmethod
     def upper_bonds(self):
         for fval,upper in self.payload_guess:
-            print("%-20s  %s" % (upper.__name__, ", ".join("%-12s" % ("%s=%r"%i) for i in fval.items())))
+            print("%-20s  %s" % (upper.__name__, ", ".join("%-12s" %
+                                                           ("%s=%r"%i) for i in fval.items())))
 
     @classmethod
     def lower_bonds(self):
         for lower,fval in self.overload_fields.items():
-            print("%-20s  %s" % (lower.__name__, ", ".join("%-12s" % ("%s=%r"%i) for i in fval.items())))
+            print("%-20s  %s" % (lower.__name__, ", ".join("%-12s" %
+                                                           ("%s=%r"%i) for i in fval.items())))
 
     def __init__(self, _pkt="", _ctx=None, post_transform=None, _internal=0, _underlayer=None, **fields):
         if _ctx:
@@ -161,21 +165,21 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
             self.fieldtype[f.name] = f
             if f.holds_packets:
                 self.packetfields.append(f)
-            
+
     def dissection_done(self,pkt):
         """DEV: will be called after a dissection is completed"""
         self.post_dissection(pkt)
         self.payload.dissection_done(pkt)
-        
+
     def post_dissection(self, pkt):
         """DEV: is called after the dissection of the whole packet"""
         pass
-        
+
 
     def get_field(self, fld):
         """DEV: returns the field instance from the name of the field"""
         return self.fieldtype[fld]
-        
+
     def add_payload(self, payload):
         if payload is None:
             return
@@ -192,7 +196,8 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
             elif type(payload) is str:
                 self.__dict__["payload"] = Raw(load=payload)
             else:
-                raise TypeError("payload must be either 'Packet' or 'str', not [%s]" % repr(payload))
+                raise TypeError(
+                    "payload must be either 'Packet' or 'str', not [%s]" % repr(payload))
     def remove_payload(self):
         self.payload.remove_underlayer(self)
         self.__dict__["payload"] = NoPayload()
@@ -225,7 +230,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
         if attr in self.default_fields:
             return self.default_fields[attr]
         return self.payload.getfieldval(attr)
-    
+
     def getfield_and_val(self, attr):
         if attr in self.fields:
             return self.get_field(attr),self.fields[attr]
@@ -234,7 +239,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
         if attr in self.default_fields:
             return self.get_field(attr),self.default_fields[attr]
         return self.payload.getfield_and_val(attr)
-    
+
     def __getattr__(self, attr):
         if self.initialized:
             fld,v = self.getfield_and_val(attr)
@@ -291,7 +296,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
             del(self.__dict__[attr])
         else:
             raise AttributeError(attr)
-            
+
     def __repr__(self):
         s = ""
         for f in self.fields_desc:
@@ -303,7 +308,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
                 val =  f.i2repr(self, self.overloaded_fields[f.name])
             else:
                 continue
-                
+
             s += " %s%s%s" % (f.name,
                               "=",
                               val)
@@ -335,7 +340,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
             raise TypeError
     def __rmul__(self,other):
         return self.__mul__(other)
-    
+
     def __bool__(self):
         return True
     def __len__(self):
@@ -345,7 +350,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
         for f in self.fields_desc:
             p = f.addfield(self, p, self.getfieldval(f.name))
         return p
-    
+
     def post_build(self, pkt, pay):
         """DEV: called right after the current layer is build."""
         return pkt+pay
@@ -362,8 +367,8 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
         pay = self.build_payload()
         p = self.post_build(pkt,pay)
         if not internal:
-            pad = self.payload.getlayer(Padding) 
-            if pad: 
+            pad = self.payload.getlayer(Padding)
+            if pad:
                 p += pad.build()
             p = self.build_done(p)
         return p
@@ -404,7 +409,8 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
                 if isinstance(cls,type) and issubclass(cls,Packet):
                     print("%s dissector failed" % cls.name)
                 else:
-                    print("%s.guess_payload_class() returned [%s]" % (self.__class__.__name__,repr(cls)))
+                    print("%s.guess_payload_class() returned [%s]" % (
+                        self.__class__.__name__,repr(cls)))
                 if cls is not None:
                     raise
                 p = Raw(s, _internal=1, _underlayer=self)
@@ -431,7 +437,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
                 if ok:
                     return cls
         return self.default_payload_class(payload)
-    
+
     def default_payload_class(self, payload):
         """DEV: Returns the default payload class if nothing has been found by the guess_payload_class() method."""
         return Raw
@@ -443,7 +449,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
                 if self.default_fields[k] == self.fields[k]:
                     del(self.fields[k])
         self.payload.hide_defaults()
-            
+
     def clone_with(self, payload=None, **kargs):
         pkt = self.__class__()
         pkt.explicit = 1
@@ -455,7 +461,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
         if payload is not None:
             pkt.add_payload(payload)
         return pkt
-        
+
 
     def __iter__(self):
         def loop(todo, done, self=self):
@@ -612,7 +618,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
 
     def __setitem__(self, cls, val):
         self[cls].underlayer.payload = val
-    
+
     def __contains__(self, cls):
         """"cls in self" returns true if self has a layer which is an instance of cls."""
         return self.haslayer(cls)
@@ -622,7 +628,7 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
 
     def fragment(self, *args, **kargs):
         return self.payload.fragment(*args, **kargs)
-    
+
     def size(self):
         x = 0
         for f in self.fields_desc:
@@ -637,9 +643,9 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
         """Prints a hierarchical view of the packet. "indent" gives the size of indentation for each layer."""
 #        return
         logger.debug("%s%s %s sizeof(%i) %s " % (label_lvl,
-                              "###[",
-                              self.name, self.size(),
-                              "]###"))
+                                                 "###[",
+                                                 self.name, self.size(),
+                                                 "]###"))
         off=0
         for f in self.fields_desc:
             size = 0
@@ -651,19 +657,22 @@ class Packet(BasePacket, metaclass=Packet_metaclass):
                 fvalue_gen = SetGen(fvalue,_iterpacket=0)
                 for fvalue in fvalue_gen:
                     size = fvalue.size()
-                    fvalue.show(indent=indent, label_lvl=label_lvl+lvl+"   |", goff=goff)
+                    fvalue.show(
+                        indent=indent, label_lvl=label_lvl+lvl+"   |", goff=goff)
             else:
                 size = f.size(self,fvalue)
                 logger.debug("%s  %-20s%s %-15s sizeof(%3i) off=%3i goff=%3i" % (label_lvl+lvl,
-                                          f.name,
-                                          "=",
-                                          f.i2repr(self,fvalue),
-                                          size,
-                                          off,
-                                          goff))
+                                                                                 f.name,
+                                                                                 "=",
+                                                                                 f.i2repr(
+                                                                                     self,fvalue),
+                                                                                 size,
+                                                                                 off,
+                                                                                 goff))
             off += size
             goff +=size
-        self.payload.show(indent=indent, lvl=lvl+(" "*indent*self.show_indent), label_lvl=label_lvl, goff=goff)
+        self.payload.show(
+            indent=indent, lvl=lvl+(" "*indent*self.show_indent), label_lvl=label_lvl, goff=goff)
     def show2(self):
         """Prints a hierarchical view of an assembled version of the packet, so that automatic fields are calculated (checksums, etc.)"""
         self.__class__(self.build()).show()
@@ -697,14 +706,15 @@ A side effect is that, to obtain "{" and "}" characters, you must use
                    ")": "}" }
 
 
-        # Evaluate conditions 
+        # Evaluate conditions
         while "{" in fmt:
             i = fmt.rindex("{")
             j = fmt[i+1:].index("}")
             cond = fmt[i+1:i+j+1]
             k = cond.find(":")
             if k < 0:
-                raise Exception("Bad condition in format string: [%s] (read sprintf doc!)"%cond)
+                raise Exception(
+                    "Bad condition in format string: [%s] (read sprintf doc!)"%cond)
             cond,format = cond[:k],cond[k+1:]
             res = False
             if cond[0] == "!":
@@ -748,13 +758,16 @@ A side effect is that, to obtain "{" and "}" characters, you must use
                     num = int(num)
                 fmt = fmt[i+1:]
             except:
-                raise Exception("Bad format string [%%%s%s]" % (fmt[:25], fmt[25:] and "..."))
+                raise Exception(
+                    "Bad format string [%%%s%s]" % (fmt[:25], fmt[25:] and "..."))
             else:
                 if fld == "time":
-                    val = time.strftime("%H:%M:%S.%%06i", time.localtime(self.time)) % int((self.time-int(self.time))*1000000)
+                    val = time.strftime("%H:%M:%S.%%06i", time.localtime(self.time)) % int(
+                        (self.time-int(self.time))*1000000)
                 elif cls == self.__class__.__name__ and hasattr(self, fld):
                     if num > 1:
-                        val = self.payload.sprintf("%%%s,%s:%s.%s%%" % (f,cls,num-1,fld), relax)
+                        val = self.payload.sprintf(
+                            "%%%s,%s:%s.%s%%" % (f,cls,num-1,fld), relax)
                         f = "s"
                     elif f[-1] == "r":  # Raw field value
                         val = getattr(self,fld)
@@ -769,7 +782,7 @@ A side effect is that, to obtain "{" and "}" characters, you must use
                     val = self.payload.sprintf("%%%s%%" % sfclsfld, relax)
                     f = "s"
                 s += ("%"+f) % val
-            
+
         s += fmt
         return s
 
@@ -800,7 +813,7 @@ A side effect is that, to obtain "{" and "}" characters, you must use
             return found,ret,needed
         else:
             return ret
-    
+
     def lastlayer(self,layer=None):
         """Returns the uppest layer of the packet"""
         return self.payload.lastlayer(self)
@@ -826,7 +839,7 @@ A side effect is that, to obtain "{" and "}" characters, you must use
         pc = self.payload.command()
         if pc:
             c += "/"+pc
-        return c                    
+        return c
 
 class NoPayload(Packet):
     def __new__(cls, *args, **kargs):
@@ -856,7 +869,7 @@ class NoPayload(Packet):
     def __bool__(self):
         return False
     def build(self, internal=0):
-        return b''    
+        return b''
     def build_done(self, p):
         return p
     def getfieldval(self, attr):
@@ -893,7 +906,7 @@ class NoPayload(Packet):
             _track.append(nb)
         return None
     def fragment(self, *args, **kargs):
-        raise Exception("cannot fragment this packet")        
+        raise Exception("cannot fragment this packet")
     def show(self, indent=3, lvl="", label_lvl="", goff=0):
         pass
     def sprintf(self, fmt, relax):
@@ -907,12 +920,12 @@ class NoPayload(Packet):
         return layer
     def command(self):
         return ""
-    
+
 ####################
 ## packet classes ##
 ####################
 
-            
+
 class Raw(Packet):
     name = "Raw"
     fields_desc = [ StrField("load", "") ]
@@ -922,7 +935,7 @@ class Raw(Packet):
 #        t = self.load
 #        l = min(len(s), len(t))
 #        return  s[:l] == t[:l]
-        
+
 class Padding(Raw):
     name = "Padding"
     def build(self, internal=0):
@@ -941,14 +954,14 @@ def bind_bottom_up(lower, upper, __fval=None, **fval):
         fval.update(__fval)
     lower.payload_guess = lower.payload_guess[:]
     lower.payload_guess.append((fval, upper))
-    
+
 
 def bind_top_down(lower, upper, __fval=None, **fval):
     if __fval is not None:
         fval.update(__fval)
     upper.overload_fields = upper.overload_fields.copy()
     upper.overload_fields[lower] = fval
-    
+
 def bind_layers(lower, upper, __fval=None, **fval):
     """Bind 2 layers on some specific fields' values"""
     if __fval is not None:
@@ -968,7 +981,7 @@ def split_bottom_up(lower, upper, __fval=None, **fval):
                 return True
         return False
     lower.payload_guess = list(filter(do_filter, lower.payload_guess))
-        
+
 def split_top_down(lower, upper, __fval=None, **fval):
     if __fval is not None:
         fval.update(__fval)
@@ -986,5 +999,3 @@ def split_layers(lower, upper, __fval=None, **fval):
         fval.update(__fval)
     split_bottom_up(lower, upper, **fval)
     split_top_down(lower, upper, **fval)
-
-

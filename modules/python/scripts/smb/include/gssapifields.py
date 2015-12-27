@@ -1,4 +1,4 @@
-#********************************************************************************
+#*************************************************************************
 #*                               Dionaea
 #*                           - catches bugs -
 #*
@@ -28,7 +28,7 @@
 #*  See http://www.secdev.org/projects/scapy for more informations
 #*  Copyright (C) Philippe Biondi <phil@secdev.org>
 #*  This program is published under a GPLv2 license
-#*******************************************************************************
+#*************************************************************************
 
 from .asn1.asn1 import ASN1_Class_UNIVERSAL
 from .asn1.asn1 import ASN1_SEQUENCE
@@ -86,12 +86,14 @@ class MechType(ASN1_Packet):
 class NegTokenInit(ASN1_Packet):
     ASN1_codec = ASN1_Codecs.BER
     ASN1_root = ASN1F_SEQUENCE(
-#        ASN1F_optionnal(ASN1F_NegTokenInitValue_MechTypes(ASN1F_SEQUENCE_OF("MechTypes",[MechType()],MechType)))
-        ASN1F_optionnal(ASN1F_NegTokenInitValue_MechTypes(ASN1F_SEQUENCE_OF("MechTypes",[],MechType))),
-#        ASN1F_optionnal(ASN1F_NegTokenInitValue_reqFlags(ASN1F_BIT_STRING("reqFlags",""))),
-        ASN1F_optionnal(ASN1F_NegTokenInitValue_mechToken(ASN1F_STRING("mechToken","",""))),
-#        ASN1F_optionnal(ASN1F_STRING("mechListMIC","")),
-        )
+        #        ASN1F_optionnal(ASN1F_NegTokenInitValue_MechTypes(ASN1F_SEQUENCE_OF("MechTypes",[MechType()],MechType)))
+        ASN1F_optionnal(ASN1F_NegTokenInitValue_MechTypes(
+            ASN1F_SEQUENCE_OF("MechTypes",[],MechType))),
+        #        ASN1F_optionnal(ASN1F_NegTokenInitValue_reqFlags(ASN1F_BIT_STRING("reqFlags",""))),
+        ASN1F_optionnal(
+            ASN1F_NegTokenInitValue_mechToken(ASN1F_STRING("mechToken","",""))),
+        #        ASN1F_optionnal(ASN1F_STRING("mechListMIC","")),
+    )
 
 
 
@@ -162,19 +164,22 @@ class BERcodec_NegTokenTargValue_mechListMIC(BERcodec_SEQUENCE):
 class NegTokenTarg(ASN1_Packet):
     ASN1_codec = ASN1_Codecs.BER
     ASN1_root = ASN1F_SEQUENCE(
-        ASN1F_optionnal(ASN1F_NegTokenTargValue_negResult(ASN1F_ENUMERATED("negResult",1,NegTokenTarg_negResults))),
-        ASN1F_optionnal(ASN1F_NegTokenTargValue_supportedMech(ASN1F_OID("supportedMech","1"))),
-        ASN1F_optionnal(ASN1F_NegTokenTargValue_responseToken(ASN1F_STRING("responseToken",None))),
-        ASN1F_optionnal(ASN1F_NegTokenTargValue_mechListMIC(ASN1F_STRING("mechListMIC",None)))
+        ASN1F_optionnal(ASN1F_NegTokenTargValue_negResult(
+            ASN1F_ENUMERATED("negResult",1,NegTokenTarg_negResults))),
+        ASN1F_optionnal(
+            ASN1F_NegTokenTargValue_supportedMech(ASN1F_OID("supportedMech","1"))),
+        ASN1F_optionnal(
+            ASN1F_NegTokenTargValue_responseToken(ASN1F_STRING("responseToken",None))),
+        ASN1F_optionnal(
+            ASN1F_NegTokenTargValue_mechListMIC(ASN1F_STRING("mechListMIC",None)))
     )
 
 
 class SPNEGO(ASN1_Packet):
     ASN1_codec = ASN1_Codecs.BER
-    ASN1_root = ASN1F_CHOICE("NegotiationToken", NegTokenInit(), NegTokenTarg, NegTokenInit)
+    ASN1_root = ASN1F_CHOICE(
+        "NegotiationToken", NegTokenInit(), NegTokenTarg, NegTokenInit)
 
 class GSSAPI(ASN1_Packet):
     ASN1_codec = ASN1_Codecs.BER
     ASN1_root = ASN1F_OID("oid",".")
-
-

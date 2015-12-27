@@ -1,34 +1,34 @@
-#********************************************************************************
+#*************************************************************************
 #*                               Dionaea
 #*                           - catches bugs -
 #*
 #*
 #*
 #* Copyright (C) 2010  Markus Koetter
-#* 
+#*
 #* This program is free software; you can redistribute it and/or
 #* modify it under the terms of the GNU General Public License
 #* as published by the Free Software Foundation; either version 2
 #* of the License, or (at your option) any later version.
-#* 
+#*
 #* This program is distributed in the hope that it will be useful,
 #* but WITHOUT ANY WARRANTY; without even the implied warranty of
 #* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #* GNU General Public License for more details.
-#* 
+#*
 #* You should have received a copy of the GNU General Public License
 #* along with this program; if not, write to the Free Software
 #* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-#* 
-#* 
-#*             contact nepenthesdev@gmail.com  
+#*
+#*
+#*             contact nepenthesdev@gmail.com
 #*
 #*******************************************************************************/
 #*  This file was part of Scapy
 #*  See http://www.secdev.org/projects/scapy for more informations
 #*  Copyright (C) Philippe Biondi <phil@secdev.org>
 #*  This program is published under a GPLv2 license
-#*******************************************************************************
+#*************************************************************************
 
 
 import re
@@ -43,7 +43,8 @@ from scapy.utils import do_graph
 
 _mib_re_integer = re.compile("^[0-9]+$")
 _mib_re_both = re.compile("^([a-zA-Z_][a-zA-Z0-9_-]*)\(([0-9]+)\)$")
-_mib_re_oiddecl = re.compile("$\s*([a-zA-Z0-9_-]+)\s+OBJECT([^:\{\}]|\{[^:]+\})+::=\s*\{([^\}]+)\}",re.M)
+_mib_re_oiddecl = re.compile(
+    "$\s*([a-zA-Z0-9_-]+)\s+OBJECT([^:\{\}]|\{[^:]+\})+::=\s*\{([^\}]+)\}",re.M)
 _mib_re_strings = re.compile('"[^"]*"')
 _mib_re_comments = re.compile('--.*(\r|\n)')
 
@@ -71,7 +72,7 @@ class MIBDict(DADict):
             p -= 1
         if p != 0 or xl[p] not in self:
             return x
-        xl[p] = self[xl[p]] 
+        xl[p] = self[xl[p]]
         return ".".join(xl[p:])
     def _make_graph(self, other_keys=None, **kargs):
         if other_keys is None:
@@ -133,7 +134,7 @@ def mib_register(ident, value, the_mib, unresolved):
                 i = 0
             else:
                 i += 1
-                    
+
         return True
 
 
@@ -149,7 +150,8 @@ def load_mib(filenames):
         for fname in glob(fnames):
             f = open(fname)
             text = f.read()
-            cleantext = " ".join(_mib_re_strings.split(" ".join(_mib_re_comments.split(text))))
+            cleantext = " ".join(
+                _mib_re_strings.split(" ".join(_mib_re_comments.split(text))))
             for m in _mib_re_oiddecl.finditer(cleantext):
                 gr = m.groups()
                 ident,oid = gr[0],gr[-1]

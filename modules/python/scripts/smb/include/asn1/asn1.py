@@ -1,34 +1,34 @@
-#********************************************************************************
+#*************************************************************************
 #*                               Dionaea
 #*                           - catches bugs -
 #*
 #*
 #*
 #* Copyright (C) 2010  Markus Koetter
-#* 
+#*
 #* This program is free software; you can redistribute it and/or
 #* modify it under the terms of the GNU General Public License
 #* as published by the Free Software Foundation; either version 2
 #* of the License, or (at your option) any later version.
-#* 
+#*
 #* This program is distributed in the hope that it will be useful,
 #* but WITHOUT ANY WARRANTY; without even the implied warranty of
 #* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #* GNU General Public License for more details.
-#* 
+#*
 #* You should have received a copy of the GNU General Public License
 #* along with this program; if not, write to the Free Software
 #* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-#* 
-#* 
-#*             contact nepenthesdev@gmail.com  
+#*
+#*
+#*             contact nepenthesdev@gmail.com
 #*
 #*******************************************************************************/
 #*  This file was part of Scapy
 #*  See http://www.secdev.org/projects/scapy for more informations
 #*  Copyright (C) Philippe Biondi <phil@secdev.org>
 #*  This program is published under a GPLv2 license
-#*******************************************************************************
+#*************************************************************************
 
 import logging
 logger = logging.getLogger('asn1')
@@ -89,7 +89,7 @@ class ASN1Codec(EnumElement):
         return cls._stem.safedec(s, context=context)
     def get_stem(cls):
         return cls.stem
-    
+
 
 class ASN1_Codecs_metaclass(Enum_metaclass):
     element_class = ASN1Codec
@@ -132,7 +132,8 @@ class ASN1Tag(EnumElement):
 
 class ASN1_Class_metaclass(Enum_metaclass):
     element_class = ASN1Tag
-    def __new__(cls, name, bases, dct): # XXX factorise a bit with Enum_metaclass.__new__()
+    # XXX factorise a bit with Enum_metaclass.__new__()
+    def __new__(cls, name, bases, dct):
         for b in bases:
             for k,v in b.__dict__.items():
                 if k not in dct and isinstance(v,ASN1Tag):
@@ -141,7 +142,7 @@ class ASN1_Class_metaclass(Enum_metaclass):
         rdict = {}
         for k,v in dct.items():
             if type(v) is int:
-                v = ASN1Tag(k,v) 
+                v = ASN1Tag(k,v)
                 dct[k] = v
              # FIXME  TypeError: unhashable type: 'ASN1Tag'
                 rdict[type(v)] = v
@@ -151,10 +152,10 @@ class ASN1_Class_metaclass(Enum_metaclass):
 
         cls = type.__new__(cls, name, bases, dct)
         for v in list(cls.__dict__.values()):
-            if isinstance(v, ASN1Tag): 
+            if isinstance(v, ASN1Tag):
                 v.context = cls # overwrite ASN1Tag contexts, even cloned ones
         return cls
-            
+
 
 class ASN1_Class(metaclass=ASN1_Class_metaclass):
     pass
@@ -218,7 +219,7 @@ class ASN1_Object(metaclass=ASN1_Object_metaclass):
     def __repr__(self):
         return "<%s[%r]>" % (self.__dict__.get("name", self.__class__.__name__), self.val)
     def __str__(self):
-#        return self.enc(conf.ASN1_default_codec)
+        #        return self.enc(conf.ASN1_default_codec)
         return self.enc(ASN1_Codecs.BER)
     def strshow(self, lvl=0):
         return ("  "*lvl)+repr(self)+"\n"
@@ -293,7 +294,7 @@ class ASN1_BOOLEAN(ASN1_INTEGER):
 
 class ASN1_ENUMERATED(ASN1_INTEGER):
     tag = ASN1_Class_UNIVERSAL.ENUMERATED
-    
+
 class ASN1_NULL(ASN1_INTEGER):
     tag = ASN1_Class_UNIVERSAL.NULL
 
@@ -302,10 +303,10 @@ class ASN1_SEP(ASN1_NULL):
 
 class ASN1_GAUGE32(ASN1_INTEGER):
     tag = ASN1_Class_UNIVERSAL.GAUGE32
-    
+
 class ASN1_COUNTER32(ASN1_INTEGER):
     tag = ASN1_Class_UNIVERSAL.COUNTER32
-    
+
 class ASN1_SEQUENCE(ASN1_Object):
     tag = ASN1_Class_UNIVERSAL.SEQUENCE
     def strshow(self, lvl=0):
@@ -313,22 +314,23 @@ class ASN1_SEQUENCE(ASN1_Object):
         for o in self.val:
             s += o.strshow(lvl=lvl+1)
         return s
-    
+
 class ASN1_SET(ASN1_SEQUENCE):
     tag = ASN1_Class_UNIVERSAL.SET
-    
+
 class ASN1_OID(ASN1_Object):
     tag = ASN1_Class_UNIVERSAL.OID
     def __init__(self, val):
-#        val = conf.mib._oid(val)
+        #        val = conf.mib._oid(val)
         ASN1_Object.__init__(self, val)
     def __repr__(self):
-#        return "<%s[%r]>" % (self.__dict__.get("name", self.__class__.__name__), conf.mib._oidname(self.val))
+        # return "<%s[%r]>" % (self.__dict__.get("name",
+        # self.__class__.__name__), conf.mib._oidname(self.val))
         return "<%s[%s]>" % (self.__dict__.get("name", self.__class__.__name__), self.val)
     def __oidname__(self):
-#        return '%s'%conf.mib._oidname(self.val)
+        #        return '%s'%conf.mib._oidname(self.val)
         return '%s'%self.val
-    
+
 
 
 #conf.ASN1_default_codec = ASN1_Codecs.BER

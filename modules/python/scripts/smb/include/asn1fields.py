@@ -1,34 +1,34 @@
-#********************************************************************************
+#*************************************************************************
 #*                               Dionaea
 #*                           - catches bugs -
 #*
 #*
 #*
 #* Copyright (C) 2010  Markus Koetter
-#* 
+#*
 #* This program is free software; you can redistribute it and/or
 #* modify it under the terms of the GNU General Public License
 #* as published by the Free Software Foundation; either version 2
 #* of the License, or (at your option) any later version.
-#* 
+#*
 #* This program is distributed in the hope that it will be useful,
 #* but WITHOUT ANY WARRANTY; without even the implied warranty of
 #* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #* GNU General Public License for more details.
-#* 
+#*
 #* You should have received a copy of the GNU General Public License
 #* along with this program; if not, write to the Free Software
 #* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-#* 
-#* 
-#*             contact nepenthesdev@gmail.com  
+#*
+#*
+#*             contact nepenthesdev@gmail.com
 #*
 #*******************************************************************************/
 #*  This file was part of Scapy
 #*  See http://www.secdev.org/projects/scapy for more informations
 #*  Copyright (C) Philippe Biondi <phil@secdev.org>
 #*  This program is published under a GPLv2 license
-#*******************************************************************************
+#*************************************************************************
 
 
 import logging
@@ -78,7 +78,7 @@ class ASN1F_field(ASN1F_element):
 
     ASN1_tag = ASN1_Class_UNIVERSAL.ANY
     context=ASN1_Class_UNIVERSAL
-    
+
     def __init__(self, name, default, context=None):
         if context is not None:
             self.context = context
@@ -103,7 +103,8 @@ class ASN1F_field(ASN1F_element):
                  or self.ASN1_tag == x.tag ):
                 return x.enc(pkt.ASN1_codec)
             else:
-                raise ASN1_Error("Encoding Error: got %r instead of an %r for field [%s]" % (x, self.ASN1_tag, self.name))
+                raise ASN1_Error("Encoding Error: got %r instead of an %r for field [%s]" % (
+                    x, self.ASN1_tag, self.name))
         return self.ASN1_tag.get_codec(pkt.ASN1_codec).enc(x)
 
     def do_copy(self, x):
@@ -123,7 +124,7 @@ class ASN1F_field(ASN1F_element):
         setattr(pkt, self.name, val)
     def is_empty(self, pkt):
         return getattr(pkt,self.name) is None
-    
+
     def dissect(self, pkt, s):
         v,s = self.m2i(pkt, s)
         self.set_val(pkt, v)
@@ -189,12 +190,12 @@ class ASN1F_enum_INTEGER(ASN1F_INTEGER):
             return self.i2s.get(x, repr(x))
 #        return self.i2s.get(x, repr(x))
         return repr(x)
-    
+
     def any2i(self, pkt, x):
         if type(x) is list:
             return list(map(lambda z,pkt=pkt:self.any2i_one(pkt,z), x))
         else:
-            return self.any2i_one(pkt,x)        
+            return self.any2i_one(pkt,x)
     def i2repr(self, pkt, x):
         if type(x) is list:
             return list(map(lambda z,pkt=pkt:self.i2repr_one(pkt,z), x))
@@ -214,9 +215,9 @@ class ASN1F_PRINTABLE_STRING(ASN1F_STRING):
 
 class ASN1F_BIT_STRING(ASN1F_STRING):
     ASN1_tag = ASN1_Class_UNIVERSAL.BIT_STRING
-    
+
 class ASN1F_IPADDRESS(ASN1F_STRING):
-    ASN1_tag = ASN1_Class_UNIVERSAL.IPADDRESS    
+    ASN1_tag = ASN1_Class_UNIVERSAL.IPADDRESS
 
 class ASN1F_TIME_TICKS(ASN1F_INTEGER):
     ASN1_tag = ASN1_Class_UNIVERSAL.TIME_TICKS
@@ -264,7 +265,8 @@ class ASN1F_SEQUENCE(ASN1F_field):
             for obj in self.seq:
                 s = obj.dissect(pkt,s)
             if s:
-                logger.warning("Too many bytes to decode sequence: [%r]" % s) # XXX not reversible!
+                # XXX not reversible!
+                logger.warning("Too many bytes to decode sequence: [%r]" % s)
             return remain
         except ASN1_Error as e:
             raise ASN1F_badsequence(e)
@@ -351,7 +353,7 @@ class ASN1F_CHOICE(ASN1F_PACKET):
     def __init__(self, name, default, *args):
         self.name=name
         self.choice = {}
-		# FIXME TypeError: unhashable type: 'ASN1Tag
+        # FIXME TypeError: unhashable type: 'ASN1Tag
         for p in args:
             self.choice[int(p.ASN1_root.ASN1_tag)] = p
 #            print("ASN1_tag %r %s" % ( p.ASN1_root.ASN1_tag, p))
@@ -364,9 +366,10 @@ class ASN1F_CHOICE(ASN1F_PACKET):
             raise ASN1_Error("ASN1F_CHOICE: got empty string")
 #        if ord(x[0]) not in self.choice:
         if x[0] not in self.choice:
-#            return packet.Raw(x),"" # XXX return RawASN1 packet ? Raise error 
-#            raise ASN1_Error("Decoding Error: choice [%i] not found in %r" % (ord(x[0]), list(self.choice.keys())))
-            raise ASN1_Error("Decoding Error: choice [%i] not found in %s" % (x[0], self.choice))
+            #            return packet.Raw(x),"" # XXX return RawASN1 packet ? Raise error
+            #            raise ASN1_Error("Decoding Error: choice [%i] not found in %r" % (ord(x[0]), list(self.choice.keys())))
+            raise ASN1_Error(
+                "Decoding Error: choice [%i] not found in %s" % (x[0], self.choice))
 
 #        z = ASN1F_PACKET.extract_packet(self, self.choice[ord(x[0])], x)
         z = ASN1F_PACKET.extract_packet(self, self.choice[x[0]], x)
@@ -375,4 +378,3 @@ class ASN1F_CHOICE(ASN1F_PACKET):
         return RandChoice(*[fuzz(x()) for x in list(self.choice.values())])
 
 from . import packet
-

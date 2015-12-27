@@ -1,4 +1,4 @@
-#********************************************************************************
+#*************************************************************************
 #*                               Dionaea
 #*                           - catches bugs -
 #*
@@ -6,30 +6,30 @@
 #*
 #* Copyright (C) 2010  Markus Koetter
 #* Copyright (C) 2009  Paul Baecher & Markus Koetter & Mark Schloesser
-#* 
+#*
 #* This program is free software; you can redistribute it and/or
 #* modify it under the terms of the GNU General Public License
 #* as published by the Free Software Foundation; either version 2
 #* of the License, or (at your option) any later version.
-#* 
+#*
 #* This program is distributed in the hope that it will be useful,
 #* but WITHOUT ANY WARRANTY; without even the implied warranty of
 #* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #* GNU General Public License for more details.
-#* 
+#*
 #* You should have received a copy of the GNU General Public License
 #* along with this program; if not, write to the Free Software
 #* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-#* 
-#* 
-#*             contact nepenthesdev@gmail.com  
+#*
+#*
+#*             contact nepenthesdev@gmail.com
 #*
 #*******************************************************************************/
 #*  This file was part of Scapy
 #*  See http://www.secdev.org/projects/scapy for more informations
 #*  Copyright (C) Philippe Biondi <phil@secdev.org>
 #*  This program is published under a GPLv2 license
-#*******************************************************************************
+#*************************************************************************
 
 
 import struct
@@ -124,8 +124,9 @@ class Field:
                 l = int(self.fmt[1:-1])
             return RandBin(l)
         else:
-            warning("no random class for [%s] (fmt=%s)." % (self.name, self.fmt))
-            
+            warning(
+                "no random class for [%s] (fmt=%s)." % (self.name, self.fmt))
+
 
 
 
@@ -139,7 +140,7 @@ class Emph:
         return hash(self.fld)
     def __eq__(self, other):
         return self.fld == other
-    
+
 
 class ActionField:
     _fld = None
@@ -161,13 +162,13 @@ class ConditionalField:
         self.cond = cond
     def _evalcond(self,pkt):
         return self.cond(pkt)
-        
+
     def getfield(self, pkt, s):
         if self._evalcond(pkt):
             return self.fld.getfield(pkt,s)
         else:
             return s,None
-        
+
     def addfield(self, pkt, s, val):
         if self._evalcond(pkt):
             return self.fld.addfield(pkt,s,val)
@@ -175,7 +176,7 @@ class ConditionalField:
             return s
     def __getattr__(self, attr):
         return getattr(self.fld,attr)
-        
+
     def size(self, pkt, s):
         if self._evalcond(pkt):
             return self.fld.size(pkt,s)
@@ -194,10 +195,10 @@ class PadField:
     def addfield(self, pkt, s, val):
         sval = self._fld.addfield(pkt, "", val)
         return s+sval+struct.pack("%is" % (-len(sval)%self._align), self._padwith)
-    
+
     def __getattr__(self, attr):
         return getattr(self._fld,attr)
-        
+
 
 class MACField(Field):
     def __init__(self, name, default):
@@ -229,7 +230,7 @@ class IPField(Field):
             except socket.error:
                 x = Net(x)
         elif type(x) is list:
-            x = [self.h2i(pkt, n) for n in x] 
+            x = [self.h2i(pkt, n) for n in x]
         return x
     def resolve(self, x):
         if True:
@@ -256,7 +257,7 @@ class IPField(Field):
 class ByteField(Field):
     def __init__(self, name, default):
         Field.__init__(self, name, default, "B")
-        
+
 class XByteField(ByteField):
     def i2repr(self, pkt, x):
         if x is None:
@@ -342,11 +343,13 @@ class XLongField(LongField):
         return lhex(self.i2h(pkt, x))
 
 class NTTimeField(LELongField):
-	def i2m(self, pkt, x):
-		if type(x) is datetime.datetime:
-			# converts datetime to nt time epoch and to nanoseconds (stupid windows...)
-			x = (int(x.strftime('%s')) + 11644473600) * 10000000 + x.microsecond
-		return x
+    def i2m(self, pkt, x):
+        if type(x) is datetime.datetime:
+            # converts datetime to nt time epoch and to nanoseconds (stupid
+            # windows...)
+            x = (int(x.strftime('%s')) + 11644473600) * \
+                10000000 + x.microsecond
+        return x
 
 class IEEEFloatField(Field):
     def __init__(self, name, default):
@@ -360,7 +363,7 @@ class IEEEDoubleField(Field):
 class StrField(Field):
     def __init__(self, name, default, fmt="H", remain=0):
         Field.__init__(self,name,default,fmt)
-        self.remain = remain        
+        self.remain = remain
     def i2len(self, pkt, i):
         return len(i)
     def i2m(self, pkt, x):
@@ -403,7 +406,7 @@ class PacketField(StrField):
         else:
             remain = b""
         return remain,p
-    
+
 class PacketLenField(PacketField):
     holds_packets=1
     def __init__(self, name, default, cls, length_from=None):
@@ -563,15 +566,15 @@ class FieldListField(Field):
         Field.__init__(self, name, default)
         self.count_from = count_from
         self.length_from = length_from
-        self.field = field            
-            
+        self.field = field
+
     def i2count(self, pkt, val):
         if type(val) is list:
             return len(val)
         return 1
     def i2len(self, pkt, val):
         return sum( self.field.i2len(pkt,v) for v in val )
-    
+
     def i2m(self, pkt, val):
         if val is None:
             val = []
@@ -579,7 +582,7 @@ class FieldListField(Field):
     def i2repr(self, pkt, val):
         x = ""
         for v in val:
-           x += self.field.i2repr(pkt, v) + ","
+            x += self.field.i2repr(pkt, v) + ","
         return "[" + x[0:len(x)-1] + "]"
     def any2i(self, pkt, x):
         if type(x) is not list:
@@ -602,7 +605,7 @@ class FieldListField(Field):
         ret=b""
         if l is not None:
             s,ret = s[:l],s[l:]
-            
+
         while s:
             if c is not None:
                 if c <= 0:
@@ -701,8 +704,8 @@ class UnicodeNullField(StrField):
         # must be word-aligned with respect to the beginning of the SMB. Should the string not naturally
         # fall on a two-byte boundary, a null byte of padding will be inserted, and the Unicode string will
         # begin at the next address.
-#        print("addfield")
-#        print(type(s))
+        #        print("addfield")
+        #        print(type(s))
         return s+self.i2m(pkt, val)
 
     def getfield(self, pkt, s):
@@ -717,7 +720,7 @@ class UnicodeNullField(StrField):
         # did we find the end of the unicode?
         if s[eos] != 0 and s[eos+1] != 0:
             eos == -1
-    
+
         if eos < 0:
             return "",s
 
@@ -729,8 +732,8 @@ class UnicodeNullField(StrField):
             return s[eos:],b''
 
     def i2m(self, pkt, x):
-#        print(type(x))
-#        print(x)
+        #        print(type(x))
+        #        print(x)
         if x is None:
             x = b"\0\0"
         elif type(x) is str:
@@ -750,7 +753,7 @@ class UnicodeNullField(StrField):
 
     def size(self, pkt, x):
         return len(self.i2m(pkt,x))
-    
+
     def randval(self):
         return RandTermString(RandNum(0,1200),"\x00")
 
@@ -784,7 +787,7 @@ class BCDFloatField(Field):
 class BitField(Field):
     def __init__(self, name, default, size):
         Field.__init__(self, name, default)
-        self.rev = size < 0 
+        self.rev = size < 0
         self._size = abs(size)
     def reverse(self, val):
         if self._size == 16:
@@ -792,7 +795,7 @@ class BitField(Field):
         elif self._size == 32:
             val = socket.ntohl(val)
         return val
-        
+
     def addfield(self, pkt, s, val):
         val = self.i2m(pkt, val)
         if type(s) is tuple:
@@ -891,12 +894,12 @@ class EnumField(Field):
         if self not in [] and not isinstance(x,VolatileValue) and x in self.i2s:
             return self.i2s[x]
         return repr(x)
-    
+
     def any2i(self, pkt, x):
         if type(x) is list:
             return list(map(lambda z,pkt=pkt:self.any2i_one(pkt,z), x))
         else:
-            return self.any2i_one(pkt,x)        
+            return self.any2i_one(pkt,x)
     def i2repr(self, pkt, x):
         if type(x) is list:
             return list(map(lambda z,pkt=pkt:self.i2repr_one(pkt,z), x))
@@ -964,7 +967,7 @@ class XShortEnumField(ShortEnumField):
 
 class MultiEnumField(EnumField):
     def __init__(self, name, default, enum, depends_on, fmt = "H"):
-        
+
         self.depends_on = depends_on
         self.i2s_multi = enum
         self.s2i_multi = {}
@@ -994,7 +997,8 @@ class MultiEnumField(EnumField):
 # Little endian fixed length field
 class LEFieldLenField(FieldLenField):
     def __init__(self, name, default,  length_of=None, fmt = "<H", count_of=None, adjust=lambda pkt,x:x, fld=None):
-        FieldLenField.__init__(self, name, default, length_of=length_of, fmt=fmt, fld=fld, adjust=adjust)
+        FieldLenField.__init__(
+            self, name, default, length_of=length_of, fmt=fmt, fld=fld, adjust=adjust)
 
 
 class FlagsField(BitField):
@@ -1062,4 +1066,3 @@ class FixedPointField(BitField):
         return int_part+frac_part
     def i2repr(self, pkt, val):
         return self.i2h(pkt, val)
-
