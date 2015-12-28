@@ -1,9 +1,25 @@
-# intermediate object files
+### Vagrant
+vagrant/.vagrant/
+
+### Vim
+[._]*.s[a-w][a-z]
+[._]s[a-w][a-z]
+*.un~
+Session.vim
+.netrwhist
+*~
+
+### JetBrains
+# Covers JetBrains IDEs: IntelliJ, RubyMine, PhpStorm, AppCode, PyCharm, CLion, Android Studio
+*.iml
+.idea/
+
+### intermediate object files
 *.o
 *.lo
 *.la
 
-# automake 
+### automake
 Makefile
 Makefile.in
 .deps
@@ -12,6 +28,7 @@ config.*
 aclocal.m4
 autom4te.cache/
 configure
+compile
 depcomp
 install-sh
 libtool
@@ -19,16 +36,17 @@ ltmain.sh
 missing
 stamp-h1
 
-# slickedit
+### slickedit
 *.vpj
 *.vpw
 *.vpwhistu
 *.vtg
 
-# project specific
+### project specific
 src/dionaea
 modules/python/binding.c
 modules/python/build/
 modules/python/setup.py
 
+### Python
 *.pyc
