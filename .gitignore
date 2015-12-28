@@ -53,3 +53,7 @@ modules/python/setup.py
 
 ### Python
 *.pyc
+
+### Doc
+/doc/build/
+
