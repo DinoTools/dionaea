@@ -20,7 +20,10 @@ Session.vim
 *.la
 
 ### automake
-Makefile
+/Makefile
+/include/**/Makefile
+/modules/**/Makefile
+/src/**/Makefile
 Makefile.in
 .deps
 .libs
