@@ -171,6 +171,15 @@ listen =
 	     
 	mode = "getifaddrs"
 	addrs = { eth0 = ["::"] }
+
+	ssl = {
+		default = {
+			c = "GB"
+			cn = "www.example.org"
+			o = "Example Inc."
+			ou = ""
+		}
+	}
 }
 
 modules = {

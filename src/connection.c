@@ -54,6 +54,9 @@
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 
+#include <lcfg/lcfg.h>
+#include <lcfgx/lcfgx_tree.h>
+
 #ifdef HAVE_LINUX_SOCKIOS_H
 #include <linux/sockios.h>
 #endif
@@ -2533,6 +2536,8 @@ bool mkcert(SSL_CTX *ctx)
 	int bits = 512*4;
 	int serial = time(NULL);
 	int days = 365;
+	struct lcfgx_tree_node *node;
+	const unsigned char *value;
 
 	X509 *x;
 	EVP_PKEY *pk;
@@ -2561,14 +2566,35 @@ bool mkcert(SSL_CTX *ctx)
 
 	name=X509_get_subject_name(x);
 
-	X509_NAME_add_entry_by_txt(name,"C",
-							   MBSTRING_ASC, (const unsigned char *)"DE", -1, -1, 0);
-	X509_NAME_add_entry_by_txt(name,"CN",
-							   MBSTRING_ASC, (const unsigned char *)"Nepenthes Development Team", -1, -1, 0);
-	X509_NAME_add_entry_by_txt(name,"O",
-							   MBSTRING_ASC, (const unsigned char *)"dionaea.carnivore.it", -1, -1, 0);
-	X509_NAME_add_entry_by_txt(name,"OU",
-							   MBSTRING_ASC, (const unsigned char *)"anv", -1, -1, 0);
+	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.c") == LCFGX_PATH_FOUND_TYPE_OK ) {
+		value = (const unsigned char *)node->value.string.data;
+	} else {
+		value = (const unsigned char *)"DE";
+	}
+	X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, value, -1, -1, 0);
+
+	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.cn") == LCFGX_PATH_FOUND_TYPE_OK ) {
+		value = (const unsigned char *)node->value.string.data;
+	} else {
+		value = (const unsigned char *)"Nepenthes Development Team";
+	}
+	X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, value, -1, -1, 0);
+
+
+	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.o") == LCFGX_PATH_FOUND_TYPE_OK ) {
+		value = (const unsigned char *)node->value.string.data;
+	} else {
+		value = (const unsigned char *)"dionaea.carnivore.it";
+	}
+	X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, value, -1, -1, 0);
+
+
+	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.ou") == LCFGX_PATH_FOUND_TYPE_OK ) {
+		value = (const unsigned char *)node->value.string.data;
+	} else {
+		value = (const unsigned char *)"anv";
+	}
+	X509_NAME_add_entry_by_txt(name, "OU", MBSTRING_ASC, value, -1, -1, 0);
 
 
 	/* Its self signed so set the issuer name to be the same as the
