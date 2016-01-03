@@ -37,7 +37,8 @@ class DionaeaLogHandler(logging.Handler):
         logging.Handler.__init__(self, logging.DEBUG)
 
     def emit(self, record):
-        dlhfn(record.name, record.levelno, record.pathname, record.lineno, record.msg)
+        msg = self.format(record)
+        dlhfn(record.name, record.levelno, record.pathname, record.lineno, msg)
 
 
 def new():
