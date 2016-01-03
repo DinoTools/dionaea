@@ -33,6 +33,9 @@ import logging
 import struct
 import hashlib
 import json
+import datetime
+from time import gmtime, strftime
+
 try: import pyev
 except: pyev = None
 
@@ -68,6 +71,12 @@ UNIQUECHAN = 'mwbinary.dionaea.sensorunique'
 
 class BadClient(Exception):
         pass
+
+def timestr():
+    dt = datetime.datetime.now()
+    my_time = dt.strftime("%Y-%m-%d %H:%M:%S.%f")
+    timezone = strftime("%Z %z", gmtime())
+    return my_time + " " + timezone
 
 # packs a string with 1 byte length field
 def strpack8(x):
@@ -262,8 +271,10 @@ class hpfeedihandler(ihandler):
 		if not hasattr(i, 'con') or not self.client.connected: return
 		logger.debug('hash complete, publishing md5 {0}, path {1}'.format(i.md5hash, i.file))
 		try:
+			tstamp = timestr()
 			sha512 = sha512file(i.file)
-			self.client.publish(CAPTURECHAN, saddr=i.con.remote.host, 
+			self.client.publish(CAPTURECHAN, time=tstamp,
+				saddr=i.con.remote.host,
 				sport=str(i.con.remote.port), daddr=self._ownip(i),
 				dport=str(i.con.local.port), md5=i.md5hash, sha512=sha512,
 				url=i.url
