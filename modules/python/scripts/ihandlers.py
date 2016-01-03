@@ -41,13 +41,11 @@ g_handlers = None
 
 
 def new():
-    load_submodules()
-
-
-def start():
     global g_handlers
-    logger.warn("START THE IHANDLERS")
+    logger.info("Load iHandlers")
+    load_submodules()
     g_handlers = {}
+
     for h in IHandlerLoader:
         if h.name not in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
             continue
@@ -59,6 +57,17 @@ def start():
             g_handlers[h] += handlers
         else:
             g_handlers[h].append(handlers)
+
+
+def start():
+    global g_handlers
+    logger.warn("START THE IHANDLERS")
+    for handler_loader, ihandlers in g_handlers.items():
+        for i in ihandlers:
+            logger.info("Starting %s", str(i))
+            method = getattr(i, "start")
+            if method is not None:
+                method()
 
 
 def stop():
