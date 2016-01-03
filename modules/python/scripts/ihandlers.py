@@ -27,8 +27,7 @@
 #*******************************************************************************/
 
 import logging
-import pkgutil
-import traceback
+
 from dionaea import IHandlerLoader, load_submodules
 from dionaea.core import g_dionaea
 

@@ -50,7 +50,7 @@ def load_submodules(base_pkg=None):
         if modname in loaded_submodules:
             continue
 
-        logger.info("Import module {}".format(modname))
+        logger.info("Import module %s", modname)
         try:
             __import__(modname, fromlist="dummy")
         except Exception as e:
