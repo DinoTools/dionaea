@@ -27,12 +27,22 @@
 
 from socket import AF_INET, AF_INET6
 from time import time
+from dionaea import IHandlerLoader
 from dionaea.core import ihandler, incident, connection, g_dionaea
 
 import logging
 
 logger = logging.getLogger('nfq')
 logger.setLevel(logging.DEBUG)
+
+
+class NFQHandlerLoader(IHandlerLoader):
+    name = "nfq"
+
+    @classmethod
+    def start(cls):
+        return nfqhandler()
+
 
 def is_local_addr(addr):
     # sanatize addr, maybe IPv4 mapped

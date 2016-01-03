@@ -25,6 +25,7 @@
 #*
 #*******************************************************************************/
 
+from dionaea import IHandlerLoader
 from dionaea.core import ihandler, g_dionaea
 from dionaea.smb import smb
 
@@ -48,6 +49,15 @@ DT_EMULATION_PROFILE               = 81
 DT_SHELLCODE_ACTION                = 82
 DT_DCERPC_REQUEST                  = 83
 DT_VULN_NAME                       = 84
+
+
+class SurfIDSLoader(IHandlerLoader):
+    name = "surfids"
+
+    @classmethod
+    def start(cls):
+        return surfidshandler("*")
+
 
 class surfidshandler(ihandler):
     def __init__(self, path):

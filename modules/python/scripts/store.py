@@ -26,6 +26,7 @@
 #*******************************************************************************/
 
 
+from dionaea import IHandlerLoader
 from dionaea.core import ihandler, incident, g_dionaea
 from dionaea.util import md5file
 
@@ -33,6 +34,14 @@ import os
 import logging
 logger = logging.getLogger('store')
 logger.setLevel(logging.DEBUG)
+
+
+class StoreHandlerLoader(IHandlerLoader):
+    name = "store"
+
+    @classmethod
+    def start(cls):
+        return storehandler("dionaea.download.complete")
 
 
 class storehandler(ihandler):

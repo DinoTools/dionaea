@@ -27,6 +27,8 @@
 
 
 from dionaea.core import connection, g_dionaea, incident, ihandler
+from dionaea import ServiceLoader
+#from dionaea.services import g_slave
 import struct
 import logging
 import os
@@ -40,6 +42,31 @@ import tempfile
 
 logger = logging.getLogger('http')
 logger.setLevel(logging.DEBUG)
+
+
+class HTTPService(ServiceLoader):
+    name = "http"
+
+    @classmethod
+    def start(cls, addr, iface=None):
+        daemon = httpd(proto='tcp')
+        daemon.bind(addr, 80, iface=iface)
+        daemon.chroot(g_dionaea.config()['modules']['python']['http']['root'])
+        daemon.listen()
+        return daemon
+
+
+class HTTPSService(ServiceLoader):
+    name = "https"
+
+    @classmethod
+    def start(self, addr, iface=None):
+        daemon = httpd(proto='tls')
+        daemon.bind(addr, 443, iface=iface)
+        daemon.chroot(g_dionaea.config()['modules']['python']['http']['root'])
+        daemon.listen()
+        return daemon
+
 
 class httpreq:
     def __init__(self, header):

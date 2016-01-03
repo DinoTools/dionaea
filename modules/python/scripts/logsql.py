@@ -25,7 +25,7 @@
 #*
 #*******************************************************************************/
 
-
+from dionaea import IHandlerLoader
 from dionaea.core import ihandler, g_dionaea
 
 import logging
@@ -35,6 +35,14 @@ import time
 
 logger = logging.getLogger('logsql')
 logger.setLevel(logging.DEBUG)
+
+
+class LogSQLHandlerLoader(IHandlerLoader):
+    name = "logsql"
+
+    @classmethod
+    def start(cls):
+        return logsqlhandler("*")
 
 
 class logsqlhandler(ihandler):

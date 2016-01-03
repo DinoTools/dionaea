@@ -25,6 +25,7 @@
 #*
 #*******************************************************************************/
 
+from dionaea import IHandlerLoader
 from dionaea.core import ihandler, incident, g_dionaea
 
 import logging
@@ -35,6 +36,15 @@ from dionaea import pyev
 
 logger = logging.getLogger('virustotal')
 logger.setLevel(logging.DEBUG)
+
+
+class VirusTotalHandlerLoader(IHandlerLoader):
+    name = "virustotal"
+
+    @classmethod
+    def start(cls):
+        return virustotalhandler("*")
+
 
 class vtreport:
     def __init__(self, backlogfile, md5hash, file, status):

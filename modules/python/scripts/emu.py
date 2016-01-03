@@ -26,6 +26,7 @@
 #*******************************************************************************/
 
 
+from dionaea import IHandlerLoader
 from dionaea.core import ihandler, incident
 from dionaea.cmd import cmdexe
 import logging
@@ -33,6 +34,15 @@ import json
 
 logger = logging.getLogger('emu')
 logger.setLevel(logging.DEBUG)
+
+
+class EMUProfileHandlerLoader(IHandlerLoader):
+    name = "emuprofile"
+
+    @classmethod
+    def start(cls):
+        return emuprofilehandler("dionaea.module.emu.profile")
+
 
 class emuprofilehandler(ihandler):
 

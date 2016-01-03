@@ -26,7 +26,8 @@
 #*******************************************************************************/
 
 
-from dionaea.core import ihandler, incident, connection
+from dionaea import IHandlerLoader
+from dionaea.core import ihandler, incident, connection, g_dionaea
 from struct import pack, unpack, calcsize
 from socket import inet_aton
 
@@ -34,6 +35,14 @@ import logging
 
 logger = logging.getLogger('p0f')
 logger.setLevel(logging.DEBUG)
+
+
+class P0FHandlerLoader(IHandlerLoader):
+    name = "p0f"
+
+    @classmethod
+    def start(cls):
+        return p0fhandler(g_dionaea.config()['modules']['python']['p0f']['path'])
 
 
 class p0fconnection(connection):

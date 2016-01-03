@@ -67,6 +67,7 @@
 
 
 # ftp server
+from dionaea import IHandlerLoader, ServiceLoader
 from dionaea.core import connection, ihandler, g_dionaea, incident
 import logging
 import os
@@ -197,6 +198,25 @@ RESPONSE = {
     PERMISSION_DENIED:                  '550 %s: Permission denied.',
 }
 
+
+class FTPIhandlerLoader(IHandlerLoader):
+    name = "ftpdownload"
+
+    @classmethod
+    def start(cls):
+        return ftpdownloadhandler("dionaea.download.offer")
+
+
+class FTPService(ServiceLoader):
+    name = "ftp"
+
+    @classmethod
+    def start(cls, addr,  iface=None):
+        daemon = ftpd()
+        daemon.chroot(g_dionaea.config()['modules']['python']['ftp']['root'])
+        daemon.bind(addr, 21, iface=iface)
+        daemon.listen()
+        return daemon
 
 
 class ftpd(connection):

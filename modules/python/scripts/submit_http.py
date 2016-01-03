@@ -1,6 +1,6 @@
 from dionaea.core import ihandler, incident, g_dionaea
 from dionaea.util import md5file, sha512file
-from dionaea import pyev
+from dionaea import pyev, IHandlerLoader
 
 import logging
 import uuid
@@ -24,6 +24,15 @@ else:
 
 logger = logging.getLogger('submit_http')
 logger.setLevel(logging.DEBUG)
+
+
+class SubmitHTTPHandlerLoader(IHandlerLoader):
+    name = "submit_http"
+
+    @classmethod
+    def start(cls):
+        return handler("*")
+
 
 class submithttp_report:
     def __init__(self, sha512h, md5, filepath):

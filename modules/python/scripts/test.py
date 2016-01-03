@@ -25,6 +25,7 @@
 #*
 #*******************************************************************************/
 
+from dionaea import IHandlerLoader
 from dionaea.core import ihandler, incident, g_dionaea
 from dionaea.core import connection
 import logging
@@ -33,6 +34,14 @@ global p
 
 logger = logging.getLogger('test')
 logger.setLevel(logging.DEBUG)
+
+
+class UniqueDownloadLoader(IHandlerLoader):
+    name = "uniquedownload"
+
+    @classmethod
+    def start(cls):
+        return uniquedownloadihandler("dionaea.download.complete.unique")
 
 
 class uniquedownloadihandler(ihandler):

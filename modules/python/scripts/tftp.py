@@ -36,6 +36,7 @@
 #* our gpl project
 #*************************************************************************
 
+from dionaea import IHandlerLoader, ServiceLoader
 from dionaea.core import connection, ihandler, g_dionaea, incident
 
 import tempfile
@@ -51,6 +52,25 @@ MAX_BLKSIZE = 65536
 
 logger = logging.getLogger('tftp')
 logger.setLevel(logging.INFO)
+
+
+class TFTPDownloadHandlerLoader(IHandlerLoader):
+    name = "tftpdownload"
+
+    @classmethod
+    def start(cls):
+        return tftpdownloadhandler("dionaea.download.offer")
+
+
+class TFTPService(ServiceLoader):
+    name = "tftp"
+
+    @classmethod
+    def start(cls, addr,  iface=None):
+        daemon = TftpServer()
+        daemon.chroot(g_dionaea.config()['modules']['python']['tftp']['root'])
+        daemon.bind(addr, 69, iface=iface)
+        return daemon
 
 
 def tftpassert(condition, msg):

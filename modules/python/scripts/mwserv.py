@@ -25,6 +25,7 @@
 #*
 #*******************************************************************************/
 
+from dionaea import IHandlerLoader
 from dionaea.core import ihandler, incident, g_dionaea
 from dionaea.util import sha512file
 from dionaea import pyev
@@ -34,6 +35,15 @@ import uuid
 
 logger = logging.getLogger('mwserv')
 logger.setLevel(logging.DEBUG)
+
+
+class MWServHandlerLoader(IHandlerLoader):
+    name = "mwserv"
+
+    @classmethod
+    def start(cls):
+        return mwservhandler("*")
+
 
 class mwserv_report:
     def __init__(self, sha512h, filepath):

@@ -25,12 +25,21 @@
 #*
 #*******************************************************************************/
 
+from dionaea import IHandlerLoader
 from dionaea.core import ihandler, incident
 from dionaea.core import connection
 import logging
 
 logger = logging.getLogger('cmd')
 logger.setLevel(logging.DEBUG)
+
+
+class CMDShellHandlerLoader(IHandlerLoader):
+    name = "cmdshell"
+
+    @classmethod
+    def start(cls):
+        return cmdshellhandler("dionaea.service.shell.*")
 
 
 class cmdexe:

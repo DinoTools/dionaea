@@ -38,7 +38,7 @@ import datetime
 import tempfile
 
 from dionaea.core import connection, g_dionaea, incident
-from dionaea import pyev
+from dionaea import pyev, ServiceLoader
 
 from dionaea.sip.extras import msg_to_icd, SipConfig, ErrorWithResponse
 
@@ -77,6 +77,23 @@ g_timer_cleanup.start()
 #########
 # Classes
 #########
+
+
+class SIPService(ServiceLoader):
+    name = "sip"
+
+    @classmethod
+    def start(cls, addr, iface=None):
+        daemons = []
+        for proto in ("tcp", "tls", "udp"):
+            if proto not in g_dionaea.config()['modules']['python']['sip']:
+                continue
+            port = int(g_dionaea.config()['modules']['python']['sip'][proto].get('port', 5060))
+            daemon = SipSession(proto=proto)
+            daemon.bind(addr, port, iface=iface)
+            daemon.listen()
+            daemons.append(daemon)
+        return daemons
 
 
 class User(object):

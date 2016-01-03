@@ -25,6 +25,7 @@
 #*
 #*******************************************************************************/
 
+from dionaea import IHandlerLoader
 from dionaea.core import connection, ihandler, g_dionaea, incident
 from xml.etree import ElementTree as etree
 from io import open
@@ -42,6 +43,26 @@ import string
 
 logger = logging.getLogger('logxmpp')
 logger.setLevel(logging.INFO)
+
+
+class LogXMPPHandlerLoader(IHandlerLoader):
+    name = "logxmpp"
+
+    @classmethod
+    def start(cls):
+        handlers = []
+        for client in g_dionaea.config()['modules']['python']['logxmpp']:
+            conf = g_dionaea.config()['modules']['python']['logxmpp'][client]
+            if 'resource' in conf:
+                resource = conf['resource']
+            else:
+                resource = ''.join([choice(string.ascii_letters) for i in range(8)])
+            print("client %s \n\tserver %s:%s username %s password %s resource %s muc %s\n\t%s" % (client, conf[
+                  'server'], conf['port'], conf['username'], conf['password'], resource, conf['muc'], conf['config']))
+            x = logxmpp(conf['server'], int(conf['port']), conf['username'], conf['password'], resource, conf['muc'], conf['config'])
+            handlers.append(x)
+
+        return handlers
 
 
 def HH(some): return hashlib.md5(some).hexdigest()

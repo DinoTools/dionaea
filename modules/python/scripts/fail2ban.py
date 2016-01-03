@@ -26,6 +26,7 @@
 #*******************************************************************************/
 
 
+from dionaea import IHandlerLoader
 from dionaea.core import ihandler, g_dionaea
 
 import logging
@@ -33,6 +34,15 @@ import datetime
 
 logger = logging.getLogger('fail2ban')
 logger.setLevel(logging.DEBUG)
+
+
+class Fail2BanHandlerLoader(IHandlerLoader):
+    name = "fail2ban"
+
+    @classmethod
+    def start(cls):
+        return fail2banhandler()
+
 
 class fail2banhandler(ihandler):
     def __init__(self):

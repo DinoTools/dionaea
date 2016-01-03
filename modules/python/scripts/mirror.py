@@ -26,11 +26,22 @@
 #*
 #*******************************************************************************/
 
+from dionaea import ServiceLoader
 from dionaea.core import connection
 import logging
 
 logger = logging.getLogger('mirror')
 logger.setLevel(logging.DEBUG)
+
+
+class MirrorService(ServiceLoader):
+    name = "mirror"
+
+    @classmethod
+    def start(cls, addr, iface=None):
+        daemon = mirrord('tcp', addr, 42, iface)
+        return daemon
+
 
 class mirrorc(connection):
     def __init__(self, peer=None):
