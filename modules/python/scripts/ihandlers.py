@@ -38,7 +38,7 @@ logger.setLevel(logging.DEBUG)
 # global handler list
 # keeps a ref on our handlers
 # allows restarting
-g_handlers = {}
+g_handlers = None
 
 
 def new():
@@ -46,7 +46,9 @@ def new():
 
 
 def start():
+    global g_handlers
     logger.warn("START THE IHANDLERS")
+    g_handlers = {}
     for h in IHandlerLoader:
         if h.name not in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
             continue
@@ -61,10 +63,10 @@ def start():
 
 
 def stop():
-    for handler_loader, ihandlers in g_handlers:
+    global g_handlers
+    for handler_loader, ihandlers in g_handlers.items():
         for i in ihandlers:
             logger.debug("deleting %s" % str(i))
             handler_loader.stop(i)
             del i
     del g_handlers
-
