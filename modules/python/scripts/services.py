@@ -153,5 +153,5 @@ def stop():
     for addr in g_slave.daemons:
         for s in g_slave.daemons[addr]:
             for d in g_slave.daemons[addr][s]:
-                s.stop(s, d)
+                s.stop(d)
     del g_slave
