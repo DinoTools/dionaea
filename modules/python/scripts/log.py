@@ -28,8 +28,8 @@
 from dionaea.core import dlhfn
 import logging
 
-global handler
-global logger
+handler = None
+logger = None
 
 
 class DionaeaLogHandler(logging.Handler):
@@ -55,6 +55,4 @@ def start():
 
 
 def stop():
-    global logger
-    global handler
     logger.removeHandler(handler)
