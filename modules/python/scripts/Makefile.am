@@ -44,6 +44,7 @@ PYSCRIPTS += surfids.py
 PYSCRIPTS += virustotal.py
 PYSCRIPTS += mwserv.py
 PYSCRIPTS += submit_http.py
+PYSCRIPTS += hpfeeds.py
 PYSCRIPTS += ndrlib.py
 PYSCRIPTS += logxmpp.py
 PYSCRIPTS += fail2ban.py
