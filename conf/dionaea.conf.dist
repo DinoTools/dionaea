@@ -385,12 +385,12 @@ modules = {
 		}
 		hpfeeds = {
 			hp1 = {
-				server = ""
-				port = ""
+				server = "hpfriends.honeycloud.net"
+				port = "10000"
 				ident = ""
 				secret = ""
 				// dynip_resolve: enable to lookup the sensor ip through a webservice
-				dynip_resolve = "http://hpfeeds.honeycloud.net/ip"
+				dynip_resolve = "http://hpfriends.honeycloud.net/ip"
 			}
 		}
 		logsql = {
