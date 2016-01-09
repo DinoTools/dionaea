@@ -580,7 +580,7 @@ class logsqlhandler(ihandler):
             ON mqtt_subscribe_commands (mqtt_subscribe_command_%s)""" % (idx, idx))
 
         # connection index for all
-        for idx in ["dcerpcbinds", "dcerpcrequests", "emu_profiles", "emu_services", "offers", "downloads", "p0fs", "logins", "mssql_fingerprints", "mssql_commands","mysql_commands","sip_commands"]:
+        for idx in ["dcerpcbinds", "dcerpcrequests", "emu_profiles", "emu_services", "offers", "downloads", "p0fs", "logins", "mssql_fingerprints", "mssql_commands","mysql_commands","sip_commands", "mqtt_fingerprints", "mqtt_publish_commands", "mqtt_subscribe_commands"]:
             self.cursor.execute(
                 """CREATE INDEX IF NOT EXISTS %s_connection_idx    ON %s (connection)""" % (idx, idx)
             )
@@ -1016,3 +1016,29 @@ class logsqlhandler(ihandler):
             add_sdp(cmdid,icd.sdp)
 
         self.dbh.commit()
+
+    def handle_incident_dionaea_modules_python_mqtt_connect(self, icd):
+        con = icd.con
+        if con in self.attacks:
+            attackid = self.attacks[con][1]
+            #self.cursor.execute("INSERT INTO logins (connection, login_username, login_password) VALUES (?,?,?)",
+            #    (attackid, icd.username, icd.password))
+            self.cursor.execute("INSERT INTO mqtt_fingerprints (connection, mqtt_fingerprint_clientid, mqtt_fingerprint_willtopic, mqtt_fingerprint_willmessage,mqtt_fingerprint_username,mqtt_fingerprint_password) VALUES (?,?,?,?,?,?)",
+                (attackid, icd.clientid, icd.willtopic, icd.willmessage, icd.username, icd.password))
+            self.dbh.commit()
+
+    def handle_incident_dionaea_modules_python_mqtt_publish(self, icd):
+        con = icd.con
+        if con in self.attacks:
+            attackid = self.attacks[con][1]
+            self.cursor.execute("INSERT INTO mqtt_publish_commands (connection, mqtt_publish_command_topic, mqtt_publish_command_message) VALUES (?,?,?)",
+                (attackid, icd.publishtopic, icd.publishmessage))
+            self.dbh.commit()
+
+    def handle_incident_dionaea_modules_python_mqtt_subscribe(self, icd):
+        con = icd.con
+        if con in self.attacks:
+            attackid = self.attacks[con][1]
+            self.cursor.execute("INSERT INTO mqtt_subscribe_commands (connection, mqtt_subscribe_command_messageid, mqtt_subscribe_command_topic) VALUES (?,?,?)",
+                (attackid, icd.subscribemessageid, icd.subscribetopic))
+            self.dbh.commit()
