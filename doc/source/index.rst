@@ -12,6 +12,7 @@ Content:
 .. toctree::
     :maxdepth: 2
 
+    installation
     development
 
 Old documentation:
