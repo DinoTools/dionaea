@@ -25,14 +25,16 @@
 #*
 #*******************************************************************************/
 
+import logging
 import re
+import sqlite3
 
 from dionaea.core import incident, connection, g_dionaea
 from .include.packets import *
-import logging
-import sqlite3
 
 logger = logging.getLogger('mysqld')
+
+
 class mysqld(connection):
     def __init__ (self):
         connection.__init__(self,"tcp")
@@ -266,4 +268,3 @@ class mysqld(connection):
                 self.send(buf)
             offset += 4 + h.Length
         return offset
-
