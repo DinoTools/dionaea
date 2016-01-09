@@ -25,6 +25,7 @@
 #*
 #*******************************************************************************/
 
+import re
 
 from dionaea.core import incident, connection, g_dionaea
 from .include.packets import *
