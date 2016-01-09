@@ -7,26 +7,26 @@ and tls
 
 .. warning:: The documentation is work in progress.
 
-Contents:
+Old documentation:
 
 .. toctree::
-   :maxdepth: 2
+    :maxdepth: 2
 
-   introduction
-   protocols
-   exploitation
-   downloads
-   submit
-   logging
-   development
-   packages
-   run
-   configuration
-   utils
-   faq
-   seagfaults
-   tips_and_tricks
-   support
+    old/introduction
+    old/protocols
+    old/exploitation
+    old/downloads
+    old/submit
+    old/logging
+    old/development
+    old/packages
+    old/run
+    old/configuration
+    old/utils
+    old/faq
+    old/seagfaults
+    old/tips_and_tricks
+    old/support
 
 
 Indices and tables
