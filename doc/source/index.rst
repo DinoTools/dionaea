@@ -14,6 +14,7 @@ Content:
 
     installation
     development
+    faq
 
 Old documentation:
 
@@ -31,7 +32,6 @@ Old documentation:
     old/run
     old/configuration
     old/utils
-    old/faq
     old/seagfaults
     old/tips_and_tricks
     old/support
