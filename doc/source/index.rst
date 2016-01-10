@@ -13,6 +13,7 @@ Content:
     :maxdepth: 2
 
     installation
+    service/index
     development
     faq
 
@@ -22,7 +23,6 @@ Old documentation:
     :maxdepth: 2
 
     old/introduction
-    old/protocols
     old/exploitation
     old/downloads
     old/submit
