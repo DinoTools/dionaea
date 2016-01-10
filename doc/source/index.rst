@@ -12,6 +12,7 @@ Content:
 .. toctree::
     :maxdepth: 2
 
+    introduction
     installation
     service/index
     development
@@ -22,7 +23,6 @@ Old documentation:
 .. toctree::
     :maxdepth: 2
 
-    old/introduction
     old/exploitation
     old/downloads
     old/submit
