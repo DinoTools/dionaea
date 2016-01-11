@@ -393,6 +393,14 @@ modules = {
 				dynip_resolve = "http://hpfriends.honeycloud.net/ip"
 			}
 		}
+		log_db_sql = [
+			{
+				url = "sqlite:////tmp/dionaea1.db"
+			}
+			{
+				url = "sqlite:////tmp/dionaea2.db"
+			}
+		]
 		logsql = {
 			mode = "sqlite" // so far there is only sqlite
 			sqlite = {
@@ -505,6 +513,7 @@ modules = {
 		ihandlers = {
 			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", 
 			"logsql",
+//			"log_db_sql"
 //			"virustotal",
 //			"mwserv",
 //			"submit_http",
