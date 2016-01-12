@@ -392,6 +392,11 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 bool connection_listen(struct connection *con, int len)
 {
+	struct lcfgx_tree_node *node_cert;
+	struct lcfgx_tree_node *node_key;
+	const char *cert_filename;
+	const char *key_filename;
+
 	g_debug("%s con %p len %i", __PRETTY_FUNCTION__, con, len);
 
 	switch( con->trans )
@@ -438,9 +443,16 @@ bool connection_listen(struct connection *con, int len)
 			return false;
 		}
 		connection_set_nonblocking(con);
-		connection_tls_mkcert(con);
-//		connection_tls_set_certificate(con,"/tmp/server.crt",SSL_FILETYPE_PEM);
-//		connection_tls_set_key(con,"/tmp/server.pem",SSL_FILETYPE_PEM);
+		if( lcfgx_get_string(g_dionaea->config.root, &node_cert, "listen.ssl.default.cert") == LCFGX_PATH_FOUND_TYPE_OK &&
+		    lcfgx_get_string(g_dionaea->config.root, &node_key, "listen.ssl.default.key") == LCFGX_PATH_FOUND_TYPE_OK ) {
+			cert_filename = node_cert->value.string.data;
+			key_filename = node_key->value.string.data;
+
+			connection_tls_set_certificate(con, cert_filename, SSL_FILETYPE_PEM);
+			connection_tls_set_key(con, key_filename, SSL_FILETYPE_PEM);
+		} else {
+			connection_tls_mkcert(con);
+		}
 //		SSL_CTX_set_timeout(con->transport.ssl.ctx, 15);
 		ssl_tmp_keys_init(con);
 		ev_set_priority(&con->events.io_in, EV_MAXPRI);
