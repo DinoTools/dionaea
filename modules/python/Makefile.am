@@ -11,10 +11,8 @@ binding.c: setup.py setup.py.in binding.pyx module.c module.h ../../config.h ../
 
 install-exec-am: all
 	cp build/*/dionaea/*.so $(DESTDIR)$(pkglibdir)/python.so
-	rm -rf $(DESTDIR)$(pkglibdir)/python/dionaea/core.so
-	ln -s $(DESTDIR)$(pkglibdir)/python.so $(DESTDIR)$(pkglibdir)/python/dionaea/core.so
-	rm -rf $(DESTDIR)$(pkglibdir)/python/dionaea/pyev.so
-	ln -s $(DESTDIR)$(pkglibdir)/python.so $(DESTDIR)$(pkglibdir)/python/dionaea/pyev.so
+	(cd $(DESTDIR)$(pkglibdir)/python/dionaea && rm -f core.so && ln -s ../../python.so core.so)
+	(cd $(DESTDIR)$(pkglibdir)/python/dionaea && rm -f pyev.so && ln -s ../../python.so pyev.so)
 
 clean:
 	$(PYTHON) setup.py clean
