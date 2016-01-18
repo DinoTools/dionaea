@@ -179,10 +179,8 @@ listen =
 			cn = "www.example.org"
 			o = "Example Inc."
 			ou = ""
-			/*
-			key = "server.key"
-			cert = "server.crt"
-			*/
+			// key = "server.key"
+			// cert = "server.crt"
 		}
 	}
 	*/
