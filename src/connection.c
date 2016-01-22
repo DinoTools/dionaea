@@ -3076,6 +3076,7 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 {
 	struct connection *con = CONOFF_IO_IN(w);
+	struct incident *i;
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	while( 1 )
@@ -3158,6 +3159,12 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 		accepted->events.io_in.events = EV_READ;
 		connection_tls_handshake_again_cb(EV_A_ &accepted->events.io_in, 0);
+
+		i = incident_new("dionaea.connection.link");
+		incident_value_con_set(i, "parent", con);
+		incident_value_con_set(i, "child", accepted);
+		incident_report(i);
+		incident_free(i);
 	}
 
 	if( ev_is_active(&con->events.listen_timeout) )
@@ -3171,6 +3178,7 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 void connection_tls_handshake_again_cb(EV_P_ struct ev_io *w, int revents)
 {
 	struct connection *con = NULL;
+	struct incident *i;
 
 	if( w->events == EV_READ )
 		con = CONOFF_IO_IN(w);
@@ -3237,6 +3245,11 @@ void connection_tls_handshake_again_cb(EV_P_ struct ev_io *w, int revents)
 		ev_timer_stop(EV_A_ &con->events.handshake_timeout);
 		ev_timer_init(&con->events.idle_timeout, connection_idle_timeout_cb, 0. ,con->events.idle_timeout.repeat);
 		connection_established(con);
+
+		i = incident_new("dionaea.connection.tls.accept");
+		incident_value_con_set(i, "con", con);
+		incident_report(i);
+		incident_free(i);
 	}
 }
 
