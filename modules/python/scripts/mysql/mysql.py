@@ -116,7 +116,7 @@ class mysqld(connection):
                 MySQL_Result_Row_Data(ColumnValues=['Gentoo Linux mysql-5.0.54\0']),
                 MySQL_Result_EOF(ServerStatus=0x002)
             ]
-        elif p.Query == re.match(b'SELECT DATABASE\(\)$', p.Query, re.I):
+        elif re.match(b'SELECT DATABASE\(\)$', p.Query, re.I):
             r = [
                 MySQL_Result_Header(FieldCount=1),
                 MySQL_Result_Field(
@@ -132,7 +132,7 @@ class mysqld(connection):
                 MySQL_Result_Row_Data(ColumnValues=[self.database]),
                 MySQL_Result_EOF(ServerStatus=0x002)
             ]
-        elif p.Query == re.match(b'show databases$', p.Query, re.I):
+        elif re.match(b'show databases$', p.Query, re.I):
             r = [
                 MySQL_Result_Header(FieldCount=1),
                 MySQL_Result_Field(
@@ -153,7 +153,7 @@ class mysqld(connection):
 
             # r.append(MySQL_Result_Row_Data(ColumnValues=['information_schema']))
             r.append(MySQL_Result_EOF(ServerStatus=0x002))
-        elif p.Query == re.match(b'show tables$', p.Query, re.I):
+        elif re.match(b'show tables$', p.Query, re.I):
             r = [
                 MySQL_Result_Header(FieldCount=1),
                 MySQL_Result_Field(
