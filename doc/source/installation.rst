@@ -3,6 +3,34 @@ Installation
 
 At the time of writing the best choice to install dionaea on a server is to use Ubuntu 14.04.
 
+Arch Linux
+----------
+
+Packages for dionaea are available from the Arch User Repository (AUR).
+Use a package manager like yaourt that can handle and install packages from the AUR.
+
+Before you start install the required build tools.
+
+.. code-block:: console
+
+    $ yaourt -S base-devel
+
+After the requirements have been installed successfully you can install dionaea.
+This will checkout the latest sources from the git repository, run the build process and install the package.
+
+.. code-block:: console
+
+    $ yaourt -S dionaea-git
+
+After the installation has been completed you may want to edit the config file /etc/dionaea/dionaea.conf.
+If everything looks fine the dionaea service can bee started by using the following command.
+
+.. code-block:: console
+
+    $ sudo systemctl start dionaea
+
+The log files and everything captured can be found in the directory /var/lib/dionaea/.
+
 Ubuntu 14.04
 ------------
 
