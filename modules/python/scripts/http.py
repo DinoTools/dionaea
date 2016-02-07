@@ -96,7 +96,7 @@ class httpreq:
 class httpd(connection):
     def __init__(self, proto='tcp'):
         logger.debug("http test")
-        connection.__init__(self,proto)
+        connection.__init__(self, proto)
         self.state = 'HEADER'
         self.rwchunksize = 64*1024
         self._out.speed.limit = 16*1024
@@ -106,17 +106,14 @@ class httpd(connection):
         self.cur_length = 0
         max_request_size = 32768
 
-        try:
-            if 'max-request-size' in g_dionaea.config()['modules']['python']['http']:
-                # try to convert value to int
-                max_request_size = int(
-                    g_dionaea.config()['modules']['python']['http']['max-request-size'])
-            else:
-                logger.info(
-                    "Value for 'max-request-size' not found, using default value.")
-        except:
-            logger.warning(
-                "Error while converting 'max-request-size' to an integer value. Using default value.")
+        conf_max_request_size = g_dionaea.config()['modules']['python']['http'].get('max-request-size')
+        if conf_max_request_size is None:
+            logger.info("Value for 'max-request-size' not found, using default value.")
+        else:
+            try:
+                max_request_size = int(conf_max_request_size)
+            except ValueError:
+                logger.warning("Error while converting 'max-request-size' to an integer value. Using default value.")
 
         self.max_request_size = max_request_size * 1024
 
