@@ -30,6 +30,7 @@ from dionaea.core import connection, g_dionaea, incident, ihandler
 from dionaea import ServiceLoader
 #from dionaea.services import g_slave
 import struct
+from collections import OrderedDict
 import logging
 import os
 import sys
@@ -93,6 +94,52 @@ class httpreq:
             logger.debug(i + b":" + self.headers[i])
 
 
+class Headers(object):
+    def __init__(self, headers, global_headers=None, filename_pattern=None, methods=None, status_codes=None):
+        if global_headers is not None:
+            headers = global_headers + headers
+
+        self.headers = OrderedDict(headers)
+
+        self.methods = None
+        if methods:
+            self.methods = methods[:]
+
+        self.filename_pattern = None
+        if filename_pattern:
+            self.filename_pattern = re.compile(filename_pattern)
+
+        self.status_codes = None
+        if status_codes:
+            self.status_codes = status_codes[:]
+
+    def match(self, code, method=None, filename=None):
+        if self.methods:
+            if not method or method not in self.methods:
+                return False
+
+        if self.filename_pattern:
+            if not filename or not self.filename_pattern.match(filename):
+                return False
+
+        if self.status_codes:
+            if not code or code not in self.status_codes:
+                return False
+
+        return True
+
+    def prepare(self, values):
+        for n, v in self.headers.items():
+            try:
+                yield (n, v.format(**values))
+            except KeyError as e:
+                logger.warning("Key error in header: %s: %s" % (n, v), exc_info=True)
+
+    def send(self, connection, values):
+        for header in self.prepare(values):
+            connection.send_header(header[0], header[1])
+
+
 class httpd(connection):
     def __init__(self, proto='tcp'):
         logger.debug("http test")
@@ -105,6 +152,50 @@ class httpd(connection):
         self.fp_tmp = None
         self.cur_length = 0
         max_request_size = 32768
+        default_headers = [
+            ("Content-Type", "{content_type}"),
+            ("Content-Length", "{content_length}"),
+            ("Connection", "{connection}")
+
+        ]
+        default_headers = g_dionaea.config()['modules']['python']['http'].get('default_headers', default_headers)
+        global_headers = g_dionaea.config()['modules']['python']['http'].get('global_headers', [])
+
+        self.default_headers = Headers(default_headers, global_headers=global_headers)
+
+        headers = g_dionaea.config()['modules']['python']['http'].get('headers', [])
+        self.headers = []
+        for header in headers:
+            self.headers.append(
+                Headers(
+                    header.get("headers", []),
+                    global_headers=global_headers,
+                    filename_pattern=header.get("filename_pattern"),
+                    status_codes=header.get("status_codes")
+                )
+            )
+
+        self.headers.append(
+            Headers(
+                [
+                    ("Location", "{location}"),
+                    ("Connection", "{connection}")
+                ],
+                global_headers=global_headers,
+                status_codes=[301, 302]
+            )
+        )
+
+        self.headers.append(
+            Headers(
+                [
+                    ("Allow", "{allow}"),
+                    ("Connection", "{connection}")
+                ],
+                global_headers=global_headers,
+                methods=["options"]
+            )
+        )
 
         conf_max_request_size = g_dionaea.config()['modules']['python']['http'].get('max-request-size')
         if conf_max_request_size is None:
@@ -116,6 +207,12 @@ class httpd(connection):
                 logger.warning("Error while converting 'max-request-size' to an integer value. Using default value.")
 
         self.max_request_size = max_request_size * 1024
+
+    def _get_headers(self, code=None, filename=None, method=None):
+        for header in self.headers:
+            if header.match(code=code, filename=filename, method=method):
+                return header
+        return self.default_headers
 
     def handle_origin(self, parent):
         self.root = parent.root
@@ -265,9 +362,15 @@ class httpd(connection):
         Handle the OPTIONS method. Returns the HTTP methods that the server supports.
         """
         self.send_response(200)
-        self.send_header("Allow", "OPTIONS, GET, HEAD, POST")
-        self.send_header("Content-Length", "0")
-        self.send_header("Connection", "close")
+        headers = self._get_headers(code=200, method="options")
+        headers.send(
+            self,
+            {
+                "allow": "OPTIONS, GET, HEAD, POST",
+                "connection": "close",
+                "content_length": 0
+            }
+        )
         self.end_headers()
         self.close()
 
@@ -346,8 +449,14 @@ class httpd(connection):
             if os.path.isdir(apath):
                 if not self.header.path.endswith('/'):
                     self.send_response(301)
-                    self.send_header("Location", self.header.path + "/")
-                    self.send_header("Connection", "close")
+                    headers = self._get_headers(code=301)
+                    headers.send(
+                        self,
+                        {
+                            "connection": "close",
+                            "location": self.header.path + "/"
+                        }
+                    )
                     self.end_headers()
                     self.close()
                     return None
@@ -355,8 +464,14 @@ class httpd(connection):
             elif os.path.isfile(apath):
                 f = io.open(apath, 'rb')
                 self.send_response(200)
-                self.send_header("Connection", "close")
-                self.send_header("Content-Length", str(os.stat(apath).st_size))
+                headers = self._get_headers(code=200, filename=apath)
+                headers.send(
+                    self,
+                    {
+                        "connection": "close",
+                        "content_length": os.stat(apath).st_size
+                    }
+                )
                 self.end_headers()
                 return f
             else:
@@ -418,9 +533,15 @@ class httpd(connection):
         enc = sys.getfilesystemencoding()
         encoded = ''.join(r).encode(enc)
         self.send_response(200)
-        self.send_header("Content-type", "text/html; charset=%s" % enc)
-        self.send_header("Content-Length", str(len(encoded)))
-        self.send_header("Connection", "close")
+        headers = self._get_headers(code=200)
+        headers.send(
+            self,
+            {
+                "connection": "close",
+                "content_length": len(encoded),
+                "content_type": "text/html; charset=%s" % enc
+            }
+        )
         self.end_headers()
         f = io.BytesIO()
         f.write(encoded)
@@ -462,9 +583,16 @@ class httpd(connection):
         encoded = ''.join(r).encode(enc)
 
         self.send_response(code, message)
-        self.send_header("Content-type", "text/html; charset=%s" % enc)
-        self.send_header("Content-Length", str(len(encoded)))
-        self.send_header("Connection", "close")
+
+        headers = self._get_headers(code=code)
+        headers.send(
+            self,
+            {
+                "connection": "close",
+                "content_length": len(encoded),
+                "content_type": "text/html; charset=%s" % enc
+            }
+        )
         self.end_headers()
 
         f = io.BytesIO()
