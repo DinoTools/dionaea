@@ -74,3 +74,9 @@ If everything looks fine the dionaea service can bee started by using the follow
     $ sudo service dionaea start
 
 The log files can be found in the directory /var/log/dionaea/ and everything else captured and logged by the honeypot can be found in the directory /var/lib/dionaea/.
+
+3rd-party packages
+------------------
+
+The packages below are 3rd party provided, which is appreciated.
+If you have compiled a package for your own distribution, just send me the link or make a pull request.

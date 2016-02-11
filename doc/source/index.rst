@@ -28,7 +28,6 @@ Old documentation:
     old/submit
     old/logging
     old/development
-    old/packages
     old/run
     old/configuration
     old/utils
