@@ -15,6 +15,7 @@ Content:
     introduction
     installation
     service/index
+    contributing
     development
     faq
 
