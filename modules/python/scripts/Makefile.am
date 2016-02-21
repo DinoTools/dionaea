@@ -37,6 +37,7 @@ PYSCRIPTS += logsql.py
 PYSCRIPTS += log_db_sql/__init__.py
 PYSCRIPTS += log_db_sql/controller.py
 PYSCRIPTS += log_db_sql/model.py
+PYSCRIPTS += log_json.py
 PYSCRIPTS += p0f.py
 PYSCRIPTS += cmd.py
 PYSCRIPTS += emu.py

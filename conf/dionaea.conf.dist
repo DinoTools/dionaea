@@ -432,6 +432,11 @@ modules = {
 				url = "sqlite:////tmp/dionaea2.db"
 			}
 		]
+		log_json = {
+		    handlers = [
+		        "http://127.0.0.1:8080/"
+		    ]
+		}
 		logsql = {
 			mode = "sqlite" // so far there is only sqlite
 			sqlite = {
