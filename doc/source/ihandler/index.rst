@@ -23,5 +23,6 @@ List of available ihandlers
 .. toctree::
     :maxdepth: 2
 
+    log_json
     logsql
     logxmpp
