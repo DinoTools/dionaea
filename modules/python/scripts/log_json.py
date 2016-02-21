@@ -165,3 +165,18 @@ class LogJsonHandler(ihandler):
             del self.attacks[con]
         else:
             logger.warn("no attack data for %s:%s" % (con.local.host, con.local.port))
+
+    def handle_incident_dionaea_modules_python_p0f(self, icd):
+        con = icd.con
+        data = self.attacks.get(con)
+        if data:
+            data["p0f"] = {
+                "detail": icd.detail,
+                "dist": icd.dist,
+                "fw": icd.fw,
+                "genre": icd.genre,
+                "link": icd.link,
+                "nat": icd.nat,
+                "tos": icd.tos,
+                "uptime": icd.uptime
+            }
