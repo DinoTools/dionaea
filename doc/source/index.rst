@@ -15,6 +15,7 @@ Content:
     introduction
     installation
     service/index
+    ihandler/index
     contributing
     development
     faq
@@ -27,7 +28,6 @@ Old documentation:
     old/exploitation
     old/downloads
     old/submit
-    old/logging
     old/development
     old/run
     old/configuration
