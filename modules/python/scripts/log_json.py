@@ -31,6 +31,21 @@ logger = logging.getLogger("log_json")
 logger.setLevel(logging.DEBUG)
 
 
+class FileHandler(object):
+    handle_schemes = ["file"]
+
+    def __init__(self, url):
+        self.url = url
+        url = urlparse(url)
+        self.fp = open(url.path, "a")
+
+    def submit(self, data):
+        data = json.dumps(data)
+        self.fp.write(data)
+        self.fp.write("\n")
+        self.fp.flush()
+
+
 class HTTPHandler(object):
     handle_schemes = ["http", "https"]
 
@@ -85,7 +100,7 @@ class LogJsonHandler(ihandler):
 
         for handler in handlers:
             url = urlparse(handler)
-            for h in (HTTPHandler,):
+            for h in (FileHandler, HTTPHandler,):
                 if url.scheme in h.handle_schemes:
                     self.handlers.append(h(url=handler))
                     break
