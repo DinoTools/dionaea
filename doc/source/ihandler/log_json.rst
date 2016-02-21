@@ -15,13 +15,14 @@ Default configuration:
     log_json = {
         handlers = [
             "http://127.0.0.1:8080/"
+            "file:///tmp/dionaea.json"
         ]
     }
 
 handlers
 
     List of URLs to submit the information to.
-    At the moment only http and https are supported.
+    At the moment only file, http and https are supported.
 
 Format
 ------
