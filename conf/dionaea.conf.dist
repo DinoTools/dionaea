@@ -551,6 +551,7 @@ modules = {
 			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", 
 			"logsql",
 //			"log_db_sql"
+//			"log_json",
 //			"virustotal",
 //			"mwserv",
 //			"submit_http",
