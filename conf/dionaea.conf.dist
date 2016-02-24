@@ -548,19 +548,28 @@ modules = {
 		}
 
 		ihandlers = {
-			handlers = ["ftpdownload", "tftpdownload", "emuprofile", "cmdshell", "store", "uniquedownload", 
-			"logsql",
-//			"log_db_sql"
-//			"log_json",
-//			"virustotal",
-//			"mwserv",
-//			"submit_http",
-			"hpfeeds",
-//			"logxmpp",
-//			"nfq",
-//			"p0f",
-//			"surfids",
-//			"fail2ban"
+			handlers = [
+				// Download samples and emulation
+				"ftpdownload",
+				"tftpdownload",
+				"emuprofile",
+				"cmdshell",
+				"store",
+				"uniquedownload",
+//				"nfq",
+//				"p0f",
+			 	// Submit samples for further inspection
+//				"mwserv",
+//				"submit_http",
+				// Logging
+//				"logsql",
+//				"log_db_sql",
+//				"log_json",
+//				"virustotal",
+//				"hpfeeds",
+//				"logxmpp",
+//				"surfids",
+//				"fail2ban",
 			]
 		}
 
