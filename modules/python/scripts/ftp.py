@@ -4,6 +4,7 @@
 #*
 #*
 #*
+# Copyright (c) 2016 PhiBo
 # Copyright (c) 2009 Markus Koetter
 # Copyright (c) 2001-2007 Twisted Matrix Laboratories.
 # Copyright (c) 2001-2009
@@ -81,124 +82,60 @@ logger = logging.getLogger('ftp')
 logger.setLevel(logging.DEBUG)
 
 #
-# the following definitions are taken from twisted
+# Parts of the following definitions are taken from twisted
 # MIT licensed code, gpl compatible
 # Copyright (c) 2001-2007 Twisted Matrix Laboratories.
 
-DATA_CNX_ALREADY_OPEN_START_XFR         = "125"
-FILE_STATUS_OK_OPEN_DATA_CNX            = "150"
-
-CMD_OK                                  = "200.1"
-TYPE_SET_OK                             = "200.2"
-ENTERING_PORT_MODE                      = "200.3"
-CMD_NOT_IMPLMNTD_SUPERFLUOUS            = "202"
-SYS_STATUS_OR_HELP_REPLY                = "211"
-DIR_STATUS                              = "212"
-FILE_STATUS                             = "213"
-HELP_MSG                                = "214"
-NAME_SYS_TYPE                           = "215"
-SVC_READY_FOR_NEW_USER                  = "220.1"
-WELCOME_MSG                             = "220.2"
-SVC_CLOSING_CTRL_CNX                    = "221"
-GOODBYE_MSG                             = "221"
-DATA_CNX_OPEN_NO_XFR_IN_PROGRESS        = "225"
-CLOSING_DATA_CNX                        = "226"
-TXFR_COMPLETE_OK                        = "226"
-ENTERING_PASV_MODE                      = "227"
-ENTERING_EPSV_MODE                      = "229"
-USR_LOGGED_IN_PROCEED                   = "230.1"     # v1 of code 230
-GUEST_LOGGED_IN_PROCEED                 = "230.2"     # v2 of code 230
-REQ_FILE_ACTN_COMPLETED_OK              = "250"
-PWD_REPLY                               = "257.1"
-MKD_REPLY                               = "257.2"
-
-USR_NAME_OK_NEED_PASS                   = "331.1"     # v1 of Code 331
-GUEST_NAME_OK_NEED_EMAIL                = "331.2"     # v2 of code 331
-NEED_ACCT_FOR_LOGIN                     = "332"
-REQ_FILE_ACTN_PENDING_FURTHER_INFO      = "350"
-
-SVC_NOT_AVAIL_CLOSING_CTRL_CNX          = "421.1"
-TOO_MANY_CONNECTIONS                    = "421.2"
-CANT_OPEN_DATA_CNX                      = "425"
-CNX_CLOSED_TXFR_ABORTED                 = "426"
-REQ_ACTN_ABRTD_FILE_UNAVAIL             = "450"
-REQ_ACTN_ABRTD_LOCAL_ERR                = "451"
-REQ_ACTN_ABRTD_INSUFF_STORAGE           = "452"
-
-SYNTAX_ERR                              = "500"
-SYNTAX_ERR_IN_ARGS                      = "501"
-CMD_NOT_IMPLMNTD                        = "502"
-BAD_CMD_SEQ                             = "503"
-CMD_NOT_IMPLMNTD_FOR_PARAM              = "504"
-# v1 of code 530 - please log in
-NOT_LOGGED_IN                           = "530.1"
-# v2 of code 530 - authorization failure
-AUTH_FAILURE                            = "530.2"
-NEED_ACCT_FOR_STOR                      = "532"
-# no such file or directory
-FILE_NOT_FOUND                          = "550.1"
-PERMISSION_DENIED                       = "550.2"     # permission denied
-# anonymous users can't alter filesystem
-ANON_USER_DENIED                        = "550.3"
-# rmd called on a path that is not a directory
-IS_NOT_A_DIR                            = "550.4"
-REQ_ACTN_NOT_TAKEN                      = "550.5"
-FILE_EXISTS                             = "550.6"
-IS_A_DIR                                = "550.7"
-PAGE_TYPE_UNK                           = "551"
-EXCEEDED_STORAGE_ALLOC                  = "552"
-FILENAME_NOT_ALLOWED                    = "553"
-
-
 RESPONSE = {
     # -- 100's --
-    DATA_CNX_ALREADY_OPEN_START_XFR:    '125 Data connection already open, starting transfer',
-    FILE_STATUS_OK_OPEN_DATA_CNX:       '150 File status okay; about to open data connection.',
+    "data_cnx_already_open_start_xfr":    "125 Data connection already open, starting transfer",
+    "file_status_ok_open_data_cnx":       "150 File status okay; about to open data connection.",
 
     # -- 200's --
-    CMD_OK:                             '200 Command OK',
-    TYPE_SET_OK:                        '200 Type set to %s.',
-    ENTERING_PORT_MODE:                 '200 PORT OK',
-    SYS_STATUS_OR_HELP_REPLY:           '211 System status reply',
-    DIR_STATUS:                         '212 %s',
-    FILE_STATUS:                        '213 %s',
-    HELP_MSG:                           '214 help: %s',
-    NAME_SYS_TYPE:                      '215 UNIX Type: L8',
-    WELCOME_MSG:                        "220 %s",
-    SVC_READY_FOR_NEW_USER:             '220 Service ready',
-    GOODBYE_MSG:                        '221 Goodbye.',
-    DATA_CNX_OPEN_NO_XFR_IN_PROGRESS:   '225 data connection open, no transfer in progress',
-    CLOSING_DATA_CNX:                   '226 Abort successful',
-    TXFR_COMPLETE_OK:                   '226 Transfer Complete.',
-    ENTERING_PASV_MODE:                 '227 Entering Passive Mode (%s).',
+    "cmd_ok":                             "200 Command OK",
+    "type_set_ok":                        "200 Type set to {mode}.",
+    "entering_port_mode":                 '200 PORT OK',
+    "sys_status_or_help_reply":           '211 System status reply',
+    "dir_status":                         '212 %s',
+    "file_status":                        '213 {value}',
+    #"help_msg":                           '214 help: %s',
+    "name_sys_type":                      '215 UNIX Type: L8',
+    "welcome_msg":                        "220 Welcome to the ftp service",
+    "svc_ready_for_new_user":             '220 Service ready',
+    "goodbye_msg":                        '221 Goodbye.',
+    "data_cnx_open_no_xfr_in_progress":   '225 data connection open, no transfer in progress',
+    "closing_data_cnx":                   '226 Abort successful',
+    "txfr_complete_ok":                   '226 Transfer Complete.',
+    "entering_pasv_mode":                 '227 Entering Passive Mode ({host}).',
     # where is epsv defined in the rfc's?
-    ENTERING_EPSV_MODE:                 '229 Entering Extended Passive Mode (|||%s|).',
-    USR_LOGGED_IN_PROCEED:              '230 User logged in, proceed',
-    GUEST_LOGGED_IN_PROCEED:            '230 Anonymous login ok, access restrictions apply.',
+    #"entering_epsv_mode":                 '229 Entering Extended Passive Mode (|||%s|).',
+    "usr_logged_in_proceed":              '230 User logged in, proceed',
+    "guest_logged_in_proceed":            '230 Anonymous login ok, access restrictions apply.',
     #i.e. CWD completed ok
-    REQ_FILE_ACTN_COMPLETED_OK:         '250 Requested File Action Completed OK',
-    PWD_REPLY:                          '257 "%s"',
+    "req_file_actn_completed_ok":         '250 Requested File Action Completed OK',
+    "pwd_reply":                          "257 \"{cwd}\"",
 
     # -- 300's --
-    USR_NAME_OK_NEED_PASS:              '331 Password required for %s.',
-    GUEST_NAME_OK_NEED_EMAIL:           '331 Guest login ok, type your email address as password.',
+    "usr_name_ok_need_pass":              '331 Password required for {username}.',
+    "guest_name_ok_need_email":           '331 Guest login ok, type your email address as password.',
 
-    REQ_FILE_ACTN_PENDING_FURTHER_INFO: '350 Requested file action pending further information.',
+    "req_file_actn_pending_further_info": '350 Requested file action pending further information.',
 
     # -- 400's --
-    CANT_OPEN_DATA_CNX:                 "425 Can't open data connection.",
-    CNX_CLOSED_TXFR_ABORTED:            '426 Transfer aborted.  Data connection closed.',
+    "cant_open_data_cnx":                 "425 Can't open data connection.",
+    "cnx_closed_txfr_aborted":            '426 Transfer aborted.  Data connection closed.',
 
     # -- 500's --
-    SYNTAX_ERR:                         "500 Syntax error: %s",
-    SYNTAX_ERR_IN_ARGS:                 '501 syntax error in argument(s) %s.',
-    CMD_NOT_IMPLMNTD:                   "502 Command '%s' not implemented",
-    BAD_CMD_SEQ:                        '503 Incorrect sequence of commands: %s',
-    CMD_NOT_IMPLMNTD_FOR_PARAM:         "504 Not implemented for parameter '%s'.",
-    NOT_LOGGED_IN:                      '530 Please login with USER and PASS.',
-    AUTH_FAILURE:                       '530 Sorry, Authentication failed.',
-    FILE_NOT_FOUND:                     '550 %s: No such file or directory.',
-    PERMISSION_DENIED:                  '550 %s: Permission denied.',
+    "syntax_error_pass_requires_arg":     "500 Syntax error: PASS requires an argument",
+    "syntax_error_user_requires_arg":     "500 Syntax error: USER requires an argument",
+    "syntax_err_in_args":                 '501 syntax error in argument(s) {command}.',
+    "cmd_not_implmntd":                   "502 Command '{command}' not implemented",
+    "bad_cmd_seq_pass_after_user":        "503 Incorrect sequence of commands: PASS required after USER",
+    "cmd_not_implmntd_for_param":         "504 Not implemented for parameter '{param}'.",
+    "not_logged_in":                      '530 Please login with USER and PASS.',
+    "auth_failure":                       '530 Sorry, Authentication failed.',
+    "file_not_found":                     '550 {filename}: No such file or directory.',
+    "permission_denied":                  '550 {path}: Permission denied.',
 }
 
 
@@ -228,6 +165,8 @@ class FTPd(connection):
         self.dtp = None
         self.dtf = None
         self.limits = {}  # { '_out' : 8192 }
+        # Copy default response messages
+        self._response_msgs = dict(RESPONSE.items())
 
     def chroot(self, p):
         self.basedir = p
@@ -235,9 +174,9 @@ class FTPd(connection):
     def sendline(self, data):
         self.send(data + '\r\n')
 
-    def reply(self, key, *args):
-        msg = RESPONSE[key] % args
-        self.sendline(msg)
+    def reply(self, name, **kwargs):
+        msg = self._response_msgs.get(name, "")
+        self.sendline(msg.format(**kwargs))
 
     def handle_origin(self, parent):
         logger.debug("setting basedir to %s" % parent.basedir)
@@ -245,7 +184,7 @@ class FTPd(connection):
 
     def handle_established(self):
         self.processors()
-        self.reply(WELCOME_MSG, "Welcome to the ftp service")
+        self.reply("welcome_msg")
 
     def handle_io_in(self, data):
         # try:
@@ -276,11 +215,7 @@ class FTPd(connection):
                 cmd = line
                 args = ()
             logger.warn("cmd '%s'" % cmd)
-            r = self.processcmd(cmd, args)
-            if isinstance(r,tuple):
-                self.reply(*r)
-            elif r is not None:
-                self.reply(r)
+            self.processcmd(cmd, args)
         return lastsep
 
     def processcmd(self, cmd, args):
@@ -290,36 +225,48 @@ class FTPd(connection):
         cmd = cmd.upper()
         if self.state == self.UNAUTH:
             if cmd != b'USER':
-                return NOT_LOGGED_IN
-            self.ftp_USER(*args)
+                self.reply("not_logged_in")
+                return
+            self.ftp_USER(*l)
         elif self.state == self.INAUTH:
             if cmd != b'PASS':
-                return (BAD_CMD_SEQ, "PASS required after USER")
+                self.reply("bad_cmd_seq_pass_after_user")
+                return
             self.ftp_PASS(*l)
-        method = getattr(self, "ftp_" + cmd.decode(), None)
-        if method is not None:
-            return method(*l)
         else:
-            return (CMD_NOT_IMPLMNTD, cmd.decode())
+            method = getattr(self, "ftp_" + cmd.decode(), None)
+            if method is not None:
+                msg = method(*l)
+                if isinstance(msg, str):
+                    self.error("Returning messages is deprecated please report so we can fix it")
+                    self.sendline(msg)
+            else:
+                self.reply("cmd_not_implmntd", command=cmd.decode())
 
     def ftp_USER(self, username):
         if not username:
-            return (SYNTAX_ERR, 'USER requires an argument')
+            self.reply("syntax_error_user_requires_arg")
+            return
+
         self.state = self.INAUTH
         self.user = username
-        if username == 'anonymous':
-            return GUEST_NAME_OK_NEED_EMAIL
+        if username == "anonymous":
+            self.reply("guest_name_ok_need_email")
+            return
         else:
-            return (USR_NAME_OK_NEED_PASS, username)
+            self.reply("usr_name_ok_need_pass", username=username)
+            return
 
     def ftp_PASS(self, password):
         if not password:
-            return (SYNTAX_ERR, 'PASS requires an argument')
+            self.reply("syntax_error_pass_requires_arg")
+            return
+
         self.state = self.AUTHED
-        if self.user == 'anonymous':
-            return GUEST_LOGGED_IN_PROCEED
+        if self.user == "anonymous":
+            self.reply("guest_logged_in_proceed")
         else:
-            return USR_LOGGED_IN_PROCEED
+            self.reply("usr_logged_in_proceed")
 
     def ftp_FEAT(self):
         self.send('211-Features:\r\n' +
@@ -355,10 +302,10 @@ class FTPd(connection):
         self.dtf = FTPDataListen(host=self.local.host, port=0, ctrl=self)
         host = self.dtf.local.host
         port = self.dtf.local.port
-        self.reply(ENTERING_PASV_MODE, encodeHostPort(host, port))
+        self.reply("entering_pasv_mode", host=encodeHostPort(host, port))
 
     def ftp_QUIT(self):
-        self.reply(GOODBYE_MSG)
+        self.reply("goodbye_msg")
         self.close()
 
     def real_path(self, p=None):
@@ -375,17 +322,18 @@ class FTPd(connection):
 
     def ftp_RETR(self, p):
         if not p:
-            return (SYNTAX_ERR_IN_ARGS, RETR)
+            self.reply("syntax_err_in_args", command="RETR")
+            return
 
         name = self.real_path(p)
-
         if not name.startswith(self.basedir):
-            return (PERMISSION_DENIED, p)
+            self.reply("permission_denied", path=p)
+            return
 
         if os.path.exists(name) and os.path.isfile(name):
             if self.dtp:
                 if self.dtp.status == 'established':
-                    self.reply(FILE_STATUS_OK_OPEN_DATA_CNX)
+                    self.reply("file_status_ok_open_data_cnx")
                     self.dtp.send_file(name)
                 else:
                     logger.warn(
@@ -405,22 +353,25 @@ class FTPd(connection):
                     self.dtp.local.port
                 )
         else:
-            return (FILE_NOT_FOUND, p)
+            self.reply("file_not_found", filename=p)
 
     def ftp_STOR(self, p):
         if not p:
-            return (SYNTAX_ERR_IN_ARGS, STOR)
+            self.reply("syntax_err_in_args", command="STOR")
+            return
 
         file = self.real_path(p)
         if os.path.exists(file):
-            return (PERMISSION_DENIED, p)
+            self.reply("permission_denied", path=p)
+            return
 
         if not file.startswith(self.basedir):
-            return (PERMISSION_DENIED, p)
+            self.reply("permission_denied", path=p)
+            return
 
         if self.dtp:
             if self.dtp.status == 'established':
-                self.reply(FILE_STATUS_OK_OPEN_DATA_CNX)
+                self.reply("file_status_ok_open_data_cnx")
                 self.dtp.recv_file(file)
             else:
                 logger.warn(
@@ -442,20 +393,23 @@ class FTPd(connection):
 
     def ftp_TYPE(self, t):
         if t == 'I':
-            return (TYPE_SET_OK, 'I')
+            self.reply("type_set_ok", mode="I")
+            return
         else:
-            return (CMD_NOT_IMPLMNTD_FOR_PARAM, t)
+            self.reply("cmd_not_implmntd_for_param", param=t)
+            return
 
     def ftp_LIST(self, p=None):
         name = self.real_path(p)
 
         if not name.startswith(self.basedir):
-            return (FILE_NOT_FOUND, p)
+            self.reply("file_not_found", filename=p)
+            return
 
         if os.path.exists(name):
             if self.dtp:
                 if self.dtp.status == 'established':
-                    self.reply(FILE_STATUS_OK_OPEN_DATA_CNX)
+                    self.reply("file_status_ok_open_data_cnx")
                     self.dtp.send_list(name, len(name)+1)
                 else:
                     logger.warn(
@@ -475,82 +429,103 @@ class FTPd(connection):
                     self.dtp.local.port
                 )
         else:
-            return (PERMISSION_DENIED, p)
+            self.reply("permission_denied", path=p)
 
     def ftp_PWD(self):
-        return (PWD_REPLY, self.cwd)
+        self.reply("pwd_reply", cwd=self.cwd)
 
     def ftp_CWD(self, p):
         cwd = self.real_path(p)
 
         if not cwd.startswith(self.basedir):
-            return (FILE_NOT_FOUND, p)
-        else:
-            self.cwd = cwd[len(self.basedir):]
-            if self.cwd == "":
-                self.cwd = "/"
+            self.reply("file_not_found", filename=p)
+            return
+
+        self.cwd = cwd[len(self.basedir):]
+        if self.cwd == "":
+            self.cwd = "/"
 
         if os.path.exists(cwd) and os.path.isdir(cwd):
-            return REQ_FILE_ACTN_COMPLETED_OK
-        else:
-            return (PERMISSION_DENIED, p)
+            self.reply("req_file_actn_completed_ok")
+            return
+
+        self.reply("permission_denied", path=p)
 
     def ftp_PBSZ(self, arg):
-        return CMD_OK
+        self.reply("cmd_ok")
 
     def ftp_SYST(self):
-        return NAME_SYS_TYPE
+        self.reply("name_sys_type")
 
     def ftp_SIZE(self, p):
         if not p:
-            return (FILE_NOT_FOUND,p)
+            self.reply("file_not_found", filename=p)
+            return
 
         file = self.real_path(p)
 
         if not file.startswith(self.basedir):
-            return (FILE_NOT_FOUND, p)
+            self.reply("file_not_found", filename=p)
+            return
 
         if os.path.exists(file) and os.path.isfile(file):
-            return (FILE_STATUS, str(stat(file).st_size))
-        return (FILE_NOT_FOUND,p)
+            self.reply("file_status", value=str(stat(file).st_size))
+            return
+
+        self.reply("file_not_found", filename=p)
 
     def ftp_MDTM(self, p):
         if not p:
-            return (FILE_NOT_FOUND,p)
-        file = self.real_path(p)
+            self.reply("file_not_found", filename=p)
+            return
 
+        file = self.real_path(p)
         if not file.startswith(self.basedir):
-            return (FILE_NOT_FOUND, p)
+            self.reply("file_not_found", filename=p)
+            return
 
         if os.path.exists(file) and os.path.isfile(file):
-            return (FILE_STATUS, time.strftime('%Y%m%d%H%M%S', time.gmtime(stat(file).st_mtime)))
-        return (FILE_NOT_FOUND,p)
+            self.reply(
+                "file_status",
+                value=time.strftime('%Y%m%d%H%M%S', time.gmtime(stat(file).st_mtime))
+            )
+            return
+
+        self.reply("file_not_found", filename=p)
 
     def ftp_RMD(self, p):
         if not p:
-            return (FILE_NOT_FOUND,p)
-        dir = self.real_path(p)
+            self.reply("file_not_found", filename=p)
+            return
 
+        dir = self.real_path(p)
         if not dir.startswith(self.basedir):
-            return (FILE_NOT_FOUND, p)
+            self.reply("file_not_found", filename=p)
+            return
 
         if os.path.exists(dir) and os.path.isdir(dir):
             os.rmdir(dir)
-            return REQ_FILE_ACTN_COMPLETED_OK
-        return (FILE_NOT_FOUND,p)
+            self.reply("req_file_actn_completed_ok")
+            return
+
+        self.reply("file_not_found", filename=p)
 
     def ftp_MKD(self, p):
         if not p:
-            return (FILE_NOT_FOUND,p)
-        dir = self.real_path(p)
+            self.reply("file_not_found", filename=p)
+            return
 
+        dir = self.real_path(p)
         if not dir.startswith(self.basedir):
-            return (FILE_NOT_FOUND, p)
+            self.reply("file_not_found", filename=p)
+            return
 
         if os.path.isdir(dir):
-            return (PERMISSION_DENIED, p)
+            self.reply("permission_denied", path=p)
+            return
+
         os.mkdir(dir)
-        return REQ_FILE_ACTN_COMPLETED_OK
+        self.reply("req_file_actn_completed_ok")
 
     def handle_error(self, err):
         pass
@@ -578,7 +553,7 @@ class FTPDataCon(connection):
 
     def handle_error(self, err):
         if self.ctrl:
-            self.ctrl.reply(CANT_OPEN_DATA_CNX)
+            self.ctrl.reply("cant_open_data_cnx")
 
     def send_list(self, p, rm):
         def ls(f, r):
@@ -641,7 +616,7 @@ class FTPDataCon(connection):
             self.close()
             if self.ctrl:
                 self.ctrl.dtp = None
-                self.ctrl.reply(TXFR_COMPLETE_OK)
+                self.ctrl.reply("txfr_complete_ok")
 
     def recv_file(self, p):
         logger.debug(p)
@@ -659,7 +634,7 @@ class FTPDataCon(connection):
             self.mode = None
             self.close()
             if self.ctrl:
-                self.ctrl.reply(TXFR_COMPLETE_OK)
+                self.ctrl.reply("txfr_complete_ok")
                 self.ctrl.dtp = None
 
     def handle_io_in(self, data):
@@ -677,7 +652,7 @@ class FTPDataCon(connection):
                 self.close()
                 if self.ctrl:
                     self.ctrl.dtp = None
-                    self.ctrl.reply(TXFR_COMPLETE_OK)
+                    self.ctrl.reply("txfr_complete_ok")
 
         elif self.mode == 'file':
             w = self.file.read(1024)
@@ -688,7 +663,7 @@ class FTPDataCon(connection):
                 self.file.close()
                 if self.ctrl:
                     self.ctrl.dtp = None
-                    self.ctrl.reply(TXFR_COMPLETE_OK)
+                    self.ctrl.reply("txfr_complete_ok")
 
     def handle_disconnect(self):
         if self.ctrl:
@@ -700,7 +675,7 @@ class FTPDataCon(connection):
                 self.file.close()
             if self.mode == 'recv_file' and self.file:
                 self.file.close()
-                self.ctrl.reply(TXFR_COMPLETE_OK)
+                self.ctrl.reply("txfr_complete_ok")
         return 0
 
     def handle_origin(self, parent):
@@ -716,7 +691,7 @@ class FTPDataConnect(FTPDataCon):
 
     def handle_established(self):
         logger.debug("DATA connection established")
-        self.ctrl.reply(ENTERING_PORT_MODE)
+        self.ctrl.reply("entering_port_mode")
 
 
 class FTPDataListen(FTPDataCon):
