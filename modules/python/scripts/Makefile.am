@@ -11,6 +11,7 @@ PYSCRIPTS += sip/rfc4566.py
 PYSCRIPTS += tftp.py
 PYSCRIPTS += echo.py
 PYSCRIPTS += ftp.py
+PYSCRIPTS += ftp_download.py
 PYSCRIPTS += services.py
 PYSCRIPTS += smb/include/fieldtypes.py
 PYSCRIPTS += smb/include/smbfields.py
