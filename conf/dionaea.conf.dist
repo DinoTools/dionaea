@@ -574,7 +574,21 @@ modules = {
 		}
 
 		services = {
-			serve = ["http", "https", "tftp", "ftp", "mirror", "smb", "epmap", "sip","mssql", "mysql", "pptp", "mqtt", "upnp"]
+			serve = [
+				"epmap",
+				"ftp",
+				"http",
+				"https",
+				"mirror",
+				"mqtt",
+				"mssql",
+				"mysql",
+				"pptp",
+				"sip",
+				"smb",
+				"tftp",
+				"upnp",
+			]
 		}
 
 	}
