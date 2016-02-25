@@ -167,6 +167,8 @@ class FTPd(connection):
         self.limits = {}  # { '_out' : 8192 }
         # Copy default response messages
         self._response_msgs = dict(RESPONSE.items())
+        msgs = g_dionaea.config()["modules"]["python"]["ftp"].get("response_messages", {})
+        self._response_msgs.update(msgs)
 
     def chroot(self, p):
         self.basedir = p

@@ -261,6 +261,12 @@ modules = {
 			 * not 0.0.0.0 - gets resolved as hostname and used
 			 */
 			active-host = "0.0.0.0"
+			/*
+			response_messages = {
+				welcome_msg = "220 DiskStation FTP server ready."
+			}
+			*/
+
 		}
 		tftp = {
 			root = "var/dionaea/wwwroot"
