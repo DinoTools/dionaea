@@ -20,6 +20,7 @@
 #
 ################################################################################
 
+from datetime import datetime
 import json
 import logging
 from urllib.parse import urlparse
@@ -122,7 +123,8 @@ class LogJsonHandler(ihandler):
             "dst_port": con.local.port,
             "src_hostname": con.remote.hostname,
             "src_ip": con.remote.host,
-            "src_port": con.remote.port
+            "src_port": con.remote.port,
+            "timestamp": datetime.utcnow().isoformat()
         }
         self.attacks[con] = data
 
