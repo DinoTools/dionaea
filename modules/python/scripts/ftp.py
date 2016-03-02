@@ -224,6 +224,12 @@ class FTPd(connection):
         logger.debug("cmd '%s'" % cmd)
         l = [i.decode() for i in args]
 
+        i = incident("dionaea.modules.python.ftp.command")
+        i.con = self
+        i.command = cmd
+        i.arguments = l
+        i.report()
+
         cmd = cmd.upper()
         if self.state == self.UNAUTH:
             if cmd != b'USER':
