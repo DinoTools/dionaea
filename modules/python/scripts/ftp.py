@@ -154,6 +154,8 @@ class FTPService(ServiceLoader):
 class FTPd(connection):
     UNAUTH, INAUTH, AUTHED, RENAMING = range(4)
 
+    protocol_name = "ftpd"
+
     def __init__(self, proto='tcp'):
         connection.__init__(self, proto)
         logger.debug("ftp test")
@@ -699,6 +701,8 @@ class FTPDataCon(connection):
 
 
 class FTPDataConnect(FTPDataCon):
+    protocol_name = "ftpdataconnect"
+
     def __init__(self, host, port, ctrl):
         FTPDataCon.__init__(self, ctrl)
         self.connect(host, port)
@@ -709,6 +713,8 @@ class FTPDataConnect(FTPDataCon):
 
 
 class FTPDataListen(FTPDataCon):
+    protocol_name = "ftpdatalisten"
+
     def __init__(self, host=None, port=None, ctrl=None):
         FTPDataCon.__init__(self, ctrl)
         if host is not None:
