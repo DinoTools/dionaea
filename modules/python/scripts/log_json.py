@@ -195,6 +195,23 @@ class LogJsonHandler(ihandler):
         else:
             logger.warn("no attack data for %s:%s" % (con.local.host, con.local.port))
 
+    def handle_incident_dionaea_modules_python_ftp_command(self, icd):
+        con = icd.con
+        data = self.attacks.get(con)
+        if not data:
+            # ToDo: warning
+            return
+
+        if "ftp" not in data:
+            data["ftp"] = {}
+        if "commands" not in data["ftp"]:
+            data["ftp"]["commands"] = []
+
+        data["ftp"]["commands"].append({
+            "command": icd.command,
+            "arguments": icd.arguments
+        })
+
     def handle_incident_dionaea_modules_python_ftp_login(self, icd):
         self._append_credentials(icd)
 
