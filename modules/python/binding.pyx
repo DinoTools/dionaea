@@ -455,7 +455,7 @@ cdef class connection:
 				raise ValueError(str(con_type) + u'is not a valid protocol')
 			self.thisptr = c_connection_new(enum_type)
 #			print(u"XXXXXXXXXXXXX" + self.__class__.__name__)
-			protoname = self.__class__.__name__
+			protoname = getattr(self, "protocol_name", self.__class__.__name__)
 			protoname = protoname.encode(u'ascii')
 			self.thisptr.protocol.name = c_g_strdup(protoname)
 			self.thisptr.protocol.ctx_new = <protocol_handler_ctx_new>c_traceable_ctx_new_cb
