@@ -554,7 +554,7 @@ class httpd(connection):
                 message = self.responses[code][0]
             else:
                 message = ''
-        self.send("%s %d %s\r\n" % ("HTTP/1.0", code, message))
+        self.send("%s %d %s\r\n" % ("HTTP/1.1", code, message))
 
     def send_error(self, code, message = None):
         if message is None:
