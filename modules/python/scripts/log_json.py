@@ -110,6 +110,22 @@ class LogJsonHandler(ihandler):
         #        print("unknown")
         pass
 
+    def _append_credentials(self, icd):
+        con = icd.con
+        data = self.attacks.get(con)
+        if not data:
+            # ToDo: warning
+            return
+
+        credentials = {
+            "password": icd.password,
+            "username": icd.username
+        }
+
+        if "credentials" not in data:
+            data["credentials"] = []
+        data["credentials"].append(credentials)
+
     def _serialize_connection(self, icd, connection_type):
         con = icd.con
 
@@ -178,6 +194,15 @@ class LogJsonHandler(ihandler):
             del self.attacks[con]
         else:
             logger.warn("no attack data for %s:%s" % (con.local.host, con.local.port))
+
+    def handle_incident_dionaea_modules_python_ftp_login(self, icd):
+        self._append_credentials(icd)
+
+    def handle_incident_dionaea_modules_python_mssql_login(self, icd):
+        self._append_credentials(icd)
+
+    def handle_incident_dionaea_modules_python_mysql_login(self, icd):
+        self._append_credentials(icd)
 
     def handle_incident_dionaea_modules_python_p0f(self, icd):
         con = icd.con
