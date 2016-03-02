@@ -114,19 +114,15 @@ class LogJsonHandler(ihandler):
 
         data = {
             "connection": {
-                "local": {
-                    "address": con.local.host,
-                    "port": con.local.port
-                },
                 "protocol": con.protocol,
-                "remote": {
-                    "address": con.remote.host,
-                    "port": con.remote.port,
-                    "hostname": con.remote.hostname
-                },
                 "transport": con.transport,
                 "type": connection_type
-            }
+            },
+            "dst_ip": con.local.host,
+            "dst_port": con.local.port,
+            "src_hostname": con.remote.hostname,
+            "src_ip": con.remote.host,
+            "src_port": con.remote.port
         }
         self.attacks[con] = data
 
