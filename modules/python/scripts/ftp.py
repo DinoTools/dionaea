@@ -264,6 +264,12 @@ class FTPd(connection):
             self.reply("syntax_error_pass_requires_arg")
             return
 
+        i = incident("dionaea.modules.python.ftp.login")
+        i.con = self
+        i.username = self.user
+        i.password = password
+        i.report()
+
         self.state = self.AUTHED
         if self.user == "anonymous":
             self.reply("guest_logged_in_proceed")
