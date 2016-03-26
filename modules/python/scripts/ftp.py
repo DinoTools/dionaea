@@ -641,17 +641,9 @@ class FTPDataCon(connection):
         print(self.file)
 
     def send_file(self, p):
-        self.mode = 'file'
-        self.file = io.open(p, 'rb')
-        w = self.file.read(1024)
-        self.send(w)
-        if len(w) < 1024:
-            self.file.close()
-            self.mode = None
-            self.close()
-            if self.ctrl:
-                self.ctrl.reply("txfr_complete_ok")
-                self.ctrl.dtp = None
+        self.mode = "file"
+        self.file = open(p, "rb")
+        self.handle_io_out()
 
     def handle_io_in(self, data):
         if self.mode == "recv_file":
@@ -670,10 +662,10 @@ class FTPDataCon(connection):
                     self.ctrl.dtp = None
                     self.ctrl.reply("txfr_complete_ok")
 
-        elif self.mode == 'file':
+        elif self.mode == "file":
             w = self.file.read(1024)
             self.send(w)
-            if len(w) < 1024:
+            if len(w) < 1024 and self.mode is not None:
                 self.mode = None
                 self.close()
                 self.file.close()
