@@ -18,6 +18,7 @@ Content:
     ihandler/index
     contributing
     development
+    changelog
     faq
 
 Old documentation:
