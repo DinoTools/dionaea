@@ -566,6 +566,7 @@ class FTPDataCon(connection):
         connection.__init__(self, 'tcp')
         self.ctrl = ctrl
         self.mode = None
+        self.file = None
 
     def handle_error(self, err):
         if self.ctrl:
