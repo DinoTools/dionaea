@@ -102,7 +102,7 @@ class mysqld(connection):
             r = MySQL_Result_OK(Message="#2")
 
         elif re.match(b'select @@version_comment limit 1$', p.Query, re.I) or \
-                re.match(b'select version\(\)$', p.Query, re.I):
+                re.match(b'select\S+version\S*\(\S*\)$', p.Query, re.I):
 
             r = [
                 MySQL_Result_Header(FieldCount=1),
@@ -120,7 +120,7 @@ class mysqld(connection):
                 MySQL_Result_EOF(ServerStatus=0x002)
             ]
 
-        elif re.match(b'select database\(\)$', p.Query, re.I):
+        elif re.match(b'select\S+database\S*\(\S*\)$', p.Query, re.I):
             r = [
                 MySQL_Result_Header(FieldCount=1),
                 MySQL_Result_Field(
@@ -137,7 +137,7 @@ class mysqld(connection):
                 MySQL_Result_EOF(ServerStatus=0x002)
             ]
 
-        elif re.match(b'show databases$', p.Query, re.I):
+        elif re.match(b"show\S+databases$", p.Query, re.I):
             r = [
                 MySQL_Result_Header(FieldCount=1),
                 MySQL_Result_Field(
@@ -159,7 +159,7 @@ class mysqld(connection):
             # r.append(MySQL_Result_Row_Data(ColumnValues=['information_schema']))
             r.append(MySQL_Result_EOF(ServerStatus=0x002))
 
-        elif re.match(b'show tables$', p.Query, re.I):
+        elif re.match(b'show\S+tables$', p.Query, re.I):
             r = [
                 MySQL_Result_Header(FieldCount=1),
                 MySQL_Result_Field(
