@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -99,9 +99,9 @@ int ssl_tmp_keys_init(struct connection *con);
 
 /**
  * create a new connection of a given type
- * 
+ *
  * @param type   udp,tcp,tls
- * 
+ *
  * @return ptr to the new connection
  */
 struct connection *connection_new(enum connection_transport type)
@@ -193,9 +193,9 @@ bool connection_socket(struct connection *con, int family, int type, int protoco
 
 /**
  * used to bind the connection to an address/port
- * 
+ *
  * @param con the connection
- * 
+ *
  * @return true on success
  */
 bool bind_local(struct connection *con)
@@ -226,8 +226,8 @@ bool bind_local(struct connection *con)
 	{
 	case connection_transport_tls:
 	case connection_transport_tcp:
-		setsockopt(con->socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)); 
-//		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)); 
+		setsockopt(con->socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+//		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val));
 		if( pchild_sent_bind(con->socket, (struct sockaddr *)&sa, sizeof_sa) != 0 )
 		{
 			g_warning("Could not bind %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
@@ -266,17 +266,17 @@ bool bind_local(struct connection *con)
 
 /**
  * bind the connection to a given address/port - not yet!
- * If the connection is meant to be used 
- * to connect to a domain with multiple A/AAAA records, 
+ * If the connection is meant to be used
+ * to connect to a domain with multiple A/AAAA records,
  * we have to bind for each connect try.
- * Therefore we delay the bind, the real binding is in 
+ * Therefore we delay the bind, the real binding is in
  * @see connection_listen and @see connection_connect_next_addr
  * @param con
  * @param addr
  * @param port
  * @param iface_scope
- * 
- * @return 
+ *
+ * @return
  */
 bool connection_bind(struct connection *con, const char *addr, uint16_t port, const char *iface_scope)
 {
@@ -312,8 +312,8 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 		if( con->socket == -1 )
 			if( connection_socket(con,  socket_domain, SOCK_DGRAM, IPPROTO_UDP) == false )
 				return false;
-//		setsockopt(con->socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val)); 
-//		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val)); 
+//		setsockopt(con->socket, SOL_SOCKET, SO_REUSEADDR, &val, sizeof(val));
+//		setsockopt(con->socket, SOL_SOCKET, SO_REUSEPORT, &val, sizeof(val));
 		if( bind_local(con) != true )
 		{
 			g_warning("Could not bind %s:%i (%s)", con->local.hostname, ntohs(con->local.port), strerror(errno));
@@ -334,7 +334,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 		{
 			int sockopt;
 			sockopt = 1;
-#ifdef SOL_IP 
+#ifdef SOL_IP
 			if( socket_domain == PF_INET )
 			{
 #ifdef IP_PKTINFO
@@ -345,7 +345,7 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 #endif
 			}else
 #endif
-#ifdef SOL_IPV6 
+#ifdef SOL_IPV6
 			if( socket_domain == PF_INET6 )
 			{ /* sometimes it is better if you have a choice ...
 			   * I just hope the cmsg type stays IPV6_PKTINFO
@@ -503,7 +503,7 @@ void connection_close(struct connection *con)
 		{
 			connection_tcp_disconnect(con);
 		} else
-			if( con->type == connection_type_connect && 
+			if( con->type == connection_type_connect &&
 				(con->state == connection_state_none || con->state == connection_state_connecting) )
 		{
 			connection_tcp_disconnect(con);
@@ -538,9 +538,9 @@ void connection_close(struct connection *con)
 			connection_tcp_disconnect(con);
 		} else
 		{
-			g_critical("Invalid close on connection %p type %s state %s", 
-					   con, 
-					   connection_type_to_string(con->type), 
+			g_critical("Invalid close on connection %p type %s state %s",
+					   con,
+					   connection_type_to_string(con->type),
 					   connection_state_to_string(con->state));
 //			connection_tcp_disconnect(con);
 		}
@@ -595,9 +595,9 @@ void connection_close(struct connection *con)
 			}
 		} else
 		{
-			g_critical("Invalid close on connection %p type %s state %s", 
-					   con, 
-					   connection_type_to_string(con->type), 
+			g_critical("Invalid close on connection %p type %s state %s",
+					   con,
+					   connection_type_to_string(con->type),
 					   connection_state_to_string(con->state));
 			connection_tls_disconnect(con);
 		}
@@ -620,7 +620,7 @@ void connection_close(struct connection *con)
 void connection_close_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
 	struct connection *con = CONOFF_CLOSE_TIMEOUT(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);   
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	switch( con->trans )
 	{
@@ -640,25 +640,25 @@ void connection_close_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 /**
  * free the connection - not yet!
  * problem is simple, assume:
- * 
+ *
  * class ABC(connection):
  * ....
  *     def io_in(self, data):
  * 	....
  * 	self.close()
  * 	return len(data)
- * 
- * if closing a connection has the possibility 
- * to free the connection directly, the python object 'looses' ground, 
- * it got destroyed while in use. 
- *  
- * additionally, you may not want to delete the connection, even 
- * if it was closed 
- * if refcounts do not work, as you can't control the 
- * (shell)code, set the free.repeat interval to 0. 
- *  
- * @see connection_free_cb 
- * 
+ *
+ * if closing a connection has the possibility
+ * to free the connection directly, the python object 'looses' ground,
+ * it got destroyed while in use.
+ *
+ * additionally, you may not want to delete the connection, even
+ * if it was closed
+ * if refcounts do not work, as you can't control the
+ * (shell)code, set the free.repeat interval to 0.
+ *
+ * @see connection_free_cb
+ *
  * @param con
  */
 void connection_free(struct connection *con)
@@ -675,14 +675,14 @@ void connection_free(struct connection *con)
 /**
  * we poll the connection to see if the refcount hit 0
  * so we can free it
- * 
+ *
  * @param w
  * @param revents
  */
 void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 {
 	struct connection *con = CONOFF_FREE(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);   
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	if( ! refcount_is_zero(&con->refcount) )
 		return;
@@ -750,41 +750,41 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
  * Set the connection nonblocking
  * this code is not really portable
  * libcurl shows how to do better
- * 
- * @param con    the connection 
- *  
+ *
+ * @param con    the connection
+ *
  * @see connection_set_blocking
  */
 void connection_set_nonblocking(struct connection *con)
 {
 	g_debug(__PRETTY_FUNCTION__);
 	int flags = fcntl(con->socket, F_GETFL, 0);
-	flags |= O_NONBLOCK;        
+	flags |= O_NONBLOCK;
 	fcntl(con->socket, F_SETFL, flags);
 }
 
 /**
  * Set the connection blocking again
- * 
+ *
  * @param con    The connection
  */
 void connection_set_blocking(struct connection *con)
 {
 	g_debug(__PRETTY_FUNCTION__);
 	int flags = fcntl(con->socket, F_GETFL, 0);
-	flags |= ~O_NONBLOCK;        
+	flags |= ~O_NONBLOCK;
 	fcntl(con->socket, F_SETFL, flags);
 }
 
 
 /**
  * connect somewhere
- * 
+ *
  * we can connect to hostnames and ips
- * As domains can have more than one A/AAAA record, 
- * and we try to be fault tolerant, we do only complain 
+ * As domains can have more than one A/AAAA record,
+ * and we try to be fault tolerant, we do only complain
  * if we can not connect any of the resolved addresses
- * 
+ *
  * @param con    The connection
  */
 void connection_connect_next_addr(struct connection *con)
@@ -811,10 +811,10 @@ void connection_connect_next_addr(struct connection *con)
 		{
 			if( con->local.domain != socket_domain )
 			{
-				if( (con->local.domain == PF_INET6 && socket_domain == PF_INET && !ipv6_addr_v4mapped(&((struct sockaddr_in6 *)&con->local.addr)->sin6_addr)) || 
+				if( (con->local.domain == PF_INET6 && socket_domain == PF_INET && !ipv6_addr_v4mapped(&((struct sockaddr_in6 *)&con->local.addr)->sin6_addr)) ||
 					(con->local.domain == PF_INET && socket_domain == PF_INET6 && !ipv6_addr_v4mapped(&((struct sockaddr_in6 *)&sa)->sin6_addr)) )
 				{
-					g_debug("remote will be unreachable due to different protocol versions (%i <-> %i) (%s <-> %s)", 
+					g_debug("remote will be unreachable due to different protocol versions (%i <-> %i) (%s <-> %s)",
 							socket_domain, con->local.domain,
 							addr, con->local.hostname);
 					continue;
@@ -1007,7 +1007,7 @@ void connection_connect_next_addr(struct connection *con)
 
 /**
  * connect somewhere
- * 
+ *
  * @param con    The connection
  * @param addr   the address - ipv4/6 or domain
  * @param port   the port, hostbyteorder
@@ -1068,11 +1068,11 @@ void connection_connect(struct connection* con, const char* addr, uint16_t port,
 
 /**
  * Set the reconnect timeout
- * 
- * Sometimes your connection may get disconnected, 
- * the reconnect timeout allows specifying a delay 
+ *
+ * Sometimes your connection may get disconnected,
+ * the reconnect timeout allows specifying a delay
  * before trying to reconnect
- * 
+ *
  * @param con    The connection
  * @param timeout_interval_ms
  *               the delay in seconds
@@ -1084,9 +1084,9 @@ void connection_reconnect_timeout_set(struct connection *con, double timeout_int
 
 /**
  * Get the reconnect delay
- * 
+ *
  * @param con    The connection
- * 
+ *
  * @return the delay in seconds
  */
 double connection_reconnect_timeout_get(struct connection *con)
@@ -1097,12 +1097,12 @@ double connection_reconnect_timeout_get(struct connection *con)
 
 /**
  * Reconnect a connection - with delay
- * 
+ *
  * @param con The connection
  */
 void connection_reconnect(struct connection *con)
 {
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);   
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	if( con->socket > 0 )
 	{
@@ -1128,7 +1128,7 @@ void connection_reconnect(struct connection *con)
 void connection_reconnect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
 	struct connection *con = CONOFF_RECONNECT_TIMEOUT(w);
-	g_debug("%s con %p",__PRETTY_FUNCTION__, con);   
+	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 
 	struct sockaddr_storage sa;
 	memset(&sa, 0,  sizeof(struct sockaddr_storage));
@@ -1154,7 +1154,7 @@ void connection_reconnect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 			connection_connect_next_addr(con);
 		}
 	} else
-	{ /* single ip(s) */ 
+	{ /* single ip(s) */
 		if( con->remote.dns.resolved_address_count == con->remote.dns.current_address )
 			/* reset and reconnect */
 			con->remote.dns.current_address = 0;
@@ -1164,7 +1164,7 @@ void connection_reconnect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 
 /**
  * Stop all events for a connection
- * 
+ *
  * @param con    The connection
  */
 void connection_stop(struct connection *con)
@@ -1206,9 +1206,9 @@ void connection_stop(struct connection *con)
 /**
  * disconnects a connection
  * closes the socket and stops all events
- * 
- * @param con    The connection 
- * @see connection_stop 
+ *
+ * @param con    The connection
+ * @see connection_stop
  */
 void connection_disconnect(struct connection *con)
 {
@@ -1225,12 +1225,12 @@ void connection_disconnect(struct connection *con)
 /**
  * Send something
  * does not block,	buffers the data to send, and sends it when possible
- * 
+ *
  * @param con    The connection
  * @param data   The data to send
- * @param size   length of the data 
- *  
- * @see connection_send_string 
+ * @param size   length of the data
+ *
+ * @see connection_send_string
  */
 void connection_send(struct connection *con, const void *data, uint32_t size)
 {
@@ -1280,11 +1280,11 @@ void connection_send(struct connection *con, const void *data, uint32_t size)
 
 /**
  * Send a zero terminated string
- * 
+ *
  * @param con    The connection
- * @param str    The zero terminated string 
- *  
- * @see connection_send 
+ * @param str    The zero terminated string
+ *
+ * @see connection_send
  */
 void connection_send_string(struct connection *con, const char *str)
 {
@@ -1293,11 +1293,11 @@ void connection_send_string(struct connection *con, const char *str)
 
 /**
  * set the connection idle timeout
- * 
+ *
  * the connection idle time is reset if io occurs
- * if no io occurs for the specified timeout, 
+ * if no io occurs for the specified timeout,
  * the protocols idle timeout callback is called
- * 
+ *
  * @param con    The connection
  * @param timeout_interval_ms
  *               idle timeout in seconds
@@ -1327,9 +1327,9 @@ void connection_idle_timeout_set(struct connection *con, double timeout_interval
 
 /**
  * Get the connections idle timeout
- * 
+ *
  * @param con    The connection
- * 
+ *
  * @return the connections idle timeout in seconds
  */
 double connection_idle_timeout_get(struct connection *con)
@@ -1372,12 +1372,12 @@ void connection_idle_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int re
 
 /**
  * Set the connections sustain timeout
- * The sustain timeout is the maximum 
+ * The sustain timeout is the maximum
  * allowed session time for the connection
- * 
- * If the connections duration is larger than the sustain timeout, 
+ *
+ * If the connections duration is larger than the sustain timeout,
  * the protocols sustain timeout callback is called
- * 
+ *
  * @param con    The connection
  * @param timeout_interval_ms
  */
@@ -1406,9 +1406,9 @@ void connection_sustain_timeout_set(struct connection *con, double timeout_inter
 
 /**
  * Get the connections sustain timeout
- * 
+ *
  * @param con    The connection
- * 
+ *
  * @return the sustain timeout in seconds
  */
 double connection_sustain_timeout_get(struct connection *con)
@@ -1451,12 +1451,12 @@ void connection_sustain_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int
 
 /**
  * Set the connections listen timeout
- * 
- * if a connection is listening, 
+ *
+ * if a connection is listening,
  * you may want to close it automatically after a specified timeout
- * If the connections is listening for a longer period than specified here, 
+ * If the connections is listening for a longer period than specified here,
  * the protocols listen timeout callback is called
- * 
+ *
  * @param con    The connection
  * @param timeout_interval_ms
  *               The timeout in seconds
@@ -1512,9 +1512,9 @@ void connection_listen_timeout_cb(struct ev_loop *loop, struct ev_timer *w, int 
 
 /**
  * Get the connections listen timeout
- * 
+ *
  * @param con    The connection
- * 
+ *
  * @return the listen timeout in seconds
  */
 double connection_listen_timeout_get(struct connection *con)
@@ -1527,7 +1527,7 @@ double connection_listen_timeout_get(struct connection *con)
  * Set the connections handshake timeout
  * TLS/SSL handshakes are special, they get a special timeout
  * If the handshake takes longer than specified here, the connection gets closed
- * 
+ *
  * @param con    The connection
  * @param timeout_interval_ms
  */
@@ -1555,9 +1555,9 @@ void connection_handshake_timeout_set(struct connection *con, double timeout_int
 
 /**
  * Get the connections handshake timeout
- * 
+ *
  * @param con    The connection
- * 
+ *
  * @return the handshake timeout in seconds
  */
 double connection_handshake_timeout_get(struct connection *con)
@@ -1569,7 +1569,7 @@ double connection_handshake_timeout_get(struct connection *con)
 /**
  * Set the connections connecting timeout
  * Connecting some host may take some time, if you want to limit the time, set this timeout.
- * 
+ *
  * @param con    The connection
  * @param timeout_interval_ms
  *               connecting timeout in seconds
@@ -1623,9 +1623,9 @@ void connection_connecting_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 
 /**
  * Get the connections connecting timeout
- * 
+ *
  * @param con    The connection
- * 
+ *
  * @return the connecting timeout in seconds
  */
 double connection_connecting_timeout_get(struct connection *con)
@@ -1638,7 +1638,7 @@ double connection_connecting_timeout_get(struct connection *con)
 /**
  * The connection was established!
  * Great, inform the protcol about it and set the required event callbacks
- * 
+ *
  * @param con    The connection
  */
 void connection_established(struct connection *con)
@@ -1791,7 +1791,7 @@ int connection_throttle(struct connection *con, struct connection_throttle *thr)
 
 	g_debug("%s con %p thr %p", __PRETTY_FUNCTION__, con, thr);
 
-	double delta = 0.; // time in ms for this session 
+	double delta = 0.; // time in ms for this session
 	double expect = 0.;	// expected time frame for the sended bytes
 
 	double last_throttle;
@@ -1882,7 +1882,7 @@ void connection_throttle_io_in_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	struct connection *con = CONOFF_THROTTLE_IO_IN_TIMEOUT(w);
 	g_debug("%s %p", __PRETTY_FUNCTION__, con);
 	ev_io_start(EV_A_ &con->events.io_in);
-}                                      
+}
 
 void connection_throttle_io_out_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 {
@@ -1930,7 +1930,7 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 		if( accepted_socket > g_dionaea->limits.fds * 70/100 )
 		{
-			g_warning("Running out of fds, closing connection (fd %i limit %i applied limit %i)", 
+			g_warning("Running out of fds, closing connection (fd %i limit %i applied limit %i)",
 					  accepted_socket,
 					  g_dionaea->limits.fds,
 					  g_dionaea->limits.fds * 70/100);
@@ -2090,13 +2090,13 @@ void connection_tcp_io_in_cb(EV_P_ struct ev_io *w, int revents)
 			con->protocol.io_in(con, con->protocol.ctx, (unsigned char *)con->transport.tcp.io_in->str, con->transport.tcp.io_in->len);
 
 		/*
-		 * the protocol may have disabled the watcher for io_in already 
-		 * if so, do not deliver the disconnect 
+		 * the protocol may have disabled the watcher for io_in already
+		 * if so, do not deliver the disconnect
 		 */
 		if( ev_is_active(w) )
 			connection_tcp_disconnect(con);
 	} else
-		if( (size == -1 && lerrno == EAGAIN) || 
+		if( (size == -1 && lerrno == EAGAIN) ||
 			size == MIN(buf_size, recv_throttle) ||
 			recv_size <= 0 )
 	{
@@ -2207,7 +2207,7 @@ void connection_tcp_disconnect(struct connection *con)
 	g_string_erase(con->transport.tcp.io_in, 0, -1);
 	g_string_erase(con->transport.tcp.io_out, 0, -1);
 
-	if( con->protocol.disconnect != NULL && 
+	if( con->protocol.disconnect != NULL &&
 		(state != connection_state_none &&
 		 state != connection_state_connecting ) )
 	{
@@ -2873,31 +2873,31 @@ void connection_tls_shutdown_cb(EV_P_ struct ev_io *w, int revents)
 			g_debug("SSL_ERROR_SYSCALL %i %s %s:%i", errno, strerror(errno), __FILE__,  __LINE__);
 			if( errno == 0 )
 			{
-				/* 
+				/*
 				 * HACK actually a bug in openssl - a patch sent on
 				 * 2006-06-29 0:12:51
 				 * with subject
 				 * [PATCH2] Fix for SSL_shutdown() with non-blocking not returning -1
 				 * by Darryl L. Miles
-				 * actually fixes the issue 
-				 *  
+				 * actually fixes the issue
+				 *
 				 * patch was merged into openssl
 				 * 2009-Apr-07 18:28 http://cvs.openssl.org/chngview?cn=17995
-				 * and will (hopefully) ship with openssl 0.9.8l 
-				 *  
-				 * given the 3 years it took openssl to accept a patch, 
-				 * it did not take me that long to figure out 
-				 * why SSL_shutdown failed on nonblocking sockets 
-				 *  
-				 * at the time of this writing, 0.9.8k is current 
-				 * 0.9.8g is shipped by all major vendors as stable 
-				 *  
-				 * so it may take some time to get this fix to the masses 
-				 *  
-				 * due to unclear&complex openssl version situation 
+				 * and will (hopefully) ship with openssl 0.9.8l
+				 *
+				 * given the 3 years it took openssl to accept a patch,
+				 * it did not take me that long to figure out
+				 * why SSL_shutdown failed on nonblocking sockets
+				 *
+				 * at the time of this writing, 0.9.8k is current
+				 * 0.9.8g is shipped by all major vendors as stable
+				 *
+				 * so it may take some time to get this fix to the masses
+				 *
+				 * due to unclear&complex openssl version situation
 				 * I decided not to provide an workaround, just close the connection instead
-				 * and rant about openssl 
-				 *  
+				 * and rant about openssl
+				 *
 				 */
 				connection_tls_disconnect(con);
 			}else
@@ -2963,7 +2963,7 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 		g_debug("recv throttle %i", recv_throttle);
 		return;
 	}
-	
+
 	unsigned char buf[recv_throttle];
 
 	int err=0;
@@ -3067,7 +3067,7 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
 		con->protocol.io_in(con, con->protocol.ctx, (unsigned char *)con->transport.tls.io_in->str, con->transport.tls.io_in->len);
 		con->transport.tls.io_in->len = 0;
 
-		if( (con->transport.tls.io_out->len > 0 || con->transport.tls.io_out_again->len > 0 ) && 
+		if( (con->transport.tls.io_out->len > 0 || con->transport.tls.io_out_again->len > 0 ) &&
 			!ev_is_active(&con->events.io_out) )
 			ev_io_start(EV_A_ &con->events.io_out);
 	}
@@ -3095,7 +3095,7 @@ void connection_tls_accept_cb (EV_P_ struct ev_io *w, int revents)
 
 		if( accepted_socket > g_dionaea->limits.fds * 70/100 )
 		{
-			g_warning("Running out of fds, closing connection (fd %i limit %i applied limit %i)", 
+			g_warning("Running out of fds, closing connection (fd %i limit %i applied limit %i)",
 					  accepted_socket,
 					  g_dionaea->limits.fds,
 					  g_dionaea->limits.fds * 70/100);
@@ -3292,9 +3292,9 @@ void connection_tls_disconnect(struct connection *con)
 	con->transport.tls.io_out_again_size = 0;
 
 
-	if( con->protocol.disconnect != NULL && 
+	if( con->protocol.disconnect != NULL &&
 		(state != connection_state_none &&
-		 state != connection_state_connecting && 
+		 state != connection_state_connecting &&
 		 state != connection_state_handshake) )
 	{
 		bool reconnect = con->protocol.disconnect(con, con->protocol.ctx);
@@ -3566,21 +3566,21 @@ void _connection_send_packets(struct connection *con, int fd, GList **packets)
 	while( (elem = g_list_first(*packets)) != NULL )
 	{
 		struct udp_packet *packet = elem->data;
-		socklen_t size = ((struct sockaddr *)&packet->to)->sa_family == PF_INET ? sizeof(struct sockaddr_in) : 
-						 ((struct sockaddr *)&packet->to)->sa_family == PF_INET6 ? sizeof(struct sockaddr_in6) : 
+		socklen_t size = ((struct sockaddr *)&packet->to)->sa_family == PF_INET ? sizeof(struct sockaddr_in) :
+						 ((struct sockaddr *)&packet->to)->sa_family == PF_INET6 ? sizeof(struct sockaddr_in6) :
 						 ((struct sockaddr *)&packet->to)->sa_family == AF_UNIX ? sizeof(struct sockaddr_un) : -1;
 
 		int ret;
 		/*
-		 * for whatever reason 
-		 * * send 
+		 * for whatever reason
+		 * * send
 		 *   - works on udp sockets which were connect()'ed before (linux)
 		 *   - works not on udp sockets which were bind()'ed before (linux)
-		 * * sendto 
+		 * * sendto
 		 *   - does not work on connect()'ed sockets on (openbsd)
-		 *  
-		 * and as we can't distinguish from bound/unbound connected/unconnected sockets at this point 
-		 * udp does not work for openbsd 
+		 *
+		 * and as we can't distinguish from bound/unbound connected/unconnected sockets at this point
+		 * udp does not work for openbsd
 		 */
 		if( con->type == connection_type_accept && con->processor_data != NULL )
 			processors_io_out(con, packet->data->str, packet->data->len);
@@ -3712,7 +3712,7 @@ gboolean connection_addrs_cmp(gconstpointer a, gconstpointer b)
 {
 	const struct connection *ca = a;
 	const struct connection *cb = b;
-	g_debug("%s con %p %p %s %s | %s %s", __PRETTY_FUNCTION__, a, b, 
+	g_debug("%s con %p %p %s %s | %s %s", __PRETTY_FUNCTION__, a, b,
 			ca->local.node_string, cb->local.node_string,
 			ca->remote.node_string, cb->remote.node_string);
 	if( memcmp(&ca->local.addr, &cb->local.addr, sizeof(struct sockaddr_storage)) == 0 &&
@@ -3731,19 +3731,19 @@ void dtls_create_cookie(struct connection *con, unsigned char *hash, unsigned in
 	memcpy(buffer + sizeof(in_port_t), ADDROFFSET(&con->remote.addr), ADDRSIZE(&con->remote.addr));
 
 	/* Calculate HMAC of buffer using the secret */
-	HMAC(EVP_sha1(), 
-		 (const void*) con->transport.dtls.type.client.parent->transport.dtls.type.server.cookie_secret, DTLS_COOKIE_SECRET_LENGTH, 
-		 (const unsigned char*) buffer, length, 
+	HMAC(EVP_sha1(),
+		 (const void*) con->transport.dtls.type.client.parent->transport.dtls.type.server.cookie_secret, DTLS_COOKIE_SECRET_LENGTH,
+		 (const unsigned char*) buffer, length,
 		 hash, len);
 }
 
-/** 
- * 
- * 
+/**
+ *
+ *
  * @param ssl
  * @param cookie
  * @param cookie_len
- * 
+ *
  * @return int 0 on error
  */
 int dtls_generate_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int *len)
@@ -3754,13 +3754,13 @@ int dtls_generate_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int *len)
 	return 1;
 }
 
-/** 
- * 
- * 
+/**
+ *
+ *
  * @param ssl
  * @param cookie
  * @param cookie_len
- * 
+ *
  * @return int 0 on error
  */
 int dtls_verify_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int len)
@@ -3890,7 +3890,7 @@ void connection_dtls_accept_again(struct ev_loop *loop, struct ev_io *w, int rev
 		incident_value_con_set(i, "child", con);
 		incident_report(i);
 		incident_free(i);
-*/  
+*/
 	}
 }
 
@@ -4126,21 +4126,21 @@ void connection_connect_resolve(struct connection *con)
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
 	g_debug("submitting dns %s", con->remote.hostname);
 
-	con->remote.dns.a = dns_submit_p(g_dionaea->dns->dns, 
-									 con->remote.hostname, 
-									 DNS_C_IN, 
-									 DNS_T_A, 
-									 0, 
-									 dns_parse_a4, 
-									 connection_connect_resolve_a_cb, 
+	con->remote.dns.a = dns_submit_p(g_dionaea->dns->dns,
+									 con->remote.hostname,
+									 DNS_C_IN,
+									 DNS_T_A,
+									 0,
+									 dns_parse_a4,
+									 connection_connect_resolve_a_cb,
 									 con);
-	con->remote.dns.aaaa = dns_submit_p(g_dionaea->dns->dns, 
-										con->remote.hostname, 
-										DNS_C_IN, 
-										DNS_T_AAAA, 
-										0, 
-										dns_parse_a6, 
-										connection_connect_resolve_aaaa_cb, 
+	con->remote.dns.aaaa = dns_submit_p(g_dionaea->dns->dns,
+										con->remote.hostname,
+										DNS_C_IN,
+										DNS_T_AAAA,
+										0,
+										dns_parse_a6,
+										connection_connect_resolve_aaaa_cb,
 										con);
 
 	connection_set_state(con, connection_state_resolve);
@@ -4167,7 +4167,7 @@ static int cmp_ip_address_stringp(const void *p1, const void *p2)
 
 		if( domain1 == PF_INET6 )
 		{
-			if( ipv6_addr_v4mapped(a) && 
+			if( ipv6_addr_v4mapped(a) &&
 				ipv6_addr_v4mapped(b) )
 				return -memcmp(a, b, sizeof_sa1);
 
@@ -4183,16 +4183,16 @@ static int cmp_ip_address_stringp(const void *p1, const void *p2)
 	} else
 		if( domain1 > domain2 )	// domain1 is ipv6
 	{
-		struct sockaddr_in6 *a = (struct sockaddr_in6 *)&sa1;     
-		struct sockaddr_in *b  = (struct sockaddr_in *)&sa2;    
+		struct sockaddr_in6 *a = (struct sockaddr_in6 *)&sa1;
+		struct sockaddr_in *b  = (struct sockaddr_in *)&sa2;
 		if( ipv6_addr_v4mapped(&a->sin6_addr) )
 			return -memcmp(&a->sin6_addr.s6_addr32[3], &b->sin_addr.s_addr, sizeof_sa2);
 
 		return -1;
 	} else				 // domain2 is ipv6
 	{
-		struct sockaddr_in6 *a = (struct sockaddr_in6 *)&sa2;     
-		struct sockaddr_in *b  = (struct sockaddr_in *)&sa1;    
+		struct sockaddr_in6 *a = (struct sockaddr_in6 *)&sa2;
+		struct sockaddr_in *b  = (struct sockaddr_in *)&sa1;
 		if( ipv6_addr_v4mapped(&a->sin6_addr) )
 			return memcmp(&a->sin6_addr.s6_addr32[3], &b->sin_addr.s_addr, sizeof_sa2);
 
@@ -4254,7 +4254,7 @@ void connection_connect_resolve_a_cb(struct dns_ctx *ctx, void *result, void *da
 
 void connection_connect_resolve_aaaa_cb(struct dns_ctx *ctx, void *result, void *data)
 {
-	g_debug("%s ctx %p result %p con %p",__PRETTY_FUNCTION__, ctx, result, data);       
+	g_debug("%s ctx %p result %p con %p",__PRETTY_FUNCTION__, ctx, result, data);
 	struct connection *con = data;
 
 	struct dns_rr_a6 *a6 = result;
@@ -4294,7 +4294,7 @@ bool connection_transport_from_string(const char *type_str, enum connection_tran
 
 const char *connection_transport_to_string(enum connection_transport trans)
 {
-	static const char *connection_transport_str[] = 
+	static const char *connection_transport_str[] =
 	{
 		"udp",
 		"tcp",
@@ -4329,13 +4329,13 @@ void *connection_protocol_ctx_get(struct connection *con)
 
 const char *connection_type_to_string(enum connection_type type)
 {
-	static const char *connection_type_str[] = 
+	static const char *connection_type_str[] =
 	{
 		"none",
-		"accept", 
-		"bind", 
-		"connect", 
-		"listen", 
+		"accept",
+		"bind",
+		"connect",
+		"listen",
 	};
 	return connection_type_str[type];
 }
@@ -4348,18 +4348,18 @@ void connection_set_type(struct connection *con, enum connection_type type)
 	enum connection_type old_type;
 	old_type = con->type;
 	con->type = type;
-	g_message("connection %p %s/%s type: %s->%s", 
-			  con, 
+	g_message("connection %p %s/%s type: %s->%s",
+			  con,
 			  connection_type_to_string(old_type),
 			  connection_transport_to_string(con->trans),
-			  connection_type_to_string(old_type), 
+			  connection_type_to_string(old_type),
 			  connection_type_to_string(type));
 }
 
 
 const char *connection_state_to_string(enum connection_state state)
 {
-	static const char *connection_state_str[] = 
+	static const char *connection_state_str[] =
 	{
 		"none",
 		"resolve",
@@ -4378,14 +4378,14 @@ void connection_set_state(struct connection *con, enum connection_state state)
 	enum connection_state old_state;
 	old_state = con->state;
 	con->state = state;
-	g_message("connection %p %s/%s/%s [%s->%s] state: %s->%s", 
-			  con, 
+	g_message("connection %p %s/%s/%s [%s->%s] state: %s->%s",
+			  con,
 			  connection_type_to_string(con->type),
 			  connection_transport_to_string(con->trans),
 			  connection_state_to_string(old_state),
-			  con->local.node_string, 
-			  con->remote.node_string, 
-			  connection_state_to_string(old_state), 
+			  con->local.node_string,
+			  con->remote.node_string,
+			  connection_state_to_string(old_state),
 			  connection_state_to_string(state));
 }
 
@@ -4410,11 +4410,11 @@ void connection_process(struct connection *con)
 
 const char *connection_strerror(enum connection_error error)
 {
-	static const char *myerrormsgs[] = 
+	static const char *myerrormsgs[] =
 	{
-		"timeout resolving the domain" , /* ECONDNSTIMEOUT   */ 
-		"could not connect host(s)" ,/* ECONUNREACH       */  
-		"could not resolve domain" , /* ECONNOSUCHDOMAIN */ 
+		"timeout resolving the domain" , /* ECONDNSTIMEOUT   */
+		"could not connect host(s)" ,/* ECONUNREACH       */
+		"could not resolve domain" , /* ECONNOSUCHDOMAIN */
 		"too many connections" , /* ECONMANY */
 	};
 	if( error >= ECONMANY )
