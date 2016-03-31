@@ -57,6 +57,7 @@ void sigterm_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 
 void sighup_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 {
+  /* ToDo
 	g_warning("%s loop %p w %p revents %i",__PRETTY_FUNCTION__, loop, w, revents);
 
 	g_info("Reloading config");
@@ -84,6 +85,7 @@ void sighup_cb(struct ev_loop *loop, struct ev_signal *w, int revents)
 		if( l->hup != NULL )
 			l->hup(l, l->data);
 	}
+  */
 }
 
 

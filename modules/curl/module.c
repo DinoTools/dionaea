@@ -29,8 +29,6 @@
 #include <glib.h>
 #include <stdio.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
 #include <curl/curl.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -600,25 +598,19 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 	}
 }
 
-static bool curl_config(struct lcfgx_tree_node *node)
+/*static bool curl_config(struct lcfgx_tree_node *node)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
 	curl_runtime.config = node;
 	return true;
-}
+}*/
 
 static bool curl_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
 
-	struct lcfgx_tree_node *node;
-	if( lcfgx_get_string(g_dionaea->config.root, &node, "downloads.dir") != LCFGX_PATH_FOUND_TYPE_OK )
-	{
-		g_warning("missing downloads.dir in dionaea.conf");
-		return false;
-	}
-
-	curl_runtime.download_dir = g_strdup((char *)node->value.string.data);
+  GError *error = NULL;
+	curl_runtime.download_dir = g_key_file_get_string(g_dionaea->config, "dionaea", "download.dir", &error);
 
 
 	if( curl_global_init(CURL_GLOBAL_ALL) != 0 )
@@ -703,7 +695,7 @@ struct module_api *module_init(struct dionaea *d)
     g_debug("%s:%i %s dionaea %p",__FILE__, __LINE__, __PRETTY_FUNCTION__, d);
 	static struct module_api curl_api =
 	{
-		.config = &curl_config,
+		//.config = &curl_config,
 		.start = NULL,
 		.new = &curl_new,
 		.free = &curl_freex,

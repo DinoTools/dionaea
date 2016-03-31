@@ -443,6 +443,7 @@ bool connection_listen(struct connection *con, int len)
 			return false;
 		}
 		connection_set_nonblocking(con);
+    /* ToDo: replace
 		if( lcfgx_get_string(g_dionaea->config.root, &node_cert, "listen.ssl.default.cert") == LCFGX_PATH_FOUND_TYPE_OK &&
 		    lcfgx_get_string(g_dionaea->config.root, &node_key, "listen.ssl.default.key") == LCFGX_PATH_FOUND_TYPE_OK ) {
 			cert_filename = node_cert->value.string.data;
@@ -450,9 +451,9 @@ bool connection_listen(struct connection *con, int len)
 
 			connection_tls_set_certificate(con, cert_filename, SSL_FILETYPE_PEM);
 			connection_tls_set_key(con, key_filename, SSL_FILETYPE_PEM);
-		} else {
+		} else {*/
 			connection_tls_mkcert(con);
-		}
+		//}
 //		SSL_CTX_set_timeout(con->transport.ssl.ctx, 15);
 		ssl_tmp_keys_init(con);
 		ev_set_priority(&con->events.io_in, EV_MAXPRI);
@@ -2578,34 +2579,34 @@ bool mkcert(SSL_CTX *ctx)
 
 	name=X509_get_subject_name(x);
 
-	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.c") == LCFGX_PATH_FOUND_TYPE_OK ) {
+/*	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.c") == LCFGX_PATH_FOUND_TYPE_OK ) {
 		value = (const unsigned char *)node->value.string.data;
-	} else {
+	} else {*/
 		value = (const unsigned char *)"DE";
-	}
+	//}
 	X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, value, -1, -1, 0);
 
-	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.cn") == LCFGX_PATH_FOUND_TYPE_OK ) {
+/*	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.cn") == LCFGX_PATH_FOUND_TYPE_OK ) {
 		value = (const unsigned char *)node->value.string.data;
-	} else {
+	} else {*/
 		value = (const unsigned char *)"Nepenthes Development Team";
-	}
+//	}
 	X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, value, -1, -1, 0);
 
 
-	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.o") == LCFGX_PATH_FOUND_TYPE_OK ) {
+/*	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.o") == LCFGX_PATH_FOUND_TYPE_OK ) {
 		value = (const unsigned char *)node->value.string.data;
-	} else {
+	} else {*/
 		value = (const unsigned char *)"dionaea.carnivore.it";
-	}
+	//}
 	X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, value, -1, -1, 0);
 
 
-	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.ou") == LCFGX_PATH_FOUND_TYPE_OK ) {
+/*	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.ou") == LCFGX_PATH_FOUND_TYPE_OK ) {
 		value = (const unsigned char *)node->value.string.data;
-	} else {
+	} else {*/
 		value = (const unsigned char *)"anv";
-	}
+	//}
 	X509_NAME_add_entry_by_txt(name, "OU", MBSTRING_ASC, value, -1, -1, 0);
 
 

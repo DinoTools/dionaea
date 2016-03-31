@@ -104,25 +104,25 @@ void module_free(struct module *m)
 }
 
 
-void modules_load(struct lcfgx_tree_node *node)
+void modules_load(gchar **names)
 {
-	g_debug("%s node %p", __PRETTY_FUNCTION__, node);
+	//g_debug("%s node %p", __PRETTY_FUNCTION__, node);
 
 //	lcfgx_tree_dump(node, 0);
-	struct lcfgx_tree_node *it = node->value.elements;
-	for( it = node->value.elements; it != NULL; it = it->next )
-	{
+  gchar **name;
+
+  for (name = names; *name; name++) {
 
 		gchar module_path[1024];
-		if( g_snprintf(module_path, 1023, PREFIX"/lib/dionaea/%s.so", it->key) == -1 )
+		if( g_snprintf(module_path, 1023, PREFIX"/lib/dionaea/%s.so", *name) == -1 )
 			return;
 
-		g_message("loading module %s (%s)", it->key, module_path);
+		g_message("loading module %s (%s)", *name, module_path);
 
-		struct module *m = module_new(it->key, module_path);
+		struct module *m = module_new(*name, module_path);
 		if( m == NULL )
 		{
-			g_warning("could not load module %s (%s)", it->key, strerror(errno));
+			g_warning("could not load module %s (%s)", *name, strerror(errno));
 			continue;
 		}
 
@@ -133,9 +133,9 @@ void modules_load(struct lcfgx_tree_node *node)
 			continue;
 		}
 
-		m->config = it;
+		//m->config = it;
 
-		memcpy(&m->api, n, sizeof(struct module_api));
+		//memcpy(&m->api, n, sizeof(struct module_api));
 
 		g_dionaea->modules->modules = g_list_append(g_dionaea->modules->modules, m);
 	}
@@ -254,10 +254,11 @@ void modules_hup(void)
 		if( asprintf(&path, "modules.%s", m->name) == -1 )
 			return;
 		struct lcfgx_tree_node *n;
-		if( lcfgx_get_map(g_dionaea->config.root, &n, path) == LCFGX_PATH_FOUND_TYPE_OK )
+		/* ToDo: replace
+     * if( lcfgx_get_map(g_dionaea->config.root, &n, path) == LCFGX_PATH_FOUND_TYPE_OK )
 		{
 			m->api.hup(n);
-		}
+		}*/
 		free(path);
 	}
 }

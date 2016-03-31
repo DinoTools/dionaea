@@ -530,18 +530,11 @@ int main (int argc, char *argv[])
 
 
 	// config
-	if( (d->config.config = lcfg_new(opt->config)) == NULL )
-	{
-		g_error("config not found");
-	}
-
-	if( lcfg_parse(d->config.config) != lcfg_status_ok )
-	{
-		g_error("lcfg error: %s\n", lcfg_error_get(d->config.config));
-	}
-
-	d->config.root = lcfgx_tree_new(d->config.config);
-	d->config.name = g_strdup(opt->config);
+  g_dionaea->config = g_key_file_new();
+  if (!g_key_file_load_from_file(g_dionaea->config, opt->config, G_KEY_FILE_NONE, NULL)){
+		g_error("Could not read config file");
+    return EXIT_FAILURE;
+  }
 
 	// logging 
 	d->logging = g_malloc0(sizeof(struct logging));
@@ -557,61 +550,53 @@ opt->stdOUT.filter);
 	}
 
 	// log to file(s) - if specified in config
-	struct lcfgx_tree_node *n;
-	if( lcfgx_get_map(g_dionaea->config.root, &n, "logging") == LCFGX_PATH_FOUND_TYPE_OK )
-	{
-		struct lcfgx_tree_node *it;
-		for( it = n->value.elements; it != NULL; it = it->next )
-		{
-			if( it->type != lcfgx_map )
-				continue;
+  gchar **logging_keys;
+  gchar **tmp_str;
+  GError *error = NULL;
+  gsize len;
+  logging_keys = g_key_file_get_keys (g_dionaea->config, "logging", &len, &error);
+  guint32 i;
+  for(i=0; i < len; i++) {
+    tmp_str = g_strsplit(logging_keys[i], ".", 2);
+    if(g_strcmp0(tmp_str[1], "filename") == 0) {
+      continue;
+    }
+    char *file = NULL;
+    char *domains = NULL;
+    char *levels = NULL;
 
-			char *file = NULL;
-			char *domains = NULL;
-			char *levels = NULL;
 
-			struct lcfgx_tree_node *f;
+    file = g_key_file_get_string(g_dionaea->config, "logging", "common.filename", &error);
+    domains = g_key_file_get_string(g_dionaea->config, "logging", "common.domains", &error);
+    levels = g_key_file_get_string(g_dionaea->config, "logging", "common.levels", &error);
 
-			if( lcfgx_get_string(it, &f, "file") == LCFGX_PATH_FOUND_TYPE_OK )
-				file = f->value.string.data;
+    g_debug("Logfile (handle %s) %s %s %s", "common", file, domains, levels);
 
-			if( lcfgx_get_string(it, &f, "domains") == LCFGX_PATH_FOUND_TYPE_OK )
-				domains = f->value.string.data;
+    struct log_filter *lf = log_filter_new(domains, levels);
+    if( lf == NULL )
+      return -1;
 
-			if( lcfgx_get_string(it, &f, "levels") == LCFGX_PATH_FOUND_TYPE_OK )
-				levels = f->value.string.data;
+    struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
+    if( opt->root == NULL )
+    {
+      if( *file != '/' )
+      {
+        g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
+      } else
+        strncpy(fd->file, file, PATH_MAX);
+    }else
+    {
+      if( *file == '/' )
+      {
+        g_error("log path has to be relative to var/ for chroot");
+      }
+      g_snprintf(fd->file, PATH_MAX, "var/%s", file);
+    }
 
-			g_debug("Logfile (handle %s) %s %s %s", it->key, file, domains, levels);
+    fd->filter = lf;
 
-			if( file == NULL )
-				continue;
-
-			struct log_filter *lf = log_filter_new(domains, levels);
-			if( lf == NULL )
-				return -1;
-
-			struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
-			if( opt->root == NULL )
-			{
-				if( *file != '/' )
-				{
-					g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
-				} else
-					strncpy(fd->file, file, PATH_MAX);
-			}else
-			{
-				if( *file == '/' )
-				{
-					g_error("log path has to be relative to var/ for chroot");
-				}
-				g_snprintf(fd->file, PATH_MAX, "var/%s", file);
-			}
-
-			fd->filter = lf;
-
-			struct logger *l = logger_new(logger_file_log, logger_file_open, logger_file_hup, logger_file_close, logger_file_flush, fd);
-			d->logging->loggers = g_list_append(d->logging->loggers, l);
-		}
+    struct logger *l = logger_new(logger_file_log, logger_file_open, logger_file_hup, logger_file_close, logger_file_flush, fd);
+    d->logging->loggers = g_list_append(d->logging->loggers, l);
 	}
 
 	for( GList *it = d->logging->loggers; it != NULL; it = it->next )
@@ -707,11 +692,12 @@ opt->stdOUT.filter);
 
 	// modules
 	d->modules = g_malloc0(sizeof(struct modules));
-//	struct lcfgx_tree_node *n;
-	if( lcfgx_get_map(g_dionaea->config.root, &n, "modules") == LCFGX_PATH_FOUND_TYPE_OK )
-		modules_load(n);
-	else
-		g_warning("dionaea is useless without modules");
+  gsize num;
+  gchar **names = g_key_file_get_string_list(g_dionaea->config, "dionaea", "modules", &num, &error);
+	//if( lcfgx_get_map(g_dionaea->config.root, &n, "modules") == LCFGX_PATH_FOUND_TYPE_OK )
+		modules_load(names);
+	//else
+	//	g_warning("dionaea is useless without modules");
 
 	modules_config();
 	modules_prepare();
@@ -736,7 +722,7 @@ opt->stdOUT.filter);
 //	struct lcfgx_tree_node *n;
 	g_debug("Creating processors tree");
 	d->processors->tree = g_node_new(NULL);
-	if( lcfgx_get_map(d->config.root, &n, "processors") == LCFGX_PATH_FOUND_TYPE_OK )
+	/*if( lcfgx_get_map(d->config.root, &n, "processors") == LCFGX_PATH_FOUND_TYPE_OK )
 	{
 		lcfgx_tree_dump(n,0);
 		for( struct lcfgx_tree_node *it = n->value.elements; it != NULL; it = it->next )
@@ -745,7 +731,7 @@ opt->stdOUT.filter);
 		}
 	}
 
-	processors_tree_dump(d->processors->tree, 0);
+	processors_tree_dump(d->processors->tree, 0);*/
 
 
 

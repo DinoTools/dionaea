@@ -63,7 +63,7 @@ struct modules
 };
 
 
-void modules_load(struct lcfgx_tree_node *node);
+void modules_load(gchar **);
 void modules_unload(void);
 
 /**
