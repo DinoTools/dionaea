@@ -50,9 +50,6 @@
 #include <sys/resource.h>
 #include <sys/file.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
 #include <ev.h>
 #include <udns.h>
 #include <openssl/ssl.h>
