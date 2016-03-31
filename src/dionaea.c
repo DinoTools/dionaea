@@ -470,9 +470,79 @@ static void log_ev_fatal_error (const char *msg)
 	g_error("%s",msg);
 }
 
+int logger_load(struct options *opt)
+{
+	// log to file(s) - if specified in config
+  gchar **keys;
+  gchar *key=NULL;
+  gchar **parts;
+  GError *error = NULL;
+  gsize len;
+  keys = g_key_file_get_keys (g_dionaea->config, "logging", &len, &error);
+  guint32 i;
+  for(i=0; i < len; i++) {
+    parts = g_strsplit(keys[i], ".", 2);
+    if(g_strcmp0(parts[1], "filename") != 0) {
+      g_strfreev(parts);
+      continue;
+    }
+    gchar *file = NULL;
+    gchar *domains = NULL;
+    gchar *levels = NULL;
+
+    key = g_strjoin(".", parts[0], "filename", NULL);
+    file = g_key_file_get_string(g_dionaea->config, "logging", key, &error);
+    g_free(key);
+
+    key = g_strjoin(".", parts[0], "domains", NULL);
+    domains = g_key_file_get_string(g_dionaea->config, "logging", key, &error);
+    g_free(key);
+
+    key = g_strjoin(".", parts[0], "levels", NULL);
+    levels = g_key_file_get_string(g_dionaea->config, "logging", key, &error);
+    g_free(key);
+
+    g_debug("Logfile (handle %s) %s %s %s", parts[0], file, domains, levels);
+
+    struct log_filter *lf = log_filter_new(domains, levels);
+    if( lf == NULL ) {
+      return -1;
+    }
+
+    struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
+    if( opt->root == NULL ) {
+      if( *file != '/' ) {
+        g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
+      } else {
+        strncpy(fd->file, file, PATH_MAX);
+      }
+    } else {
+      if( *file == '/' ) {
+        g_error("log path has to be relative to var/ for chroot");
+      }
+      g_snprintf(fd->file, PATH_MAX, "var/%s", file);
+    }
+
+    fd->filter = lf;
+
+    struct logger *l = logger_new(logger_file_log, logger_file_open, logger_file_hup, logger_file_close, logger_file_flush, fd);
+    g_dionaea->logging->loggers = g_list_append(g_dionaea->logging->loggers, l);
+  }
+
+  for( GList *it = g_dionaea->logging->loggers; it != NULL; it = it->next ) {
+    struct logger *l = it->data;
+    if( l->open != NULL ) {
+      l->open(l, l->data);
+    }
+  }
+  return 0;
+}
+
+
 
 int main (int argc, char *argv[])
 {
+  GError *error;
 	struct version v;
 	show_version(&v);
 	g_log_set_default_handler(logger_stdout_log, NULL);
@@ -549,63 +619,8 @@ opt->stdOUT.filter);
 		d->logging->loggers = g_list_append(d->logging->loggers, l);
 	}
 
-	// log to file(s) - if specified in config
-  gchar **logging_keys;
-  gchar **tmp_str;
-  GError *error = NULL;
-  gsize len;
-  logging_keys = g_key_file_get_keys (g_dionaea->config, "logging", &len, &error);
-  guint32 i;
-  for(i=0; i < len; i++) {
-    tmp_str = g_strsplit(logging_keys[i], ".", 2);
-    if(g_strcmp0(tmp_str[1], "filename") == 0) {
-      continue;
-    }
-    char *file = NULL;
-    char *domains = NULL;
-    char *levels = NULL;
 
-
-    file = g_key_file_get_string(g_dionaea->config, "logging", "common.filename", &error);
-    domains = g_key_file_get_string(g_dionaea->config, "logging", "common.domains", &error);
-    levels = g_key_file_get_string(g_dionaea->config, "logging", "common.levels", &error);
-
-    g_debug("Logfile (handle %s) %s %s %s", "common", file, domains, levels);
-
-    struct log_filter *lf = log_filter_new(domains, levels);
-    if( lf == NULL )
-      return -1;
-
-    struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
-    if( opt->root == NULL )
-    {
-      if( *file != '/' )
-      {
-        g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
-      } else
-        strncpy(fd->file, file, PATH_MAX);
-    }else
-    {
-      if( *file == '/' )
-      {
-        g_error("log path has to be relative to var/ for chroot");
-      }
-      g_snprintf(fd->file, PATH_MAX, "var/%s", file);
-    }
-
-    fd->filter = lf;
-
-    struct logger *l = logger_new(logger_file_log, logger_file_open, logger_file_hup, logger_file_close, logger_file_flush, fd);
-    d->logging->loggers = g_list_append(d->logging->loggers, l);
-	}
-
-	for( GList *it = d->logging->loggers; it != NULL; it = it->next )
-	{
-		struct logger *l = it->data;
-		if( l->open != NULL )
-			l->open(l, l->data);
-	}
-
+  logger_load(opt);
 	// daemon
 	if( opt->daemon && daemon(1, 0) != 0 )
 	{
