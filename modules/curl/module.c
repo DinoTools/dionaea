@@ -599,18 +599,18 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 
 static bool curl_config(void)
 {
-	g_debug("%s", __PRETTY_FUNCTION__);
-  // ToDo: refresh config
-	return true;
+  GError *error = NULL;
+
+  g_debug("%s", __PRETTY_FUNCTION__);
+
+  curl_runtime.download_dir = g_key_file_get_string(g_dionaea->config, "dionaea", "download.dir", &error);
+
+  return true;
 }
 
 static bool curl_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
-
-  GError *error = NULL;
-	curl_runtime.download_dir = g_key_file_get_string(g_dionaea->config, "dionaea", "download.dir", &error);
-
 
 	if( curl_global_init(CURL_GLOBAL_ALL) != 0 )
 		return false;
