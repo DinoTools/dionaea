@@ -249,16 +249,6 @@ void modules_hup(void)
 
 
 		g_message("re-configure module %s", m->name);
-
-		char *path;
-		if( asprintf(&path, "modules.%s", m->name) == -1 )
-			return;
-		struct lcfgx_tree_node *n;
-		/* ToDo: replace
-     * if( lcfgx_get_map(g_dionaea->config.root, &n, path) == LCFGX_PATH_FOUND_TYPE_OK )
-		{
-			m->api.hup(n);
-		}*/
-		free(path);
+		m->api.hup();
 	}
 }
