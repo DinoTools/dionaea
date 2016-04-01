@@ -29,7 +29,6 @@ struct connection;
 struct processor_data;
 struct emu;
 struct emu_env;
-struct lcfgx_tree_node;
 
 struct emu_ctx 
 {
@@ -54,7 +53,7 @@ struct emu_config
 
 void *proc_emu_ctx_new(void *cfg);
 void proc_emu_ctx_free(void *ctx);
-void *proc_emu_ctx_cfg_new(struct lcfgx_tree_node *node);
+void *proc_emu_ctx_cfg_new(void);
 void proc_emu_on_io_in(struct connection *con, struct processor_data *pd);
 void proc_emu_on_io_out(struct connection *con, struct processor_data *pd);
 

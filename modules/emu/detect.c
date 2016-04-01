@@ -28,9 +28,6 @@
 #include <ev.h>
 #include <glib.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
 #include <emu/emu.h>
 #include <emu/emu_shellcode.h>
 #include <emu/emu_log.h>
@@ -56,61 +53,66 @@ struct processor proc_emu =
 	.thread_io_in = proc_emu_on_io_in,
 };
 
-void *proc_emu_ctx_cfg_new(struct lcfgx_tree_node *node)
+void *proc_emu_ctx_cfg_new(void)
 {
-	g_debug("%s node %p", __PRETTY_FUNCTION__, node);
-	lcfgx_tree_dump(node,0);
+	g_debug("%s node", __PRETTY_FUNCTION__);
 	struct emu_config *conf = g_malloc0(sizeof(struct emu_config));
 
-	struct lcfgx_tree_node *n;
-	if( lcfgx_get_string(node, &n, "emulation.limits.files") == LCFGX_PATH_FOUND_TYPE_OK )
-		conf->limits.files = strtol(n->value.string.data, NULL, 10);
-	else
+	GError *error;
+
+	conf->limits.files = g_key_file_get_integer(g_dionaea->config, "module.emu", "limits.files", &error);
+	if (error != NULL)
 		goto err;
 
-	if( lcfgx_get_string(node, &n, "emulation.limits.filesize") == LCFGX_PATH_FOUND_TYPE_OK )
-		conf->limits.filesize = strtol(n->value.string.data, NULL, 10);
-	else
+	conf->limits.filesize = g_key_file_get_integer(g_dionaea->config, "module.emu", "limits.filesize", &error);
+	if (error != NULL)
 		goto err;
 
-	if( lcfgx_get_string(node, &n, "emulation.limits.sockets") == LCFGX_PATH_FOUND_TYPE_OK )
-		conf->limits.sockets = strtol(n->value.string.data, NULL, 10);
-	else
+	conf->limits.sockets = g_key_file_get_integer(g_dionaea->config, "module.emu", "limits.sockets", &error);
+	if (error != NULL)
 		goto err;
 
-	if( lcfgx_get_string(node, &n, "emulation.limits.steps") == LCFGX_PATH_FOUND_TYPE_OK )
-		conf->limits.steps = strtol(n->value.string.data, NULL, 10);
-	else
+	conf->limits.steps = g_key_file_get_integer(g_dionaea->config, "module.emu", "limits.steps", &error);
+	if (error != NULL)
 		goto err;
 
-	if( lcfgx_get_string(node, &n, "emulation.limits.idle") == LCFGX_PATH_FOUND_TYPE_OK )
-		conf->limits.idle = strtod(n->value.string.data, NULL);
-	else
+	conf->limits.idle = g_key_file_get_integer(g_dionaea->config, "module.emu", "limits.idle", &error);
+	if (error != NULL)
 		goto err;
 
-	if( lcfgx_get_string(node, &n, "emulation.limits.listen") == LCFGX_PATH_FOUND_TYPE_OK )
-		conf->limits.listen = strtod(n->value.string.data, NULL);
-	else
+	conf->limits.listen = g_key_file_get_double(g_dionaea->config, "module.emu", "limits.listen", &error);
+	if (error != NULL)
 		goto err;
 
-	if( lcfgx_get_string(node, &n, "emulation.limits.sustain") == LCFGX_PATH_FOUND_TYPE_OK )
-		conf->limits.sustain = strtod(n->value.string.data, NULL);
-	else
+	conf->limits.sustain = g_key_file_get_double(g_dionaea->config, "module.emu", "limits.sustain", &error);
+	if (error != NULL)
 		goto err;
 
-	if( lcfgx_get_string(node, &n, "emulation.limits.cpu") == LCFGX_PATH_FOUND_TYPE_OK )
-		conf->limits.cpu = strtod(n->value.string.data, NULL);
-	else
+	conf->limits.cpu = g_key_file_get_double(g_dionaea->config, "module.emu", "limits.cpu", &error);
+	if (error != NULL)
 		goto err;
 
-	g_debug(" files %i filesize %i sockets %i steps %i idle %f listen %f sustain %f cpu %f ", conf->limits.files, conf->limits.filesize,
-			conf->limits.sockets, conf->limits.steps, conf->limits.idle, conf->limits.listen, conf->limits.sustain, conf->limits.cpu);
+	g_debug(
+		" files %i filesize %i sockets %i steps %i idle %f listen %f sustain %f cpu %f ",
+		conf->limits.files,
+		conf->limits.filesize,
+		conf->limits.sockets,
+		conf->limits.steps,
+		conf->limits.idle,
+		conf->limits.listen,
+		conf->limits.sustain,
+		conf->limits.cpu
+	);
 
 //	g_error("STOP");
 	return conf;
 
 	err:
 	g_warning("configuration for emulation is incomplete");
+	if (error != NULL)
+		g_warning("%s", error->message);
+
+	g_clear_error(&error);
 	g_free(conf);
 	return NULL;
 }
