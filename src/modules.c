@@ -135,7 +135,7 @@ void modules_load(gchar **names)
 
 		//m->config = it;
 
-		//memcpy(&m->api, n, sizeof(struct module_api));
+		memcpy(&m->api, n, sizeof(struct module_api));
 
 		g_dionaea->modules->modules = g_list_append(g_dionaea->modules->modules, m);
 	}
