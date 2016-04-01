@@ -179,7 +179,7 @@ void modules_config(void)
 		g_message("configure module %p", it->data);
 		struct module *m = it->data;
 		if( m->api.config != NULL )
-			m->api.config(m->config);
+			m->api.config();
 	}
 }
 

@@ -5,9 +5,6 @@
 #include <glib.h>
 #include <gmodule.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
 struct dionaea;
 
 struct module;
@@ -16,7 +13,7 @@ struct module;
 
 typedef struct module_api *(*module_init_function)(struct dionaea *d);
 
-typedef bool (*module_config_function)(struct lcfgx_tree_node *node);
+typedef bool (*module_config_function)(void);
 typedef bool (*module_start_function)(void);
 typedef bool (*module_new_function)(struct dionaea *d);
 typedef bool (*module_free_function)(void);
@@ -49,7 +46,6 @@ struct module
 	char *name;
 	GModule *module;
 	module_init_function module_init;
-	struct lcfgx_tree_node *config;
 	struct module_api api;
 };
 
