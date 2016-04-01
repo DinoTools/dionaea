@@ -47,7 +47,6 @@
 
 static struct 
 {
-	struct lcfgx_tree_node *config;
 	struct ev_timer timer_event;
 	CURLM *multi;
 	struct ihandler *download_ihandler;
@@ -598,12 +597,12 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 	}
 }
 
-/*static bool curl_config(struct lcfgx_tree_node *node)
+static bool curl_config(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
-	curl_runtime.config = node;
+  // ToDo: refresh config
 	return true;
-}*/
+}
 
 static bool curl_new(struct dionaea *d)
 {
@@ -695,7 +694,7 @@ struct module_api *module_init(struct dionaea *d)
     g_debug("%s:%i %s dionaea %p",__FILE__, __LINE__, __PRETTY_FUNCTION__, d);
 	static struct module_api curl_api =
 	{
-		//.config = &curl_config,
+		.config = &curl_config,
 		.start = NULL,
 		.new = &curl_new,
 		.free = &curl_freex,
