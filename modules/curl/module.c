@@ -683,7 +683,7 @@ static bool curl_freex(void)
 	return true;
 }
 
-static bool curl_hup(struct lcfgx_tree_node *node)
+static bool curl_hup(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
 	return true;
