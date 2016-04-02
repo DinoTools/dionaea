@@ -54,9 +54,6 @@
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
 #ifdef HAVE_LINUX_SOCKIOS_H
 #include <linux/sockios.h>
 #endif
@@ -392,8 +389,6 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 bool connection_listen(struct connection *con, int len)
 {
-	struct lcfgx_tree_node *node_cert;
-	struct lcfgx_tree_node *node_key;
 	const char *cert_filename;
 	const char *key_filename;
 
