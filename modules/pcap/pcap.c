@@ -29,9 +29,6 @@
 #include <glib.h>
 #include <stdio.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
 #include <pcap.h>
 #include <pcap/sll.h>
 
@@ -79,7 +76,6 @@ struct pcap_device
 
 static struct 
 {
-	struct lcfgx_tree_node *config;
 	GHashTable *devices;
 } pcap_runtime;
 
@@ -196,10 +192,9 @@ static void pcap_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents)
 	connection_free_cb(g_dionaea->loop, &con->events.free, 0);
 }
 
-static bool pcap_config(struct lcfgx_tree_node *node)
+static bool pcap_config(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
-	pcap_runtime.config = node;
 	return true;
 }
 
@@ -215,21 +210,30 @@ static bool pcap_prepare(void)
 
 	pcap_if_t *alldevsp = NULL;
 
-	if( pcap_findalldevs(&alldevsp,errbuf) == -1 )
-	{
+	if( pcap_findalldevs(&alldevsp,errbuf) == -1 ) {
 		g_warning("pcap_findalldevs failed %s",errbuf);
 		return false;
 	}
+	gchar *key, **keys, **parts;
+	gsize len;
+	GError *error;
 
-	struct lcfgx_tree_node *v;
-	for( v = pcap_runtime.config->value.elements; v != NULL; v = v->next )
-	{
-		g_debug("node %s", (char *)v->key);
+	keys = g_key_file_get_keys(g_dionaea->config, "module.pcap", &len, &error);
+
+	guint32 i;
+	for(i=0; i < len; i++) {
+		parts = g_strsplit(keys[i], ".", 2);
+		if(g_strcmp0(parts[1], "interface") != 0) {
+			g_strfreev(parts);
+			continue;
+		}
 		struct pcap_device *dev = malloc(sizeof(struct pcap_device));
-		dev->name = g_strdup(v->key);
+		key = g_strjoin(".", parts[0], "interface", NULL);
+		dev->name = g_key_file_get_string(g_dionaea->config, "module.pcap", key, &error);
+		g_free(key);
+		g_debug("Preparing interface '%s'", dev->name);
 
-		if( (dev->pcap = pcap_open_live(dev->name, 80, 1, 50, errbuf)) == NULL )
-		{
+		if( (dev->pcap = pcap_open_live(dev->name, 80, 1, 50, errbuf)) == NULL ) {
 			g_warning("Could not open raw listener on device %s '%s'", dev->name, errbuf);
 			free(dev);
 			return false;
@@ -238,8 +242,7 @@ static bool pcap_prepare(void)
 		GString *bpf_filter_string = g_string_new("");
 		GString *bpf_filter_string_addition = g_string_new("");
 
-		for( pcap_if_t *alldev = alldevsp;alldev != NULL;alldev = alldev->next )
-		{
+		for( pcap_if_t *alldev = alldevsp;alldev != NULL;alldev = alldev->next ) {
 			if( strcmp(dev->name, "any") != 0 && strcmp(alldev->name, dev->name) != 0 )
 				continue;
 
@@ -253,8 +256,7 @@ static bool pcap_prepare(void)
 
 			char name[128];
 
-			for( pcap_addr_t *addr = alldev->addresses; addr != NULL; addr = addr->next )
-			{
+			for( pcap_addr_t *addr = alldev->addresses; addr != NULL; addr = addr->next ) {
 				if( addr->addr == NULL )
 					continue;
 
@@ -277,7 +279,6 @@ static bool pcap_prepare(void)
 				default:
 					break;
 					g_debug("\t\tAF_ not supported %i",addr->addr->sa_family);
-
 				}
 				g_debug(" ");
 			}
@@ -352,7 +353,6 @@ static bool pcap_prepare(void)
 		g_hash_table_insert(pcap_runtime.devices, dev->name, dev);
 	}
 	pcap_freealldevs(alldevsp);
-
 	return true;
 }
 
