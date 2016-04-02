@@ -39,7 +39,7 @@
 #define D_LOG_DOMAIN "xmatch"
 
 
-static bool xmatch_config(struct lcfgx_tree_node *node)
+static bool xmatch_config(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
 	return true;
@@ -64,7 +64,7 @@ static bool xmatch_free(void)
 	return true;
 }
 
-static bool xmatch_hup(struct lcfgx_tree_node *node)
+static bool xmatch_hup(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
 	return true;
