@@ -644,65 +644,6 @@ fi
 
 
 dnl **************************************************
-dnl * liblcfg                                        *
-dnl **************************************************
-
-AC_SUBST([LIB_LCFG_CFLAGS])
-AC_SUBST([LIB_LCFG_LIBS])
-
-
-enable_lcfg="yes"
-
-AC_ARG_ENABLE(lcfg, [  --enable-lcfg      enable support for liblcfg],
-			[enable_lcfg="$enableval"],[enable_lcfg="yes"])
-
-AC_ARG_WITH(lcfg-include,
-			[  --with-lcfg-include=DIR  liblcfg include dir],
-				      [lcfg_inc="$withval"],[lcfg_inc=no])
-AC_ARG_WITH(lcfg-lib,
-			[  --with-lcfg-lib=DIR  liblcfg library dir],
-			[lcfg_lib="$withval"],[lcfg_lib=no])
-
-
-if test x$enable_lcfg = "xyes" ; then
-	OLD_CPPFLAGS=${CPPFLAGS};
-	if test x$lcfg_inc != "xno"; then
-		CPPFLAGS="${CPPFLAGS} -I${lcfg_inc}"
-	fi
-	
-	AC_CHECK_HEADER(lcfg/lcfg.h,[enable_lcfg=yes],[enable_lcfg=no])
-	
-	if test x$enable_lcfg = "xyes" ; then
-		OLD_LDFLAGS=${LDFLAGS}
-		if test x$lcfg_lib != "xno"; then
-			LDFLAGS="${LDFLAGS}  -L${lcfg_lib}"
-		fi
-	
-		AC_CHECK_LIB([lcfg],[lcfg_new],enable_lcfg="yes", enable_lcfg="no")
-		if test x$enable_lcfg = "xyes" ; then
-			if test x$lcfg_lib != "xno"; then
-				LIB_LCFG_LIBS="-L$lcfg_lib -llcfg"
-			else
-				LIB_LCFG_LIBS="-llcfg"
-			fi
-			if test x$lcfg_inc != "xno"; then
-				LIB_LCFG_CFLAGS="-I$lcfg_inc"
-			else
-				LIB_LCFG_CFLAGS=""
-			fi
-			AC_DEFINE([HAVE_LIBLCFG], [1], [Define to 1 to compile with lcfg support])
-		fi
-	fi
-	CPPFLAGS=${OLD_CPPFLAGS}
-	LDFLAGS=${OLD_LDFLAGS}
-fi
-
-if test x$enable_lcfg = "xno" ; then
-	AC_MSG_ERROR([liblcfg is missing - install it please - download from http://liblcfg.carnivore.it])
-fi
-
-
-dnl **************************************************
 dnl * libnl                                        *
 dnl **************************************************
 
