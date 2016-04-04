@@ -393,7 +393,7 @@ static bool pcap_free(void)
 	return true;
 }
 
-static bool pcap_hup(struct lcfgx_tree_node *node)
+static bool pcap_hup(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
 	return true;
