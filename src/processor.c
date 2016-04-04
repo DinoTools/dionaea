@@ -1,5 +1,3 @@
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
 #include <ctype.h>
 
 #include "dionaea.h"
@@ -12,54 +10,44 @@
 
 #define D_LOG_DOMAIN "processor"
 
-bool processors_tree_create(GNode *tree, struct lcfgx_tree_node *node)
+bool processors_tree_create(GNode *tree, gchar *proc_conf_name)
 {
-	g_debug("%s tree %p node %p key %s", __PRETTY_FUNCTION__, tree, node, node->key);
+	GError *error = NULL;
+	g_debug("%s - processor: %s", __PRETTY_FUNCTION__, proc_conf_name);
+	//g_debug("%s tree %p node %p key %s", __PRETTY_FUNCTION__, tree, node, node->key);
 
-	char *key = g_strdup(node->key);
-	char *x;
-	if( (x = strstr(key,"-")) != NULL)
-		*x = '\0';
+	gchar *group_name = g_strjoin(".", "processor", proc_conf_name, NULL);
+	gchar *proc_name = g_key_file_get_string(g_dionaea->config, group_name, "name", &error);
 
-	struct processor *p = g_hash_table_lookup(g_dionaea->processors->names, key);
+	struct processor *p = g_hash_table_lookup(g_dionaea->processors->names, proc_name);
 
 	if( p == NULL )
 	{
-		g_error("Could not find processor '%s' (%s)", node->key, key);
+		//g_error("Could not find processor '%s' (%s)", node->key, key);
 	}
-
-	g_free(key);
 
 	struct processor *pt = g_malloc0(sizeof(struct processor));
 	memcpy(pt, p, sizeof(struct processor));
-	struct lcfgx_tree_node *n;
 
-	if( pt->cfg != NULL )
-	{
-		if( lcfgx_get_map(node, &n, "config") == LCFGX_PATH_FOUND_TYPE_OK )
-		{
-			if( (pt->config = pt->cfg(n)) == NULL )
-			{
-				g_error("processor %s rejected config", node->key);
-			}
-		} else
-		{
-			g_error("processor %s expects config", node->key);
+	if( pt->cfg != NULL ) {
+		if( pt->cfg(group_name) == NULL ) {
+			g_error("processor %s rejected config", "ToDo");
 		}
 	}
 
 	GNode *me = g_node_new(pt);
 	g_node_append(tree, me);
 
-	if( lcfgx_get_map(node, &n, "next") == LCFGX_PATH_FOUND_TYPE_OK )
-	{
-		struct lcfgx_tree_node *it;
-		for( it = n->value.elements; it != NULL; it = it->next )
-		{
-			if( processors_tree_create(me, it) != true )
-				return false;
+	gchar **proc_next_names, **proc_next_name;
+	gsize num;
+
+	proc_next_names = g_key_file_get_string_list(g_dionaea->config, group_name, "next", &num, &error);
+	if(error == NULL) {
+		for (proc_next_name = proc_next_names; *proc_next_name; proc_next_name++) {
+			processors_tree_create(me, *proc_next_name);
 		}
 	}
+	g_clear_error(&error);
 	return true;
 }
 
@@ -292,7 +280,7 @@ void processors_io_out(struct connection *con, void *data, int size)
 	}
 }
 
-void *proc_streamdumper_cfg_new(struct lcfgx_tree_node *node);
+void *proc_streamdumper_cfg_new(gchar *);
 void *proc_streamdumper_ctx_new(void *cfg);
 void proc_streamdumper_ctx_free(void *ctx);
 void proc_streamdumper_on_io_in(struct connection *con, struct processor_data *pd, void *data, int size);
@@ -321,16 +309,13 @@ struct streamdumper_ctx
 };
 
 
-void *proc_streamdumper_cfg_new(struct lcfgx_tree_node *node)
+void *proc_streamdumper_cfg_new(gchar *group_name)
 {
 	struct streamdumper_config *cfg = g_malloc0(sizeof(struct streamdumper_config));
-	struct lcfgx_tree_node *n;
-	if( lcfgx_get_string(node, &n, "path") != LCFGX_PATH_FOUND_TYPE_OK )
-	{
-		g_error("streamdumper needs a path");
-	}
+	gchar *path;
+	GError *error;
+	path = g_key_file_get_string(g_dionaea->config, group_name, "config.path", &error);
 
-	char *path = n->value.string.data;
 	// test the path ...
 	char test[256];
 	time_t rawtime;
@@ -338,13 +323,12 @@ void *proc_streamdumper_cfg_new(struct lcfgx_tree_node *node)
 	time(&rawtime);
 	timeinfo = localtime(&rawtime);
 	strftime(test, 255, path, timeinfo);
-	if( strcmp(test, path) == 0 )
-	{
+	if( strcmp(test, path) == 0 ) {
 		g_error("streamdumper path does not have time based modifiers, all files end up in a single directory, which is not accepted.");
 	}
 
 	g_warning("%s <-> %s", test, path);
-	cfg->path = g_strdup(n->value.string.data);
+	cfg->path = path;
 	return cfg;
 }
 
@@ -553,7 +537,7 @@ void proc_unicode_on_io_out(struct connection *con, struct processor_data *pd)
 }
 
 
-void *proc_filter_cfg(struct lcfgx_tree_node *node);
+void *proc_filter_cfg(gchar *);
 bool proc_filter_accept(struct connection *con, void *config);
 void *proc_filter_ctx_new(void *data);
 void proc_filter_ctx_free(void *ctx);
@@ -650,69 +634,92 @@ void proc_filter_dump_rules(struct proc_filter_config *cfg)
 //	exit(0);
 }
 
-void *proc_filter_cfg(struct lcfgx_tree_node *node)
+void *proc_filter_cfg(gchar *group_name)
 {
 	struct proc_filter_config *cfg = g_malloc0(sizeof(struct proc_filter_config));
 
 //	char *mode = NULL;
 //	char *what = NULL;
 
-	for( struct lcfgx_tree_node *n = node->value.elements; n != NULL; n = n->next)
-	{
-//		g_warning("found %s", mode);
-		if( n->type != lcfgx_list )
+	GList *allow_keys = NULL;
+	GList *deny_keys = NULL;
+
+	gchar **keys;
+	gchar **key;
+	gchar **parts;
+	gsize len;
+	GError *error=NULL;
+	keys = g_key_file_get_keys (g_dionaea->config, group_name, &len, &error);
+	for(key = keys; *key; key++) {
+		parts = g_strsplit(*key, ".", 4);
+		if(g_strcmp0(parts[0], "config") != 0) {
 			continue;
-
-		for( struct lcfgx_tree_node *it = n->value.elements; it != NULL; it = it->next )
-		{
-//			g_warning("found %s %s",  mode,  it->key);
-			if( it->type == lcfgx_map )
-			{
-				struct proc_filter_config_rule *rule = g_malloc0(sizeof(struct proc_filter_config_rule));
-
-				if( strcmp(n->key,"allow") == 0 )
-				{
-//					mode = "allow";
-					cfg->allow = g_list_append(cfg->allow, rule);
-				}else
-				if( strcmp(n->key,"deny") == 0 )
-				{
-//					mode = "deny";
-					cfg->deny = g_list_append(cfg->deny, rule);
-				}else
-				{
-					g_free(rule);
-					continue;
-				}
-				for( struct lcfgx_tree_node *jt = it->value.elements; jt != NULL; jt = jt->next )
-				{
-//					g_warning("found %s %s %s",  mode,  it->key, jt->key);
-
-					GList **l;
-					if( strcmp(jt->key, "protocol") == 0 )
-					{
-//						what = "protocol";
-						l = &rule->protocols;
-					}else
-					if( strcmp(jt->key, "type") == 0 )
-					{
-//						what = "type";
-						l = &rule->types;
-					}else
-						continue;
-		
-					for( struct lcfgx_tree_node *kt = jt->value.elements; kt != NULL; kt = kt->next )
-					{
-						if( kt->type == lcfgx_string )
-						{
-//							g_warning("%s %s %s", mode, what, (char *)kt->value.string.data);
-							*l = g_list_append(*l, g_strdup((char *)kt->value.string.data));
-						}
-					}
-				}
+		}
+		if(g_strcmp0(parts[1], "allow") == 0) {
+			if(g_list_find_custom(allow_keys, parts[2], g_strcmp0) == NULL) {
+				allow_keys = g_list_append(allow_keys, parts[2]);
 			}
-    	}
+		} else if(g_strcmp0(parts[1], "deny") == 0) {
+			if(g_list_find(deny_keys, parts[2]) == NULL) {
+				deny_keys = g_list_append(deny_keys, parts[2]);
+			}
+		}
 	}
+
+	GList *l;
+	gchar **values, **value, *k;
+	for (l = allow_keys; l != NULL; l = l->next) {
+		struct proc_filter_config_rule *rule = g_malloc0(sizeof(struct proc_filter_config_rule));
+		cfg->allow = g_list_append(cfg->allow, rule);
+		k = g_strjoin(".", "config", "allow", l->data, "protocols", NULL);
+		values = g_key_file_get_string_list(g_dionaea->config, group_name, k, &len, &error);
+		if(error == NULL) {
+			for(value = values; *value; value++) {
+				rule->protocols = g_list_append(rule->protocols, *value);
+			}
+		} else {
+			g_debug("%s", error->message);
+		}
+		g_clear_error(&error);
+
+		k = g_strjoin(".", "config", "allow", l->data, "types", NULL);
+		values = g_key_file_get_string_list(g_dionaea->config, group_name, k, &len, &error);
+		if(error == NULL) {
+			for(value = values; *value; value++) {
+				rule->types = g_list_append(rule->types, *value);
+			}
+		} else {
+			g_debug("%s", error->message);
+		}
+		g_clear_error(&error);
+	}
+
+	for (l = deny_keys; l != NULL; l = l->next) {
+		struct proc_filter_config_rule *rule = g_malloc0(sizeof(struct proc_filter_config_rule));
+		cfg->deny = g_list_append(cfg->deny, rule);
+		k = g_strjoin(".", "config", "deny", l->data, "protocols", NULL);
+		values = g_key_file_get_string_list(g_dionaea->config, group_name, k, &len, &error);
+		if(error == NULL) {
+			for(value = values; *value; value++) {
+				rule->protocols = g_list_append(rule->protocols, *value);
+			}
+		} else {
+			g_debug("%s", error->message);
+		}
+		g_clear_error(&error);
+
+		k = g_strjoin(".", "config", "deny", l->data, "types", NULL);
+		values = g_key_file_get_string_list(g_dionaea->config, group_name, k, &len, &error);
+		if(error == NULL) {
+			for(value = values; *value; value++) {
+				rule->types = g_list_append(rule->types, *value);
+			}
+		} else {
+			g_debug("%s", error->message);
+		}
+		g_clear_error(&error);
+	}
+
 	proc_filter_dump_rules(cfg);
 	return cfg;
 }
