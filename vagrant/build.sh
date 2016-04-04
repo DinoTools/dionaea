@@ -5,8 +5,6 @@ autoreconf -vi
 	--prefix=/usr \
 	--with-python=/usr/bin/python3 \
 	--with-cython-dir=/usr/bin \
-	--with-lcfg-include=/usr/include \
-	--with-lcfg-lib=/usr/lib/liblcfg \
 	--with-ev-include=/usr/include \
 	--with-ev-lib=/usr/lib \
 	--with-emu-lib=/usr/lib/libemu \

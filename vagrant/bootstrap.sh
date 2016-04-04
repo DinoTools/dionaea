@@ -4,9 +4,9 @@ LOGDIR=/var/log/dionaea
 
 export DEBIAN_FRONTEND noninteractive
 sudo apt-get install software-properties-common
-sudo add-apt-repository ppa:honeynet/nightly
+#sudo add-apt-repository ppa:honeynet/nightly
 sudo apt-get update
-sudo apt-get install -y autoconf automake libtool check libglib2.0-dev libssl-dev libcurl4-openssl-dev libudns-dev libreadline-dev libsqlite3-dev liblcfg-dev libemu-dev cython3 libxml2-dev libxslt1-dev libpcap-dev libev-dev python3 python3-dev libnl-dev libnetfilter-queue-dev libgc-dev libloudmouth1-dev
+sudo apt-get install -y autoconf automake libtool check libglib2.0-dev libssl-dev libcurl4-openssl-dev libudns-dev libreadline-dev libsqlite3-dev libemu-dev cython3 libxml2-dev libxslt1-dev libpcap-dev libev-dev python3 python3-dev libnl-dev libnetfilter-queue-dev libgc-dev libloudmouth1-dev
 
 sudo mkdir -p $DATADIR/binaries
 sudo mkdir -p $DATADIR/bistreams
