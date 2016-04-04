@@ -40,9 +40,6 @@
 
 #include <glib.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
 
 #include "config.h"
 #include "dionaea.h"

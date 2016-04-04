@@ -2544,7 +2544,6 @@ bool mkcert(SSL_CTX *ctx)
 	int bits = 512*4;
 	int serial = time(NULL);
 	int days = 365;
-	struct lcfgx_tree_node *node;
 	const unsigned char *value;
 
 	X509 *x;
