@@ -734,16 +734,15 @@ opt->stdOUT.filter);
 //	struct lcfgx_tree_node *n;
 	g_debug("Creating processors tree");
 	d->processors->tree = g_node_new(NULL);
-	/*if( lcfgx_get_map(d->config.root, &n, "processors") == LCFGX_PATH_FOUND_TYPE_OK )
-	{
-		lcfgx_tree_dump(n,0);
-		for( struct lcfgx_tree_node *it = n->value.elements; it != NULL; it = it->next )
-		{
-			processors_tree_create(d->processors->tree, it);
-		}
+	gchar **proc_names, **proc_name;
+	proc_names = g_key_file_get_string_list(g_dionaea->config, "dionaea", "processors", &num, &error);
+	// ToDo: check error
+	for (proc_name = proc_names; *proc_name; proc_name++) {
+		processors_tree_create(d->processors->tree, *proc_name);
+		g_debug("processo: %s", *proc_name);
 	}
 
-	processors_tree_dump(d->processors->tree, 0);*/
+	processors_tree_dump(d->processors->tree, 0);
 
 
 
