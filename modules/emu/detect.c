@@ -53,42 +53,42 @@ struct processor proc_emu =
 	.thread_io_in = proc_emu_on_io_in,
 };
 
-void *proc_emu_ctx_cfg_new(void)
+void *proc_emu_ctx_cfg_new(gchar *group_name)
 {
 	g_debug("%s node", __PRETTY_FUNCTION__);
 	struct emu_config *conf = g_malloc0(sizeof(struct emu_config));
 
-	GError *error;
+	GError *error = NULL;
 
-	conf->limits.files = g_key_file_get_integer(g_dionaea->config, "module.emu", "limits.files", &error);
+	conf->limits.files = g_key_file_get_integer(g_dionaea->config, group_name, "config.limits.files", &error);
 	if (error != NULL)
 		goto err;
 
-	conf->limits.filesize = g_key_file_get_integer(g_dionaea->config, "module.emu", "limits.filesize", &error);
+	conf->limits.filesize = g_key_file_get_integer(g_dionaea->config, group_name, "config.limits.filesize", &error);
 	if (error != NULL)
 		goto err;
 
-	conf->limits.sockets = g_key_file_get_integer(g_dionaea->config, "module.emu", "limits.sockets", &error);
+	conf->limits.sockets = g_key_file_get_integer(g_dionaea->config, group_name, "config.limits.sockets", &error);
 	if (error != NULL)
 		goto err;
 
-	conf->limits.steps = g_key_file_get_integer(g_dionaea->config, "module.emu", "limits.steps", &error);
+	conf->limits.steps = g_key_file_get_integer(g_dionaea->config, group_name, "config.limits.steps", &error);
 	if (error != NULL)
 		goto err;
 
-	conf->limits.idle = g_key_file_get_integer(g_dionaea->config, "module.emu", "limits.idle", &error);
+	conf->limits.idle = g_key_file_get_integer(g_dionaea->config, group_name, "config.limits.idle", &error);
 	if (error != NULL)
 		goto err;
 
-	conf->limits.listen = g_key_file_get_double(g_dionaea->config, "module.emu", "limits.listen", &error);
+	conf->limits.listen = g_key_file_get_double(g_dionaea->config, group_name, "config.limits.listen", &error);
 	if (error != NULL)
 		goto err;
 
-	conf->limits.sustain = g_key_file_get_double(g_dionaea->config, "module.emu", "limits.sustain", &error);
+	conf->limits.sustain = g_key_file_get_double(g_dionaea->config, group_name, "config.limits.sustain", &error);
 	if (error != NULL)
 		goto err;
 
-	conf->limits.cpu = g_key_file_get_double(g_dionaea->config, "module.emu", "limits.cpu", &error);
+	conf->limits.cpu = g_key_file_get_double(g_dionaea->config, group_name, "config.limits.cpu", &error);
 	if (error != NULL)
 		goto err;
 
