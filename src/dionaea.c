@@ -539,7 +539,7 @@ int logger_load(struct options *opt)
 
 int main (int argc, char *argv[])
 {
-  GError *error;
+	GError *error;
 	struct version v;
 	show_version(&v);
 	g_log_set_default_handler(logger_stdout_log, NULL);
@@ -597,11 +597,12 @@ int main (int argc, char *argv[])
 
 
 	// config
-  g_dionaea->config = g_key_file_new();
-  if (!g_key_file_load_from_file(g_dionaea->config, opt->config, G_KEY_FILE_NONE, NULL)){
+	g_dionaea->config = g_key_file_new();
+	g_key_file_set_list_separator(g_dionaea->config, ',');
+	if (!g_key_file_load_from_file(g_dionaea->config, opt->config, G_KEY_FILE_NONE, NULL)){
 		g_error("Could not read config file");
-    return EXIT_FAILURE;
-  }
+		return EXIT_FAILURE;
+	}
 
 	// logging 
 	d->logging = g_malloc0(sizeof(struct logging));
