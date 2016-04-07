@@ -57,7 +57,6 @@ class slave():
         for service_config in service_configs:
             fp = open(service_config)
             services = yaml.load(fp)
-            pprint(services)
             for iface in addrs:
                 print(iface)
                 for addr in addrs[iface]:
@@ -73,8 +72,8 @@ class slave():
                             try:
                                 daemons = service.start(addr, iface=iface)
                             except Exception as e:
-                              logger.warning("Unable to start service", exc_info=True)
-                              continue
+                                logger.warning("Unable to start service", exc_info=True)
+                                continue
                             if isinstance(daemons, (list, tuple)):
                                 self.daemons[addr][service] += daemons
                             else:
