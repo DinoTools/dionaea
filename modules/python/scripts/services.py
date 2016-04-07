@@ -29,6 +29,8 @@
 import logging
 import fnmatch
 
+import yaml
+
 from dionaea.core import g_dionaea, ihandler
 from dionaea import ServiceLoader, load_submodules
 
@@ -49,26 +51,35 @@ class slave():
 
     def start(self, addrs):
         print("STARTING SERVICES")
-        try:
+        dionaea_config = g_dionaea.config().get("module")
+
+        service_configs = dionaea_config.get("service_configs", [])
+        for service_config in service_configs:
+            fp = open(service_config)
+            services = yaml.load(fp)
+            pprint(services)
             for iface in addrs:
                 print(iface)
                 for addr in addrs[iface]:
                     print(addr)
                     self.daemons[addr] = {}
-                    for service in ServiceLoader:
-                        if service.name not in g_dionaea.config()['modules']['python']['services']['serve']:
-                            continue
-                        if service not in self.daemons[addr]:
-                            self.daemons[addr][service] = []
-                        print(service)
-                        daemons = service.start(addr, iface=iface)
-                        if isinstance(daemons, (list, tuple)):
-                            self.daemons[addr][service] += daemons
-                        else:
-                            self.daemons[addr][service].append(daemons)
-        except Exception as e:
-            raise e
-        print(self.daemons)
+                    for srv in services:
+                        for service in ServiceLoader:
+                            if srv.get("name") != service.name:
+                                continue
+                            if service not in self.daemons[addr]:
+                                self.daemons[addr][service] = []
+                            print(service)
+                            try:
+                                daemons = service.start(addr, iface=iface)
+                            except Exception as e:
+                              logger.warning("Unable to start service", exc_info=True)
+                              continue
+                            if isinstance(daemons, (list, tuple)):
+                                self.daemons[addr][service] += daemons
+                            else:
+                                self.daemons[addr][service].append(daemons)
+            print(self.daemons)
 
 
 # for netlink,
@@ -106,9 +117,6 @@ class nlslave(ihandler):
 #mode = 'getifaddrs'
 #mode = 'manual'
 #addrs = { 'eth0' : ['127.0.0.1', '192.168.47.11'] }
-mode = g_dionaea.config()['listen']['mode']
-addrs = {}
-ifaces = None
 #def start():
 #    global g_slave, mode, addrs
 #    global addrs
@@ -117,8 +125,12 @@ ifaces = None
 
 def new():
     print("START")
-    global g_slave, mode, addrs
-    global addrs
+    global g_slave, addrs
+    dionaea_config = g_dionaea.config().get("dionaea")
+
+    mode = dionaea_config.get("listen.mode")
+    addrs = {}
+    ifaces = None
     if mode == 'manual':
         addrs = g_dionaea.config()['listen']['addrs']
         g_slave = slave()
