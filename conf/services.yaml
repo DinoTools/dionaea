@@ -1,0 +1,22 @@
+- name: ftp
+  config:
+    root: /var/lib/dionaea/wwwroot
+    response_messages:
+      welcome_msg: 220 DiskStation FTP server ready.
+
+- name: tftp
+  config:
+    root: /var/lib/dionaea/wwwroot
+- name: http
+  config:
+    root: "/var/lib/dionaea/wwwroot"
+    max-request-size: 32768 # maximum size in kbytes of the request (32MB)
+    global_headers:
+      - ["Server", "nginx"]
+    headers:
+      - filename_pattern: ".*\\.php"
+        headers:
+          - ["Content-Type", "text/html; charset=utf-8"]
+          - ["Content-Length", "{content_length}"]
+          - ["Connection", "{connection}"]
+          - ["X-Powered-By", "PHP/5.5.9-1ubuntu4.5"]
