@@ -699,7 +699,6 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 /*
 PyObject *pylcfgx_tree(struct lcfgx_tree_node *node)
 {
-	PyObject *obj = NULL;
 	if( node->type == lcfgx_map )
 	{
 		obj = PyDict_New();
@@ -728,12 +727,60 @@ PyObject *pylcfgx_tree(struct lcfgx_tree_node *node)
 	}
 	return obj; 
 }
+*/
 
-PyObject *pylcfg(PyObject *self, PyObject *args)
+PyObject *py_config_string(gchar *group, gchar *key)
 {
-	PyObject *obj = pylcfgx_tree(g_dionaea->config.root);
+	gchar *value;
+	GError *error;
+	PyObject *obj_value;
+
+	value = g_key_file_get_string(g_dionaea->config, group, key, &error);
+	obj_value = PyUnicode_FromString(value);
+
+	return obj_value;
+}
+
+PyObject *py_config_string_list(gchar *group, gchar *key)
+{
+	gchar **values, **value;
+	GError *error;
+	gsize num;
+	PyObject *obj_values, *obj_value;
+
+	values = g_key_file_get_string_list(g_dionaea->config, group, key, &num, &error);
+	obj_values = PyList_New(0);
+
+	for(value = values; *value; value++) {
+		obj_value = PyUnicode_FromString(*value);
+		PyList_Append(obj_values, obj_value);
+		Py_DECREF(obj_value);
+	}
+
+	return obj_values;
+}
+
+PyObject *py_config(PyObject *self, PyObject *args)
+{
+	PyObject *obj, *obj2, *obj_value = NULL;
+
+	obj = PyDict_New();
+	obj2 = PyDict_New();
+	obj_value = py_config_string("dionaea", "listen.mode");
+	PyDict_SetItemString(obj2, "listen.mode", obj_value);
+
+	PyDict_SetItemString(obj, "dionaea", obj2);
+
+	obj2 = PyDict_New();
+	obj_value = py_config_string_list("module.python", "ihandler_configs");
+	PyDict_SetItemString(obj2, "ihandler_configs", obj_value);
+	obj_value = py_config_string_list("module.python", "service_configs");
+	PyDict_SetItemString(obj2, "service_configs", obj_value);
+
+	PyDict_SetItemString(obj, "module", obj2);
+
 	return obj;
-}*/
+}
 
 /**
  * traceback requirements

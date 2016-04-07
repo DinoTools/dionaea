@@ -38,7 +38,7 @@ cdef extern from "module.h":
 	ctypedef int c_uintptr_t "uintptr_t"
 	char * c_g_strdup "g_strdup" (char *)
 	cdef object c_pygetifaddrs "pygetifaddrs"(object self, object args)
-	#cdef object c_pylcfg "pylcfg"(object self, object args)
+	cdef object c_py_config "py_config"(object self, object args)
 	cdef object c_version "pyversion"(object self, object args)
 	
 
@@ -50,8 +50,8 @@ cdef extern from "module.h":
 #
 cdef class dionaea:
 	cdef c_dionaea *thisptr
-	#def config(self):
-	#	return c_pylcfg(<object> None, <object> None)
+	def config(self):
+		return c_py_config(<object> None, <object> None)
 	def getifaddrs(self):
 		return c_pygetifaddrs(<object> None, <object> None)
 	def version(self):
