@@ -30,7 +30,7 @@ bool processors_tree_create(GNode *tree, gchar *proc_conf_name)
 	memcpy(pt, p, sizeof(struct processor));
 
 	if( pt->cfg != NULL ) {
-		if( pt->cfg(group_name) == NULL ) {
+		if( (pt->config = pt->cfg(group_name)) == NULL ) {
 			g_error("processor %s rejected config", "ToDo");
 		}
 	}
