@@ -10,7 +10,11 @@
 - name: http
   config:
     root: "/var/lib/dionaea/wwwroot"
-    max-request-size: 32768 # maximum size in kbytes of the request (32MB)
+    ports:
+      - 80
+    ssl_ports:
+      - 443
+    max_request_size: 32768 # maximum size in kbytes of the request (32MB)
     global_headers:
       - ["Server", "nginx"]
     headers:
