@@ -518,6 +518,22 @@ cdef class connection:
 	def __hash__(self):
 		return <long>self.thisptr
 
+	def apply_config(self, config):
+		"""
+		Apply config
+		"""
+		pass
+
+	def apply_parent_config(self, parent):
+		"""
+		Copy shared config values from the parent.
+		"""
+		value_names = getattr(parent, "shared_config_values")
+		if value_names is None:
+			return
+		for name in value_names:
+			value = getattr(parent, name)
+			setattr(self, name, value)
 
 	def handle_established(self):
 		"""callback once the connection is established"""
@@ -733,6 +749,7 @@ cdef connection _factory(c_connection *con):
 	instance.thisptr = con
 	INIT_C_CONNECTION_CLASS(parent,instance)
 	c_connection_protocol_ctx_set(con, <void *>instance)
+	instance.apply_parent_config(parent)
 	return instance
 
 cdef void _garbage(void *context):
