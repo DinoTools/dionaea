@@ -168,9 +168,8 @@ class FTPd(connection):
         logger.debug("ftp test")
         self.state = self.UNAUTH
         self.user = 'bar'
-        self.dtp = None
         self.cwd = '/'
-        self.basedir = '/tmp/ranz'
+        self.basedir = None
         self.dtp = None
         self.dtf = None
         self.limits = {}  # { '_out' : 8192 }
