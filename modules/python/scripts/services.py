@@ -70,7 +70,7 @@ class slave():
                                 self.daemons[addr][service] = []
                             print(service)
                             try:
-                                daemons = service.start(addr, iface=iface)
+                                daemons = service.start(addr, iface=iface, config=srv.get("config", {}))
                             except Exception as e:
                                 logger.warning("Unable to start service", exc_info=True)
                                 continue
