@@ -143,9 +143,12 @@ class FTPService(ServiceLoader):
     name = "ftp"
 
     @classmethod
-    def start(cls, addr,  iface=None):
+    def start(cls, addr,  iface=None, config=None):
+        if config is None:
+            config = {}
+
         daemon = FTPd()
-        daemon.chroot(g_dionaea.config()['modules']['python']['ftp']['root'])
+        daemon.apply_config(config)
         daemon.bind(addr, 21, iface=iface)
         daemon.listen()
         return daemon
@@ -155,6 +158,10 @@ class FTPd(connection):
     UNAUTH, INAUTH, AUTHED, RENAMING = range(4)
 
     protocol_name = "ftpd"
+    shared_config_values = (
+        "basedir",
+        "response_msgs"
+    )
 
     def __init__(self, proto='tcp'):
         connection.__init__(self, proto)
@@ -168,9 +175,11 @@ class FTPd(connection):
         self.dtf = None
         self.limits = {}  # { '_out' : 8192 }
         # Copy default response messages
-        self._response_msgs = dict(RESPONSE.items())
-        msgs = g_dionaea.config()["modules"]["python"]["ftp"].get("response_messages", {})
-        self._response_msgs.update(msgs)
+        self.response_msgs = dict(RESPONSE.items())
+
+    def apply_config(self, config):
+        self.basedir = config.get("root")
+        self.response_msgs.update(config.get("response_messages", {}))
 
     def chroot(self, p):
         self.basedir = p
@@ -179,7 +188,7 @@ class FTPd(connection):
         self.send(data + '\r\n')
 
     def reply(self, name, **kwargs):
-        msg = self._response_msgs.get(name, "")
+        msg = self.response_msgs.get(name, "")
         self.sendline(msg.format(**kwargs))
 
     def handle_origin(self, parent):
