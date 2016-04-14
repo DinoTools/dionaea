@@ -28,6 +28,8 @@
 
 import logging
 
+import yaml
+
 from dionaea import IHandlerLoader, load_submodules
 from dionaea.core import g_dionaea
 
@@ -41,27 +43,35 @@ g_handlers = None
 
 
 def new():
-    global g_handlers
     logger.info("Load iHandlers")
     load_submodules()
-    g_handlers = {}
-
-    for h in IHandlerLoader:
-        if h.name not in g_dionaea.config()['modules']['python']['ihandlers']['handlers']:
-            continue
-        if h not in g_handlers:
-            g_handlers[h] = []
-
-        handlers = h.start()
-        if isinstance(handlers, (list, tuple)):
-            g_handlers[h] += handlers
-        else:
-            g_handlers[h].append(handlers)
 
 
 def start():
     global g_handlers
+    g_handlers = {}
     logger.warn("START THE IHANDLERS")
+
+    dionaea_config = g_dionaea.config().get("module")
+
+    config_filenames = dionaea_config.get("ihandler_configs", [])
+    for config_filename in config_filenames:
+        fp = open(config_filename)
+        ihandler_configs = yaml.load(fp)
+
+        for ihandler_config in ihandler_configs:
+            for h in IHandlerLoader:
+                if ihandler_config.get("name") != h.name:
+                    continue
+                if h not in g_handlers:
+                    g_handlers[h] = []
+
+                handlers = h.start(config=ihandler_config.get("config", {}))
+                if isinstance(handlers, (list, tuple)):
+                    g_handlers[h] += handlers
+                else:
+                    g_handlers[h].append(handlers)
+
     for handler_loader, ihandlers in g_handlers.items():
         for i in ihandlers:
             logger.info("Starting %s", str(i))
