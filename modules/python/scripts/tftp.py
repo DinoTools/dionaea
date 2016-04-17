@@ -66,9 +66,9 @@ class TFTPService(ServiceLoader):
     name = "tftp"
 
     @classmethod
-    def start(cls, addr,  iface=None):
+    def start(cls, addr,  iface=None, config=None):
         daemon = TftpServer()
-        daemon.chroot(g_dionaea.config()['modules']['python']['tftp']['root'])
+        daemon.apply_config(config)
         daemon.bind(addr, 69, iface=iface)
         return daemon
 
@@ -842,10 +842,17 @@ class TftpServerHandler(TftpSession):
 
 
 class TftpServer(TftpSession):
+    shared_config_values = [
+        "root"
+    ]
+
     def __init__(self):
         TftpSession.__init__(self)
         self.packet = TftpPacketFactory()
         self.root = ''
+
+    def apply_config(self, config):
+        self.root = config.get("root", self.root)
 
     def handle_io_in(self,data):
         logger.debug("Data ready on our main socket")
@@ -869,8 +876,6 @@ class TftpServer(TftpSession):
             self.senderror(TftpErrors.IllegalTftpOp)
         return len(data)
 
-    def chroot(self,r):
-        self.root = r;
 
 class TftpClient(TftpSession):
     """This class is an implementation of a tftp client. Once instantiated, a
