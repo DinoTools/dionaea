@@ -1210,6 +1210,12 @@ cdef class ihandler:
 	def __dealloc__(self):
 		c_ihandler_free(self.thisptr)
 
+	def apply_config(self, config):
+		"""
+		Apply config
+		"""
+		pass
+
 	def start(self):
 		pass
 
