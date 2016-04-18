@@ -30,6 +30,7 @@ List of available services
     http
     mssql
     mysql
+    nfq
     sip
     smb
     tftp
