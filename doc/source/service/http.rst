@@ -1,21 +1,19 @@
 HTTP
 ====
 
-Dionaea supports http on port 80 as well as https, but there is no code
-making use of the data gathered on these ports.
+Dionaea supports http on port 80 as well as https, but there is no code making use of the data gathered on these ports.
 For https, the self-signed ssl certificate is created at startup.
 
 Configure
 ---------
 
-Default configuration:
+Example configuration:
 
-.. code-block:: text
+.. code-block:: yaml
 
-    http = {
+    - name: http
+      config:
         root = "var/dionaea/wwwroot"
-        max-request-size = "32768"
-    }
 
 default_headers
 
@@ -31,7 +29,7 @@ headers
     Only applied if filename_pattern, status_code and methods match.
     The first match in the list is used.
 
-max-request-size
+max_request_size
 
      Maximum size in kbytes of the request. 32768 = 32MB
 
@@ -45,28 +43,23 @@ Examples
 
 Set the Server response field.
 
-.. code-block:: text
+.. code-block:: yaml
 
-    http = {
-        global_headers = [
-            ["Server", "nginx"]
-        ]
-    }
+    - name: http
+      config:
+        global_headers:
+          - ["Server", "nginx"]
 
 Define headers to use if the filename matches a pattern.
 
-.. code-block:: text
+.. code-block:: yaml
 
-    http = {
-        headers = [
-            {
-                filename_pattern = ".*\\.php"
-                headers = [
-                    ["Content-Type", "text/html; charset=utf-8"]
-                    ["Content-Length", "{content_length}"]
-                    ["Connection", "{connection}"]
-                    ["X-Powered-By", "PHP/5.5.9-1ubuntu4.5"]
-                ]
-            }
-        ]
-    }
+    - name: http
+      config:
+        headers:
+          - filename_pattern: ".*\\.php"
+            headers:
+              - ["Content-Type", "text/html; charset=utf-8"]
+              - ["Content-Length", "{content_length}"]
+              - ["Connection", "{connection}"]
+              - ["X-Powered-By", "PHP/5.5.9-1ubuntu4.5"]
