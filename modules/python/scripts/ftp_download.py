@@ -41,12 +41,12 @@ class FTPIhandlerLoader(IHandlerLoader):
     name = "ftpdownload"
 
     @classmethod
-    def start(cls):
-        return FTPDownloadHandler("dionaea.download.offer")
+    def start(cls, config=None):
+        return FTPDownloadHandler("dionaea.download.offer", config=config)
 
 
 class FTPCtrl(connection):
-    def __init__(self, ftp):
+    def __init__(self, ftp, config=None):
         connection.__init__(self, "tcp")
         self.ftp = ftp
         self.state = "NONE"
@@ -134,8 +134,8 @@ class FTPData(connection):
         self.fileobj = tempfile.NamedTemporaryFile(
             delete=False,
             prefix="ftp-",
-            suffix=g_dionaea.config()["downloads"]["tmp-suffix"],
-            dir=g_dionaea.config()["downloads"]["dir"]
+            dir=self.ftp.download_dir,
+            suffix=self.ftp.download_suffix
         )
 
     def handle_origin(self, parent):
@@ -176,8 +176,13 @@ class FTPData(connection):
 
 
 class FTPClient:
-    def __init__(self):
+    def __init__(self, download_dir=None, download_suffix=None, host=None, port_min=62001, port_max=63000):
         self.ctrl = FTPCtrl(self)
+        self.download_dir = download_dir
+        self.download_suffix = download_suffix
+        self.host = host
+        self.port_min = port_min
+        self.port_max = port_max
 
     def download(self, con, user, passwd, host, port, file, mode, url):
         self.user = user
@@ -206,18 +211,10 @@ class FTPClient:
 
     def makeport(self):
         self.datalistener = FTPData(ftp=self)
-        try:
-            portrange = g_dionaea.config()["modules"]["python"]["ftp"]["active-ports"]
-            (minport, maxport) = portrange.split("-")
-            minport = int(minport)
-            maxport = int(maxport)
-        except:
-            minport = 62001
-            maxport = 63000
 
         try:
             # for NAT setups
-            host = g_dionaea.config()["modules"]["python"]["ftp"]["active-host"]
+            host = self.host
             if host == "0.0.0.0":
                 host = self.ctrl.local.host
                 logger.info("datalisten host %s", host)
@@ -233,7 +230,7 @@ class FTPClient:
         ports = list(
             filter(
                 lambda port: ((port >> 4) & 0xf) != 0,
-                range(minport, maxport)
+                range(self.port_min, self.port_max)
             )
         )
         random.shuffle(ports)
@@ -287,9 +284,25 @@ class FTPClient:
 
 
 class FTPDownloadHandler(ihandler):
-    def __init__(self, path):
+    def __init__(self, path, config=None):
         logger.debug("%s ready!", self.__class__.__name__)
         ihandler.__init__(self, path)
+        self.port_min = 62001
+        self.port_max = 63000
+
+        port_range = config.get("active_ports")
+        try:
+            (port_min, port_max) = port_range.split("-")
+            self.port_min = int(port_min)
+            self.port_max = int(port_max)
+        except Exception:
+            logger.warning("Unable to pars port range")
+
+        self.host = config.get("active_host")
+
+        dionaea_config = g_dionaea.config().get("dionaea")
+        self.download_dir = dionaea_config.get("download.dir")
+        self.download_suffix = dionaea_config.get("download.suffix")
 
     def handle_incident(self, icd):
         url = icd.url
@@ -307,5 +320,11 @@ class FTPDownloadHandler(ihandler):
             else:
                 ftpmode = "binary"
 
-            f = FTPClient()
+            f = FTPClient(
+                download_dir=self.download_dir,
+                download_suffix=self.download_suffix,
+                host=self.host,
+                port_min=self.port_min,
+                port_max=self.port_max
+            )
             f.download(con, p.username, p.password, p.hostname, p.port, p.path, ftpmode, url)
