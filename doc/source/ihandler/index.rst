@@ -26,3 +26,4 @@ List of available ihandlers
     log_json
     logsql
     logxmpp
+    virustotal
