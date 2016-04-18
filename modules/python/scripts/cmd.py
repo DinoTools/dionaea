@@ -38,12 +38,12 @@ class CMDShellHandlerLoader(IHandlerLoader):
     name = "cmdshell"
 
     @classmethod
-    def start(cls):
-        return cmdshellhandler("dionaea.service.shell.*")
+    def start(cls, config=None):
+        return cmdshellhandler("dionaea.service.shell.*", config=config)
 
 
 class cmdexe:
-    def __init__(self, w):
+    def __init__(self, w, config=None):
         self.specials = [' ', '\t', '"', '\\']
         if not w == None:
             self.send = w
