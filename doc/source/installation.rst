@@ -75,6 +75,47 @@ If everything looks fine the dionaea service can bee started by using the follow
 
 The log files can be found in the directory /var/log/dionaea/ and everything else captured and logged by the honeypot can be found in the directory /var/lib/dionaea/.
 
+From Source
+^^^^^^^^^^^
+
+Install required build dependencies before configuring and building dionaea.
+
+.. code-block:: console
+
+    $ sudo apt-get install autoconf automake libtool check libglib2.0-dev libssl-dev libcurl4-openssl-dev libudns-dev libreadline-dev libsqlite3-dev libemu-dev cython3 libxml2-dev libxslt1-dev libpcap-dev libev-dev python3 python3-dev libnl-dev libnetfilter-queue-dev libgc-dev libloudmouth1-dev
+
+After all dependencies have been installed successfully run :code:`autreconf` to build or rebuild the build scripts.
+
+.. code-block:: console
+
+    autoreconf -vi
+
+Run :code:`configure` to configure the build scripts.
+
+.. code-block:: console
+
+    ./configure \
+        --disable-werror \
+        --prefix=/opt \
+        --with-python=/usr/bin/python3 \
+        --with-cython-dir=/usr/bin \
+        --with-ev-include=/usr/include \
+        --with-ev-lib=/usr/lib \
+        --with-emu-lib=/usr/lib/libemu \
+        --with-emu-include=/usr/include \
+        --with-gc-include=/usr/include/gc \
+        --with-nl-include=/usr/include \
+        --with-nl-lib=/usr/lib
+
+
+Now you should be able to run :code:`make` to build and run :code:`make install` to install the honeypot.
+
+.. code-block:: console
+
+    make
+    sudo make install
+
+
 3rd-party packages
 ------------------
 
