@@ -27,7 +27,7 @@
 
 
 from dionaea import IHandlerLoader
-from dionaea.core import ihandler, incident, connection, g_dionaea
+from dionaea.core import ihandler, incident, connection
 from struct import pack, unpack, calcsize
 from socket import inet_aton
 
@@ -41,8 +41,8 @@ class P0FHandlerLoader(IHandlerLoader):
     name = "p0f"
 
     @classmethod
-    def start(cls):
-        return p0fhandler(g_dionaea.config()['modules']['python']['p0f']['path'])
+    def start(cls, config=None):
+        return p0fhandler(config=config)
 
 
 class p0fconnection(connection):
@@ -104,10 +104,10 @@ class p0fconnection(connection):
         self.con.unref()
 
 class p0fhandler(ihandler):
-    def __init__(self, p0fpath):
+    def __init__(self, config=None):
         logger.debug("p0fHandler")
         ihandler.__init__(self, 'dionaea.connection.*')
-        self.p0fpath = p0fpath
+        self.p0fpath = config.get("path")
 
     def handle_incident(self, icd):
         if icd.origin == 'dionaea.connection.tcp.accept' or icd.origin == 'dionaea.connection.tls.accept' or icd.origin == 'dionaea.connection.tcp.reject':
