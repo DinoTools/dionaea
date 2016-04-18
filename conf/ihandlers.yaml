@@ -1,11 +1,43 @@
 
+- name: emuprofile
+
+- name: fail2ban
+  config:
+    downloads: "/tmp/downloads.f2b"
+    offers: "/tmp/offers.f2b"
+
 # ftp client section
 - name: ftp
   config:
-    # ports for active ftp; string indicating a range 
-    active-ports: 63001-64000
-
     # host for active ftp via NAT
     # * 0.0.0.0 - the initiating connection ip is used for active ftp
     # * not 0.0.0.0 - gets resolved as hostname and used
-    active-host: "0.0.0.0"
+    active_host: "0.0.0.0"
+
+    # ports for active ftp; string indicating a range
+    active_ports: 63001-64000
+
+- name: log_json
+  config:
+    handlers:
+      #- http://127.0.0.1:8080/
+      - file:///tmp/dionaea.json
+
+- name: log_sqlite
+  config:
+    file: /tmp/dionaea.sqlite
+
+- name: p0f
+  config:
+    # start p0f with
+    # sudo p0f -i any -u root -Q /tmp/p0f.sock -q -l
+    path: "un:///tmp/p0f.sock"
+
+- name: store
+  config:
+
+- name: virustotal
+  config:
+    # grab it from your virustotal account at My account -> Inbox -> Public API
+    apikey: "........."
+    file: "/tmp/vtcache.sqlite"
