@@ -26,7 +26,7 @@
 #*******************************************************************************/
 
 
-from dionaea.core import connection, g_dionaea, incident, ihandler
+from dionaea.core import connection, incident, ihandler
 import struct
 import logging
 import os
@@ -71,6 +71,13 @@ class upnpreq:
 
 
 class upnpd(connection):
+	shared_config_values = [
+		"max_request_size",
+		"personalities",
+		"root",
+		"rwchunksize"
+	]
+
 	def __init__(self, proto='udp'):
 		connection.__init__(self,proto)
 		self.state = 'HEADER'
@@ -80,44 +87,29 @@ class upnpd(connection):
 		self.boundary = None
 		self.fp_tmp = None
 		self.cur_length = 0
-		max_request_size = 32768
 		self.personalities = ''
 		self.loaded = ''
+		self.root = ""
 
-		try:
-			if 'max-request-size' in g_dionaea.config()['modules']['python']['upnp']:
-				# try to convert value to int
-				max_request_size = int(g_dionaea.config()['modules']['python']['upnp']['max-request-size'])
-			else:
-				logger.info("Value for 'max-request-size' not found, using default value.")
-		except:
-			logger.warning("Error while converting 'max-request-size' to an integer value. Using default value.")
+		# 32MB
+		self.max_request_size = 32768 * 1024
 
-		self.max_request_size = max_request_size * 1024
+	def apply_config(self, config):
+		self.root = config.get("root", self.root)
+		max_request_size = config.get("max_request_size")
+		if max_request_size is not None:
+			self.max_request_size = max_request_size * 1024
 
-		# load the UPnP device personalities from dionaea.conf file 
-		try:
-			if 'personalities-enable' in g_dionaea.config()['modules']['python']['upnp']:
-				loaded = g_dionaea.config()['modules']['python']['upnp']['personalities-enable']
-				self.personalities = g_dionaea.config()['modules']['python']['upnp']['personalities'][loaded]['cache']
-				self.personalities += g_dionaea.config()['modules']['python']['upnp']['personalities'][loaded]['st']
-				self.personalities += g_dionaea.config()['modules']['python']['upnp']['personalities'][loaded]['usn']
-				self.personalities += g_dionaea.config()['modules']['python']['upnp']['personalities'][loaded]['server']
-				self.personalities += g_dionaea.config()['modules']['python']['upnp']['personalities'][loaded]['location']
-				self.personalities += g_dionaea.config()['modules']['python']['upnp']['personalities'][loaded]['opt']
-
-				logger.info("loading emulated UPnP device with personalities: '" + loaded + "'")
-			else:
-				logger.info("Value for 'personalities' not found, using default value.")
-		except:
-			logger.warning("Error while retrieve 'personalities'. Using default value.")
-
-
+		# load the UPnP device personality
+		self.personalities = config["personality"]['cache']
+		self.personalities += config["personality"]['st']
+		self.personalities += config["personality"]['usn']
+		self.personalities += config["personality"]['server']
+		self.personalities += config["personality"]['location']
+		self.personalities += config["personality"]['opt']
 
 	def handle_origin(self, parent):
-		#pass
-		self.root = parent.root
-		self.rwchunksize = parent.rwchunksize
+		pass
 
 	def handle_established(self):
 		logger.debug("{!s} handle_established".format(self))
