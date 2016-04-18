@@ -14,8 +14,11 @@ Content:
 
     introduction
     installation
+    configuration
+    module/index
     service/index
     ihandler/index
+    processor/index
     contributing
     development
     changelog
