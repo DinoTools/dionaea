@@ -528,8 +528,9 @@ cdef class connection:
 		"""
 		Copy shared config values from the parent.
 		"""
-		value_names = getattr(parent, "shared_config_values")
+		value_names = getattr(parent, "shared_config_values", None)
 		if value_names is None:
+			# print("No shared config values found")
 			return
 		for name in value_names:
 			value = getattr(parent, name)
