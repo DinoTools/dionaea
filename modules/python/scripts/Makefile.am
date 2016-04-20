@@ -46,7 +46,6 @@ PYSCRIPTS += ihandlers.py
 PYSCRIPTS += util.py
 PYSCRIPTS += store.py
 PYSCRIPTS += virustotal.py
-PYSCRIPTS += mwserv.py
 PYSCRIPTS += submit_http.py
 PYSCRIPTS += hpfeeds.py
 PYSCRIPTS += ndrlib.py
