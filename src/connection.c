@@ -2548,7 +2548,9 @@ bool mkcert(SSL_CTX *ctx)
 	int bits = 512*4;
 	int serial = time(NULL);
 	int days = 365;
-	const unsigned char *value;
+	gchar *value = NULL;
+	GError *error = NULL;
+
 
 	X509 *x;
 	EVP_PKEY *pk;
@@ -2577,35 +2579,37 @@ bool mkcert(SSL_CTX *ctx)
 
 	name=X509_get_subject_name(x);
 
-/*	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.c") == LCFGX_PATH_FOUND_TYPE_OK ) {
-		value = (const unsigned char *)node->value.string.data;
-	} else {*/
-		value = (const unsigned char *)"DE";
-	//}
-	X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, value, -1, -1, 0);
+	value = g_key_file_get_string(g_dionaea->config, "dionaea", "ssl.default.c", &error);
+	if (value == NULL) {
+		value = g_strdup("DE");
+	}
+	g_clear_error(&error);
+	X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (const unsigned char *)value, -1, -1, 0);
+	g_free(value);
 
-/*	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.cn") == LCFGX_PATH_FOUND_TYPE_OK ) {
-		value = (const unsigned char *)node->value.string.data;
-	} else {*/
-		value = (const unsigned char *)"Nepenthes Development Team";
-//	}
-	X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, value, -1, -1, 0);
+	value = g_key_file_get_string(g_dionaea->config, "dionaea", "ssl.default.cn", &error);
+	if (value == NULL) {
+		value = g_strdup("Nepenthes Development Team");
+	}
+	g_clear_error(&error);
+	X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (const unsigned char*)value, -1, -1, 0);
+	g_free(value);
 
+	value = g_key_file_get_string(g_dionaea->config, "dionaea", "ssl.default.o", &error);
+	if (value == NULL) {
+		value = g_strdup("dionaea.carnivore.it");
+	}
+	g_clear_error(&error);
+	X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, (const unsigned char*)value, -1, -1, 0);
+	g_free(value);
 
-/*	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.o") == LCFGX_PATH_FOUND_TYPE_OK ) {
-		value = (const unsigned char *)node->value.string.data;
-	} else {*/
-		value = (const unsigned char *)"dionaea.carnivore.it";
-	//}
-	X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, value, -1, -1, 0);
-
-
-/*	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.ou") == LCFGX_PATH_FOUND_TYPE_OK ) {
-		value = (const unsigned char *)node->value.string.data;
-	} else {*/
-		value = (const unsigned char *)"anv";
-	//}
-	X509_NAME_add_entry_by_txt(name, "OU", MBSTRING_ASC, value, -1, -1, 0);
+	value = g_key_file_get_string(g_dionaea->config, "dionaea", "ssl.default.ou", &error);
+	if (value == NULL) {
+		value = g_strdup("anv");
+	}
+	g_clear_error(&error);
+	X509_NAME_add_entry_by_txt(name, "OU", MBSTRING_ASC, (const unsigned char*)value, -1, -1, 0);
+	g_free(value);
 
 
 	/* Its self signed so set the issuer name to be the same as the
