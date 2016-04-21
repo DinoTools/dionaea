@@ -389,8 +389,9 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 bool connection_listen(struct connection *con, int len)
 {
-	const char *cert_filename;
-	const char *key_filename;
+	GError *error = NULL;
+	const char *cert_filename = NULL;
+	const char *key_filename = NULL;
 
 	g_debug("%s con %p len %i", __PRETTY_FUNCTION__, con, len);
 
@@ -438,17 +439,20 @@ bool connection_listen(struct connection *con, int len)
 			return false;
 		}
 		connection_set_nonblocking(con);
-    /* ToDo: replace
-		if( lcfgx_get_string(g_dionaea->config.root, &node_cert, "listen.ssl.default.cert") == LCFGX_PATH_FOUND_TYPE_OK &&
-		    lcfgx_get_string(g_dionaea->config.root, &node_key, "listen.ssl.default.key") == LCFGX_PATH_FOUND_TYPE_OK ) {
-			cert_filename = node_cert->value.string.data;
-			key_filename = node_key->value.string.data;
 
+		cert_filename = g_key_file_get_string(g_dionaea->config, "dionaea", "ssl.default.cert", &error);
+		g_clear_error(&error);
+		if (cert_filename != NULL) {
+			key_filename = g_key_file_get_string(g_dionaea->config, "dionaea", "ssl.default.key", &error);
+			g_clear_error(&error);
+		}
+		if(cert_filename != NULL && key_filename != NULL) {
+			g_info("Use '%s' as key and '%s' as cert file", key_filename, cert_filename);
 			connection_tls_set_certificate(con, cert_filename, SSL_FILETYPE_PEM);
 			connection_tls_set_key(con, key_filename, SSL_FILETYPE_PEM);
-		} else {*/
+		} else {
 			connection_tls_mkcert(con);
-		//}
+		}
 //		SSL_CTX_set_timeout(con->transport.ssl.ctx, 15);
 		ssl_tmp_keys_init(con);
 		ev_set_priority(&con->events.io_in, EV_MAXPRI);
