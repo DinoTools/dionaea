@@ -36,8 +36,10 @@ import json
 import datetime
 from time import gmtime, strftime
 
-try: import pyev
-except: pyev = None
+try:
+    import pyev
+except ImportError:
+    pyev = None
 
 logger = logging.getLogger('hpfeeds')
 logger.setLevel(logging.DEBUG)
@@ -69,8 +71,10 @@ DCECHAN = 'dionaea.dcerpcrequests'
 SCPROFCHAN = 'dionaea.shellcodeprofiles'
 UNIQUECHAN = 'mwbinary.dionaea.sensorunique'
 
+
 class BadClient(Exception):
         pass
+
 
 def timestr():
     dt = datetime.datetime.now()
@@ -78,36 +82,52 @@ def timestr():
     timezone = strftime("%Z %z", gmtime())
     return my_time + " " + timezone
 
+
 # packs a string with 1 byte length field
 def strpack8(x):
-    if isinstance(x, str): x = x.encode('latin1')
+    if isinstance(x, str):
+        x = x.encode('latin1')
     return struct.pack('!B', len(x)%0xff) + x
+
 
 # unpacks a string with 1 byte length field
 def strunpack8(x):
     l = x[0]
     return x[1:1+l], x[1+l:]
 
+
 def msghdr(op, data):
     return struct.pack('!iB', 5+len(data), op) + data
+
+
 def msgpublish(ident, chan, data):
     return msghdr(OP_PUBLISH, strpack8(ident) + strpack8(chan) + data)
+
+
 def msgsubscribe(ident, chan):
-    if isinstance(chan, str): chan = chan.encode('latin1')
+    if isinstance(chan, str):
+        chan = chan.encode('latin1')
     return msghdr(OP_SUBSCRIBE, strpack8(ident) + chan)
+
+
 def msgauth(rand, ident, secret):
-    hash = hashlib.sha1(bytes(rand)+secret).digest()
-    return msghdr(OP_AUTH, strpack8(ident) + hash)
+    auth_hash = hashlib.sha1(bytes(rand)+secret).digest()
+    return msghdr(OP_AUTH, strpack8(ident) + auth_hash)
+
 
 class FeedUnpack(object):
     def __init__(self):
         self.buf = bytearray()
+
     def __iter__(self):
         return self
+
     def __next__(self):
         return self.unpack()
+
     def feed(self, data):
         self.buf.extend(data)
+
     def unpack(self):
         if len(self.buf) < 5:
             raise StopIteration('No message.')
@@ -122,6 +142,7 @@ class FeedUnpack(object):
         data = self.buf[5:ml]
         del self.buf[:ml]
         return opcode, data
+
 
 class hpclient(connection):
     def __init__(self, server, port, ident, secret):
@@ -172,22 +193,30 @@ class hpclient(connection):
         return len(indata)
 
     def handle_io_out(self):
-        if self.filehandle: self.sendfiledata()
+        if self.filehandle:
+            self.sendfiledata()
         else:
             if self.msgqueue:
                 m = self.msgqueue.pop(0)
                 self.send(m)
 
     def publish(self, channel, **kwargs):
-        if self.filehandle: self.msgqueue.append(msgpublish(self.ident, channel, json.dumps(kwargs).encode('latin1')))
-        else: self.send(msgpublish(self.ident, channel, json.dumps(kwargs).encode('latin1')))
+        if self.filehandle:
+            self.msgqueue.append(
+                msgpublish(self.ident, channel, json.dumps(kwargs).encode('latin1'))
+            )
+        else:
+            self.send(
+                msgpublish(self.ident, channel, json.dumps(kwargs).encode('latin1'))
+            )
 
     def sendfile(self, filepath):
         # does not read complete binary into memory, read and send chunks
         if not self.filehandle:
             self.sendfileheader(filepath)
             self.sendfiledata()
-        else: self.sendfiles.append(filepath)
+        else:
+            self.sendfiles.append(filepath)
 
     def sendfileheader(self, filepath):
         self.filehandle = open(filepath, 'rb')
@@ -221,6 +250,7 @@ class hpclient(connection):
         self.connected = False
         return 1
 
+
 class hpfeedihandler(ihandler):
     def __init__(self, config):
         logger.debug('hpfeedhandler init')
@@ -231,7 +261,7 @@ class hpfeedihandler(ihandler):
         self.dynip_timer = None
         self.ownip = None
         if self.dynip_resolve and 'http' in self.dynip_resolve:
-            if pyev == None:
+            if pyev is None:
                 logger.debug('You are missing the python pyev binding in your dionaea installation.')
             else:
                 logger.debug('hpfeedihandler will use dynamic IP resolving!')
@@ -246,19 +276,31 @@ class hpfeedihandler(ihandler):
             self.loop = None
 
     def _ownip(self, icd):
-        if self.dynip_resolve and 'http' in self.dynip_resolve and pyev != None:
-            if self.ownip: return self.ownip
-            else: raise Exception('Own IP not yet resolved!')
+        if self.dynip_resolve and 'http' in self.dynip_resolve and pyev is not None:
+            if self.ownip:
+                return self.ownip
+            else:
+                raise Exception('Own IP not yet resolved!')
         return icd.con.local.host
 
     def __del__(self):
-        #self.client.close()
+        # self.client.close()
         pass
 
     def connection_publish(self, icd, con_type):
         try:
             con=icd.con
-            self.client.publish(CONNCHAN, connection_type=con_type, connection_transport=con.transport, connection_protocol=con.protocol, remote_host=con.remote.host, remote_port=con.remote.port, remote_hostname=con.remote.hostname, local_host=self._ownip(icd), local_port=con.local.port)
+            self.client.publish(
+                CONNCHAN,
+                connection_type=con_type,
+                connection_transport=con.transport,
+                connection_protocol=con.protocol,
+                remote_host=con.remote.host,
+                remote_port=con.remote.port,
+                remote_hostname=con.remote.hostname,
+                local_host=self._ownip(icd),
+                local_port=con.local.port
+            )
         except Exception as e:
             logger.warn('exception when publishing: {0}'.format(e))
 
@@ -321,7 +363,8 @@ class hpfeedihandler(ihandler):
 
     def handle_incident_dionaea_download_complete_unique(self, i):
         self.handle_incident_dionaea_download_complete_again(i)
-        if not hasattr(i, 'con') or not self.client.connected: return
+        if not hasattr(i, 'con') or not self.client.connected:
+            return
         logger.debug('unique complete, publishing md5 {0}, path {1}'.format(i.md5hash, i.file))
         try:
             self.client.sendfile(i.file)
@@ -334,28 +377,40 @@ class hpfeedihandler(ihandler):
         try:
             tstamp = timestr()
             sha512 = sha512file(i.file)
-            self.client.publish(CAPTURECHAN, time=tstamp,
+            self.client.publish(
+                CAPTURECHAN,
+                time=tstamp,
                 saddr=i.con.remote.host,
-                sport=str(i.con.remote.port), daddr=self._ownip(i),
-                dport=str(i.con.local.port), md5=i.md5hash, sha512=sha512,
+                sport=str(i.con.remote.port),
+                daddr=self._ownip(i),
+                dport=str(i.con.local.port),
+                md5=i.md5hash,
+                sha512=sha512,
                 url=i.url
             )
         except Exception as e:
             logger.warn('exception when publishing: {0}'.format(e))
 
     def handle_incident_dionaea_modules_python_smb_dcerpc_request(self, i):
-        if not hasattr(i, 'con') or not self.client.connected: return
+        if not hasattr(i, 'con') or not self.client.connected:
+            return
         logger.debug('dcerpc request, publishing uuid {0}, opnum {1}'.format(i.uuid, i.opnum))
         try:
-            self.client.publish(DCECHAN, uuid=i.uuid, opnum=i.opnum,
-                saddr=i.con.remote.host, sport=str(i.con.remote.port),
-                daddr=self._ownip(i), dport=str(i.con.local.port),
+            self.client.publish(
+                DCECHAN,
+                uuid=i.uuid,
+                opnum=i.opnum,
+                saddr=i.con.remote.host,
+                sport=str(i.con.remote.port),
+                daddr=self._ownip(i),
+                dport=str(i.con.local.port)
             )
         except Exception as e:
             logger.warn('exception when publishing: {0}'.format(e))
 
     def handle_incident_dionaea_module_emu_profile(self, icd):
-        if not hasattr(icd, 'con') or not self.client.connected: return
+        if not hasattr(icd, 'con') or not self.client.connected:
+            return
         logger.debug('emu profile, publishing length {0}'.format(len(icd.profile)))
         try:
             self.client.publish(SCPROFCHAN, profile=icd.profile)
