@@ -63,7 +63,7 @@ SIZES = {
 	OP_PUBLISH: 5+MAXBUF,
 	OP_SUBSCRIBE: 5+256*2,
 }
-
+CONNCHAN = 'dionaea.connections'
 CAPTURECHAN = 'dionaea.capture'
 DCECHAN = 'dionaea.dcerpcrequests'
 SCPROFCHAN = 'dionaea.shellcodeprofiles'
@@ -87,7 +87,7 @@ def strpack8(x):
 def strunpack8(x):
 	l = x[0]
 	return x[1:1+l], x[1+l:]
-	
+
 def msghdr(op, data):
 	return struct.pack('!iB', 5+len(data), op) + data
 def msgpublish(ident, chan, data):
@@ -255,9 +255,70 @@ class hpfeedihandler(ihandler):
 		#self.client.close()
 		pass
 
+	def connection_publish(self, icd, con_type):
+		try:
+			con=icd.con
+			self.client.publish(CONNCHAN, connection_type=con_type, connection_transport=con.transport, connection_protocol=con.protocol, remote_host=con.remote.host, remote_port=con.remote.port, remote_hostname=con.remote.hostname, local_host=self._ownip(icd), local_port=con.local.port)
+		except Exception as e:
+			logger.warn('exception when publishing: {0}'.format(e))
+
 	def handle_incident(self, i):
 		pass
-		
+
+	def handle_incident_dionaea_connection_tcp_listen(self, icd):
+		self.connection_publish(icd, 'listen')
+		con=icd.con
+		logger.info("listen connection on %s:%i" %
+			(con.remote.host, con.remote.port))
+
+	def handle_incident_dionaea_connection_tls_listen(self, icd):
+		self.connection_publish(icd, 'listen')
+		con=icd.con
+		logger.info("listen connection on %s:%i" %
+			(con.remote.host, con.remote.port))
+
+	def handle_incident_dionaea_connection_tcp_connect(self, icd):
+		self.connection_publish(icd, 'connect')
+		con=icd.con
+		logger.info("connect connection to %s/%s:%i from %s:%i" %
+			(con.remote.host, con.remote.hostname, con.remote.port, self._ownip(icd), con.local.port))
+
+	def handle_incident_dionaea_connection_tls_connect(self, icd):
+		self.connection_publish(icd, 'connect')
+		con=icd.con
+		logger.info("connect connection to %s/%s:%i from %s:%i" %
+			(con.remote.host, con.remote.hostname, con.remote.port, self._ownip(icd), con.local.port))
+
+	def handle_incident_dionaea_connection_udp_connect(self, icd):
+		self.connection_publish(icd, 'connect')
+		con=icd.con
+		logger.info("connect connection to %s/%s:%i from %s:%i" %
+			(con.remote.host, con.remote.hostname, con.remote.port, self._ownip(icd), con.local.port))
+
+	def handle_incident_dionaea_connection_tcp_accept(self, icd):
+		self.connection_publish(icd, 'accept')
+		con=icd.con
+		logger.info("accepted connection from  %s:%i to %s:%i" %
+			(con.remote.host, con.remote.port, self._ownip(icd), con.local.port))
+
+	def handle_incident_dionaea_connection_tls_accept(self, icd):
+		self.connection_publish(icd, 'accept')
+		con=icd.con
+		logger.info("accepted connection from %s:%i to %s:%i" %
+			(con.remote.host, con.remote.port, self._ownip(icd), con.local.port))
+
+	def handle_incident_dionaea_connection_tcp_reject(self, icd):
+		self.connection_publish(icd, 'reject')
+		con=icd.con
+		logger.info("reject connection from %s:%i to %s:%i" %
+			(con.remote.host, con.remote.port, self._ownip(icd), con.local.port))
+
+	def handle_incident_dionaea_connection_tcp_pending(self, icd):
+		self.connection_publish(icd, 'pending')
+		con=icd.con
+		logger.info("pending connection from %s:%i to %s:%i" %
+			(con.remote.host, con.remote.port, self._ownip(icd), con.local.port))
+
 	def handle_incident_dionaea_download_complete_unique(self, i):
 		self.handle_incident_dionaea_download_complete_again(i)
 		if not hasattr(i, 'con') or not self.client.connected: return
@@ -309,7 +370,6 @@ class hpfeedihandler(ihandler):
 
 	def handle_incident_dionaea_modules_python_hpfeeds_dynipresult(self, icd):
 		fh = open(icd.path, mode="rb")
-		self.ownip = fh.read().strip()
+		self.ownip = fh.read().strip().decode('latin1')
 		logger.debug('resolved own IP to: {0}'.format(self.ownip))
 		fh.close()
-
