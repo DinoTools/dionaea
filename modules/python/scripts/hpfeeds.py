@@ -25,6 +25,7 @@
 #*
 #*******************************************************************************/
 
+from dionaea import IHandlerLoader
 from dionaea.core import ihandler, incident, g_dionaea, connection
 from dionaea.util import sha512file
 
@@ -74,6 +75,15 @@ UNIQUECHAN = 'mwbinary.dionaea.sensorunique'
 
 class BadClient(Exception):
         pass
+
+
+class HPFeedsHandlerLoader(IHandlerLoader):
+    name = "hpfeeds"
+
+    @classmethod
+    def start(cls, config=None):
+        handler = hpfeedihandler("*", config=config)
+        return [handler]
 
 
 def timestr():
@@ -252,10 +262,10 @@ class hpclient(connection):
 
 
 class hpfeedihandler(ihandler):
-    def __init__(self, config):
+    def __init__(self, path, config=None):
         logger.debug('hpfeedhandler init')
         self.client = hpclient(config['server'], int(config['port']), config['ident'], config['secret'])
-        ihandler.__init__(self, '*')
+        ihandler.__init__(self, path)
 
         self.dynip_resolve = config.get('dynip_resolve', '')
         self.dynip_timer = None
