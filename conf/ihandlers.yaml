@@ -17,6 +17,15 @@
     # ports for active ftp; string indicating a range
     active_ports: 63001-64000
 
+- name: hpfeeds
+  config:
+    server: "hpfriends.honeycloud.net"
+    port: 10000
+    ident: ""
+    secret: ""
+    # dynip_resolve: enable to lookup the sensor ip through a webservice
+    dynip_resolve: "http://hpfriends.honeycloud.net/ip"
+
 - name: log_json
   config:
     handlers:
@@ -32,6 +41,17 @@
     # start p0f with
     # sudo p0f -i any -u root -Q /tmp/p0f.sock -q -l
     path: "un:///tmp/p0f.sock"
+
+- name: submit_http
+  config:
+      # the url to send the submission requests to
+      url: "http://example.org/"
+      # E-Mail (optional)
+      # email: ""
+      # username (optional)
+      # user:
+      # password (optional)
+      # pass:
 
 - name: store
   config:
