@@ -30,8 +30,8 @@ class SubmitHTTPHandlerLoader(IHandlerLoader):
     name = "submit_http"
 
     @classmethod
-    def start(cls):
-        return handler("*")
+    def start(cls, config=None):
+        return handler("*", config=config)
 
 
 class submithttp_report:
@@ -44,26 +44,25 @@ class submithttp_report:
 
 
 class handler(ihandler):
-    def __init__(self, path):
+    def __init__(self, path, config=None):
         logger.debug("%s ready!" % (self.__class__.__name__))
         ihandler.__init__(self, path)
-        mwsconfig = g_dionaea.config()['modules']['python']['submit_http']
-        self.backendurl = mwsconfig['url']
-        self.email = 'email' in mwsconfig and mwsconfig[
-            'email'] or 'dionaea@carnivore.it'
-        self.user = 'user' in mwsconfig and mwsconfig['user'] or ''
-        self.passwd = 'pass' in mwsconfig and mwsconfig['pass'] or ''
+
+        self.backendurl = config.get("url")
+        self.email = config.get("email")
+        self.user = config.get("user", "")
+        self.passwd = config.get("pass", "")
         self.cookies = {}
 
         # heartbeats
-        dinfo = g_dionaea.version()
-        self.software = 'dionaea {0} {1}/{2} - {3} {4}'.format(
-            dinfo['dionaea']['version'],
-            dinfo['compiler']['os'],
-            dinfo['compiler']['arch'],
-            dinfo['compiler']['date'],
-            dinfo['compiler']['time'],
-        )
+        #dinfo = g_dionaea.version()
+        #self.software = 'dionaea {0} {1}/{2} - {3} {4}'.format(
+        #    dinfo['dionaea']['version'],
+        #    dinfo['compiler']['os'],
+        #    dinfo['compiler']['arch'],
+        #    dinfo['compiler']['date'],
+        #    dinfo['compiler']['time'],
+        #)
         self.loop = pyev.default_loop()
 
     def handle_incident(self, icd):
@@ -85,10 +84,12 @@ class handler(ihandler):
 
         if hasattr(icd, 'con'):
             i.source_host = str(
-                struct.unpack('!I', socket.inet_aton(icd.con.remote.host))[0])
+                struct.unpack('!I', socket.inet_aton(icd.con.remote.host))[0]
+            )
             i.source_port = str(icd.con.remote.port)
             i.target_host = str(
-                struct.unpack('!I', socket.inet_aton(icd.con.local.host))[0])
+                struct.unpack('!I', socket.inet_aton(icd.con.local.host))[0]
+            )
             i.target_port = str(icd.con.local.port)
             mr.saddr, mr.sport, mr.daddr, mr.dport = i.source_host, i.source_port, i.target_host, i.target_port
         if hasattr(icd, 'url'):
