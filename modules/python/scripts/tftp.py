@@ -55,10 +55,10 @@ logger.setLevel(logging.INFO)
 
 
 class TFTPDownloadHandlerLoader(IHandlerLoader):
-    name = "tftpdownload"
+    name = "tftp_download"
 
     @classmethod
-    def start(cls):
+    def start(cls, config=None):
         return tftpdownloadhandler("dionaea.download.offer")
 
 
