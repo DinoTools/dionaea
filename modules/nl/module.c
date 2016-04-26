@@ -30,9 +30,6 @@
 #include <stdio.h>
 #include <ev.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
 struct nlattr;
 
 #include <netlink/netlink.h>
@@ -79,7 +76,6 @@ struct nlattr;
 
 static struct 
 {
-	struct lcfgx_tree_node *config;
 	struct nl_sock  *sock;
 	struct nl_cache *link_cache;
 	struct nl_cache *addr_cache;
@@ -121,10 +117,9 @@ static void nl_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents)
 	nl_recvmsgs_default(nl_runtime.sock);
 }
 
-static bool nl_config(struct lcfgx_tree_node *node)
+static bool nl_config(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
-	nl_runtime.config = node;
 	return true;
 }
 
@@ -360,6 +355,10 @@ static void nl_ihandler_cb(struct incident *i, void *ctx)
 static bool nl_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
+
+	GError *error = NULL;
+	gboolean lookup_ethernet_addr;
+
 	nl_runtime.sock = nl_socket_alloc();
 	struct nl_sock  *sock = nl_runtime.sock;
 	nl_socket_disable_seq_check(sock);
@@ -397,13 +396,12 @@ static bool nl_new(struct dionaea *d)
 	nl_cache_mngt_provide(nl_runtime.neigh_cache);
 	nl_cache_mngt_provide(nl_runtime.link_cache);
 	nl_cache_mngt_provide(nl_runtime.addr_cache);
-	
-	struct lcfgx_tree_node *n;
-	if( lcfgx_get_string(nl_runtime.config, &n, "lookup_ethernet_addr") == LCFGX_PATH_FOUND_TYPE_OK )
-	{
-		g_debug("lookup_ethernet_addr %s", (char *)n->value.string.data);
-		if(strcmp("yes", (char *)n->value.string.data) == 0)
-			nl_runtime.ihandler = ihandler_new("dionaea.connection.*.accept", nl_ihandler_cb, NULL);
+
+	lookup_ethernet_addr = g_key_file_get_boolean(g_dionaea->config, "module.nl", "lookup_ethernet_addr", &error);
+	// ToDo: handler error
+	g_clear_error(&error);
+	if (lookup_ethernet_addr == TRUE) {
+		nl_runtime.ihandler = ihandler_new("dionaea.connection.*.accept", nl_ihandler_cb, NULL);
 	}
 
 	ev_io_init(&nl_runtime.io_in, nl_io_in_cb, nl_socket_get_fd(sock), EV_READ);
@@ -420,7 +418,7 @@ static bool nl_free(void)
 	return true;
 }
 
-static bool nl_hup(struct lcfgx_tree_node *node)
+static bool nl_hup(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
 
