@@ -744,11 +744,15 @@ PyObject *py_config_string(gchar *group, gchar *key)
 PyObject *py_config_string_list(gchar *group, gchar *key)
 {
 	gchar **values, **value;
-	GError *error;
+	GError *error = NULL;
 	gsize num;
 	PyObject *obj_values, *obj_value;
 
 	values = g_key_file_get_string_list(g_dionaea->config, group, key, &num, &error);
+	g_clear_error(&error);
+	if (values == NULL) {
+		return Py_None;
+	}
 	obj_values = PyList_New(0);
 
 	for(value = values; *value; value++) {
@@ -768,6 +772,8 @@ PyObject *py_config(PyObject *self, PyObject *args)
 	obj2 = PyDict_New();
 	obj_value = py_config_string("dionaea", "listen.mode");
 	PyDict_SetItemString(obj2, "listen.mode", obj_value);
+	obj_value = py_config_string_list("dionaea", "listen.interfaces");
+	PyDict_SetItemString(obj2, "listen.interfaces", obj_value);
 
 	PyDict_SetItemString(obj, "dionaea", obj2);
 
