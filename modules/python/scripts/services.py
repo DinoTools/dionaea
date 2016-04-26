@@ -89,19 +89,38 @@ class nlslave(ihandler):
         ihandler.__init__(self, "dionaea.*.addr.*")
         self.services = []
         self.daemons = {}
+
     def handle_incident(self, icd):
         print("SERVANT!\n")
         addr = icd.get("addr")
         iface = icd.get("iface")
         for i in self.ifaces:
-            print("iface:{} pattern:{}".format(iface,i))
+            print("iface:{} pattern:{}".format(iface, i))
             if fnmatch.fnmatch(iface, i):
                 if icd.origin == "dionaea.module.nl.addr.new" or "dionaea.module.nl.addr.hup":
                     self.daemons[addr] = {}
-                    for s in self.services:
-                        self.daemons[addr][s] = []
-                        d = s.start(s, addr, iface=iface)
-                        self.daemons[addr][s].append(d)
+                    module_config = g_dionaea.config().get("module")
+                    service_configs = module_config.get("service_configs", [])
+                    for service_config in service_configs:
+                        fp = open(service_config)
+                        services = yaml.load(fp)
+                        for srv in services:
+                            for service in ServiceLoader:
+                                if srv.get("name") != service.name:
+                                    continue
+                                if service not in self.daemons[addr]:
+                                    self.daemons[addr][service] = []
+                                print(service)
+                                try:
+                                    daemons = service.start(addr, iface=iface, config=srv.get("config", {}))
+                                except Exception as e:
+                                    logger.warning("Unable to start service", exc_info=True)
+                                    continue
+                                if isinstance(daemons, (list, tuple)):
+                                    self.daemons[addr][service] += daemons
+                                else:
+                                    self.daemons[addr][service].append(daemons)
+
                 if icd.origin == "dionaea.module.nl.addr.del":
                     print(icd.origin)
                     for s in self.daemons[addr]:
@@ -149,7 +168,7 @@ def new():
         print(addrs)
     elif mode == 'nl':
         g_slave = nlslave()
-        g_slave.ifaces = g_dionaea.config()['listen']['interfaces']
+        g_slave.ifaces = dionaea_config.get("listen.interfaces")
 
     load_submodules()
 
