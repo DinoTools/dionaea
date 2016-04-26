@@ -85,8 +85,9 @@ class slave():
 # allows listening on new addrs
 # and discarding listeners on closed addrs
 class nlslave(ihandler):
-    def __init__(self):
+    def __init__(self, ifaces=None):
         ihandler.__init__(self, "dionaea.*.addr.*")
+        self.ifaces = ifaces
         self.services = []
         self.daemons = {}
 
@@ -167,8 +168,9 @@ def new():
                         addrs[iface].append(config['addr'])
         print(addrs)
     elif mode == 'nl':
-        g_slave = nlslave()
-        g_slave.ifaces = dionaea_config.get("listen.interfaces")
+        ifaces = dionaea_config.get("listen.interfaces")
+        # ToDo: handle error if ifaces is None
+        g_slave = nlslave(ifaces=ifaces)
 
     load_submodules()
 
