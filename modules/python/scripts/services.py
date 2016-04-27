@@ -40,16 +40,16 @@ logger = logging.getLogger('services')
 # global slave
 # keeps track of running services (daemons)
 # able to restart them
-global g_slave
-global addrs
+g_slave = None
 
 
 class slave():
-    def __init__(self):
+    def __init__(self, addresses=None):
+        self.addresses = addresses
         self.services = []
         self.daemons = {}
 
-    def start(self, addrs):
+    def start(self):
         print("STARTING SERVICES")
         dionaea_config = g_dionaea.config().get("module")
 
@@ -57,9 +57,9 @@ class slave():
         for service_config in service_configs:
             fp = open(service_config)
             services = yaml.load(fp)
-            for iface in addrs:
+            for iface in self.addresses:
                 print(iface)
-                for addr in addrs[iface]:
+                for addr in self.addresses[iface]:
                     print(addr)
                     self.daemons[addr] = {}
                     for srv in services:
@@ -129,7 +129,7 @@ class nlslave(ihandler):
                             s.stop(s, d)
                 break
 
-    def start(self, addrs):
+    def start(self):
         pass
 
 
@@ -144,14 +144,15 @@ class nlslave(ihandler):
 
 def new():
     print("START")
-    global g_slave, addrs
+    global g_slave
     dionaea_config = g_dionaea.config().get("dionaea")
 
     mode = dionaea_config.get("listen.mode")
     interface_names = dionaea_config.get("listen.interfaces")
-    addrs = {}
+
     if mode == 'manual':
-        g_slave = slave()
+        addrs = {}
+
         addresses = dionaea_config.get("listen.addresses")
         ifaces = g_dionaea.getifaddrs()
         for iface in ifaces.keys():
@@ -164,8 +165,8 @@ def new():
                     for config in configs:
                         if config["addr"] in addresses:
                             addrs[iface].append(config['addr'])
+        g_slave = slave(addresses=addrs)
     elif mode == 'getifaddrs':
-        g_slave = slave()
         ifaces = g_dionaea.getifaddrs()
         addrs = {}
         for iface in ifaces.keys():
@@ -181,6 +182,7 @@ def new():
                             addrs[iface] = []
                         addrs[iface].append(config['addr'])
         print(addrs)
+        g_slave = slave(addresses=addrs)
     elif mode == 'nl':
         # ToDo: handle error if ifaces is None
         g_slave = nlslave(ifaces=interface_names)
@@ -189,7 +191,7 @@ def new():
 
 
 def start():
-    g_slave.start(addrs)
+    g_slave.start()
 
 
 def stop():
