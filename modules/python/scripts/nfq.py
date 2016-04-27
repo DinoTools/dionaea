@@ -40,8 +40,8 @@ class NFQHandlerLoader(IHandlerLoader):
     name = "nfq"
 
     @classmethod
-    def start(cls):
-        return nfqhandler()
+    def start(cls, config=None):
+        return nfqhandler(config=config)
 
 
 def is_local_addr(addr):
@@ -150,25 +150,28 @@ class nfqmirrord(connection):
         return 0
 
 class nfqhandler(ihandler):
-    def __init__(self):
+    def __init__(self, config=None):
         logger.debug("nfqhandler")
         ihandler.__init__(self, 'dionaea.connection.tcp.pending')
 
-        conf = g_dionaea.config()['modules']['python']['nfq']
+        if config is None:
+            config = {}
 
-        self.throttle_window = int(conf['throttle']['window'])
-        self.window = [[0,0] for x in range(self.throttle_window)]
+        config_throttle = config.get("throttle", {})
+        self.throttle_window = config_throttle.get("window", 30)
+        self.window = [[0, 0] for x in range(self.throttle_window)]
 
-        self.throttle_nfaction = int(conf['nfaction'])
-        self.throttle_total    = int(conf['throttle']['limits']['total'])
-        self.throttle_slot     = int(conf['throttle']['limits']['slot'])
+        self.throttle_nfaction = config.get("nfaction", 0)
+        config_throttle_limits = config_throttle.get("limits", {})
+        self.throttle_total = config_throttle_limits.get("total", 30)
+        self.throttle_slot = config_throttle_limits.get("slot", 30)
 
-        self.mirror_server_timeout_listen = int(
-            conf['timeouts']['server']['listen'])
-        self.mirror_client_timeout_idle   = int(
-            conf['timeouts']['client']['idle'])
-        self.mirror_client_timeout_sustain= int(
-            conf['timeouts']['client']['sustain'])
+        config_timeouts = config.get("timeouts", {})
+        config_timeouts_client = config_timeouts.get("client", {})
+        self.mirror_client_timeout_idle = config_timeouts_client.get("idel", 10)
+        self.mirror_client_timeout_sustain = config_timeouts_client.get("sustain", 240)
+        config_timeouts_server = config_timeouts.get("server", {})
+        self.mirror_server_timeout_listen = config_timeouts_server.get("listen", 5)
 
     def handle_incident(self, icd):
         if icd.origin == 'dionaea.connection.tcp.pending':
