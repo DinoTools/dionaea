@@ -151,8 +151,19 @@ def new():
     interface_names = dionaea_config.get("listen.interfaces")
     addrs = {}
     if mode == 'manual':
-        addrs = g_dionaea.config()['listen']['addrs']
         g_slave = slave()
+        addresses = dionaea_config.get("listen.addresses")
+        ifaces = g_dionaea.getifaddrs()
+        for iface in ifaces.keys():
+            afs = ifaces[iface]
+            for af in afs.keys():
+                if af == 2 or af == 10:
+                    configs = afs[af]
+                    if iface not in addrs:
+                        addrs[iface] = []
+                    for config in configs:
+                        if config["addr"] in addresses:
+                            addrs[iface].append(config['addr'])
     elif mode == 'getifaddrs':
         g_slave = slave()
         ifaces = g_dionaea.getifaddrs()
