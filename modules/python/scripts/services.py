@@ -148,8 +148,8 @@ def new():
     dionaea_config = g_dionaea.config().get("dionaea")
 
     mode = dionaea_config.get("listen.mode")
+    interface_names = dionaea_config.get("listen.interfaces")
     addrs = {}
-    ifaces = None
     if mode == 'manual':
         addrs = g_dionaea.config()['listen']['addrs']
         g_slave = slave()
@@ -158,6 +158,9 @@ def new():
         ifaces = g_dionaea.getifaddrs()
         addrs = {}
         for iface in ifaces.keys():
+            if interface_names is not None and iface not in interface_names:
+                logger.debug("Skipping interface %s. Not in interface list.", iface)
+                continue
             afs = ifaces[iface]
             for af in afs.keys():
                 if af == 2 or af == 10:
@@ -168,9 +171,8 @@ def new():
                         addrs[iface].append(config['addr'])
         print(addrs)
     elif mode == 'nl':
-        ifaces = dionaea_config.get("listen.interfaces")
         # ToDo: handle error if ifaces is None
-        g_slave = nlslave(ifaces=ifaces)
+        g_slave = nlslave(ifaces=interface_names)
 
     load_submodules()
 
