@@ -774,6 +774,8 @@ PyObject *py_config(PyObject *self, PyObject *args)
 	PyDict_SetItemString(obj2, "listen.mode", obj_value);
 	obj_value = py_config_string_list("dionaea", "listen.interfaces");
 	PyDict_SetItemString(obj2, "listen.interfaces", obj_value);
+	obj_value = py_config_string_list("dionaea", "listen.adresses");
+	PyDict_SetItemString(obj2, "listen.addresses", obj_value);
 
 	PyDict_SetItemString(obj, "dionaea", obj2);
 
