@@ -44,7 +44,7 @@ class SubmitHTTPPostLoader(IHandlerLoader):
 
 class SubmitHTTPPost(ihandler):
     def __init__(self, path, config=None):
-        logger.debug("%s ready!" % (self.__class__.__name__))
+        logger.debug("%s ready!", self.__class__.__name__)
         ihandler.__init__(self, path)
         self.tos = config.get("submit", [])
 
