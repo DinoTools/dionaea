@@ -38,7 +38,7 @@ class MirrorService(ServiceLoader):
     name = "mirror"
 
     @classmethod
-    def start(cls, addr, iface=None):
+    def start(cls, addr, iface=None, config=None):
         daemon = mirrord('tcp', addr, 42, iface)
         return daemon
 
