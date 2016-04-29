@@ -25,14 +25,12 @@
 #*
 #*******************************************************************************/
 
-from dionaea import IHandlerLoader
-from dionaea.core import ihandler, incident, g_dionaea
-from dionaea.core import connection
 import logging
-import json
-global p
 
-logger = logging.getLogger('test')
+from dionaea import IHandlerLoader
+from dionaea.core import ihandler, incident
+
+logger = logging.getLogger('submit_http_post')
 logger.setLevel(logging.DEBUG)
 
 
@@ -41,7 +39,7 @@ class SubmitHTTPPostLoader(IHandlerLoader):
 
     @classmethod
     def start(cls, config=None):
-        return uniquedownloadihandler("dionaea.download.complete.unique", config=config)
+        return SubmitHTTPPost("dionaea.download.complete.unique", config=config)
 
 
 class SubmitHTTPPost(ihandler):
