@@ -36,39 +36,39 @@ logger = logging.getLogger('test')
 logger.setLevel(logging.DEBUG)
 
 
-class UniqueDownloadLoader(IHandlerLoader):
-    name = "uniquedownload"
+class SubmitHTTPPostLoader(IHandlerLoader):
+    name = "submit_http_post"
 
     @classmethod
-    def start(cls):
-        return uniquedownloadihandler("dionaea.download.complete.unique")
+    def start(cls, config=None):
+        return uniquedownloadihandler("dionaea.download.complete.unique", config=config)
 
 
-class uniquedownloadihandler(ihandler):
-    def __init__(self, path):
+class SubmitHTTPPost(ihandler):
+    def __init__(self, path, config=None):
         logger.debug("%s ready!" % (self.__class__.__name__))
         ihandler.__init__(self, path)
+        self.tos = config.get("submit", [])
+
     def handle_incident(self, icd):
         logger.debug("submitting file")
-        try:
-            tos = g_dionaea.config()['submit']
-        except:
-            return
 
-        for to in tos:
-            if 'urls' not in tos[to]:
-                logger.warn(
-                    "your configuration lacks urls to submit to %s" % to)
+        for name, to in self.tos.items():
+            urls = to.get("urls")
+            if urls is None or len(urls) == 0:
+                logger.warn("your configuration lacks urls to submit to %s", name)
                 continue
-            for url in tos[to]['urls']:
+
+            for url in urls:
                 i = incident("dionaea.upload.request")
                 i._url = url
+
                 # copy all values for this url
-                for key in tos[to]:
-                    if key == 'urls':
-                        continue
-                    if key == 'file_fieldname':
-                        i.set("file://" + tos[to][key], icd.file)
-                        continue
-                    i.set(key, tos[to][key])
+                for k, v in to.get("field_values", {}):
+                    i.set(k, v)
+
+                file_fieldname = to.get("file_fieldname")
+                if file_fieldname is not None:
+                    i.set("file://%s" % file_fieldname, icd.file)
+
                 i.report()
