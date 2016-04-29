@@ -357,8 +357,16 @@ class smbd(connection):
                 r.FID += 0x200
             if h.FileAttributes & (SMB_FA_HIDDEN|SMB_FA_SYSTEM|SMB_FA_ARCHIVE|SMB_FA_NORMAL):
                 # if a normal file is requested, provide a file
+
+                dionaea_config = g_dionaea.config().get("dionaea")
+                download_dir = dionaea_config.get("download.dir")
+                download_suffix = dionaea_config.get("download.suffix", ".tmp")
                 self.fids[r.FID] = tempfile.NamedTemporaryFile(
-                    delete=False, prefix="smb-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
+                    delete=False,
+                    prefix="smb-",
+                    suffix=download_suffix,
+                    dir=download_dir
+                )
 
                 # get pretty filename
                 f,v = h.getfield_and_val('Filename')
@@ -385,8 +393,16 @@ class smbd(connection):
             while r.FID in self.fids:
                 r.FID += 0x200
 
+            dionaea_config = g_dionaea.config().get("dionaea")
+            download_dir = dionaea_config.get("download.dir")
+            download_suffix = dionaea_config.get("download.suffix", ".tmp")
+
             self.fids[r.FID] = tempfile.NamedTemporaryFile(
-                delete=False, prefix="smb-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
+                delete=False,
+                prefix="smb-",
+                suffix=download_suffix,
+                dir=download_dir
+            )
 
             # get pretty filename
             f,v = h.getfield_and_val('FileName')
