@@ -29,10 +29,8 @@
 import logging
 import fnmatch
 
-import yaml
-
 from dionaea.core import g_dionaea, ihandler
-from dionaea import ServiceLoader, load_submodules
+from dionaea import ServiceLoader, load_config_from_files, load_submodules
 
 
 logger = logging.getLogger('services')
@@ -41,6 +39,8 @@ logger = logging.getLogger('services')
 # keeps track of running services (daemons)
 # able to restart them
 g_slave = None
+
+g_service_configs = []
 
 
 class slave():
@@ -51,33 +51,28 @@ class slave():
 
     def start(self):
         print("STARTING SERVICES")
-        dionaea_config = g_dionaea.config().get("module")
 
-        service_configs = dionaea_config.get("service_configs", [])
-        for service_config in service_configs:
-            fp = open(service_config)
-            services = yaml.load(fp)
-            for iface in self.addresses:
-                print(iface)
-                for addr in self.addresses[iface]:
-                    print(addr)
-                    self.daemons[addr] = {}
-                    for srv in services:
-                        for service in ServiceLoader:
-                            if srv.get("name") != service.name:
-                                continue
-                            if service not in self.daemons[addr]:
-                                self.daemons[addr][service] = []
-                            print(service)
-                            try:
-                                daemons = service.start(addr, iface=iface, config=srv.get("config", {}))
-                            except Exception as e:
-                                logger.warning("Unable to start service", exc_info=True)
-                                continue
-                            if isinstance(daemons, (list, tuple)):
-                                self.daemons[addr][service] += daemons
-                            else:
-                                self.daemons[addr][service].append(daemons)
+        for iface in self.addresses:
+            print(iface)
+            for addr in self.addresses[iface]:
+                print(addr)
+                self.daemons[addr] = {}
+                for srv in g_service_configs:
+                    for service in ServiceLoader:
+                        if srv.get("name") != service.name:
+                            continue
+                        if service not in self.daemons[addr]:
+                            self.daemons[addr][service] = []
+                        print(service)
+                        try:
+                            daemons = service.start(addr, iface=iface, config=srv.get("config", {}))
+                        except Exception as e:
+                            logger.warning("Unable to start service", exc_info=True)
+                            continue
+                        if isinstance(daemons, (list, tuple)):
+                            self.daemons[addr][service] += daemons
+                        else:
+                            self.daemons[addr][service].append(daemons)
             print(self.daemons)
 
 
@@ -100,27 +95,22 @@ class nlslave(ihandler):
             if fnmatch.fnmatch(iface, i):
                 if icd.origin == "dionaea.module.nl.addr.new" or "dionaea.module.nl.addr.hup":
                     self.daemons[addr] = {}
-                    module_config = g_dionaea.config().get("module")
-                    service_configs = module_config.get("service_configs", [])
-                    for service_config in service_configs:
-                        fp = open(service_config)
-                        services = yaml.load(fp)
-                        for srv in services:
-                            for service in ServiceLoader:
-                                if srv.get("name") != service.name:
-                                    continue
-                                if service not in self.daemons[addr]:
-                                    self.daemons[addr][service] = []
-                                print(service)
-                                try:
-                                    daemons = service.start(addr, iface=iface, config=srv.get("config", {}))
-                                except Exception as e:
-                                    logger.warning("Unable to start service", exc_info=True)
-                                    continue
-                                if isinstance(daemons, (list, tuple)):
-                                    self.daemons[addr][service] += daemons
-                                else:
-                                    self.daemons[addr][service].append(daemons)
+                    for srv in g_service_configs:
+                        for service in ServiceLoader:
+                            if srv.get("name") != service.name:
+                                continue
+                            if service not in self.daemons[addr]:
+                                self.daemons[addr][service] = []
+                            print(service)
+                            try:
+                                daemons = service.start(addr, iface=iface, config=srv.get("config", {}))
+                            except Exception as e:
+                                logger.warning("Unable to start service", exc_info=True)
+                                continue
+                            if isinstance(daemons, (list, tuple)):
+                                self.daemons[addr][service] += daemons
+                            else:
+                                self.daemons[addr][service].append(daemons)
 
                 if icd.origin == "dionaea.module.nl.addr.del":
                     print(icd.origin)
@@ -145,6 +135,7 @@ class nlslave(ihandler):
 def new():
     print("START")
     global g_slave
+    global g_service_configs
     dionaea_config = g_dionaea.config().get("dionaea")
 
     mode = dionaea_config.get("listen.mode")
@@ -188,6 +179,10 @@ def new():
         g_slave = nlslave(ifaces=interface_names)
 
     load_submodules()
+
+    module_config = g_dionaea.config().get("module")
+    filename_patterns = module_config.get("service_configs", [])
+    g_service_configs = load_config_from_files(filename_patterns)
 
 
 def start():
