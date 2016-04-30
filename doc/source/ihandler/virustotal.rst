@@ -15,4 +15,11 @@ Configuration
     SQLite database file used to cache the results.
 
 
+Example config
+--------------
+
+.. literalinclude:: ../../../conf/ihandlers/virustotal.yaml
+   :language: yaml
+   :caption: ihandlers/virustotal.yaml
+
 .. _VirusTotal: https://virustotal.com/

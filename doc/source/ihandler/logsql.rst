@@ -37,3 +37,10 @@ Additionally, you can query the database for many different things, refer to:
 * Andrew Waite's Blog <http://infosanity.wordpress.com/> for mimic-nepstats.py
 
 for more examples how to make use of the database.
+
+Example config
+--------------
+
+.. literalinclude:: ../../../conf/ihandlers/log_sqlite.yaml
+   :language: yaml
+   :caption: ihandlers/log_sqlite.yaml
