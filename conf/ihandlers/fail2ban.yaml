@@ -1,0 +1,4 @@
+- name: fail2ban
+  config:
+    downloads: "/tmp/downloads.f2b"
+    offers: "/tmp/offers.f2b"
