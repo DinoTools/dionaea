@@ -38,8 +38,15 @@ root
     The root directory so serve files from.
 
 
-Examples
---------
+Example config
+--------------
+
+.. literalinclude:: ../../../conf/services/http.yaml
+    :language: yaml
+    :caption: services/http.yaml
+
+Additional examples
+-------------------
 
 Set the Server response field.
 

@@ -26,11 +26,16 @@ List of available services
 .. toctree::
     :maxdepth: 2
 
+    epmap
     ftp
     http
+    mirror
+    mqtt
     mssql
     mysql
     nfq
+    pptp
     sip
     smb
     tftp
+    upnp

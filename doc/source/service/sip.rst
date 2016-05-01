@@ -151,3 +151,10 @@ Example:
     a=fmtp:96 QCIF=2
     a=rtpmap:97 H263-N800/90000
     [/video_port]
+
+Example config
+--------------
+
+.. literalinclude:: ../../../conf/services/sip.yaml
+    :language: yaml
+    :caption: services/sip.yaml
