@@ -930,6 +930,7 @@ AC_DEFINE_DIR(DATADIR, [datadir], [The directory for installing idiosyncratic re
 AC_DEFINE_DIR(DATAROOTDIR, [datarootdir], [The root of the directory tree for read-only architecture-independent data files.])
 
 AC_CONFIG_FILES([Makefile
+				conf/dionaea.cfg
 				src/Makefile
 				include/Makefile
 				modules/Makefile
