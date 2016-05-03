@@ -7,17 +7,23 @@ SUBDIRS = src include modules
 EXTRA_DIST = configure.ac conf/dionaea.conf.dist
 
 install-data-local:
-	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)
-	$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/dionaea
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/run/
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/binaries/
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/bistreams/
-	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/wwwroot/
-	$(INSTALL_DATA) $(srcdir)/conf/dionaea.conf.dist $(DESTDIR)$(sysconfdir)/dionaea/dionaea.conf.dist;
-	if [ ! -e $(DESTDIR)$(sysconfdir)/dionaea/dionaea.conf ]; then \
-		$(INSTALL_DATA) $(srcdir)/conf/dionaea.conf.dist $(DESTDIR)$(sysconfdir)/dionaea/dionaea.conf; \
+	if [ ! -e $(DESTDIR)$(sysconfdir)/dionaea/ ]; then \
+		$(mkinstalldirs) $(DESTDIR)$(sysconfdir); \
+		$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/dionaea; \
+		$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/dionaea/ihandlers-available/; \
+		$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/dionaea/ihandlers-enabled/; \
+		$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/dionaea/services-available/; \
+		$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/dionaea/services-enabled/; \
+		$(INSTALL_DATA) $(srcdir)/conf/dionaea.cfg $(DESTDIR)$(sysconfdir)/dionaea/dionaea.cfg; \
+		$(INSTALL_DATA) $(srcdir)/conf/ihandlers/* $(DESTDIR)$(sysconfdir)/dionaea/ihandlers-available/; \
+		$(INSTALL_DATA) $(srcdir)/conf/services/* $(DESTDIR)$(sysconfdir)/dionaea/services-available/; \
+		(cd $(DESTDIR)$(sysconfdir)/dionaea/ihandlers-enabled/ && ${LN_S} ../ihandlers-available/log_sqlite.yaml); \
+		(cd $(DESTDIR)$(sysconfdir)/dionaea/services-enabled/ && find ../services-available/ -type f -exec ${LN_S} {} \;); \
 	fi
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/log
 	
