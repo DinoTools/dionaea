@@ -43,7 +43,7 @@ class CMDShellHandlerLoader(IHandlerLoader):
 
 
 class cmdexe:
-    def __init__(self, w, config=None):
+    def __init__(self, w):
         self.specials = [' ', '\t', '"', '\\']
         if not w == None:
             self.send = w
@@ -406,7 +406,7 @@ class remoteshell(cmdexe,connection):
 
 class cmdshellhandler(ihandler):
 
-    def __init__(self, path):
+    def __init__(self, path, config=None):
         logger.debug("%s ready!" % (self.__class__.__name__))
         ihandler.__init__(self, path)
 
