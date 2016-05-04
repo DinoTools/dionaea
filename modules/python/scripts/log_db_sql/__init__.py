@@ -31,10 +31,6 @@ class LogSQLHandlerLoader(IHandlerLoader):
     name = "log_db_sql"
 
     @classmethod
-    def start(cls):
-        from dionaea.core import g_dionaea
+    def start(cls, config=None):
         from .controller import LogSQLHandler
-        handlers = []
-        for config in g_dionaea.config()['modules']['python']['log_db_sql']:
-            handlers.append(LogSQLHandler("*", config=config))
-        return handlers
+        return LogSQLHandler("*", config=config)
