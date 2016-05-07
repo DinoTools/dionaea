@@ -40,19 +40,25 @@ class StoreHandlerLoader(IHandlerLoader):
     name = "store"
 
     @classmethod
-    def start(cls):
-        return storehandler("dionaea.download.complete")
+    def start(cls, config=None):
+        return storehandler("dionaea.download.complete", config=config)
 
 
 class storehandler(ihandler):
-    def __init__(self, path):
+    def __init__(self, path, config=None):
         logger.debug("%s ready!" % (self.__class__.__name__))
         ihandler.__init__(self, path)
+
+        dionaea_config = g_dionaea.config().get("dionaea")
+        self.download_dir = dionaea_config.get("download.dir")
+
     def handle_incident(self, icd):
         logger.debug("storing file")
         p = icd.path
+        # ToDo: use sha1 or sha256
         md5 = md5file(p)
-        n = g_dionaea.config()['downloads']['dir'] + '/' + md5
+        # ToDo: use sys.path.join()
+        n = self.download_dir + '/' + md5
         i = incident("dionaea.download.complete.hash")
         i.file = n
         i.url = icd.url

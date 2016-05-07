@@ -26,29 +26,30 @@
 #*******************************************************************************/
 
 from dionaea import IHandlerLoader
-from dionaea.core import ihandler, g_dionaea
+from dionaea.core import ihandler
 
 import logging
 import json
 import sqlite3
 import time
 
-logger = logging.getLogger('logsql')
+logger = logging.getLogger('log_sqlite')
 logger.setLevel(logging.DEBUG)
 
 
 class LogSQLHandlerLoader(IHandlerLoader):
-    name = "logsql"
+    name = "log_sqlite"
 
     @classmethod
-    def start(cls):
-        return logsqlhandler("*")
+    def start(cls, config=None):
+        return logsqlhandler("*", config=config)
 
 
 class logsqlhandler(ihandler):
-    def __init__(self, path):
+    def __init__(self, path, config=None):
         logger.debug("%s ready!" % (self.__class__.__name__))
         self.path = path
+        self.filename = config.get("file")
 
     def start(self):
         ihandler.__init__(self, self.path)
@@ -58,9 +59,7 @@ class logsqlhandler(ihandler):
         self.pending = {}
 
 #       self.dbh = sqlite3.connect(user = g_dionaea.config()['modules']['python']['logsql']['file'])
-        file = g_dionaea.config()['modules']['python'][
-            'logsql']['sqlite']['file']
-        self.dbh = sqlite3.connect(file)
+        self.dbh = sqlite3.connect(self.filename)
         self.cursor = self.dbh.cursor()
         update = False
 

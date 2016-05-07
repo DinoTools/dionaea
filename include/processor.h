@@ -25,7 +25,7 @@ enum processor_state
 struct processor_data;
 
 
-typedef void *(*processor_cfg_new)(struct lcfgx_tree_node *node);
+typedef void *(*processor_cfg_new)(gchar *);
 typedef bool (*processor_process)(struct connection *con, void *config);
 typedef void *(*processor_ctx_new)(void *cfg);
 typedef void (*processor_ctx_free)(void *ctx);
@@ -60,7 +60,7 @@ struct processor_data
 	GList *filters;	// of type struct stream_processor_data
 };
 
-bool processors_tree_create(GNode *tree, struct lcfgx_tree_node *node);
+bool processors_tree_create(GNode *tree, gchar *);
 void processors_tree_dump(GNode *tree, int indent);
 
 void processors_init(struct connection *con);

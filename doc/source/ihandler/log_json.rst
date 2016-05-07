@@ -47,3 +47,11 @@ Format of the connection information:
             "type": "<string:connection type e.g. accepted, listen, ...>"
         }
     }
+
+
+Example config
+--------------
+
+.. literalinclude:: ../../../conf/ihandlers/log_json.yaml
+   :language: yaml
+   :caption: ihandlers/log_json.yaml

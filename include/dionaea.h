@@ -28,9 +28,7 @@
 #ifndef HAVE_DIONAEA_H
 #define HAVE_DIONAEA_H
 
-struct lcfg;
-struct lcfgx_tree_node;
-
+#include <glib.h>
 struct dns;
 struct modules;
 struct pchild;
@@ -65,12 +63,7 @@ struct version
 
 struct dionaea
 {
-	struct
-	{
-		struct lcfg *config;
-		struct lcfgx_tree_node *root;
-		char *name;
-	} config;
+  GKeyFile *config;
 
 	struct
 	{

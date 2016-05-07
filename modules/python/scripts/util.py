@@ -28,13 +28,38 @@
 
 import hashlib
 
+
 def md5file(filename):
+    """
+    Compute md5 checksum of file.
+
+    :param str filename: File to read
+    :return: MD5 checksum as hex string
+    :rtype: str
+    """
     return hashfile(filename, hashlib.md5())
 
+
 def sha512file(filename):
+    """
+    Compute sha512 checksum of file.
+
+    :param str filename: File to read
+    :return: SHA512 checksum as hex string
+    :rtype: str
+    """
     return hashfile(filename, hashlib.sha512())
 
+
 def hashfile(filename, digest):
+    """
+    Computer checksum of file.
+
+    :param str filename: File to read
+    :param _hashlib.Hash digest: Hash object
+    :return: Checksum as hex string
+    :rtype: str
+    """
     fh = open(filename, mode="rb")
     while 1:
         buf = fh.read(4096)
@@ -43,4 +68,3 @@ def hashfile(filename, digest):
         digest.update(buf)
     fh.close()
     return digest.hexdigest()
-

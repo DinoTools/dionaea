@@ -36,14 +36,19 @@ logger = logging.getLogger('mysqld')
 
 
 class mysqld(connection):
+    shared_config_values = [
+        "config"
+    ]
+
     def __init__(self):
         connection.__init__(self, "tcp")
         self.config = None
         self.state = ""
 
-    def handle_established(self):
-        self.config = g_dionaea.config()['modules']['python']['mysql']['databases']
+    def apply_config(self, config):
+        self.config = config.get("databases")
 
+    def handle_established(self):
         self.state = 'greeting'
         a = MySQL_Packet_Header(Number=0) / MySQL_Server_Greeting()
         a.show()

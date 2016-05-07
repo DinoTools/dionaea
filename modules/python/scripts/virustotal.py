@@ -42,8 +42,8 @@ class VirusTotalHandlerLoader(IHandlerLoader):
     name = "virustotal"
 
     @classmethod
-    def start(cls):
-        return virustotalhandler("*")
+    def start(cls, config=None):
+        return virustotalhandler("*", config=config)
 
 
 class vtreport:
@@ -54,18 +54,17 @@ class vtreport:
         self.status = status
 
 class virustotalhandler(ihandler):
-    def __init__(self, path):
+    def __init__(self, path, config=None):
         logger.debug("%s ready!" % (self.__class__.__name__))
         ihandler.__init__(self, path)
-        self.apikey = g_dionaea.config()['modules']['python'][
-            'virustotal']['apikey']
+        self.apikey = config.get("apikey")
         self.cookies = {}
         self.loop = pyev.default_loop()
 
         self.backlog_timer = pyev.Timer(
             0, 20, self.loop, self.__handle_backlog_timeout)
         self.backlog_timer.start()
-        p = g_dionaea.config()['modules']['python']['virustotal']['file']
+        p = config.get("file")
         self.dbh = sqlite3.connect(p)
         self.cursor = self.dbh.cursor()
         self.cursor.execute("""

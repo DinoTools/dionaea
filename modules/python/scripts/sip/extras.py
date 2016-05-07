@@ -132,11 +132,8 @@ class SipConfig(object):
 
         self._rtp = config.get("rtp", {})
 
-        rtp_enable = self._rtp.get("enable", "no")
-        if rtp_enable.lower() == "yes":
-            self._rtp["enable"] = True
-        else:
-            self._rtp["enable"] = False
+        rtp_enable = self._rtp.get("enable", False)
+        self._rtp["enable"] = rtp_enable
 
         self.actions = config.get("actions", {})
 

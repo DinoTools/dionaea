@@ -49,24 +49,31 @@ class HTTPService(ServiceLoader):
     name = "http"
 
     @classmethod
-    def start(cls, addr, iface=None):
-        daemon = httpd(proto='tcp')
-        daemon.bind(addr, 80, iface=iface)
-        daemon.chroot(g_dionaea.config()['modules']['python']['http']['root'])
-        daemon.listen()
-        return daemon
+    def start(cls, addr, iface=None, config=None):
+        if config is None:
+            config = {}
 
+        root_path = config.get("root")
+        if not root_path:
+            logger.warning("Root path not set skipping service")
 
-class HTTPSService(ServiceLoader):
-    name = "https"
+        daemons = []
 
-    @classmethod
-    def start(self, addr, iface=None):
-        daemon = httpd(proto='tls')
-        daemon.bind(addr, 443, iface=iface)
-        daemon.chroot(g_dionaea.config()['modules']['python']['http']['root'])
-        daemon.listen()
-        return daemon
+        for port in config.get("ports", []):
+            daemon = httpd(proto="tcp")
+            daemon.apply_config(config)
+            daemon.bind(addr, port, iface=iface)
+            daemon.listen()
+            daemons.append(daemon)
+
+        for port in config.get("ssl_ports", []):
+            daemon = httpd(proto="tls")
+            daemon.apply_config(config)
+            daemon.bind(addr, port, iface=iface)
+            daemon.listen()
+            daemons.append(daemon)
+
+        return daemons
 
 
 class httpreq:
@@ -100,6 +107,7 @@ class Headers(object):
             headers = global_headers + headers
 
         self.headers = OrderedDict(headers)
+        print(self, self.headers)
 
         self.methods = None
         if methods:
@@ -129,6 +137,7 @@ class Headers(object):
         return True
 
     def prepare(self, values):
+        print("prepare", self, self.headers)
         for n, v in self.headers.items():
             try:
                 yield (n, v.format(**values))
@@ -141,7 +150,9 @@ class Headers(object):
 
 
 class httpd(connection):
-    def __init__(self, proto='tcp'):
+    shared_config_values = ["default_headers", "download_dir", "download_suffix", "headers", "root", "rwchunksize", "root"]
+
+    def __init__(self, proto="tcp"):
         logger.debug("http test")
         connection.__init__(self, proto)
         self.state = 'HEADER'
@@ -151,20 +162,36 @@ class httpd(connection):
         self.boundary = None
         self.fp_tmp = None
         self.cur_length = 0
-        max_request_size = 32768
-        default_headers = [
+
+        self.headers = []
+        self.max_request_size = 32768 * 1024
+        self.download_dir = None
+        self.download_suffix = ".tmp"
+        self._default_headers = [
             ("Content-Type", "{content_type}"),
             ("Content-Length", "{content_length}"),
             ("Connection", "{connection}")
-
         ]
-        default_headers = g_dionaea.config()['modules']['python']['http'].get('default_headers', default_headers)
-        global_headers = g_dionaea.config()['modules']['python']['http'].get('global_headers', [])
+        self.default_headers = Headers(self._default_headers)
+        self.root = None
+
+    def _get_headers(self, code=None, filename=None, method=None):
+        for header in self.headers:
+            if header.match(code=code, filename=filename, method=method):
+                return header
+        return self.default_headers
+
+    def apply_config(self, config):
+        dionaea_config = g_dionaea.config().get("dionaea")
+        self.download_dir = dionaea_config.get("download.dir")
+        self.download_suffix = dionaea_config.get("download.suffix", ".tmp")
+
+        default_headers = config.get("default_headers", self._default_headers)
+        global_headers = config.get('global_headers', [])
 
         self.default_headers = Headers(default_headers, global_headers=global_headers)
 
-        headers = g_dionaea.config()['modules']['python']['http'].get('headers', [])
-        self.headers = []
+        headers = config.get('headers', [])
         for header in headers:
             self.headers.append(
                 Headers(
@@ -197,26 +224,17 @@ class httpd(connection):
             )
         )
 
-        conf_max_request_size = g_dionaea.config()['modules']['python']['http'].get('max-request-size')
-        if conf_max_request_size is None:
-            logger.info("Value for 'max-request-size' not found, using default value.")
-        else:
+        conf_max_request_size = config.get("max_request_size")
+        if conf_max_request_size is not None:
             try:
-                max_request_size = int(conf_max_request_size)
+                self.max_request_size = int(conf_max_request_size) * 1024
             except ValueError:
-                logger.warning("Error while converting 'max-request-size' to an integer value. Using default value.")
+                logger.warning("Error while converting 'max_request_size' to an integer value. Using default value.")
 
-        self.max_request_size = max_request_size * 1024
-
-    def _get_headers(self, code=None, filename=None, method=None):
-        for header in self.headers:
-            if header.match(code=code, filename=filename, method=method):
-                return header
-        return self.default_headers
+        self.root = config.get("root")
 
     def handle_origin(self, parent):
-        self.root = parent.root
-        self.rwchunksize = parent.rwchunksize
+        pass
 
     def handle_established(self):
         self.timeouts.idle = 10
@@ -284,8 +302,12 @@ class httpd(connection):
                     "--" + m.group("boundary") + "--\r\n", 'utf-8')
 
                 # dump post content to file
-                self.fp_tmp = tempfile.NamedTemporaryFile(delete=False, prefix='http-', suffix=g_dionaea.config(
-                )['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
+                self.fp_tmp = tempfile.NamedTemporaryFile(
+                    delete=False,
+                    dir=self.download_dir,
+                    prefix='http-',
+                    suffix=self.download_suffix
+                )
 
                 pos = data.find(self.boundary)
                 # ending boundary not found
@@ -395,8 +417,12 @@ class httpd(connection):
                 if len(data) == 0:
                     continue
 
-                fp_tmp = tempfile.NamedTemporaryFile(delete=False, prefix='http-', suffix=g_dionaea.config(
-                )['downloads']['tmp-suffix'], dir=g_dionaea.config()['downloads']['dir'])
+                fp_tmp = tempfile.NamedTemporaryFile(
+                    delete=False,
+                    dir=self.download_dir,
+                    prefix='http-',
+                    suffix=self.download_suffix
+                )
                 while data != b'':
                     fp_tmp.write(data)
                     data = fp_post.read(4096)

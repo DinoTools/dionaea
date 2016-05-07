@@ -2881,8 +2881,16 @@ class spoolss(RPCService):
             hPrinter = x.unpack_raw(20)
             cbBuf = x.unpack_long()
             Buf = x.unpack_raw(cbBuf)
+
+            dionaea_config = g_dionaea.config().get("dionaea")
+            download_dir = dionaea_config.get("download.dir")
+            download_suffix = dionaea_config.get("download.suffix", ".tmp")
             x = tempfile.NamedTemporaryFile(
-                delete=False, prefix="spoolss-", suffix=".tmp", dir=g_dionaea.config()['downloads']['dir'])
+                delete=False,
+                prefix="spoolss-",
+                suffix=download_suffix,
+                dir=download_dir
+            )
             x.write(Buf)
             x.close()
 

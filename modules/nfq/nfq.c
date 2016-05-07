@@ -54,8 +54,6 @@
 #include <linux/netfilter_ipv4.h>
 #include <libnetfilter_queue/libnetfilter_queue.h>
 
-#include <lcfgx/lcfgx_tree.h>
-
 #include "connection.h"
 #include "dionaea.h"
 #include "incident.h"
@@ -76,7 +74,6 @@ static int nfqueue_cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nf
 
 static struct 
 {
-	struct lcfgx_tree_node *config;
 	struct nfq_handle *h;
 	struct nfq_q_handle *qh;
 	struct nfnl_handle *nh;
@@ -85,16 +82,13 @@ static struct
 	struct ev_io io;
 } nfq_runtime;
 
-bool nfq_config(struct lcfgx_tree_node *config)
+bool nfq_config(void)
 {
-	g_debug("%s %s node %p", __PRETTY_FUNCTION__, __FILE__, config);
+  GError *error;
+	g_debug("%s %s", __PRETTY_FUNCTION__, __FILE__);
 	memset(&nfq_runtime, 0, sizeof(nfq_runtime));
 
-	struct lcfgx_tree_node *node;
-	nfq_runtime.config = config;
-
-	if( lcfgx_get_string(config, &node, "queue") == LCFGX_PATH_FOUND_TYPE_OK )
-		nfq_runtime.queuenum  = atoi(node->value.string.data);
+	nfq_runtime.queuenum  = g_key_file_get_integer(g_dionaea->config, "module.nfq", "queue", &error);
 
 	g_info("nfq on queue %i", nfq_runtime.queuenum);
 

@@ -50,9 +50,6 @@
 #include <sys/resource.h>
 #include <sys/file.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
 #include <ev.h>
 #include <udns.h>
 #include <openssl/ssl.h>
@@ -470,9 +467,79 @@ static void log_ev_fatal_error (const char *msg)
 	g_error("%s",msg);
 }
 
+int logger_load(struct options *opt)
+{
+	// log to file(s) - if specified in config
+  gchar **keys;
+  gchar *key=NULL;
+  gchar **parts;
+  GError *error = NULL;
+  gsize len;
+  keys = g_key_file_get_keys (g_dionaea->config, "logging", &len, &error);
+  guint32 i;
+  for(i=0; i < len; i++) {
+    parts = g_strsplit(keys[i], ".", 2);
+    if(g_strcmp0(parts[1], "filename") != 0) {
+      g_strfreev(parts);
+      continue;
+    }
+    gchar *file = NULL;
+    gchar *domains = NULL;
+    gchar *levels = NULL;
+
+    key = g_strjoin(".", parts[0], "filename", NULL);
+    file = g_key_file_get_string(g_dionaea->config, "logging", key, &error);
+    g_free(key);
+
+    key = g_strjoin(".", parts[0], "domains", NULL);
+    domains = g_key_file_get_string(g_dionaea->config, "logging", key, &error);
+    g_free(key);
+
+    key = g_strjoin(".", parts[0], "levels", NULL);
+    levels = g_key_file_get_string(g_dionaea->config, "logging", key, &error);
+    g_free(key);
+
+    g_debug("Logfile (handle %s) %s %s %s", parts[0], file, domains, levels);
+
+    struct log_filter *lf = log_filter_new(domains, levels);
+    if( lf == NULL ) {
+      return -1;
+    }
+
+    struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
+    if( opt->root == NULL ) {
+      if( *file != '/' ) {
+        g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
+      } else {
+        strncpy(fd->file, file, PATH_MAX);
+      }
+    } else {
+      if( *file == '/' ) {
+        g_error("log path has to be relative to var/ for chroot");
+      }
+      g_snprintf(fd->file, PATH_MAX, "var/%s", file);
+    }
+
+    fd->filter = lf;
+
+    struct logger *l = logger_new(logger_file_log, logger_file_open, logger_file_hup, logger_file_close, logger_file_flush, fd);
+    g_dionaea->logging->loggers = g_list_append(g_dionaea->logging->loggers, l);
+  }
+
+  for( GList *it = g_dionaea->logging->loggers; it != NULL; it = it->next ) {
+    struct logger *l = it->data;
+    if( l->open != NULL ) {
+      l->open(l, l->data);
+    }
+  }
+  return 0;
+}
+
+
 
 int main (int argc, char *argv[])
 {
+	GError *error;
 	struct version v;
 	show_version(&v);
 	g_log_set_default_handler(logger_stdout_log, NULL);
@@ -530,18 +597,12 @@ int main (int argc, char *argv[])
 
 
 	// config
-	if( (d->config.config = lcfg_new(opt->config)) == NULL )
-	{
-		g_error("config not found");
+	g_dionaea->config = g_key_file_new();
+	g_key_file_set_list_separator(g_dionaea->config, ',');
+	if (!g_key_file_load_from_file(g_dionaea->config, opt->config, G_KEY_FILE_NONE, NULL)){
+		g_error("Could not read config file");
+		return EXIT_FAILURE;
 	}
-
-	if( lcfg_parse(d->config.config) != lcfg_status_ok )
-	{
-		g_error("lcfg error: %s\n", lcfg_error_get(d->config.config));
-	}
-
-	d->config.root = lcfgx_tree_new(d->config.config);
-	d->config.name = g_strdup(opt->config);
 
 	// logging 
 	d->logging = g_malloc0(sizeof(struct logging));
@@ -556,71 +617,8 @@ opt->stdOUT.filter);
 		d->logging->loggers = g_list_append(d->logging->loggers, l);
 	}
 
-	// log to file(s) - if specified in config
-	struct lcfgx_tree_node *n;
-	if( lcfgx_get_map(g_dionaea->config.root, &n, "logging") == LCFGX_PATH_FOUND_TYPE_OK )
-	{
-		struct lcfgx_tree_node *it;
-		for( it = n->value.elements; it != NULL; it = it->next )
-		{
-			if( it->type != lcfgx_map )
-				continue;
 
-			char *file = NULL;
-			char *domains = NULL;
-			char *levels = NULL;
-
-			struct lcfgx_tree_node *f;
-
-			if( lcfgx_get_string(it, &f, "file") == LCFGX_PATH_FOUND_TYPE_OK )
-				file = f->value.string.data;
-
-			if( lcfgx_get_string(it, &f, "domains") == LCFGX_PATH_FOUND_TYPE_OK )
-				domains = f->value.string.data;
-
-			if( lcfgx_get_string(it, &f, "levels") == LCFGX_PATH_FOUND_TYPE_OK )
-				levels = f->value.string.data;
-
-			g_debug("Logfile (handle %s) %s %s %s", it->key, file, domains, levels);
-
-			if( file == NULL )
-				continue;
-
-			struct log_filter *lf = log_filter_new(domains, levels);
-			if( lf == NULL )
-				return -1;
-
-			struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
-			if( opt->root == NULL )
-			{
-				if( *file != '/' )
-				{
-					g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
-				} else
-					strncpy(fd->file, file, PATH_MAX);
-			}else
-			{
-				if( *file == '/' )
-				{
-					g_error("log path has to be relative to var/ for chroot");
-				}
-				g_snprintf(fd->file, PATH_MAX, "var/%s", file);
-			}
-
-			fd->filter = lf;
-
-			struct logger *l = logger_new(logger_file_log, logger_file_open, logger_file_hup, logger_file_close, logger_file_flush, fd);
-			d->logging->loggers = g_list_append(d->logging->loggers, l);
-		}
-	}
-
-	for( GList *it = d->logging->loggers; it != NULL; it = it->next )
-	{
-		struct logger *l = it->data;
-		if( l->open != NULL )
-			l->open(l, l->data);
-	}
-
+  logger_load(opt);
 	// daemon
 	if( opt->daemon && daemon(1, 0) != 0 )
 	{
@@ -707,11 +705,12 @@ opt->stdOUT.filter);
 
 	// modules
 	d->modules = g_malloc0(sizeof(struct modules));
-//	struct lcfgx_tree_node *n;
-	if( lcfgx_get_map(g_dionaea->config.root, &n, "modules") == LCFGX_PATH_FOUND_TYPE_OK )
-		modules_load(n);
-	else
-		g_warning("dionaea is useless without modules");
+  gsize num;
+  gchar **names = g_key_file_get_string_list(g_dionaea->config, "dionaea", "modules", &num, &error);
+	//if( lcfgx_get_map(g_dionaea->config.root, &n, "modules") == LCFGX_PATH_FOUND_TYPE_OK )
+		modules_load(names);
+	//else
+	//	g_warning("dionaea is useless without modules");
 
 	modules_config();
 	modules_prepare();
@@ -736,13 +735,12 @@ opt->stdOUT.filter);
 //	struct lcfgx_tree_node *n;
 	g_debug("Creating processors tree");
 	d->processors->tree = g_node_new(NULL);
-	if( lcfgx_get_map(d->config.root, &n, "processors") == LCFGX_PATH_FOUND_TYPE_OK )
-	{
-		lcfgx_tree_dump(n,0);
-		for( struct lcfgx_tree_node *it = n->value.elements; it != NULL; it = it->next )
-		{
-			processors_tree_create(d->processors->tree, it);
-		}
+	gchar **proc_names, **proc_name;
+	proc_names = g_key_file_get_string_list(g_dionaea->config, "dionaea", "processors", &num, &error);
+	// ToDo: check error
+	for (proc_name = proc_names; *proc_name; proc_name++) {
+		processors_tree_create(d->processors->tree, *proc_name);
+		g_debug("processo: %s", *proc_name);
 	}
 
 	processors_tree_dump(d->processors->tree, 0);

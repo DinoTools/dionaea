@@ -31,12 +31,6 @@
 #include <stdio.h>
 #include <string.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
 #include "dionaea.h"
 #include "incident.h"
 #include "module.h"
@@ -80,10 +74,12 @@ size_t period(u_char *s, size_t len) {
 	return period;
 }
 
-void *proc_xmatch_ctx_cfg_new(struct lcfgx_tree_node *node)
+void *proc_xmatch_ctx_cfg_new(void)
 {
-	g_debug("%s node %p", __PRETTY_FUNCTION__, node);
-	lcfgx_tree_dump(node,0);
+	g_debug("%s node", __PRETTY_FUNCTION__);
+	// xmatch is not used at the moment, so we disable the config parsing
+	return NULL;
+/*
 	struct xmatch_ctx *conf = g_malloc0(sizeof(struct xmatch_ctx));
 
 	struct lcfgx_tree_node *patterns;
@@ -128,6 +124,7 @@ void *proc_xmatch_ctx_cfg_new(struct lcfgx_tree_node *node)
 	g_debug("xmatch fsm successfully created, %lu transformed patterns.", conf->pnum);
 
 	return conf;
+	*/
 }
 
 

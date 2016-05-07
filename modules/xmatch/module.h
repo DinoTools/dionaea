@@ -30,7 +30,6 @@
 
 #include <xmatch.h>
 
-struct lcfgx_tree_node;
 struct processor_data;
 struct connection;
 
@@ -46,7 +45,7 @@ struct xmatch_ctx
 
 void *proc_xmatch_ctx_new(void *cfg);
 void proc_xmatch_ctx_free(void *ctx);
-void *proc_xmatch_ctx_cfg_new(struct lcfgx_tree_node *node);
+void *proc_xmatch_ctx_cfg_new(void);
 void proc_xmatch_on_io_in(struct connection *con, struct processor_data *pd);
 
 extern struct processor proc_xmatch;

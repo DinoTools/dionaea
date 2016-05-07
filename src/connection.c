@@ -54,9 +54,6 @@
 #include <sys/ioctl.h>
 #include <sys/uio.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
 #ifdef HAVE_LINUX_SOCKIOS_H
 #include <linux/sockios.h>
 #endif
@@ -392,10 +389,9 @@ bool connection_bind(struct connection *con, const char *addr, uint16_t port, co
 
 bool connection_listen(struct connection *con, int len)
 {
-	struct lcfgx_tree_node *node_cert;
-	struct lcfgx_tree_node *node_key;
-	const char *cert_filename;
-	const char *key_filename;
+	GError *error = NULL;
+	const char *cert_filename = NULL;
+	const char *key_filename = NULL;
 
 	g_debug("%s con %p len %i", __PRETTY_FUNCTION__, con, len);
 
@@ -443,11 +439,15 @@ bool connection_listen(struct connection *con, int len)
 			return false;
 		}
 		connection_set_nonblocking(con);
-		if( lcfgx_get_string(g_dionaea->config.root, &node_cert, "listen.ssl.default.cert") == LCFGX_PATH_FOUND_TYPE_OK &&
-		    lcfgx_get_string(g_dionaea->config.root, &node_key, "listen.ssl.default.key") == LCFGX_PATH_FOUND_TYPE_OK ) {
-			cert_filename = node_cert->value.string.data;
-			key_filename = node_key->value.string.data;
 
+		cert_filename = g_key_file_get_string(g_dionaea->config, "dionaea", "ssl.default.cert", &error);
+		g_clear_error(&error);
+		if (cert_filename != NULL) {
+			key_filename = g_key_file_get_string(g_dionaea->config, "dionaea", "ssl.default.key", &error);
+			g_clear_error(&error);
+		}
+		if(cert_filename != NULL && key_filename != NULL) {
+			g_info("Use '%s' as key and '%s' as cert file", key_filename, cert_filename);
 			connection_tls_set_certificate(con, cert_filename, SSL_FILETYPE_PEM);
 			connection_tls_set_key(con, key_filename, SSL_FILETYPE_PEM);
 		} else {
@@ -2548,8 +2548,9 @@ bool mkcert(SSL_CTX *ctx)
 	int bits = 512*4;
 	int serial = time(NULL);
 	int days = 365;
-	struct lcfgx_tree_node *node;
-	const unsigned char *value;
+	gchar *value = NULL;
+	GError *error = NULL;
+
 
 	X509 *x;
 	EVP_PKEY *pk;
@@ -2578,35 +2579,37 @@ bool mkcert(SSL_CTX *ctx)
 
 	name=X509_get_subject_name(x);
 
-	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.c") == LCFGX_PATH_FOUND_TYPE_OK ) {
-		value = (const unsigned char *)node->value.string.data;
-	} else {
-		value = (const unsigned char *)"DE";
+	value = g_key_file_get_string(g_dionaea->config, "dionaea", "ssl.default.c", &error);
+	if (value == NULL) {
+		value = g_strdup("DE");
 	}
-	X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, value, -1, -1, 0);
+	g_clear_error(&error);
+	X509_NAME_add_entry_by_txt(name, "C", MBSTRING_ASC, (const unsigned char *)value, -1, -1, 0);
+	g_free(value);
 
-	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.cn") == LCFGX_PATH_FOUND_TYPE_OK ) {
-		value = (const unsigned char *)node->value.string.data;
-	} else {
-		value = (const unsigned char *)"Nepenthes Development Team";
+	value = g_key_file_get_string(g_dionaea->config, "dionaea", "ssl.default.cn", &error);
+	if (value == NULL) {
+		value = g_strdup("Nepenthes Development Team");
 	}
-	X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, value, -1, -1, 0);
+	g_clear_error(&error);
+	X509_NAME_add_entry_by_txt(name, "CN", MBSTRING_ASC, (const unsigned char*)value, -1, -1, 0);
+	g_free(value);
 
-
-	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.o") == LCFGX_PATH_FOUND_TYPE_OK ) {
-		value = (const unsigned char *)node->value.string.data;
-	} else {
-		value = (const unsigned char *)"dionaea.carnivore.it";
+	value = g_key_file_get_string(g_dionaea->config, "dionaea", "ssl.default.o", &error);
+	if (value == NULL) {
+		value = g_strdup("dionaea.carnivore.it");
 	}
-	X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, value, -1, -1, 0);
+	g_clear_error(&error);
+	X509_NAME_add_entry_by_txt(name, "O", MBSTRING_ASC, (const unsigned char*)value, -1, -1, 0);
+	g_free(value);
 
-
-	if( lcfgx_get_string(g_dionaea->config.root, &node, "listen.ssl.default.ou") == LCFGX_PATH_FOUND_TYPE_OK ) {
-		value = (const unsigned char *)node->value.string.data;
-	} else {
-		value = (const unsigned char *)"anv";
+	value = g_key_file_get_string(g_dionaea->config, "dionaea", "ssl.default.ou", &error);
+	if (value == NULL) {
+		value = g_strdup("anv");
 	}
-	X509_NAME_add_entry_by_txt(name, "OU", MBSTRING_ASC, value, -1, -1, 0);
+	g_clear_error(&error);
+	X509_NAME_add_entry_by_txt(name, "OU", MBSTRING_ASC, (const unsigned char*)value, -1, -1, 0);
+	g_free(value);
 
 
 	/* Its self signed so set the issuer name to be the same as the

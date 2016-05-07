@@ -23,6 +23,15 @@ List of available ihandlers
 .. toctree::
     :maxdepth: 2
 
+    emuprofile
+    fail2ban
+    ftp
+    hpfeeds
     log_json
     logsql
-    logxmpp
+    nfq
+    p0f
+    store
+    submit_http
+    submit_http_post
+    virustotal

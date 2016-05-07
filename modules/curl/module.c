@@ -29,8 +29,6 @@
 #include <glib.h>
 #include <stdio.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
 #include <curl/curl.h>
 #include <stdlib.h>
 #include <unistd.h>
@@ -49,7 +47,6 @@
 
 static struct 
 {
-	struct lcfgx_tree_node *config;
 	struct ev_timer timer_event;
 	CURLM *multi;
 	struct ihandler *download_ihandler;
@@ -600,26 +597,20 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 	}
 }
 
-static bool curl_config(struct lcfgx_tree_node *node)
+static bool curl_config(void)
 {
-	g_debug("%s", __PRETTY_FUNCTION__);
-	curl_runtime.config = node;
-	return true;
+  GError *error = NULL;
+
+  g_debug("%s", __PRETTY_FUNCTION__);
+
+  curl_runtime.download_dir = g_key_file_get_string(g_dionaea->config, "dionaea", "download.dir", &error);
+
+  return true;
 }
 
 static bool curl_new(struct dionaea *d)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
-
-	struct lcfgx_tree_node *node;
-	if( lcfgx_get_string(g_dionaea->config.root, &node, "downloads.dir") != LCFGX_PATH_FOUND_TYPE_OK )
-	{
-		g_warning("missing downloads.dir in dionaea.conf");
-		return false;
-	}
-
-	curl_runtime.download_dir = g_strdup((char *)node->value.string.data);
-
 
 	if( curl_global_init(CURL_GLOBAL_ALL) != 0 )
 		return false;
@@ -692,7 +683,7 @@ static bool curl_freex(void)
 	return true;
 }
 
-static bool curl_hup(struct lcfgx_tree_node *node)
+static bool curl_hup(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
 	return true;

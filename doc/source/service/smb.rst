@@ -35,3 +35,10 @@ dionaea code, you can use:
 to identify potential usefull targets of unknown dcerpc calls using the
 data you gathered and stored in your logsql database. Patches are
 appreciated.
+
+Example config
+--------------
+
+.. literalinclude:: ../../../conf/services/smb.yaml
+    :language: yaml
+    :caption: services/smb.yaml

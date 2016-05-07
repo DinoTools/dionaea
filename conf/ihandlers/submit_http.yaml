@@ -1,0 +1,10 @@
+- name: submit_http
+  config:
+      # the url to send the submission requests to
+      url: "http://example.org/"
+      # E-Mail (optional)
+      # email: ""
+      # username (optional)
+      # user:
+      # password (optional)
+      # pass:

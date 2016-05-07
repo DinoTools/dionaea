@@ -15,3 +15,10 @@ Refer to the blog
 <http://carnivore.it/2010/09/11/mssql_attacks_examined> for more
 information.
 Patches would be appreciated.
+
+Example config
+--------------
+
+.. literalinclude:: ../../../conf/services/mssql.yaml
+    :language: yaml
+    :caption: services/mssql.yaml

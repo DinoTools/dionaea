@@ -43,7 +43,7 @@ unsigned int python_handle_io_in_cb(struct connection *con, void *context, unsig
 void log_wrap(char *name, int number, char *file, int line, char *msg);
 void traceback(void);
 PyObject *pygetifaddrs(PyObject *self, PyObject *args);
-PyObject *pylcfg(PyObject *self, PyObject *args);
+PyObject *py_config(PyObject *self, PyObject *args);
 PyObject *pyversion(PyObject *self, PyObject *args);
 
 

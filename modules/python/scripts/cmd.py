@@ -38,8 +38,8 @@ class CMDShellHandlerLoader(IHandlerLoader):
     name = "cmdshell"
 
     @classmethod
-    def start(cls):
-        return cmdshellhandler("dionaea.service.shell.*")
+    def start(cls, config=None):
+        return cmdshellhandler("dionaea.service.shell.*", config=config)
 
 
 class cmdexe:
@@ -406,7 +406,7 @@ class remoteshell(cmdexe,connection):
 
 class cmdshellhandler(ihandler):
 
-    def __init__(self, path):
+    def __init__(self, path, config=None):
         logger.debug("%s ready!" % (self.__class__.__name__))
         ihandler.__init__(self, path)
 

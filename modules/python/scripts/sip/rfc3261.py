@@ -442,7 +442,7 @@ class Message(object):
     b'IN IP4 192.168.1.2'
     """
 
-    def __init__(self, method = None, uri = None, response_code = None, status_message = None, protocol = None, body = None, headers = None, sdp = None, personality = "default"):
+    def __init__(self, session=None, method = None, uri = None, response_code = None, status_message = None, protocol = None, body = None, headers = None, sdp = None, personality = "default"):
         self.method = method
         self.uri = uri
         self.response_code = response_code
@@ -450,6 +450,7 @@ class Message(object):
         self.protocol = protocol
         self._body = body
         self._personality = personality
+        self._session = session
 
         if headers is None:
             headers = Headers()
@@ -465,7 +466,7 @@ class Message(object):
         if personality is not None:
             self._personality = personality
 
-        res = Message()
+        res = Message(session=self._session)
         res.protocol = b"SIP/2.0"
         res.response_code = code
         res.status_message = message
@@ -499,8 +500,7 @@ class Message(object):
         contact = Header(name=b"contact", value = cont_addr)
         res.headers.append(contact)
 
-        from dionaea.sip import g_sipconfig
-        handler = g_sipconfig.get_handlers_by_personality(self._personality)
+        handler = self._session.config.get_handlers_by_personality(self._personality)
 
         res.headers.append(Header(name = b"allow", value = ", ".join(handler)))
         res.headers.append(Header(name = b"content-length", value = 0))
@@ -528,8 +528,8 @@ class Message(object):
         return b"\r\n".join(h) + b"\r\n\r\n" + sdp
 
     @classmethod
-    def froms(cls, data):
-        return cls(**cls.loads(data)[1])
+    def froms(cls, data, session=None):
+        return cls(**cls.loads(data, session=session)[1])
 
     def header_exist(self, header_name):
         """
@@ -552,7 +552,7 @@ class Message(object):
         return True
 
     @classmethod
-    def loads(cls, data):
+    def loads(cls, data, session=None):
         """
         Parse a SIP-Message and return the used bytes
 
@@ -615,6 +615,7 @@ class Message(object):
                         sdp = rfc4566.SDP.froms(content)
                     except rfc4566.SdpParsingError:
                         msg = Message(**{
+                            "session": session,
                             "method": method,
                             "uri": uri,
                             "response_code": response_code,
@@ -632,6 +633,7 @@ class Message(object):
         return (
             l,
             {
+                "session": session,
                 "method": method,
                 "uri": uri,
                 "response_code": response_code,

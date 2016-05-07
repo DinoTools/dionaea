@@ -42,9 +42,6 @@ from dionaea import pyev, ServiceLoader
 
 from dionaea.sip.extras import msg_to_icd, SipConfig, ErrorWithResponse
 
-# load config before loading the other sip modules
-g_sipconfig = SipConfig(g_dionaea.config()['modules']['python'].get("sip", {}))
-
 from dionaea.sip import rfc3261
 from dionaea.sip import rfc4566
 from dionaea.sip import rfc2617 # auth
@@ -83,16 +80,17 @@ class SIPService(ServiceLoader):
     name = "sip"
 
     @classmethod
-    def start(cls, addr, iface=None):
+    def start(cls, addr, iface=None, config=None):
         daemons = []
         for proto in ("tcp", "tls", "udp"):
-            if proto not in g_dionaea.config()['modules']['python']['sip']:
+            ports = config.get("%s_ports" % proto)
+            if ports is None:
                 continue
-            port = int(g_dionaea.config()['modules']['python']['sip'][proto].get('port', 5060))
-            daemon = SipSession(proto=proto)
-            daemon.bind(addr, port, iface=iface)
-            daemon.listen()
-            daemons.append(daemon)
+            for port in ports:
+                daemon = SipSession(proto=proto, config=config)
+                daemon.bind(addr, port, iface=iface)
+                daemon.listen()
+                daemons.append(daemon)
         return daemons
 
 
@@ -267,7 +265,7 @@ class SipCall(connection):
 
         user = self.__msg.headers.get(b"to").get_raw().uri.user
 
-        self._user = g_sipconfig.get_user_by_username(
+        self._user = self.__session.config.get_user_by_username(
             self.__session.personality,
             user
         )
@@ -341,14 +339,14 @@ class SipCall(connection):
 
             # Create a stream dump file with date and time and random ID in case of
             # flooding attacks
-            pcap = g_sipconfig.get_pcap()
+            pcap = self.__session.config.get_pcap()
 
             # Create RTP stream instance and pass address and port of listening
             # remote RTP host
 
             sdp = self.__msg.sdp
 
-            media_port_names = g_sipconfig.get_sdp_media_port_names(self._user.sdp)
+            media_port_names = self.__session.config.get_sdp_media_port_names(self._user.sdp)
 
 
             media_ports = {}
@@ -357,7 +355,7 @@ class SipCall(connection):
                 media_ports[name] = None
 
             bistream_enabled = False
-            if "bistream" in g_sipconfig._rtp.get("mode"):
+            if "bistream" in self.__session.config._rtp.get("mode"):
                 bistream_enabled = True
 
             for name in media_port_names:
@@ -385,7 +383,7 @@ class SipCall(connection):
 
             # ToDo: add IP6 support
             msg.sdp = rfc4566.SDP.froms(
-                g_sipconfig.get_sdp_by_name(
+                self.__session.config.get_sdp_by_name(
                     self._user.sdp,
                     unicast_address = self.local.host,
                     addrtype = "IP4",
@@ -558,12 +556,17 @@ class SipCall(connection):
 class SipSession(connection):
     ESTABLISHED, CLOSED = range(2)
 
-    def __init__(self, proto = None):
+    shared_config_values = [
+        "config"
+    ]
+
+    def __init__(self, proto = None, config=None):
         logger.debug("{!s} __init__".format(self))
 
         connection.__init__(self, proto)
+        self.config = SipConfig(config=config)
 
-        self.personality = g_sipconfig.get_personality_by_address(self.local.host)
+        self.personality = self.config.get_personality_by_address(self.local.host)
 
         logger.info("SIP Session created with personality '{}'".format(self.personality))
         self._auth = None
@@ -615,7 +618,7 @@ class SipSession(connection):
             data = data.replace(b"\r\n", b"\n")
             data = data.replace(b"\n", b"\r\n")
             try:
-                msg = rfc3261.Message.froms(data)
+                msg = rfc3261.Message.froms(data, session=self)
             except rfc3261.SipParsingError:
                 self.close()
                 return len_used
@@ -626,7 +629,7 @@ class SipSession(connection):
 
         elif self.transport in ("tcp", "tls"):
             try:
-                (len_used, data_load) = rfc3261.Message.loads(data)
+                (len_used, data_load) = rfc3261.Message.loads(data, session=self)
             except rfc3261.SipParsingError:
                 self.close()
                 return len(data)
@@ -646,7 +649,7 @@ class SipSession(connection):
 
         handler_name = msg.method.decode("utf-8").upper()
 
-        if not g_sipconfig.is_handled_by_personality(handler_name, self.personality):
+        if not self.config.is_handled_by_personality(handler_name, self.personality):
             self.handle_unknown(msg)
             return len(data)
 
@@ -787,7 +790,7 @@ class SipSession(connection):
         to = msg.headers.get(b"to")
         user_id = to.get_raw().uri.user
 
-        u = g_sipconfig.get_user_by_username(self.personality, user_id)
+        u = self.config.get_user_by_username(self.personality, user_id)
 
         # given user not found
         if u is None:

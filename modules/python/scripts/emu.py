@@ -40,13 +40,13 @@ class EMUProfileHandlerLoader(IHandlerLoader):
     name = "emuprofile"
 
     @classmethod
-    def start(cls):
-        return emuprofilehandler("dionaea.module.emu.profile")
+    def start(cls, config=None):
+        return emuprofilehandler("dionaea.module.emu.profile", config=config)
 
 
 class emuprofilehandler(ihandler):
 
-    def __init__(self, path):
+    def __init__(self, path, config=None):
         logger.debug("%s ready!" % (self.__class__.__name__))
         ihandler.__init__(self, path)
 

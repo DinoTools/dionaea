@@ -38,7 +38,7 @@ cdef extern from "module.h":
 	ctypedef int c_uintptr_t "uintptr_t"
 	char * c_g_strdup "g_strdup" (char *)
 	cdef object c_pygetifaddrs "pygetifaddrs"(object self, object args)
-	cdef object c_pylcfg "pylcfg"(object self, object args)
+	cdef object c_py_config "py_config"(object self, object args)
 	cdef object c_version "pyversion"(object self, object args)
 	
 
@@ -51,7 +51,7 @@ cdef extern from "module.h":
 cdef class dionaea:
 	cdef c_dionaea *thisptr
 	def config(self):
-		return c_pylcfg(<object> None, <object> None)
+		return c_py_config(<object> None, <object> None)
 	def getifaddrs(self):
 		return c_pygetifaddrs(<object> None, <object> None)
 	def version(self):
@@ -518,6 +518,23 @@ cdef class connection:
 	def __hash__(self):
 		return <long>self.thisptr
 
+	def apply_config(self, config):
+		"""
+		Apply config
+		"""
+		pass
+
+	def apply_parent_config(self, parent):
+		"""
+		Copy shared config values from the parent.
+		"""
+		value_names = getattr(parent, "shared_config_values", None)
+		if value_names is None:
+			# print("No shared config values found")
+			return
+		for name in value_names:
+			value = getattr(parent, name)
+			setattr(self, name, value)
 
 	def handle_established(self):
 		"""callback once the connection is established"""
@@ -733,6 +750,7 @@ cdef connection _factory(c_connection *con):
 	instance.thisptr = con
 	INIT_C_CONNECTION_CLASS(parent,instance)
 	c_connection_protocol_ctx_set(con, <void *>instance)
+	instance.apply_parent_config(parent)
 	return instance
 
 cdef void _garbage(void *context):
@@ -1192,6 +1210,12 @@ cdef class ihandler:
 
 	def __dealloc__(self):
 		c_ihandler_free(self.thisptr)
+
+	def apply_config(self, config):
+		"""
+		Apply config
+		"""
+		pass
 
 	def start(self):
 		pass

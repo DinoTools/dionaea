@@ -1,0 +1,5 @@
+- name: p0f
+  config:
+    # start p0f with
+    # sudo p0f -i any -u root -Q /tmp/p0f.sock -q -l
+    path: "un:///tmp/p0f.sock"

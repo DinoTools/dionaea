@@ -1,0 +1,5 @@
+- name: virustotal
+  config:
+    # grab it from your virustotal account at My account -> Inbox -> Public API
+    apikey: "........."
+    file: "/tmp/vtcache.sqlite"

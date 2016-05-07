@@ -75,12 +75,9 @@ class LogJsonHandlerLoader(IHandlerLoader):
     name = "log_json"
 
     @classmethod
-    def start(cls):
-        from dionaea.core import g_dionaea
-        conf_mod_py = g_dionaea.config()["modules"]["python"]
-        config = conf_mod_py.get("log_json")
-        handlers = [LogJsonHandler("*", config=config)]
-        return handlers
+    def start(cls, config=None):
+        handler = LogJsonHandler("*", config=config)
+        return [handler]
 
 
 class LogJsonHandler(ihandler):

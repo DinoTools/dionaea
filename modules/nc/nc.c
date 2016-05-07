@@ -29,9 +29,6 @@
 #include <glib.h>
 #include <stdio.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
 
 #include "modules.h"
 #include "connection.h"
@@ -47,19 +44,17 @@
 
 static struct 
 {
-	struct lcfgx_tree_node *config;
 } nc_runtime;
 
-static bool nc_config(struct lcfgx_tree_node *node)
+static bool nc_config(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
-	nc_runtime.config = node;
 	return true;
 }
 
 static bool nc_new(struct dionaea *d)
 {
-	g_debug("%s", __PRETTY_FUNCTION__);
+/*	g_debug("%s", __PRETTY_FUNCTION__);
 	struct lcfgx_tree_node *v;
 //	if(lcfgx_get_list(nc_runtime.config, &v, "services") != LCFGX_PATH_FOUND_TYPE_OK)
 //		return false;
@@ -144,7 +139,7 @@ static bool nc_new(struct dionaea *d)
 				connection_connect(con, host, port, iface);
 		}
 	}
-
+*/
 	return true;
 }
 
@@ -154,7 +149,7 @@ static bool nc_free(void)
 	return true;
 }
 
-static bool nc_hup(struct lcfgx_tree_node *node)
+static bool nc_hup(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
 	return true;

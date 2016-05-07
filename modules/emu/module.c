@@ -29,9 +29,6 @@
 #include <glib.h>
 #include <stdio.h>
 
-#include <lcfg/lcfg.h>
-#include <lcfgx/lcfgx_tree.h>
-
 
 #include "modules.h"
 #include "connection.h"
@@ -44,15 +41,13 @@
 #define D_LOG_DOMAIN "emu"
 
 
-static struct 
+static struct
 {
-	struct lcfgx_tree_node *config;
 } emu_runtime;
 
-static bool emu_config(struct lcfgx_tree_node *node)
+static bool emu_config(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
-	emu_runtime.config = node;
 	return true;
 }
 
@@ -69,7 +64,7 @@ static bool emu_free(void)
 	return true;
 }
 
-static bool emu_hup(struct lcfgx_tree_node *node)
+static bool emu_hup(void)
 {
 	g_debug("%s", __PRETTY_FUNCTION__);
 	return true;

@@ -1,6 +1,9 @@
+import glob
 import logging
 import pkgutil
 import traceback
+
+import yaml
 
 logger = logging.getLogger('dionaea')
 logger.setLevel(logging.DEBUG)
@@ -60,3 +63,14 @@ def load_submodules(base_pkg=None):
                 logger.warning(msg.rstrip())
 
         loaded_submodules.append(modname)
+
+
+def load_config_from_files(filename_patterns):
+    configs = []
+    for filename_pattern in filename_patterns:
+        for filename in glob.glob(filename_pattern):
+            fp = open(filename)
+            file_configs = yaml.load(fp)
+            if isinstance(file_configs, (tuple, list)):
+                configs += file_configs
+    return configs

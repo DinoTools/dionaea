@@ -40,17 +40,18 @@ class Fail2BanHandlerLoader(IHandlerLoader):
     name = "fail2ban"
 
     @classmethod
-    def start(cls):
-        return fail2banhandler()
+    def start(cls, config=None):
+        return fail2banhandler(config=config)
 
 
 class fail2banhandler(ihandler):
-    def __init__(self):
+    def __init__(self, config=None):
         logger.debug("%s ready!" % (self.__class__.__name__))
         ihandler.__init__(self, "*")
-        offers = g_dionaea.config()['modules']['python']['fail2ban']['offers']
-        downloads = g_dionaea.config()['modules']['python'][
-            'fail2ban']['downloads']
+        if config is None:
+            config = {}
+        offers = config.get("offers", "var/dionaea/offers.f2b")
+        downloads = config.get("downloads", "var/dionaea/downloads.f2b")
         self.offers = open(offers, "a")
         self.downloads = open(downloads, "a")
 
