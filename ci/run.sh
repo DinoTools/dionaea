@@ -21,7 +21,7 @@ if [ ! -d "$CFG_PATH" ]; then
     exit 1
 fi
 
-cd $CFG_PATH
+cd "$CFG_PATH"
 
 docker-compose up --force-recreate
 RET=$?
