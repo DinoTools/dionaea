@@ -8,9 +8,16 @@ if [ $# -ne 2 ]; then
     exit 1
 fi
 
-CFG_PATH="$OS_NAME-$OS_VERSION"
+BASE_PATH="`dirname \"$0\"`"
+BASE_PATH="`( cd \"$BASE_PATH\" && pwd )`"
+if [ -z "$BASE_PATH" ] ; then
+  exit 1
+fi
+echo "Base path: $BASE_PATH"
+
+CFG_PATH="$BASE_PATH/$OS_NAME-$OS_VERSION"
 if [ ! -d "$CFG_PATH" ]; then
-    echo "Path not found"
+    echo "Path '$CFG_PATH' not found"
     exit 1
 fi
 
