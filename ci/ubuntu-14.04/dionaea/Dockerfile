@@ -22,13 +22,9 @@ RUN apt-get update && \
         libnetfilter-queue-dev \
         libnl-dev \
         libpcap-dev \
-        libreadline-dev \
-        libsqlite3-dev \
         libssl-dev \
         libtool \
         libudns-dev \
-        libxml2-dev \
-        libxslt1-dev \
         python3 \
         python3-dev \
         python3-yaml \
