@@ -31,7 +31,7 @@ RUN apt-get update && \
         && \
     apt-get clean
 
-ADD . /code
+COPY . /code
 RUN cd /code && \
     autoreconf -vi && \
     ./configure \
@@ -46,6 +46,6 @@ RUN cd /code && \
         --with-gc-include=/usr/include/gc \
         --enable-nl \
         --with-nl-include=/usr/include/libnl3 \
-        --with-nl-lib=/usr/lib
-
-RUN cd /code && make && make install
+        --with-nl-lib=/usr/lib && \
+     make && \
+     make install
