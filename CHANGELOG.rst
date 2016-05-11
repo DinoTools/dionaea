@@ -4,6 +4,26 @@ Changelog
 0.4.0 - (`master`_)
 ~~~~~~~~~~~~~~~~~~~
 
+**core**
+
+* Replace lcfg with Key-value file parser from glib
+
+**ci**
+
+* Add build tests for Ubuntu 14.04, Ubuntu 16.04 and Debian 8
+
+**doc**
+
+* Add initial documentation for missing modules
+* Update documentation to reflact config changes
+
+**python/***
+
+* Replace lcfg with yaml configs
+* Remove deprecated incident handlers (logxmpp, mwserv, SurfIDS)
+* Rename incident handlers from logsql to log_sqlite
+* Rename incident handlers from uniqdownload to submit_http_post
+
 
 0.3.0 - 2016-03-30
 ~~~~~~~~~~~~~~~~~~
