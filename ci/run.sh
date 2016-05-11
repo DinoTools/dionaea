@@ -23,8 +23,9 @@ fi
 
 cd "$CFG_PATH"
 
-docker-compose up --force-recreate
+docker-compose build
 RET=$?
+docker-compose up --force-recreate
 docker-compose kill
-docker-compose down --rmi local
+docker-compose down
 exit $RET
