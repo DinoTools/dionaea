@@ -35,7 +35,6 @@ COPY . /code
 RUN cd /code && \
     autoreconf -vi && \
     ./configure \
-        --disable-werror \
         --prefix=/opt/dionaea \
         --with-python=/usr/bin/python3 \
         --with-cython-dir=/usr/bin \
