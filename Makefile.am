@@ -4,7 +4,7 @@ AUTOMAKE_OPTIONS = foreign
 
 SUBDIRS = src include modules
 
-EXTRA_DIST = configure.ac conf/dionaea.conf.dist
+EXTRA_DIST = configure.ac
 
 ENABLED_IHANDLERS=cmdshell.yaml emuprofile.yaml ftp.yaml log_sqlite.yaml store.yaml tftp_download.yaml
 
