@@ -185,7 +185,7 @@ static bool hupy(void)
 {
 	g_debug("%s node",  __PRETTY_FUNCTION__);
 	gchar **module_names;
-	GError *error;
+	GError *error = NULL;
 	gsize num;
 	gchar **module_name;
 
@@ -359,7 +359,7 @@ static bool new(struct dionaea *dionaea)
 	char relpath[1024];
 	int i=0;
 	gchar **sys_paths;
-	GError *error;
+	GError *error = NULL;
 	gsize num;
 	gchar **sys_path;
 	sys_paths = g_key_file_get_string_list(g_dionaea->config, "module.python", "sys_paths", &num, &error);
@@ -732,7 +732,7 @@ PyObject *pylcfgx_tree(struct lcfgx_tree_node *node)
 PyObject *py_config_string(gchar *group, gchar *key)
 {
 	gchar *value;
-	GError *error;
+	GError *error = NULL;
 	PyObject *obj_value;
 
 	value = g_key_file_get_string(g_dionaea->config, group, key, &error);
