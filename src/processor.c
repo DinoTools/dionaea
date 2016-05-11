@@ -656,7 +656,7 @@ void *proc_filter_cfg(gchar *group_name)
 			continue;
 		}
 		if(g_strcmp0(parts[1], "allow") == 0) {
-			if(g_list_find_custom(allow_keys, parts[2], g_strcmp0) == NULL) {
+			if(g_list_find_custom(allow_keys, parts[2], (GCompareFunc) g_strcmp0) == NULL) {
 				allow_keys = g_list_append(allow_keys, parts[2]);
 			}
 		} else if(g_strcmp0(parts[1], "deny") == 0) {
