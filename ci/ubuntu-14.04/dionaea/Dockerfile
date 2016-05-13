@@ -16,7 +16,6 @@ RUN apt-get update && \
         libcurl4-openssl-dev \
         libemu-dev \
         libev-dev \
-        libgc-dev \
         libglib2.0-dev \
         libloudmouth1-dev \
         libnetfilter-queue-dev \
