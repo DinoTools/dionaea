@@ -87,6 +87,32 @@ This can also be done in one line.
 
     $ make && sudo make install && sudo dionaea -c /opt/dionaea/etc/dionaea/dionaea.cfg -l all,-debug -L '*'
 
+
+Find memory leaks
+-----------------
+
+To enable AddressSanitizer you have to add the following parameters to the :code:`configure` script and rebuild dionaea.
+
+.. code-block:: console
+
+    --disable-shared CFLAGS="-fsanitize=address -ggdb" CXXFLAGS="-fsanitize=address -ggdb"
+
+When running dionaea it will print information about overfow errors.
+If you would like to stop execution you have to export an additional environment variable.
+
+.. code-block:: console
+
+    export ASAN_OPTIONS='abort_on_error=1'
+
+To get a stacktrace you can use :code:`gdb` and add an additional breakpoint :code:`break __asan_report_error`.
+
+It is also possible to use `asan_symbolize.py python2 script`_ to extract additional information.
+
+.. code-block:: console
+
+    /opt/dionaea/bin/dionaea -c /opt/dionaea/etc/dionaea/dionaea.cfg  2>&1 | python asan_symbolize.py
+
 .. _Vagrant: https://www.vagrantup.com/
 .. _VirtualBox: https://www.virtualbox.org/
 .. _Ubuntu: https://ubuntu.com/
+.. _asan_symbolize.py python2 script: https://llvm.org/svn/llvm-project/compiler-rt/trunk/lib/asan/scripts/asan_symbolize.py
