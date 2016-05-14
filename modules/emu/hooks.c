@@ -66,7 +66,7 @@
 #define CONTINUE_EMULATION(ctx) \
 do \
 { \
-	GError *thread_error; \
+	GError *thread_error = NULL; \
 	struct thread *t = thread_new(NULL, (ctx), emulate_thread); \
 	g_thread_pool_push(g_dionaea->threads->pool, t, &thread_error); \
 } while (0)

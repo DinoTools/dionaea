@@ -41,10 +41,11 @@
 
 
 
-
+/*
 static struct 
 {
 } nc_runtime;
+*/
 
 static bool nc_config(void)
 {

@@ -40,10 +40,11 @@
 
 #define D_LOG_DOMAIN "emu"
 
-
+/*
 static struct
 {
 } emu_runtime;
+*/
 
 static bool emu_config(void)
 {

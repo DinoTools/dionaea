@@ -242,7 +242,7 @@ void processor_io_single(struct connection *con,  struct processor_data *pd, voi
 		if( pd->queued.refs == 0 )
 		{
 			pd->queued.refs++;
-			GError *thread_error;
+			GError *thread_error = NULL;
 			struct thread *t = thread_new(con, pd, thread_io);
 
 			connection_ref(con);
@@ -313,7 +313,7 @@ void *proc_streamdumper_cfg_new(gchar *group_name)
 {
 	struct streamdumper_config *cfg = g_malloc0(sizeof(struct streamdumper_config));
 	gchar *path;
-	GError *error;
+	GError *error = NULL;
 	path = g_key_file_get_string(g_dionaea->config, group_name, "config.path", &error);
 
 	// test the path ...
@@ -656,7 +656,7 @@ void *proc_filter_cfg(gchar *group_name)
 			continue;
 		}
 		if(g_strcmp0(parts[1], "allow") == 0) {
-			if(g_list_find_custom(allow_keys, parts[2], g_strcmp0) == NULL) {
+			if(g_list_find_custom(allow_keys, parts[2], (GCompareFunc) g_strcmp0) == NULL) {
 				allow_keys = g_list_append(allow_keys, parts[2]);
 			}
 		} else if(g_strcmp0(parts[1], "deny") == 0) {

@@ -84,7 +84,7 @@ static struct
 
 bool nfq_config(void)
 {
-  GError *error;
+	GError *error = NULL;
 	g_debug("%s %s", __PRETTY_FUNCTION__, __FILE__);
 	memset(&nfq_runtime, 0, sizeof(nfq_runtime));
 

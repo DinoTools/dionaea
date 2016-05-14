@@ -216,7 +216,7 @@ static bool pcap_prepare(void)
 	}
 	gchar *key, **keys, **parts;
 	gsize len;
-	GError *error;
+	GError *error = NULL;
 
 	keys = g_key_file_get_keys(g_dionaea->config, "module.pcap", &len, &error);
 

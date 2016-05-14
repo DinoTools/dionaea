@@ -56,10 +56,6 @@
 
 #include "config.h"
 
-#ifdef HAVE_LIBGC
-	#include <gc.h>
-#endif
-
 #include "config.h"
 #include "dionaea.h"
 #include "dns.h"
@@ -103,7 +99,6 @@ struct options
 	gchar *workingdir;
 	gchar *config;
 	bool daemon;
-	char *garbage;
 
 	struct
 	{
@@ -125,7 +120,6 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			{ "config",         1, 0, 'c'},
 			{ "daemonize",      0, 0, 'D'},
 			{ "group",          1, 0, 'g'},
-			{ "garbage",        1, 0, 'G'},
 			{ "help",           0, 0, 'h'},
 			{ "large-help",     0, 0, 'H'},
 			{ "log-levels",     1, 0, 'l'},
@@ -155,12 +149,6 @@ bool options_parse(struct options* options, int argc, char* argv[])
 		case 'g':
 			options->group.name = g_strdup(optarg);
 			break;
-
-#ifdef HAVE_LIBGC
-		case 'G':
-			options->garbage = g_strdup(optarg);
-			break;
-#endif
 
 		case 'h':
 			show_help(false);
@@ -272,15 +260,6 @@ bool options_validate(struct options *opt)
 		}
 	}
 
-	if( opt->garbage != NULL )
-	{
-		if( strcmp(opt->garbage, "collect" ) != 0 && strcmp(opt->garbage, "debug" ) != 0 )
-		{
-			g_error("Invalid garbage mode %s\n", opt->garbage);
-			return false;
-		}
-	}
-
 	opt->stdOUT.filter = log_filter_new(opt->stdOUT.domains, opt->stdOUT.levels);
 	if( opt->stdOUT.filter == NULL )
 		return false;
@@ -292,7 +271,6 @@ static void options_free(struct options *opt)
 {
 	g_free(opt->config);
 	g_free(opt->group.name);
-	g_free(opt->garbage);
 	g_free(opt->stdOUT.levels);
 	g_free(opt->stdOUT.domains);
 	g_free(opt->pidfile);
@@ -429,9 +407,6 @@ void show_help(bool defaults)
 		{"c",   "config=FILE",          "use FILE as configuration file",               SYSCONFDIR "/dionaea.conf"},
 		{"D",   "daemonize",            "run as daemon",                        0},
 		{"g",   "group=GROUP",          "switch to GROUP after startup (use with -u)", "keep current group"},
-#ifdef HAVE_LIBGC
-		{"G",   "garbage=[collect|debug]","garbage collect,  usefull to debug memory leaks, does NOT work with valgrind",   0},  
-#endif
 		{"h",   "help",                 "display help",                         0},
 		{"H",   "large-help",           "display help with default values",     0},
 		{"l",   "log-levels=WHAT",      "which levels to log, valid values all, debug, info, message, warning, critical, error, combine using ',', exclude with - prefix",  0},
@@ -539,7 +514,7 @@ int logger_load(struct options *opt)
 
 int main (int argc, char *argv[])
 {
-	GError *error;
+	GError *error = NULL;
 	struct version v;
 	show_version(&v);
 	g_log_set_default_handler(logger_stdout_log, NULL);
@@ -558,33 +533,6 @@ int main (int argc, char *argv[])
 	}
 
 	g_log_set_default_handler(logger_stdout_log, opt->stdOUT.filter);
-	// gc
-	if( opt->garbage != NULL )
-	{
-#ifdef HAVE_LIBGC
-		g_message("gc mode %s", opt->garbage);
-		if( g_mem_gc_friendly != TRUE )
-		{
-			g_error("export G_DEBUG=gc-friendly\nexport G_SLICE=always-malloc\n for gc");
-		}
-
-
-		static GMemVTable memory_vtable =
-		{
-			.malloc = GC_malloc,
-			.realloc = GC_realloc,
-			.free   = GC_free,
-		};
-
-		g_mem_set_vtable(&memory_vtable);
-		if( strcmp(opt->garbage, "debug") == 0 )
-			GC_find_leak = 1;
-
-		// set libev allocator
-		typedef void *(*moron)(void *ptr, long size);
-		ev_set_allocator((moron)GC_realloc);
-#endif
-	}
 
 	if( opt->workingdir != NULL && chdir(opt->workingdir) != 0 )
 	{
