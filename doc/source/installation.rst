@@ -82,7 +82,26 @@ Install required build dependencies before configuring and building dionaea.
 
 .. code-block:: console
 
-    $ sudo apt-get install autoconf automake libtool check libglib2.0-dev libssl-dev libcurl4-openssl-dev libudns-dev libreadline-dev libsqlite3-dev libemu-dev cython3 libxml2-dev libxslt1-dev libpcap-dev libev-dev python3 python3-dev libnl-dev libnetfilter-queue-dev libgc-dev libloudmouth1-dev
+    $ sudo apt-get install \
+        autoconf \
+        automake \
+        build-essential \
+        check \
+        cython3 \
+        libcurl4-openssl-dev \
+        libemu-dev \
+        libev-dev \
+        libglib2.0-dev \
+        libloudmouth1-dev \
+        libnetfilter-queue-dev \
+        libnl-dev \
+        libpcap-dev \
+        libssl-dev \
+        libtool \
+        libudns-dev \
+        python3 \
+        python3-dev \
+        python3-yaml \
 
 After all dependencies have been installed successfully run :code:`autreconf` to build or rebuild the build scripts.
 
@@ -96,14 +115,13 @@ Run :code:`configure` to configure the build scripts.
 
     ./configure \
         --disable-werror \
-        --prefix=/opt \
+        --prefix=/opt/dionaea \
         --with-python=/usr/bin/python3 \
         --with-cython-dir=/usr/bin \
         --with-ev-include=/usr/include \
         --with-ev-lib=/usr/lib \
         --with-emu-lib=/usr/lib/libemu \
         --with-emu-include=/usr/include \
-        --with-gc-include=/usr/include/gc \
         --with-nl-include=/usr/include \
         --with-nl-lib=/usr/lib
 
