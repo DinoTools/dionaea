@@ -572,8 +572,8 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 
 	char *old_ifa_name = "";
 	pyafdict = NULL;
-	for( iface=ifaces[0]; i < count; iface = ifaces[i], i++ )
-	{
+	for(i = 0; i < count; i++) {
+		iface = ifaces[i];
 		if( iface->ifa_addr == NULL )
 			continue;
 
