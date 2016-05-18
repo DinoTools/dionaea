@@ -58,7 +58,7 @@ class mssqld(connection):
         l=0
         chunk = b''
         while len(data) > l:
-            #			logger.warn("len(data) {} l {}".format(len(data),l))
+            # logger.warn("len(data) %d l %s", len(data), l)
             p = None
             try:
                 if len(data) - l  < 8: # length of TDS_Header
@@ -126,7 +126,7 @@ class mssqld(connection):
                 rp.show()
                 self.send(rp.build())
 
-#		logger.warn("return len(data) {} l {}".format(len(data),l))
+        # logger.warn("return len(data) %d l %s", len(data), l)
         return l
 
     def decode_password(self, password):
@@ -176,7 +176,7 @@ class mssqld(connection):
                 xfield = field.decode('utf-16')
                 if i == "Password":
                     xfield = self.decode_password(xfield)
-#				logger.info("Field {} {} {}".format(i,field, xfield))
+                # logger.info("Field %s %s %s", i, field, xfield)
                 fields[i] = xfield
 
             i = incident("dionaea.modules.python.mssql.login")
@@ -206,7 +206,7 @@ class mssqld(connection):
                 cmd = cmd.encode()
 
             # limit to 1024
-            logger.debug("SQL BATCH : {:.1024s}".format(cmd))
+            logger.debug("SQL BATCH : %.1024s", cmd)
 
             # FIXME SESSIONDUMP remove at some point
             if self.session != None:
@@ -236,7 +236,7 @@ class mssqld(connection):
                  TDS_Token()/TDS_Token_ReturnStatus(),TDS_Token()/TDS_Token_DoneProc()]
 
         else:
-            logger.warn("UNKNOWN PACKET TYPE FOR MSSQL {}".format(PacketType))
+            logger.warn("UNKNOWN PACKET TYPE FOR MSSQL %s", PacketType)
 
         return r
 
