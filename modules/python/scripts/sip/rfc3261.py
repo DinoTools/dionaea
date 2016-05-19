@@ -461,7 +461,7 @@ class Message(object):
         self.time = time.time()
 
     def create_response(self, code, message = None, personality = None):
-        logger.info("Creating Response: code={}, message={}".format(code, message))
+        logger.info("Creating Response: code=%s, message=%s", code, message)
 
         if personality is not None:
             self._personality = personality
@@ -546,7 +546,7 @@ class Message(object):
 
         for header in headers:
             if self.headers.get(header) is None:
-                logger.warn("Header missing: {}".format(repr(header)))
+                logger.warn("Header missing: %r", header)
                 return False
 
         return True
@@ -581,7 +581,7 @@ class Message(object):
         try:
             h1, h2, h3 = headers_data[0].split(b" ", 2)
         except:
-            logger.warning("Can't parse first line of sip message: {}".format(repr(headers_data[0])[:128]))
+            logger.warning("Can't parse first line of sip message: %s", repr(headers_data[0])[:128])
             raise SipParsingError
 
         del headers_data[0]
@@ -628,7 +628,7 @@ class Message(object):
 
                 l += content_length
             else:
-                logger.info("Body is to short than the given content-length: Content-Length {}, Body {}".format(content_length, len(body)))
+                logger.info("Body is to short than the given content-length: Content-Length %d, Body %d", content_length, len(body))
 
         return (
             l,

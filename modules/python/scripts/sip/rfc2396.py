@@ -181,9 +181,9 @@ class URI(object):
             if not m:
                 try:
                     data = bytes(data, "utf-8")
-                    logger.info("Can't parse the URI: %s" % format(data))
+                    logger.info("Can't parse the URI: %s", data)
                 except Exception as e:
-                    logger.info("Can't parse or convert the URI: %s" % format(e))
+                    logger.info("Can't parse or convert the URI: %s", e)
 
                 return (0, {})
 
@@ -193,7 +193,7 @@ class URI(object):
                 if type(port) == bytes or type(port) == str:
                     port = int(port)
             except Exception as e:
-                logger.info("%s" % format(e))
+                logger.info("%s", e)
 
             params = {}
             if m.group("params"):

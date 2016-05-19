@@ -240,7 +240,7 @@ class SipConfig(object):
         """
         Fetch the SDP content from the database and add missing values.
         """
-        logger.debug("Loading sdp with: params = {}, media_ports {}".format(pprint.pformat(params), pprint.pformat(media_ports)))
+        logger.debug("Loading sdp with: params = %s, media_ports %s", pprint.pformat(params), pprint.pformat(media_ports))
         ret = self._cur.execute("SELECT sdp FROM sdp WHERE name='?'")
         data = ret.fetchone()
 
@@ -332,12 +332,12 @@ class PCAP(object):
             if not os.path.exists(path):
                 os.makedirs(path)
         except:
-            logger.info("Can't create RTP-Dump dir: {}".format(path))
+            logger.info("Can't create RTP-Dump dir: %s", path)
 
         try:
             self._fp = open(os.path.join(path, filename), "wb")
         except:
-            logger.warning("Can't create RTP-Dump file: {}".format(os.path.join(path, filename)))
+            logger.warning("Can't create RTP-Dump file: %s", os.path.join(path, filename))
 
         if self._fp is None:
             return False
