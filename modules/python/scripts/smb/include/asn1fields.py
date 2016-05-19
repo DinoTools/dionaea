@@ -175,8 +175,8 @@ class ASN1F_enum_INTEGER(ASN1F_INTEGER):
         for k in keys:
             i2s[k] = enum[k]
             s2i[enum[k]] = k
-        logger.debug("i2s %s" % self.i2s)
-        logger.debug("s2i %s" % self.s2i)
+        logger.debug("i2s %s", self.i2s)
+        logger.debug("s2i %s", self.s2i)
 
     def any2i_one(self, pkt, x):
         if type(x) is str:
@@ -266,7 +266,7 @@ class ASN1F_SEQUENCE(ASN1F_field):
                 s = obj.dissect(pkt,s)
             if s:
                 # XXX not reversible!
-                logger.warning("Too many bytes to decode sequence: [%r]" % s)
+                logger.warning("Too many bytes to decode sequence: [%r]", s)
             return remain
         except ASN1_Error as e:
             raise ASN1F_badsequence(e)
@@ -357,7 +357,7 @@ class ASN1F_CHOICE(ASN1F_PACKET):
         for p in args:
             self.choice[int(p.ASN1_root.ASN1_tag)] = p
 #            print("ASN1_tag %r %s" % ( p.ASN1_root.ASN1_tag, p))
-        logger.debug("self.choice %s" % self.choice)
+        logger.debug("self.choice %s", self.choice)
 #        self.context=context
         self.default=default
     def m2i(self, pkt, x):
