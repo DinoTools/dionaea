@@ -82,7 +82,7 @@ class pptpd(connection):
 				#l = p.getlayer(PPTP_StartControlConnection_Request)
 				i = incident("dionaea.modules.python.pptp.connect")
 				i.con = self
-				logger.debug("pptp remote hostname: {0} ".format(x.HostName))
+				logger.debug("pptp remote hostname: %s", x.HostName)
 				i.remote_hostname = x.HostName
 				i.report()
 
@@ -113,7 +113,7 @@ class pptpd(connection):
 		elif PacketType ==  PPTP_CTRMSG_TYPE_OUTGOINGCALL_REQUEST:
 			r = PPTP_OutgoingCall_Reply()
 		else:
-			logger.warn("UNKNOWN PACKET TYPE FOR PPTP {}".format(PacketType))
+			logger.warn("UNKNOWN PACKET TYPE FOR PPTP %s", PacketType)
 		
 		return r
 	

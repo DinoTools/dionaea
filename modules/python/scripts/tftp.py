@@ -158,8 +158,7 @@ class TftpSession(connection):
     def senderror(self, errorcode):
         """This method uses the socket passed, and uses the errorcode, address
         and port to compose and send an error packet."""
-        logger.debug("In senderror, being asked to send error %d to %s:%i"
-                     % (errorcode, self.remote.host, self.remote.port))
+        logger.debug("In senderror, being asked to send error %d to %s:%i", errorcode, self.remote.host, self.remote.port)
         errpkt = TftpPacketERR()
         errpkt.errorcode = errorcode
         self.send(errpkt.encode().buffer)
@@ -174,13 +173,12 @@ class TftpPacketWithOptions(object):
 
     def setoptions(self, options):
         logger.debug("in TftpPacketWithOptions.setoptions")
-        logger.debug("options: " + str(options))
+        logger.debug("options: %s", str(options))
         myoptions = {}
         for key in options:
             newkey = str(key)
             myoptions[newkey] = str(options[key])
-            logger.debug("populated myoptions with %s = %s"
-                         % (newkey, myoptions[newkey]))
+            logger.debug("populated myoptions with %s = %s", newkey, myoptions[newkey])
 
         logger.debug("setting options hash to: " + str(myoptions))
         self._options = myoptions
