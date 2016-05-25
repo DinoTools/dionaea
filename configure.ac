@@ -882,7 +882,7 @@ AC_CONFIG_FILES([Makefile
 				modules/nc/Makefile
 				modules/python/Makefile
 				modules/python/setup.py
-				modules/python/scripts/Makefile
+				modules/python/dionaea/Makefile
 				modules/python/util/Makefile
 				modules/emu/Makefile
 				modules/curl/Makefile
