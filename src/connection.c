@@ -806,6 +806,7 @@ void connection_connect_next_addr(struct connection *con)
 			continue;
 		}
 		con->remote.domain = socket_domain;
+		strncpy(con->remote.ip_string, addr, INET_STRLEN);
 
 		if( con->local.hostname != NULL )
 		{
@@ -1031,13 +1032,12 @@ void connection_connect(struct connection* con, const char* addr, uint16_t port,
 
 	con->remote.port = htons(port);
 
-	con->remote.hostname = g_strdup(addr);
-
 	connection_set_type(con, connection_type_connect);
 
 
 	if( !parse_addr(addr, NULL, port, &sa, &socket_domain, &sizeof_sa) )
 	{
+		con->remote.hostname = g_strdup(addr);
 		connection_connect_resolve(con);
 	} else
 	{
