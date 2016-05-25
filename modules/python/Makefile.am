@@ -2,7 +2,7 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-SUBDIRS = scripts util
+SUBDIRS = dionaea util
 
 all: binding.c
 
