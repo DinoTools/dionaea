@@ -3,6 +3,11 @@ Configuration
 
 If you want to change the software, it is really important to understand how it works, therefore please take the time to how it works.
 :file:`dionaea.cfg` is the main configuration file.
+In the example below you can see the default configuration.
+
+.. literalinclude:: ../../conf/dionaea.cfg.in
+    :language: ini
+    :caption: dionaea.cfg
 
 Logging
 -------
