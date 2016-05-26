@@ -9,6 +9,25 @@ In the example below you can see the default configuration.
     :language: ini
     :caption: dionaea.cfg
 
+dionaea
+-------
+
+**listen.mode:**
+
+    There are basically three modes how dionaea can bind the services to IP addresses.
+
+    - **getifaddrs** - auto
+        This will get a list of all IP addresses of all available interfaces and bind the services to each IP.
+        It is also possible to specify a list of interfaces to use by using the :code:`listen.interfaces` perameter.
+
+    - **manual** - your decision
+        In this mode you have to specify an additional parameter :code:`listen.addresses`.
+        This is a comma separated list of IP addresses dionaea should bind the services to.
+
+    - **nl**, will require a list of interfaces
+        You have to specify a comma separated list of interfaces names with the :code:`listen.interfaces` parameter.
+        If an IP address is added to an interfaces or removed from an interface dionaea will lunch or stop all services for this IP.
+
 Logging
 -------
 
