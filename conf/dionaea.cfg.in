@@ -4,9 +4,8 @@ modules=curl,python,nfq,emu,pcap,xmatch
 processors=filter_streamdumper,filter_emu
 
 listen.mode=getifaddrs
-listen.addresses=127.0.0.1
-listen.eth0.interface=eth0
-listen.eth0.addresses=::
+# listen.addresses=127.0.0.1
+# listen.interfaces=eth0,tap0
 
 ssl.default.c=GB
 
