@@ -57,7 +57,7 @@ queue=2
 lookup_ethernet_addr=no
 
 [module.python]
-imports=dionaea.services,dionaea.ihandlers
+imports=dionaea.log,dionaea.services,dionaea.ihandlers
 sys_paths=default
 service_configs=@SYSCONFDIR@/dionaea/services-enabled/*.yaml
 ihandler_configs=@SYSCONFDIR@/dionaea/ihandlers-enabled/*.yaml
