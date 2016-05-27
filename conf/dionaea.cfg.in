@@ -7,7 +7,14 @@ listen.mode=getifaddrs
 # listen.addresses=127.0.0.1
 # listen.interfaces=eth0,tap0
 
-ssl.default.c=GB
+# Country
+# ssl.default.c=GB
+# Common Name/domain name
+# ssl.default.cn=
+# Organization
+# ssl.default.o=
+# Organizational Unit
+# ssl.default.ou=
 
 [logging]
 default.filename=@LOCALESTATEDIR@/dionaea/dionaea.log
