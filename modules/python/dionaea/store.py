@@ -51,6 +51,13 @@ class storehandler(ihandler):
 
         dionaea_config = g_dionaea.config().get("dionaea")
         self.download_dir = dionaea_config.get("download.dir")
+        if self.download_dir is None:
+            logger.error("Setting download.dir not configured")
+        else:
+            if not os.path.isdir(self.download_dir):
+                logger.error("'%s' is not a directory")
+            if not os.access(self.download_dir, os.W_OK):
+                logger.error("Not allowed to create files in the '%s' directory", self.download_dir)
 
     def handle_incident(self, icd):
         logger.debug("storing file")
@@ -58,7 +65,7 @@ class storehandler(ihandler):
         # ToDo: use sha1 or sha256
         md5 = md5file(p)
         # ToDo: use sys.path.join()
-        n = self.download_dir + '/' + md5
+        n = os.path.join(self.download_dir, md5)
         i = incident("dionaea.download.complete.hash")
         i.file = n
         i.url = icd.url
