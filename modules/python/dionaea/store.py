@@ -65,7 +65,7 @@ class storehandler(ihandler):
         # ToDo: use sha1 or sha256
         md5 = md5file(p)
         # ToDo: use sys.path.join()
-        n = self.download_dir + '/' + md5
+        n = os.path.join(self.download_dir, md5)
         i = incident("dionaea.download.complete.hash")
         i.file = n
         i.url = icd.url
