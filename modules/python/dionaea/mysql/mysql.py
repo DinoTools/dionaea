@@ -49,6 +49,7 @@ class mysqld(connection):
         self.config = config.get("databases")
 
     def handle_established(self):
+        self.processors()
         self.state = 'greeting'
         a = MySQL_Packet_Header(Number=0) / MySQL_Server_Greeting()
         a.show()
