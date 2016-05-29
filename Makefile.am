@@ -26,8 +26,8 @@ install-data-local:
 		$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/dionaea/services-available/; \
 		$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/dionaea/services-enabled/; \
 		$(INSTALL_DATA) $(srcdir)/conf/dionaea.cfg $(DESTDIR)$(sysconfdir)/dionaea/dionaea.cfg; \
-		$(INSTALL_DATA) $(srcdir)/conf/ihandlers/* $(DESTDIR)$(sysconfdir)/dionaea/ihandlers-available/; \
-		$(INSTALL_DATA) $(srcdir)/conf/services/* $(DESTDIR)$(sysconfdir)/dionaea/services-available/; \
+		$(INSTALL_DATA) $(srcdir)/conf/ihandlers/*.yaml $(DESTDIR)$(sysconfdir)/dionaea/ihandlers-available/; \
+		$(INSTALL_DATA) $(srcdir)/conf/services/*.yaml $(DESTDIR)$(sysconfdir)/dionaea/services-available/; \
 		(cd $(DESTDIR)$(sysconfdir)/dionaea/ihandlers-enabled/ && for filename in ${ENABLED_IHANDLERS}; do ${LN_S} ../ihandlers-available/$${filename}; done); \
 		(cd $(DESTDIR)$(sysconfdir)/dionaea/services-enabled/ && find ../services-available/ -type f -exec ${LN_S} {} \;); \
 	fi
