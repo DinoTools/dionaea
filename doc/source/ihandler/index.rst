@@ -35,4 +35,5 @@ List of available ihandlers
     store
     submit_http
     submit_http_post
+    tftp_download
     virustotal
