@@ -52,6 +52,6 @@ Format of the connection information:
 Example config
 --------------
 
-.. literalinclude:: ../../../conf/ihandlers/log_json.yaml
+.. literalinclude:: ../../../conf/ihandlers/log_json.yaml.in
    :language: yaml
    :caption: ihandlers/log_json.yaml

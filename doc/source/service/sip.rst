@@ -155,6 +155,6 @@ Example:
 Example config
 --------------
 
-.. literalinclude:: ../../../conf/services/sip.yaml
+.. literalinclude:: ../../../conf/services/sip.yaml.in
     :language: yaml
     :caption: services/sip.yaml
