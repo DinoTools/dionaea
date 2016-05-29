@@ -1,3 +1,0 @@
-- name: tftp
-  config:
-    root: /var/lib/dionaea/wwwroot

@@ -2,4 +2,4 @@
   config:
     handlers:
       #- http://127.0.0.1:8080/
-      - file:///tmp/dionaea.json
+      - file://@LOCALESTATEDIR@/dionaea/dionaea.json

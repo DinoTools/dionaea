@@ -6,7 +6,7 @@
       - 5060
     tls_ports:
       - 5061
-    users: "/tmp/sipaccounts.sqlite"
+    users: "@LOCALESTATEDIR@/dionaea/sipaccounts.sqlite"
     rtp:
       enable: true
       # how to dump the rtp stream

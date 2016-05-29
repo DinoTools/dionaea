@@ -1,3 +1,0 @@
-- name: log_db_sql
-  config:
-    url: sqlite:////tmp/dionaea1.db
