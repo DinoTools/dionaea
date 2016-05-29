@@ -27,6 +27,7 @@ List of available ihandlers
     fail2ban
     ftp
     hpfeeds
+    log_db_sql
     log_json
     log_sqlite
     nfq
