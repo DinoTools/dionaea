@@ -14,6 +14,10 @@ install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/binaries/
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/bistreams/
+	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/roots/
+	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/roots/ftp
+	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/roots/tftp
+	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/roots/www
 	if [ ! -e $(DESTDIR)$(sysconfdir)/dionaea/ ]; then \
 		$(mkinstalldirs) $(DESTDIR)$(sysconfdir); \
 		$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/dionaea; \
