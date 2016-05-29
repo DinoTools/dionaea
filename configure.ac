@@ -885,6 +885,7 @@ AC_CONFIG_FILES([Makefile
 				conf/services/http.yaml
 				conf/services/sip.yaml
 				conf/services/tftp.yaml
+				conf/services/upnp.yaml
 				src/Makefile
 				include/Makefile
 				modules/Makefile
