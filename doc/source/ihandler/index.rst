@@ -28,7 +28,7 @@ List of available ihandlers
     ftp
     hpfeeds
     log_json
-    logsql
+    log_sqlite
     nfq
     p0f
     store

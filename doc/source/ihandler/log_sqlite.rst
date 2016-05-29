@@ -1,5 +1,7 @@
-logsql
-======
+log_sqlite
+==========
+
+.. warning:: This ihandler was renamed in dionaea 0.4.0 from logsql to log_sqlite.
 
 This is what the logsql python script does, it is an ihandler, and writes
 interesting incidents to a sqlite database, one of the benefits of this
@@ -41,6 +43,6 @@ for more examples how to make use of the database.
 Example config
 --------------
 
-.. literalinclude:: ../../../conf/ihandlers/log_sqlite.yaml
+.. literalinclude:: ../../../conf/ihandlers/log_sqlite.yaml.in
    :language: yaml
    :caption: ihandlers/log_sqlite.yaml
