@@ -1,0 +1,3 @@
+- name: log_db_sql
+  config:
+    url: sqlite:///@LOCALESTATEDIR@/dionaea/dionaea.db

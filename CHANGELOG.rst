@@ -16,6 +16,7 @@ Changelog
 
 * Add initial documentation for missing modules
 * Update documentation to reflact config changes
+* Add processor documentation
 
 **python/***
 
@@ -24,6 +25,9 @@ Changelog
 * Rename incident handlers from logsql to log_sqlite
 * Rename incident handlers from uniqdownload to submit_http_post
 
+**python/mysql**
+
+* Enable processor pipeline
 
 0.3.0 - 2016-03-30
 ~~~~~~~~~~~~~~~~~~

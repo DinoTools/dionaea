@@ -1,0 +1,3 @@
+- name: log_sqlite
+  config:
+    file: @LOCALESTATEDIR@/dionaea/dionaea.sqlite

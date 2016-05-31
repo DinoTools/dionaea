@@ -876,6 +876,16 @@ AC_DEFINE_DIR(DATAROOTDIR, [datarootdir], [The root of the directory tree for re
 
 AC_CONFIG_FILES([Makefile
 				conf/dionaea.cfg
+				conf/ihandlers/fail2ban.yaml
+				conf/ihandlers/log_db_sql.yaml
+				conf/ihandlers/log_json.yaml
+				conf/ihandlers/log_sqlite.yaml
+				conf/ihandlers/virustotal.yaml
+				conf/services/ftp.yaml
+				conf/services/http.yaml
+				conf/services/sip.yaml
+				conf/services/tftp.yaml
+				conf/services/upnp.yaml
 				src/Makefile
 				include/Makefile
 				modules/Makefile

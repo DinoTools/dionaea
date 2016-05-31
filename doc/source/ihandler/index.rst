@@ -27,11 +27,13 @@ List of available ihandlers
     fail2ban
     ftp
     hpfeeds
+    log_db_sql
     log_json
-    logsql
+    log_sqlite
     nfq
     p0f
     store
     submit_http
     submit_http_post
+    tftp_download
     virustotal
