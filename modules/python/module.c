@@ -484,10 +484,13 @@ void log_wrap(char *name, int number, char *file, int line, char *msg)
 		log_level = G_LOG_LEVEL_WARNING;
 	else
 	if( number == 40 )
-		log_level = G_LOG_LEVEL_ERROR;
+		// in glib2 critical is a critical warning
+		log_level = G_LOG_LEVEL_CRITICAL;
 	else
 	if( number == 50 )
-		log_level = G_LOG_LEVEL_CRITICAL;
+		// in glib2 an error is critical and calls the abort function to
+		// terminate the program immediately
+		log_level = G_LOG_LEVEL_ERROR;
 
 	g_log(log_domain, log_level, "%s", msg);
 	free(log_domain);
