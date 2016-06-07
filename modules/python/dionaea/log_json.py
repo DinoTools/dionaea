@@ -84,7 +84,6 @@ class LogJsonHandlerLoader(IHandlerLoader):
         try:
             return LogJsonHandler("*", config=config)
         except LoaderError as e:
-            print(e.args)
             logger.error(e.msg, *e.args)
 
 
