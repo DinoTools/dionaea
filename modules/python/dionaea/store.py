@@ -28,6 +28,7 @@
 
 from dionaea import IHandlerLoader
 from dionaea.core import ihandler, incident, g_dionaea
+from dionaea.exception import LoaderError
 from dionaea.util import md5file
 
 import os
@@ -43,8 +44,8 @@ class StoreHandlerLoader(IHandlerLoader):
     def start(cls, config=None):
         try:
             return storehandler("dionaea.download.complete", config=config)
-        except OSError as e:
-            logger.error(*e.args)
+        except LoaderError as e:
+            logger.error(e.msg, *e.args)
             return None
 
 
@@ -56,12 +57,12 @@ class storehandler(ihandler):
         dionaea_config = g_dionaea.config().get("dionaea")
         self.download_dir = dionaea_config.get("download.dir")
         if self.download_dir is None:
-            raise OSError("Setting download.dir not configured")
+            raise LoaderError("Setting download.dir not configured")
         else:
             if not os.path.isdir(self.download_dir):
-                raise OSError("'%s' is not a directory", self.download_dir)
+                raise LoaderError("'%s' is not a directory", self.download_dir)
             if not os.access(self.download_dir, os.W_OK):
-                raise OSError("Not allowed to create files in the '%s' directory", self.download_dir)
+                raise LoaderError("Not allowed to create files in the '%s' directory", self.download_dir)
 
     def handle_incident(self, icd):
         logger.debug("storing file")
