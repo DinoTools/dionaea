@@ -10,6 +10,7 @@ PYSCRIPTS += sip/rfc3261.py
 PYSCRIPTS += sip/rfc4566.py
 PYSCRIPTS += tftp.py
 PYSCRIPTS += echo.py
+PYSCRIPTS += exception.py
 PYSCRIPTS += ftp.py
 PYSCRIPTS += ftp_download.py
 PYSCRIPTS += services.py
