@@ -66,7 +66,7 @@ def start():
             handlers = h.start(config=ihandler_config.get("config", {}))
             if isinstance(handlers, (list, tuple)):
                 g_handlers[h] += handlers
-            else:
+            elif handlers is not None:
                 g_handlers[h].append(handlers)
 
     for handler_loader, ihandlers in g_handlers.items():
