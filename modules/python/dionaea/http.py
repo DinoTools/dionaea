@@ -26,8 +26,9 @@
 #*******************************************************************************/
 
 
-from dionaea.core import connection, g_dionaea, incident, ihandler
 from dionaea import ServiceLoader
+from dionaea.core import connection, g_dionaea, incident, ihandler
+from dionaea.exception import ServiceConfigError
 #from dionaea.services import g_slave
 import struct
 from collections import OrderedDict
@@ -61,14 +62,22 @@ class HTTPService(ServiceLoader):
 
         for port in config.get("ports", []):
             daemon = httpd(proto="tcp")
-            daemon.apply_config(config)
+            try:
+                daemon.apply_config(config)
+            except ServiceConfigError as e:
+                logger.error(e.msg, *e.args)
+                continue
             daemon.bind(addr, port, iface=iface)
             daemon.listen()
             daemons.append(daemon)
 
         for port in config.get("ssl_ports", []):
             daemon = httpd(proto="tls")
-            daemon.apply_config(config)
+            try:
+                daemon.apply_config(config)
+            except ServiceConfigError as e:
+                logger.error(e.msg, *e.args)
+                continue
             daemon.bind(addr, port, iface=iface)
             daemon.listen()
             daemons.append(daemon)
@@ -232,6 +241,13 @@ class httpd(connection):
                 logger.warning("Error while converting 'max_request_size' to an integer value. Using default value.")
 
         self.root = config.get("root")
+        if self.root is None:
+            logger.warningfigError("Root directory not configured")
+        else:
+            if not os.path.isdir(self.root):
+                logger.warning("Root path '%s' is not a directory", self.root)
+            elif not os.access(self.root, os.R_OK):
+                logger.warning("Unable to read content of root directory '%s'", self.root)
 
     def handle_origin(self, parent):
         pass
