@@ -113,6 +113,9 @@ struct options
 
 bool options_parse(struct options* options, int argc, char* argv[])
 {
+	options->config = g_strdup(SYSCONFDIR"/dionaea/dionaea.cfg");
+	options->workingdir = g_strdup(PREFIX);
+
 	while( 1 )
 	{
 		int option_index = 0;
@@ -139,6 +142,7 @@ bool options_parse(struct options* options, int argc, char* argv[])
 		switch( c )
 		{
 		case 'c':
+			g_free(options->config);
 			options->config = g_strdup(optarg);
 			break;
 
@@ -187,6 +191,7 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			break;
 
 		case 'w':
+			g_free(options->workingdir);
 			options->workingdir = g_strdup(optarg);
 			break;
 
@@ -199,12 +204,6 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			break;
 		}
 	}
-
-	if( options->config == NULL )
-		options->config = strdup(SYSCONFDIR"/dionaea/dionaea.conf");
-
-	if( options->workingdir == NULL )
-		options->workingdir = g_strdup(PREFIX);
 
 	return true;
 }
