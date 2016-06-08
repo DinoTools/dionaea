@@ -9,3 +9,7 @@ class DionaeaError(Exception):
 
 class LoaderError(DionaeaError):
     pass
+
+
+class ServiceConfigError(DionaeaError):
+    pass
