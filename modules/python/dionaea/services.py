@@ -71,7 +71,7 @@ class slave():
                             continue
                         if isinstance(daemons, (list, tuple)):
                             self.daemons[addr][service] += daemons
-                        else:
+                        elif daemons is not None:
                             self.daemons[addr][service].append(daemons)
             print(self.daemons)
 
