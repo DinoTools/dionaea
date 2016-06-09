@@ -113,9 +113,6 @@ struct options
 
 bool options_parse(struct options* options, int argc, char* argv[])
 {
-	options->config = g_strdup(SYSCONFDIR"/dionaea/dionaea.cfg");
-	options->workingdir = g_strdup(PREFIX);
-
 	while( 1 )
 	{
 		int option_index = 0;
@@ -142,7 +139,6 @@ bool options_parse(struct options* options, int argc, char* argv[])
 		switch( c )
 		{
 		case 'c':
-			g_free(options->config);
 			options->config = g_strdup(optarg);
 			break;
 
@@ -191,7 +187,6 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			break;
 
 		case 'w':
-			g_free(options->workingdir);
 			options->workingdir = g_strdup(optarg);
 			break;
 
@@ -203,6 +198,20 @@ bool options_parse(struct options* options, int argc, char* argv[])
 		default:
 			break;
 		}
+	}
+	if(options->config == NULL) {
+		options->config = g_strdup(SYSCONFDIR"/dionaea/dionaea.cfg");
+	}
+	if(options->workingdir == NULL) {
+		options->workingdir = g_strdup(PREFIX);
+	}
+
+	// Logging
+	if(options->stdOUT.domains == NULL) {
+		options->stdOUT.domains = g_strdup("*");
+	}
+	if(options->stdOUT.levels == NULL) {
+		options->stdOUT.levels = g_strdup("error,critical,warning");
 	}
 
 	return true;
