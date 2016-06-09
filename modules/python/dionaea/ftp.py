@@ -70,6 +70,7 @@
 # ftp server
 from dionaea import ServiceLoader
 from dionaea.core import connection, ihandler, g_dionaea, incident
+from dionaea.exception import ServiceConfigError
 import logging
 import os
 from os import stat
@@ -148,7 +149,11 @@ class FTPService(ServiceLoader):
             config = {}
 
         daemon = FTPd()
-        daemon.apply_config(config)
+        try:
+            daemon.apply_config(config)
+        except ServiceConfigError as e:
+            logger.error(e.msg, *e.args)
+            return
         daemon.bind(addr, 21, iface=iface)
         daemon.listen()
         return daemon
@@ -178,6 +183,13 @@ class FTPd(connection):
 
     def apply_config(self, config):
         self.basedir = config.get("root")
+        if self.basedir is None:
+            raise ServiceConfigError("basedir not defined")
+        if not os.path.isdir(self.basedir):
+            raise ServiceConfigError("The basedir '%s' is not a directory", self.basedir)
+        if not os.access(self.basedir, os.R_OK):
+            raise ServiceConfigError("Unable to read files in the '%s' directory", self.basedir)
+
         self.response_msgs.update(config.get("response_messages", {}))
 
     def chroot(self, p):
