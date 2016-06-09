@@ -116,7 +116,7 @@ class Headers(object):
             headers = global_headers + headers
 
         self.headers = OrderedDict(headers)
-        print(self, self.headers)
+        logger.debug("Headers: %r", self.headers)
 
         self.methods = None
         if methods:
@@ -146,7 +146,6 @@ class Headers(object):
         return True
 
     def prepare(self, values):
-        print("prepare", self, self.headers)
         for n, v in self.headers.items():
             try:
                 yield (n, v.format(**values))
@@ -374,9 +373,9 @@ class httpd(connection):
             return pos + len(self.boundary)
 
         elif self.state == 'PUT':
-            print("putting to me")
+            logger.debug("putting to me")
         elif self.state == 'SENDFILE':
-            print("sending file")
+            logger.debug("sending file")
             return 0
 
         return len(data)
