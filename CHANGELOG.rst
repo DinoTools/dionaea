@@ -4,6 +4,20 @@ Changelog
 0.5.0 - (`master`_)
 ~~~~~~~~~~~~~~~~~~~
 
+0.4.1 - (`master`_)
+~~~~~~~~~~~~~~~~~~~
+
+**core**
+
+* Initialize stdout logger earlier
+* Log error,critical and warning by default
+
+**python/***
+
+* In glib2 critical is a critical warning
+* Add support for exceptions
+* Check file path and show warnings
+
 0.4.0 - 2016-05-31
 ~~~~~~~~~~~~~~~~~~
 
