@@ -327,7 +327,7 @@ void *proc_streamdumper_cfg_new(gchar *group_name)
 		g_error("streamdumper path does not have time based modifiers, all files end up in a single directory, which is not accepted.");
 	}
 
-	g_warning("%s <-> %s", test, path);
+	g_info("%s <-> %s", test, path);
 	cfg->path = path;
 	return cfg;
 }
