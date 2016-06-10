@@ -54,7 +54,7 @@ def new():
 def start():
     global g_handlers
     g_handlers = {}
-    logger.warn("START THE IHANDLERS")
+    logger.info("START THE IHANDLERS")
 
     for ihandler_config in g_handler_configs:
         for h in IHandlerLoader:
