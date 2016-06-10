@@ -28,6 +28,7 @@
 
 from dionaea import IHandlerLoader
 from dionaea.core import ihandler, g_dionaea
+from dionaea.exception import LoaderError
 
 import logging
 import datetime
@@ -41,7 +42,11 @@ class Fail2BanHandlerLoader(IHandlerLoader):
 
     @classmethod
     def start(cls, config=None):
-        return fail2banhandler(config=config)
+        try:
+            return fail2banhandler(config=config)
+        except LoaderError as e:
+            logger.error(e.msg, *e.args)
+        return None
 
 
 class fail2banhandler(ihandler):
@@ -52,8 +57,14 @@ class fail2banhandler(ihandler):
             config = {}
         offers = config.get("offers", "var/dionaea/offers.f2b")
         downloads = config.get("downloads", "var/dionaea/downloads.f2b")
-        self.offers = open(offers, "a")
-        self.downloads = open(downloads, "a")
+        try:
+            self.offers = open(offers, "a")
+        except OSError as e:
+            raise LoaderError("Unable to open file %s Error message '%s'", offers, e.strerror)
+        try:
+            self.downloads = open(downloads, "a")
+        except OSError as e:
+            raise LoaderError("Unable to open file %s Error message '%s'", downloads, e.strerror)
 
     def handle_incident_dionaea_download_offer(self, icd):
         data = "%s %s %s %s\n" % (datetime.datetime.now().isoformat(

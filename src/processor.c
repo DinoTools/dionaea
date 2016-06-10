@@ -327,7 +327,7 @@ void *proc_streamdumper_cfg_new(gchar *group_name)
 		g_error("streamdumper path does not have time based modifiers, all files end up in a single directory, which is not accepted.");
 	}
 
-	g_warning("%s <-> %s", test, path);
+	g_info("%s <-> %s", test, path);
 	cfg->path = path;
 	return cfg;
 }
@@ -596,6 +596,7 @@ void proc_filter_dump_rules(struct proc_filter_config *cfg)
 		{}
 	};
 
+	g_debug("Dumping filter rules ...");
 	for( int i=0; cfg_iter_help[i].mode != NULL; i++ )
 	{
 		GList **list = (((void *)cfg) + cfg_iter_help[i].offset);
@@ -604,14 +605,14 @@ void proc_filter_dump_rules(struct proc_filter_config *cfg)
 		if( *list == NULL )
 			continue;
 
-		printf("%s\n\t",  cfg_iter_help[i].mode);
+		g_debug("%s:",  cfg_iter_help[i].mode);
 
 
 		for( GList *it = g_list_first((void *)*list); it != NULL; it = g_list_next(it) )
 		{
 			for( int j=0; rule_iter_help[j].type != NULL; j++ )
 			{
-				printf(" # %s  ", rule_iter_help[j].type);
+				g_debug("- %s  ", rule_iter_help[j].type);
 
 				struct proc_filter_config_rule *rule = it->data;
 //				g_warning("################");
@@ -620,16 +621,11 @@ void proc_filter_dump_rules(struct proc_filter_config *cfg)
 				{
 					char *p = jt->data;
 //					g_warning("%s %s %s", cfg_iter_help[i].mode, rule_iter_help[j].type, p);
-					printf("%s ",  p);
+					g_debug("  - %s",  p);
 				}
 //				g_warning("################");
 			}
-			if( g_list_next(it) != NULL )
-				printf("\n\t");
-			else
-				printf("\n");
 		}
-		printf("\n");
 	}
 //	exit(0);
 }

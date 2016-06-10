@@ -54,7 +54,7 @@ def new():
 def start():
     global g_handlers
     g_handlers = {}
-    logger.warn("START THE IHANDLERS")
+    logger.info("START THE IHANDLERS")
 
     for ihandler_config in g_handler_configs:
         for h in IHandlerLoader:
@@ -66,7 +66,7 @@ def start():
             handlers = h.start(config=ihandler_config.get("config", {}))
             if isinstance(handlers, (list, tuple)):
                 g_handlers[h] += handlers
-            else:
+            elif handlers is not None:
                 g_handlers[h].append(handlers)
 
     for handler_loader, ihandlers in g_handlers.items():

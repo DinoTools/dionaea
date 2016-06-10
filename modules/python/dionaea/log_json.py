@@ -27,6 +27,8 @@ from urllib.parse import urlparse
 
 from dionaea import IHandlerLoader
 from dionaea.core import ihandler
+from dionaea.exception import LoaderError
+
 
 logger = logging.getLogger("log_json")
 logger.setLevel(logging.DEBUG)
@@ -38,7 +40,10 @@ class FileHandler(object):
     def __init__(self, url):
         self.url = url
         url = urlparse(url)
-        self.fp = open(url.path, "a")
+        try:
+            self.fp = open(url.path, "a")
+        except OSError as e:
+            raise LoaderError("Unable to open file %s Error message '%s'", url.path, e.strerror)
 
     def submit(self, data):
         data = json.dumps(data)
@@ -76,8 +81,10 @@ class LogJsonHandlerLoader(IHandlerLoader):
 
     @classmethod
     def start(cls, config=None):
-        handler = LogJsonHandler("*", config=config)
-        return [handler]
+        try:
+            return LogJsonHandler("*", config=config)
+        except LoaderError as e:
+            logger.error(e.msg, *e.args)
 
 
 class LogJsonHandler(ihandler):

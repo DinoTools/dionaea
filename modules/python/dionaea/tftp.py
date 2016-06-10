@@ -38,6 +38,7 @@
 
 from dionaea import IHandlerLoader, ServiceLoader
 from dionaea.core import connection, ihandler, g_dionaea, incident
+from dionaea.exception import ServiceConfigError
 
 import tempfile
 import struct
@@ -68,7 +69,10 @@ class TFTPService(ServiceLoader):
     @classmethod
     def start(cls, addr,  iface=None, config=None):
         daemon = TftpServer()
-        daemon.apply_config(config)
+        try:
+            daemon.apply_config(config)
+        except ServiceConfigError as e:
+            logger.error(e.msg, *e.args)
         daemon.bind(addr, 69, iface=iface)
         return daemon
 
@@ -851,6 +855,12 @@ class TftpServer(TftpSession):
 
     def apply_config(self, config):
         self.root = config.get("root", self.root)
+        if self.root is None:
+            raise ServiceConfigError("Root path not defined")
+        if not os.path.isdir(self.root):
+            raise ServiceConfigError("Root path '%s' is not a directory", self.root)
+        if not os.access(self.root, os.R_OK):
+            raise ServiceConfigError("Unable to list files in the '%s' directory", self.root)
 
     def handle_io_in(self,data):
         logger.debug("Data ready on our main socket")

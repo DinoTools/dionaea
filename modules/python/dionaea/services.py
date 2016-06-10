@@ -50,12 +50,10 @@ class slave():
         self.daemons = {}
 
     def start(self):
-        print("STARTING SERVICES")
-
         for iface in self.addresses:
-            print(iface)
+            logger.info("Starting services on interface %s ...", iface)
             for addr in self.addresses[iface]:
-                print(addr)
+                logger.info("Bind interfaces to address '%s' ...", addr)
                 self.daemons[addr] = {}
                 for srv in g_service_configs:
                     for service in ServiceLoader:
@@ -63,7 +61,7 @@ class slave():
                             continue
                         if service not in self.daemons[addr]:
                             self.daemons[addr][service] = []
-                        print(service)
+
                         try:
                             daemons = service.start(addr, iface=iface, config=srv.get("config", {}))
                         except Exception as e:
@@ -71,9 +69,8 @@ class slave():
                             continue
                         if isinstance(daemons, (list, tuple)):
                             self.daemons[addr][service] += daemons
-                        else:
+                        elif daemons is not None:
                             self.daemons[addr][service].append(daemons)
-            print(self.daemons)
 
 
 # for netlink,
@@ -133,9 +130,10 @@ class nlslave(ihandler):
 
 
 def new():
-    print("START")
     global g_slave
     global g_service_configs
+
+    logger.info("Initializing services ...")
     dionaea_config = g_dionaea.config().get("dionaea")
 
     mode = dionaea_config.get("listen.mode")
@@ -172,7 +170,6 @@ def new():
                         if iface not in addrs:
                             addrs[iface] = []
                         addrs[iface].append(config['addr'])
-        print(addrs)
         g_slave = slave(addresses=addrs)
     elif mode == 'nl':
         # ToDo: handle error if ifaces is None
@@ -186,11 +183,12 @@ def new():
 
 
 def start():
+    logger.info("Starting services ...")
     g_slave.start()
 
 
 def stop():
-    print("STOP")
+    logger.info("Stopping services ...")
     global g_slave
     for addr in g_slave.daemons:
         for s in g_slave.daemons[addr]:
