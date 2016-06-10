@@ -309,7 +309,7 @@ static bool freepy(void)
 
 static bool start(void)
 {
-	g_warning("%s %s", __PRETTY_FUNCTION__, __FILE__);
+	g_info("%s %s", __PRETTY_FUNCTION__, __FILE__);
 	GHashTableIter iter;
 	gpointer key, value;
 	g_hash_table_iter_init (&iter, runtime.imports);
