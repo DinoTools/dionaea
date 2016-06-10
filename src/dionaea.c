@@ -268,10 +268,6 @@ bool options_validate(struct options *opt)
 		}
 	}
 
-	opt->stdOUT.filter = log_filter_new(opt->stdOUT.domains, opt->stdOUT.levels);
-	if( opt->stdOUT.filter == NULL )
-		return false;
-
 	return true;
 }
 
@@ -535,12 +531,17 @@ int main (int argc, char *argv[])
 		g_error("Could not parse options!\n");
 	}
 
-	if( options_validate(opt) == false )
-	{
+	opt->stdOUT.filter = log_filter_new(opt->stdOUT.domains, opt->stdOUT.levels);
+	if (opt->stdOUT.filter == NULL) {
+		g_error("Unable to create logging filter. Change options to fix this error.");
+		return -1;
+	}
+	g_log_set_default_handler(logger_stdout_log, opt->stdOUT.filter);
+
+
+	if (options_validate(opt) == false) {
 		g_error("Invalid options");
 	}
-
-	g_log_set_default_handler(logger_stdout_log, opt->stdOUT.filter);
 
 	if( opt->workingdir != NULL && chdir(opt->workingdir) != 0 )
 	{
