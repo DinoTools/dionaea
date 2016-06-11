@@ -18,6 +18,10 @@ Changelog
 * Add support for exceptions
 * Check file path and show warnings
 
+**python/log_json**
+
+* Add support for flat object lists to work with ELK stack
+
 0.4.0 - 2016-05-31
 ~~~~~~~~~~~~~~~~~~
 

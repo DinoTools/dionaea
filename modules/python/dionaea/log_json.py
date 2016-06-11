@@ -97,6 +97,7 @@ class LogJsonHandler(ihandler):
 
         self.attacks = {}
         self.handlers = []
+        self.flat_data = config.get("flat_data", False)
         handlers = config.get("handlers")
         if not isinstance(handlers, list) or len(handlers) == 0:
             logger.warning("No handlers specified")
@@ -129,6 +130,27 @@ class LogJsonHandler(ihandler):
         if "credentials" not in data:
             data["credentials"] = []
         data["credentials"].append(credentials)
+
+    def _flatten_data(self, data):
+        # Add more if needed
+        for k in ["credentials"]:
+            d = data.get(k)
+            if not d:
+                continue
+            data[k] = self._flatten_list(d)
+        return data
+
+    def _flatten_list(self, objs):
+        result = {}
+        keys = set()
+        for obj in objs:
+            keys = keys | set(obj.keys())
+        for key in keys:
+            result[key] = []
+        for obj in objs:
+            for key in keys:
+                result[key].append(obj.get(key))
+        return result
 
     def _serialize_connection(self, icd, connection_type):
         con = icd.con
@@ -193,6 +215,8 @@ class LogJsonHandler(ihandler):
         if con in self.attacks:
             data = self.attacks.get(con)
             if data:
+                if self.flat_data:
+                    data = self._flatten_data(data)
                 for handler in self.handlers:
                     handler.submit(data)
             del self.attacks[con]
