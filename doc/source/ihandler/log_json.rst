@@ -8,16 +8,10 @@ This ihandler can submit information about attacks/connections encoded as json.
 Configure
 ---------
 
-Default configuration:
 
-.. code-block:: text
+flat_data
 
-    log_json = {
-        handlers = [
-            "http://127.0.0.1:8080/"
-            "file:///tmp/dionaea.json"
-        ]
-    }
+    Set to true to flatten object lists.
 
 handlers
 
