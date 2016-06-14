@@ -7,7 +7,7 @@ sinclude(m4/az_python.m4)
 sinclude(m4/az_bind_ipv4_mapped_localhost.m4)
 
 AC_PREREQ(2.59)
-AC_INIT([dionaea], [0.4.0], [])
+AC_INIT([dionaea], [0.4.1], [])
 AM_INIT_AUTOMAKE
 AC_REVISION([$Id$])
 
