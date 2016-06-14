@@ -133,11 +133,21 @@ class LogJsonHandler(ihandler):
 
     def _flatten_data(self, data):
         # Add more if needed
-        for k in ["credentials"]:
-            d = data.get(k)
-            if not d:
+        for k in [
+            "credentials",
+            "ftp.commands"
+        ]:
+            d = None
+            d2 = data
+            k2 = ""
+            for k2 in k.split("."):
+                d = d2
+                d2 = d.get(k2)
+                if d2 is None:
+                    break
+            if d is None or d2 is None:
                 continue
-            data[k] = self._flatten_list(d)
+            d[k2] = self._flatten_list(d2)
         return data
 
     def _flatten_list(self, objs):
@@ -149,7 +159,12 @@ class LogJsonHandler(ihandler):
             result[key] = []
         for obj in objs:
             for key in keys:
-                result[key].append(obj.get(key))
+                v = obj.get(key)
+                # eleasticsearch can not handle arrays that contain arrays
+                # flatten the arrays by joining the subarrays
+                if isinstance(v, (tuple, list)):
+                    v = " ".join(v)
+                result[key].append(v)
         return result
 
     def _serialize_connection(self, icd, connection_type):
