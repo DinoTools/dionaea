@@ -1,5 +1,6 @@
 import random
 from collections import OrderedDict
+from datetime import datetime
 
 CFG_STAT_VARS = [
     {
@@ -13,8 +14,7 @@ CFG_STAT_VARS = [
     },
     {
         "name": "uptime",
-        # ToDo: change type
-        "type": "uint32",
+        "type": "uptime",
     },
     {
         "name": "time",
@@ -52,6 +52,8 @@ class VarHandler(object):
             return UInt32
         if name == "uint64":
             return UInt64
+        if name == "uptime":
+            return Uptime
 
     def load(self, vars):
         for var in vars:
@@ -129,3 +131,16 @@ class UInt32(UIntBase):
 
 class UInt64(UIntBase):
     default_value_max = 2**64-1
+
+
+class Uptime(BaseVar):
+    def __init__(self):
+        self.start_time = datetime.now()
+
+    def __str__(self):
+        return str(self.value)
+
+    @property
+    def value(self):
+        delta = datetime.now() - self.start_time
+        return delta.seconds
