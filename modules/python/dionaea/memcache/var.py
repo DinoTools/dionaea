@@ -31,6 +31,16 @@ CFG_STAT_VARS = [
         "value": 64
     },
     {
+        "name": "rusage_user",
+        "type": "float",
+        "value": 0.55
+    },
+    {
+        "name": "rusage_system",
+        "type": "float",
+        "value": 0.253
+    },
+    {
         "name": "accepting_conns ",
         "type": "bool",
         "value": True
@@ -45,6 +55,8 @@ class VarHandler(object):
     def _get_var_class(self, name):
         if name == "bool":
             return Bool
+        if name == "float":
+            return Float
         if name == "string":
             return String
         if name == "time":
@@ -83,6 +95,23 @@ class Bool(BaseVar):
         if self.value:
             return "1"
         return "0"
+
+
+class Float(BaseVar):
+    def __init__(self, value=0.0):
+        self._value = 0.0
+        self.value = value
+
+    def __str__(self):
+        return "%.6f" % self.value
+
+    def _get_value(self):
+        return self._value
+
+    def _set_value(self, value):
+        self._value = value
+
+    value = property(_get_value, _set_value)
 
 
 class String(BaseVar):
