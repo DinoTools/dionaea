@@ -18,8 +18,7 @@ CFG_STAT_VARS = [
     },
     {
         "name": "time",
-        # ToDo: change type
-        "type": "uint32",
+        "type": "time",
     },
     {
         "name": "version",
@@ -48,6 +47,8 @@ class VarHandler(object):
             return Bool
         if name == "string":
             return String
+        if name == "time":
+            return Time
         if name == "uint32":
             return UInt32
         if name == "uint64":
@@ -92,6 +93,15 @@ class String(BaseVar):
 
     def __str__(self):
         return self.value
+
+
+class Time(BaseVar):
+    @property
+    def value(self):
+        return int(datetime.now().timestamp())
+
+    def __str__(self):
+        return str(self.value)
 
 
 class UIntBase(BaseVar):
