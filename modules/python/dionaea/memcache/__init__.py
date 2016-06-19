@@ -4,6 +4,7 @@ from dionaea import ServiceLoader
 from dionaea.core import connection, incident
 from dionaea.exception import ServiceConfigError
 from .command import Command
+from .var import VarHandler
 
 
 logger = logging.getLogger("memcache")
@@ -32,6 +33,8 @@ class MemcacheService(ServiceLoader):
 
 
 class Memcache(connection):
+    stat_vars = VarHandler()
+
     def __init__(self, proto="tcp"):
         logger.debug("start memcache")
         connection.__init__(self, proto)
@@ -39,7 +42,8 @@ class Memcache(connection):
 
     def _handle_stats(self, data):
         if self.command.sub_command is None:
-            self._send_line("STAT pid 1234")
+            for name, var in self.stat_vars.values.items():
+                self._send_line("STAT %s %s" % (name, str(var)))
             self._send_line("END")
         elif self.command.sub_command == "conns":
             self._send_line("END")
@@ -56,6 +60,10 @@ class Memcache(connection):
 
     def _send_line(self, line):
         self.send(line + "\r\n")
+
+    def apply_config(self, config):
+        from .var import CFG_STAT_VARS
+        self.stat_vars.load(CFG_STAT_VARS)
 
     def handle_established(self):
         self.timeouts.idle = 10

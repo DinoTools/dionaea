@@ -54,6 +54,7 @@ PYSCRIPTS += fail2ban.py
 PYSCRIPTS += __init__.py
 PYSCRIPTS += memcache/__init__.py
 PYSCRIPTS += memcache/command.py
+PYSCRIPTS += memcache/var.py
 PYSCRIPTS += mssql/__init__.py
 PYSCRIPTS += mssql/mssql.py
 PYSCRIPTS += mssql/include/tds.py
