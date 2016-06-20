@@ -26,6 +26,11 @@ CFG_STAT_VARS = [
         "value": "1.4.25"
     },
     {
+        "name": "libevent",
+        "type": "string",
+        "value": "2.0.22-stable"
+    },
+    {
         "name": "pointer_size",
         "type": "uint32",
         "value": 64
@@ -41,10 +46,525 @@ CFG_STAT_VARS = [
         "value": 0.253
     },
     {
-        "name": "accepting_conns ",
+        "name": "curr_items",
+        "type": "uint32",
+        "value": {
+            "value_min": 200,
+            "value_max": 400,
+            "value_random": True
+        }
+    },
+    {
+        "name": "total_items",
+        "type": "uint32",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "bytes",
+        "type": "uint64",
+        "value": {
+            "value_min": 3000,
+            "value_max": 50000,
+            "value_random": True
+        }
+    },
+    {
+        "name": "curr_connections",
+        "type": "uint32",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "total_connections",
+        "type": "uint32",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    # {
+    #     "name": "rejected_connections",
+    #     "type": "uint64",
+    #     "value": {
+    #         "value_min": 30,
+    #         "value_max": 50,
+    #         "value_random": True
+    #     }
+    # },
+    {
+        "name": "connection_structures",
+        "type": "uint32",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "reserved_fds",
+        "type": "uint32",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "cmd_get",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "cmd_set",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "cmd_flush",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "cmd_touch",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "get_hits",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "get_misses",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "delete_misses",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "delete_hits",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "incr_misses",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "incr_hits",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "decr_misses",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "decr_hits",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "cas_misses",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "cas_hits",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "cas_badval",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "touch_hits",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "touch_misses",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "auth_cmds",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "auth_errors",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "evictions",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "reclaimed",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "bytes_read",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "bytes_written",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "limit_maxbytes",
+        "type": "uint32",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "accepting_conns",
         "type": "bool",
         "value": True
     },
+    {
+        "name": "listen_disabled_num",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "time_in_listen_disabled_us",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "threads",
+        "type": "uint32",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "conn_yields",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "hash_power_level",
+        "type": "uint32",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "hash_bytes",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "hash_is_expanding",
+        "type": "bool",
+        "value": True
+    },
+    {
+        "name": "malloc_fails",
+        "type": "uint64",
+        "value": {
+            "value_min": 0,
+            "value_max": 10,
+            "value_random": True
+        }
+    },
+    {
+        "name": "expired_unfetched",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "evicted_unfetched",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    # {
+    #     "name": "slab_reassign_running",
+    #     "type": "bool",
+    #     "value": True
+    # },
+    # {
+    #     "name": "slabs_moved",
+    #     "type": "uint64",
+    #     "value": {
+    #         "value_min": 350,
+    #         "value_max": 500,
+    #         "value_random": True
+    #     }
+    # },
+    {
+        "name": "crawler_reclaimed",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "crawler_items_checked",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    {
+        "name": "lrutail_reflocked",
+        "type": "uint64",
+        "value": {
+            "value_min": 350,
+            "value_max": 500,
+            "value_random": True
+        }
+    },
+    # Values documented in protocol readme but not present in server response
+    # {
+    #     "name": "moves_to_cold",
+    #     "type": "uint64",
+    #     "value": {
+    #         "value_min": 350,
+    #         "value_max": 500,
+    #         "value_random": True
+    #     }
+    # },
+    # {
+    #     "name": "moves_to_warm",
+    #     "type": "uint64",
+    #     "value": {
+    #         "value_min": 350,
+    #         "value_max": 500,
+    #         "value_random": True
+    #     }
+    # },
+    # {
+    #     "name": "moves_within_lru",
+    #     "type": "uint64",
+    #     "value": {
+    #         "value_min": 350,
+    #         "value_max": 500,
+    #         "value_random": True
+    #     }
+    # },
+    # {
+    #     "name": "direct_reclaims",
+    #     "type": "uint64",
+    #     "value": {
+    #         "value_min": 350,
+    #         "value_max": 500,
+    #         "value_random": True
+    #     }
+    # },
+    # {
+    #     "name": "lru_crawler_starts",
+    #     "type": "uint64",
+    #     "value": {
+    #         "value_min": 350,
+    #         "value_max": 500,
+    #         "value_random": True
+    #     }
+    # },
+    # {
+    #     "name": "lru_maintainer_juggles",
+    #     "type": "uint64",
+    #     "value": {
+    #         "value_min": 350,
+    #         "value_max": 500,
+    #         "value_random": True
+    #     }
+    # },
+    # {
+    #     "name": "slab_global_page_pool",
+    #     "type": "uint32",
+    #     "value": {
+    #         "value_min": 350,
+    #         "value_max": 500,
+    #         "value_random": True
+    #     }
+    # },
+    # {
+    #     "name": "slab_reassign_rescues",
+    #     "type": "uint64",
+    #     "value": {
+    #         "value_min": 350,
+    #         "value_max": 500,
+    #         "value_random": True
+    #     }
+    # },
+    # {
+    #     "name": "slab_reassign_evictions_nomem",
+    #     "type": "uint64",
+    #     "value": {
+    #         "value_min": 350,
+    #         "value_max": 500,
+    #         "value_random": True
+    #     }
+    # },
+    # {
+    #     "name": "slab_reassign_inline_reclaim",
+    #     "type": "uint64",
+    #     "value": {
+    #         "value_min": 350,
+    #         "value_max": 500,
+    #         "value_random": True
+    #     }
+    # },
+    # {
+    #     "name": "slab_reassign_busy_items",
+    #     "type": "uint64",
+    #     "value": {
+    #         "value_min": 350,
+    #         "value_max": 500,
+    #         "value_random": True
+    #     }
+    # }
 ]
 
 
