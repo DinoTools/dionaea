@@ -587,6 +587,7 @@ class VarHandler(object):
             return UInt64
         if name == "uptime":
             return Uptime
+        raise ValueError("Unable to find class to handle %s type" % name)
 
     def load(self, vars):
         for var in vars:
