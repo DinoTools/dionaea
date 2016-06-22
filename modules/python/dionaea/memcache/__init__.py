@@ -40,6 +40,51 @@ class Memcache(connection):
         connection.__init__(self, proto)
         self.command = None
 
+    def _handle_add(self, data):
+        read_len = self._handle_storage_command(data)
+        if read_len == 0:
+            return 0
+        self.command = None
+        self._send_line("STORED")
+        return read_len
+
+    def _handle_append(self, data):
+        read_len = self._handle_storage_command(data)
+        if read_len == 0:
+            return 0
+        self.command = None
+        self._send_line("STORED")
+        return read_len
+
+    def _handle_prepand(self, data):
+        read_len = self._handle_storage_command(data)
+        if read_len == 0:
+            return 0
+        self.command = None
+        self._send_line("STORED")
+        return read_len
+
+    def _handle_replace(self, data):
+        read_len = self._handle_storage_command(data)
+        if read_len == 0:
+            return 0
+        self.command = None
+        self._send_line("STORED")
+        return read_len
+
+    def _handle_set(self, data):
+        read_len = self._handle_storage_command(data)
+        if read_len == 0:
+            return 0
+        self.command = None
+        self._send_line("STORED")
+        return read_len
+
+    def _handle_storage_command(self, data):
+        if len(data) < self.command.byte_count + 2:
+            return 0
+        return self.command.byte_count + 2
+
     def _handle_stats(self, data):
         if self.command.sub_command is None:
             for name, var in self.stat_vars.values.items():
