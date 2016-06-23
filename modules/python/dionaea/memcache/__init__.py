@@ -135,6 +135,9 @@ class Memcache(connection):
             self.command = Command.from_line(cmd_line=data[:eoc])
             # End of Line
             processed_bytes = eoc + 2
+            if self.command is None:
+                self._send_line("ERROR")
+                return processed_bytes
             data = data[processed_bytes:]
 
         if self.command is not None:
