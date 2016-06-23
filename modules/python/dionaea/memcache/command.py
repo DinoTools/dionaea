@@ -4,10 +4,29 @@ import re
 class Command(object):
     @classmethod
     def from_line(cls, cmd_line):
-        for cmd_cls in [Stats, StorageCommand, Delete, Get]:
+        for cmd_cls in [Stats, StorageCommand, Decrement, Delete, Increment, Get]:
             cmd = cmd_cls.from_line(cmd_line)
             if cmd is not None:
                 return cmd
+
+
+class Decrement(Command):
+    name = "decr"
+    regex_cmd = re.compile(b"^decr (?P<key>\w+) (?P<value>\d+)( (?P<noreply>noreply))?$")
+
+    def __init__(self, key=None, value=0, no_reply=False):
+        self.key = key
+        self.value = value
+
+    @classmethod
+    def from_line(cls, cmd_line):
+        m = cls.regex_cmd.match(cmd_line)
+        if m:
+            return cls(
+                key=m.group("key"),
+                value=int(m.group("value")),
+                no_reply=m.group("noreply")
+            )
 
 
 class Delete(Command):
@@ -44,6 +63,25 @@ class Get(Command):
         if cmd_parts[0] == b"get" or cmd_parts[0] == b"gets":
             return cls(keys=cmd_parts[1:])
         return None
+
+
+class Increment(Command):
+    name = "incr"
+    regex_cmd = re.compile(b"^incr (?P<key>\w+) (?P<value>\d+)( (?P<noreply>noreply))?$")
+
+    def __init__(self, key=None, value=0, no_reply=False):
+        self.key = key
+        self.value = value
+
+    @classmethod
+    def from_line(cls, cmd_line):
+        m = cls.regex_cmd.match(cmd_line)
+        if m:
+            return cls(
+                key=m.group("key"),
+                value=int(m.group("value")),
+                no_reply=m.group("noreply")
+            )
 
 
 class StorageCommand(Command):
