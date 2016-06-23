@@ -4,10 +4,28 @@ import re
 class Command(object):
     @classmethod
     def from_line(cls, cmd_line):
-        for cmd_cls in [Stats, StorageCommand, Get]:
+        for cmd_cls in [Stats, StorageCommand, Delete, Get]:
             cmd = cmd_cls.from_line(cmd_line)
             if cmd is not None:
                 return cmd
+
+
+class Delete(Command):
+    name = "delete"
+    regex_cmd = re.compile(b"^(?P<command>\w+) (?P<key>\w+)( (?P<noreply>noreply))?$")
+
+    def __init__(self, key=None, no_reply=None):
+        self.key = key
+        self.no_reply = no_reply
+
+    @classmethod
+    def from_line(cls, cmd_line):
+        m = cls.regex_cmd.match(cmd_line)
+        if m and m.group("command") == b"delete":
+            return cls(
+                key=m.group("key"),
+                no_reply=m.group("noreply")
+            )
 
 
 class Get(Command):

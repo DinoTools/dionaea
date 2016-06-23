@@ -56,6 +56,11 @@ class Memcache(connection):
         self._send_line("STORED")
         return read_len
 
+    def _handle_delete(self, data):
+        self.command = None
+        self._send_line("DELETED")
+        return 0
+
     def _handle_get(self, data):
         self.command = None
         self._send_line("END")
