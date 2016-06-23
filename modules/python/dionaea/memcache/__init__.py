@@ -123,6 +123,11 @@ class Memcache(connection):
         self.command = None
         return 0
 
+    def _handle_touch(self, data):
+        self.command = None
+        self._send_line("TOUCHED")
+        return 0
+
     def _send_line(self, line):
         self.send(line + "\r\n")
 

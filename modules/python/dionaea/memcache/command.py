@@ -4,7 +4,7 @@ import re
 class Command(object):
     @classmethod
     def from_line(cls, cmd_line):
-        for cmd_cls in [Stats, StorageCommand, Decrement, Delete, Increment, Get]:
+        for cmd_cls in [Stats, StorageCommand, Decrement, Delete, Increment, Get, Touch]:
             cmd = cmd_cls.from_line(cmd_line)
             if cmd is not None:
                 return cmd
@@ -156,4 +156,26 @@ class Stats(Command):
             return None
         if cmd_parts[0] == b"stats":
             return cls(arguments=cmd_parts[1:])
+        return None
+
+
+class Touch(Command):
+    name = "touch"
+    regex_cmd = re.compile(b"^touch (?P<key>\w+) (?P<exptime>\d+)( (?P<noreply>noreply))?$")
+
+    def __init__(self, key=None, exptime=None, no_reply=None):
+        self.key = key
+        self.exptime = exptime
+        self.no_reply = no_reply
+
+    @classmethod
+    def from_line(cls, cmd_line):
+        m = cls.regex_cmd.match(cmd_line)
+        print(cmd_line, m)
+        if m:
+            return cls(
+                key=m.group("key"),
+                exptime=m.group("exptime"),
+                no_reply=m.group("noreply")
+            )
         return None
