@@ -171,7 +171,6 @@ class Touch(Command):
     @classmethod
     def from_line(cls, cmd_line):
         m = cls.regex_cmd.match(cmd_line)
-        print(cmd_line, m)
         if m:
             return cls(
                 key=m.group("key"),
