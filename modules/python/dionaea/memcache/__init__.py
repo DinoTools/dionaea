@@ -76,7 +76,7 @@ class Memcache(connection):
         self._send_line("NOT_FOUND")
         return 0
 
-    def _handle_prepand(self, data):
+    def _handle_prepend(self, data):
         read_len = self._handle_storage_command(data)
         if read_len == 0:
             return 0

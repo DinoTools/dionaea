@@ -99,7 +99,7 @@ class StorageCommand(Command):
         cmd_classes = {
             b"add": Add,
             b"append": Append,
-            b"prepand": Prepand,
+            b"prepend": Prepend,
             b"replace": Replace,
             b"set": Set
         }
@@ -127,8 +127,8 @@ class Append(StorageCommand):
     name = "append"
 
 
-class Prepand(StorageCommand):
-    name = "prepand"
+class Prepend(StorageCommand):
+    name = "prepend"
 
 
 class Replace(StorageCommand):
