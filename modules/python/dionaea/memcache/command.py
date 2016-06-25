@@ -97,7 +97,11 @@ class StorageCommand(Command):
     @classmethod
     def from_line(cls, cmd_line):
         cmd_classes = {
-            b"add": Add
+            b"add": Add,
+            b"append": Append,
+            b"prepand": Prepand,
+            b"replace": Replace,
+            b"set": Set
         }
         m = cls.regex_cmd.match(cmd_line)
         if m:
