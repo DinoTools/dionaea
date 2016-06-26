@@ -20,7 +20,7 @@ Content:
     ihandler/index
     processor/index
     contributing
-    development
+    development/index
     changelog
     faq
 

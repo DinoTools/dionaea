@@ -85,12 +85,12 @@ class smbd(connection):
             p = NBTSession(data, _ctx=self)
         except:
             t = traceback.format_exc()
-            smblog.critical(t)
+            smblog.error(t)
             return len(data)
 
         if len(data) < (p.LENGTH+4):
             #we probably do not have the whole packet yet -> return 0
-            smblog.critical('=== SMB did not get enough data')
+            smblog.error('=== SMB did not get enough data')
             return 0
 
         if p.TYPE == 0x81:
@@ -102,7 +102,7 @@ class smbd(connection):
 
         if p.haslayer(SMB_Header) and p[SMB_Header].Start != b'\xffSMB':
             # not really SMB Header -> bail out
-            smblog.critical('=== not really SMB')
+            smblog.error('=== not really SMB')
             self.close()
             return len(data)
 
@@ -149,7 +149,7 @@ class smbd(connection):
             #r.show2()
             self.send(r.build())
         else:
-            smblog.critical('process() returned None.')
+            smblog.error('process() returned None.')
 
         if p.haslayer(Raw):
             smblog.warning("p.haslayer(Raw): %s" % p.getlayer(Raw).build())
@@ -457,7 +457,7 @@ class smbd(connection):
                 if self.state['stop']:
                     smblog.debug('drop dead!')
                 else:
-                    smblog.critical('dcerpc processing failed. bailing out.')
+                    smblog.error('dcerpc processing failed. bailing out.')
                 return rp
 
             rdata = SMB_Data()
@@ -559,8 +559,7 @@ class smbd(connection):
                         if self.state['stop']:
                             smblog.debug('drop dead!')
                         else:
-                            smblog.critical(
-                                'dcerpc processing failed. bailing out.')
+                            smblog.error('dcerpc processing failed. bailing out.')
                         return rp
                     self.outbuf = outpacket.build()
                     dceplen = len(self.outbuf)
@@ -580,7 +579,7 @@ class smbd(connection):
             if h.FileName == b'nmap-test-file\0':
                 r = SMB_Delete_Response()
         else:
-            smblog.critical('...unknown SMB Command. bailing out.')
+            smblog.error('...unknown SMB Command. bailing out.')
             p.show()
 
         if r:
@@ -673,7 +672,7 @@ class smbd(connection):
             outbuf = resp
         else:
             # unknown DCERPC packet -> logcrit and bail out.
-            smblog.critical('unknown DCERPC packet. bailing out.')
+            smblog.error('unknown DCERPC packet. bailing out.')
         return outbuf
 
     def handle_timeout_idle(self):
@@ -696,7 +695,7 @@ class epmapper(smbd):
             p = DCERPC_Header(data)
         except:
             t = traceback.format_exc()
-            smblog.critical(t)
+            smblog.error(t)
             return len(data)
 
         if len(data) < p.FragLen:
@@ -712,7 +711,7 @@ class epmapper(smbd):
             return len(data)
 
         if not r or r is None:
-            smblog.critical('dcerpc processing failed. bailing out.')
+            smblog.error('dcerpc processing failed. bailing out.')
             return len(data)
 
         smblog.debug("response: %s" % r.summary())
