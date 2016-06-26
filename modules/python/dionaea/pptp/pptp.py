@@ -72,7 +72,7 @@ class pptpd(connection):
 					
 			except:
 				t = traceback.format_exc()
-				logger.critical(t)
+				logger.error(t)
 				return l
 	
 			if self.pendingPacketType == PPTP_CTRMSG_TYPE_STARTCTRCON_REQUEST:
