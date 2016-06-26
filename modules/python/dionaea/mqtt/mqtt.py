@@ -69,7 +69,7 @@ class mqttd(connection):
 					
 			except:
 				t = traceback.format_exc()
-				logger.critical(t)
+				logger.error(t)
 				return l
 	
 			if self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_CONNECT:
