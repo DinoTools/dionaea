@@ -5,3 +5,4 @@ Development
     :maxdepth: 2
 
     setup
+    logging
