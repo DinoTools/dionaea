@@ -197,7 +197,7 @@ class hpclient(connection):
                 else:
                     logger.debug('unknown opcode message: {0}'.format(opcode))
         except BadClient:
-            logger.critical('unpacker error, disconnecting.')
+            logger.error('unpacker error, disconnecting.')
             self.close()
 
         return len(indata)
