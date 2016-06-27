@@ -37,3 +37,11 @@ If you have used a tool like nmap add all commandline options.
 
 ##### EXPECTED RESULTS
 <!--- What did you expect to happen? -->
+
+##### ACTUAL RESULTS
+<!--- What actually happened? If possible run with increased log level (-l all -L '*') -->
+
+<!--- Paste verbatim output between the quotes below -->
+```
+
+```
