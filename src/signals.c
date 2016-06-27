@@ -131,8 +131,8 @@ void sigsegv_backtrace_cb(int sig)
 			"This is the end.\n"
 			"This software just had a segmentation fault.\n"
 			"The bug you encountered may even be exploitable.\n"
-			"If you want to assist in fixing the bug, please send the backtrace below to nepenthesdev@gmail.com.\n"
-			"You can create better backtraces with gdb, for more information visit http://dionaea.carnivore.it/#segfault\n"
+			"If you want to assist in fixing the bug, please create a new issue on GitHub and append the backtrace.\n"
+			"You can create better backtraces with gdb, for more information visit https://github.com/DinoTools/dionaea\n"
 			"Once you read this message, your tty may be broken, simply type reset, so it will come to life again\n"
 			"\n";
 		if( write(l->fd, msg, strlen(msg)) != strlen(msg))
