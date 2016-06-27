@@ -25,7 +25,12 @@
 #*
 #*******************************************************************************/
 
-import weakref 
+import logging
+import weakref
+
+
+logger = logging.getLogger("binding")
+logger.setLevel(logging.DEBUG)
 
 cdef extern from *:
 	ctypedef char* const_char_ptr "const char*"
@@ -778,14 +783,23 @@ cdef int handle_io_in_cb(c_connection *con, void *context, void *data, int size)
 	cdef connection instance
 	instance = <connection>context
 	bdata = bytesfrom(<char *>data, size)
-	l = instance.handle_io_in(bdata)
+	try:
+		l = instance.handle_io_in(bdata)
+	except BaseException as e:
+		logging.error("There was an error in the Python service", exc_info=True)
+		instance.close()
+		return len(bdata)
 	return l
 	
 cdef void handle_io_out_cb(c_connection *con, void *context) except *:
 #	print "io_out_cb"
 	cdef connection instance
 	instance = <connection>context
-	instance.handle_io_out()
+	try:
+		instance.handle_io_out()
+	except BaseException as e:
+		logging.error("There was an error in the Python service", exc_info=True)
+		instance.close()
 	
 cdef c_bool handle_disconnect_cb(c_connection *con, void *context) except *:
 #	print "disconnect_cb"
@@ -1199,7 +1213,10 @@ cdef void c_python_ihandler_cb (c_incident *i, void *ctx) except *:
 		handler.handle_incident(pi)
 		return
 
-	method(pi)
+	try:
+		method(pi)
+	except BaseException as e:
+		logging.error("There was an error while handling the incident", exc_info=True)
 	
 
 cdef class ihandler:
