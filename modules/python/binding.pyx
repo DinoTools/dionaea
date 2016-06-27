@@ -1213,7 +1213,10 @@ cdef void c_python_ihandler_cb (c_incident *i, void *ctx) except *:
 		handler.handle_incident(pi)
 		return
 
-	method(pi)
+	try:
+		method(pi)
+	except BaseException as e:
+		logging.error("There was an error while handling the incident", exc_info=True)
 	
 
 cdef class ihandler:
