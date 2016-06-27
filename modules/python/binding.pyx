@@ -795,7 +795,11 @@ cdef void handle_io_out_cb(c_connection *con, void *context) except *:
 #	print "io_out_cb"
 	cdef connection instance
 	instance = <connection>context
-	instance.handle_io_out()
+	try:
+		instance.handle_io_out()
+	except BaseException as e:
+		logging.error("There was an error in the Python service", exc_info=True)
+		instance.close()
 	
 cdef c_bool handle_disconnect_cb(c_connection *con, void *context) except *:
 #	print "disconnect_cb"
