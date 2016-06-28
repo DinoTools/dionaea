@@ -62,12 +62,12 @@ class upnpreq:
 			try:
 				self.headers[hset[0].lower()] = hset[1].strip()
 			except:
-				logger.info('potential upnp exploit: {0}'.format(hset[0]))
+				logger.info("potential upnp exploit: %s", hset[0])
 		
 	def print(self):
-		logger.debug(self.type + b" " + self.path.encode('utf-8') + b" " + httpversion)
+		logger.debug("Type: %s Path: %s HTTP-Version: %s", self.type, self.path, httpversion)
 		for i in self.headers:
-			logger.debug(i + b":" + self.headers[i])
+			logger.debug("%s: %s", i, self.headers[i])
 
 
 class upnpd(connection):
@@ -112,7 +112,7 @@ class upnpd(connection):
 		pass
 
 	def handle_established(self):
-		logger.debug("{!s} handle_established".format(self))
+		logger.debug("%r handle_established", self)
 
 		self.timeouts.idle = 10
 		self.timeouts.sustain = 120
@@ -152,7 +152,7 @@ class upnpd(connection):
 
 			# header not found
 			else:
-				logger.info('unknown upnp ssdp header: {0}'.format(self.header.type))
+				logger.info('unknown upnp ssdp header: %s', self.header.type)
 				self.handle_unknown()
 			return len(data)
 
@@ -183,11 +183,11 @@ class upnpd(connection):
 		self.send("%s/%s %d %s\r\n%s\r\n" % ("HTTP", self.version, code, message, upnp_response))
 
 	def handle_timeout_sustain(self):
-		logger.debug("{:s} handle_timeout_sustain".format(self))
+		logger.debug("%r handle_timeout_sustain", self)
 		return True
 
 	def handle_timeout_idle(self):
-		logger.debug("{:s} handle_timeout_idle".format(self))
+		logger.debug("%r handle_timeout_idle", self)
 		self.close()
 		return False
 
