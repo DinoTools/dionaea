@@ -355,7 +355,7 @@ class SipCall(connection):
                 media_ports[name] = None
 
             bistream_enabled = False
-            if "bistream" in self.__session.config._rtp.get("mode"):
+            if "bistream" in self.__session.config._rtp.get("modes", {}):
                 bistream_enabled = True
 
             for name in media_port_names:
