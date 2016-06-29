@@ -43,6 +43,7 @@ class pptpd(connection):
     def __init__(self):
         connection.__init__(self, "tcp")
         self.buf = b''
+        self.pending_packet_type = None
 
     def handle_established(self):
         self.timeouts.idle = 120
@@ -66,7 +67,7 @@ class pptpd(connection):
                         logger.warn("Bad PPTP Packet, Length = 0")
                         return l
 
-                    self.pendingPacketType = p.ControlMessageType
+                    self.pending_packet_type = p.ControlMessageType
 
                 if len(data) < 100:
                     logger.warn("PPTP Packet, Length < 100")
@@ -76,7 +77,7 @@ class pptpd(connection):
                 logger.error(t)
                 return l
     
-            if self.pendingPacketType == PPTP_CTRMSG_TYPE_STARTCTRCON_REQUEST:
+            if self.pending_packet_type == PPTP_CTRMSG_TYPE_STARTCTRCON_REQUEST:
                 x = PPTP_StartControlConnection_Request(data)
                 
                 # we can gather some values from the client, maybe use for fingerprinting clients
@@ -87,7 +88,7 @@ class pptpd(connection):
                 i.remote_hostname = x.HostName
                 i.report()
 
-            elif self.pendingPacketType == PPTP_CTRMSG_TYPE_OUTGOINGCALL_REQUEST:
+            elif self.pending_packet_type == PPTP_CTRMSG_TYPE_OUTGOINGCALL_REQUEST:
                 x = PPTP_OutgoingCall_Request(data)
 
             # FIXME after these, the client will send in Generic Routing Encapsulation (PPP) traffic
@@ -97,7 +98,7 @@ class pptpd(connection):
             x.show()
 
             r = None
-            r = self.process( self.pendingPacketType, x)
+            r = self.process(self.pending_packet_type, x)
 
             if r:
                 r.show()
