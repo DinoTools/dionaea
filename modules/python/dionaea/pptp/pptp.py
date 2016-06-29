@@ -27,12 +27,7 @@
 
 from dionaea.core import *
 
-import datetime
 import traceback
-import logging
-import binascii
-import os
-import tempfile
 
 from dionaea.pptp.include.packets import *
 
