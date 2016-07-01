@@ -33,12 +33,22 @@ PPTP_CTRMSG_TYPE_STARTCTRCON_REQUEST = 0x01
 PPTP_CTRMSG_TYPE_STARTCTRCON_REPLY   = 0x02
 PPTP_CTRMSG_TYPE_OUTGOINGCALL_REQUEST = 0x07
 PPTP_CTRMSG_TYPE_OUTGOINGCALL_REPLY = 0x08
+CTRMSG_TYPE_CALLCLEAR_REQUEST = 12
 
 # PPP Link Control Protocol Types
 PPP_LCP_Configuration_Request = 0x01
 
 
 # https://www.ietf.org/rfc/rfc2637.txt
+class BaseControllMessage(Packet):
+    fields_desc = [
+        XShortField("Length", 0),
+        XShortField("MessageType", 0),
+        XIntField("MagicCookie", 0),
+        XShortField("ControlMessageType", 0)
+    ]
+
+
 class PPTP_StartControlConnection_Request(Packet):
     name="PPTP Start-Control-Connection-Request"
     controlmessage_type = PPTP_CTRMSG_TYPE_STARTCTRCON_REQUEST
@@ -50,7 +60,6 @@ class PPTP_StartControlConnection_Request(Packet):
         XShortField("Reserved", 0),
         XShortField("ProtocolVersion", 0),
         XShortField("Reserved", 0),
-        
         XIntField("FramingCapabilites", 0),
         XIntField("BearerCapabilites", 0),
         XShortField("MaxChannels", 0),
@@ -124,6 +133,34 @@ class PPTP_OutgoingCall_Reply(Packet):
         XShortField("PacketProcessingDelay", 0),
         XShortField("PacketNumberLength", 0),
         XShortField("PhysicalChannelID", 0),
+    ]
+
+
+class PPTP_CallClear_Request(Packet):
+    fields_desc = [
+        XShortField("Length", 0),
+        XShortField("MessageType", 0x01),
+        XIntField("MagicCookie", 0x1a2b3c4d),
+        XShortField("ControlMessageType", 0x12),
+        XShortField("Reserved0", 0),
+        XShortField("CallID", 0),
+        XShortField("Reserved1", 0),
+    ]
+
+
+class CallDisconnectNotify(Packet):
+    fields_desc = [
+        XShortField("Length", 0),
+        XShortField("MessageType", 0x01),
+        XIntField("MagicCookie", 0x1a2b3c4d),
+        XShortField("ControlMessageType", 13),
+        XShortField("Reserved0", 0),
+        XShortField("CallID", 0),
+        XByteField("ResultCode", 0),
+        XByteField("ErrorCode", 0),
+        XShortField("CauseCode", 0),
+        XShortField("Reserved1", 0),
+        StrFixedLenField("CallStatistics", "", 128),
     ]
 
 
