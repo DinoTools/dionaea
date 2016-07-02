@@ -4,6 +4,32 @@ Changelog
 0.5.0 - (`master`_)
 ~~~~~~~~~~~~~~~~~~~
 
+0.4.2 - 2016-07-02
+~~~~~~~~~~~~~~~~~~
+
+**doc**
+
+* Add information about log levels for developers
+
+**python/***
+
+* Replace all critical log messages with error messages
+* Catch exceptions in handle_io_in() and handle_io_out() to improve stability
+* Catch exceptions in incident handlers
+
+**python/sip**
+
+* Fix error while reading config values
+
+**python/upnp**
+
+* Fix errors in log messages
+
+**more**
+
+* Add templates to create issues and merge requests on github
+
+
 0.4.1 - 2016-06-14
 ~~~~~~~~~~~~~~~~~~
 
