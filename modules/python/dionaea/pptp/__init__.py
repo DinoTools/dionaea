@@ -1,6 +1,10 @@
+import logging
+
 from dionaea import ServiceLoader
 from dionaea.exception import ServiceConfigError
 from .pptp import pptpd
+
+logger = logging.getLogger('pptp')
 
 
 class PPTPService(ServiceLoader):
