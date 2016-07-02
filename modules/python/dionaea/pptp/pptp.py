@@ -34,6 +34,7 @@ logger = logging.getLogger('pptp')
 
 
 class pptpd(connection):
+    shared_config_values = ["firmware_revision", "hostname", "vendor_name"]
     IDLE, ESTABLISHED = range(2)
 
     def __init__(self):
@@ -41,6 +42,9 @@ class pptpd(connection):
         self.buf = b''
         self.pending_packet_type = None
         self.state = self.IDLE
+        self.firmware_revision = 1
+        self.hostname = ""
+        self.vendor_name = ""
 
     def _handle_controll_message(self, message_type, data):
         if self.state == self.ESTABLISHED:
@@ -63,6 +67,11 @@ class pptpd(connection):
             else:
                 logger.warning("Unexpected control message type %d", message_type)
         return len(data)
+
+    def apply_config(self, config):
+        self.firmware_revision = config.get("firmware_revision", self.firmware_revision)
+        self.hostname = config.get("hostname", self.hostname)
+        self.vendor_name = config.get("vendor_name", self.vendor_name)
 
     def handle_established(self):
         self.timeouts.idle = 120
@@ -87,8 +96,9 @@ class pptpd(connection):
             i.report()
             self.state = self.ESTABLISHED
             r = packets.PPTP_StartControlConnection_Reply()
-            # r.VendorName = ""
-            # r.HostName = ""
+            r.FirmwareRevision = self.firmware_revision
+            r.HostName = self.hostname
+            r.VendorName = self.vendor_name
             r.show()
             self.send(r.build())
             return len(data)
