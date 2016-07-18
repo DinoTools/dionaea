@@ -25,101 +25,95 @@
 #*
 #*******************************************************************************/
 
-from dionaea.core import *
-
-import datetime
-import traceback
 import logging
-import binascii
-import os
-import tempfile
 
-from dionaea.pptp.include.packets import *
+from dionaea.core import connection, incident
+from dionaea.pptp.include import packets
 
 logger = logging.getLogger('pptp')
 
+
 class pptpd(connection):
-	def __init__ (self):
-		connection.__init__(self,"tcp")
-		self.buf = b''
+    shared_config_values = ["firmware_revision", "hostname", "vendor_name"]
+    IDLE, ESTABLISHED = range(2)
 
-	def handle_established(self):
-		self.timeouts.idle = 120
-		self.processors()
+    def __init__(self):
+        connection.__init__(self, "tcp")
+        self.buf = b''
+        self.pending_packet_type = None
+        self.state = self.IDLE
+        self.firmware_revision = 1
+        self.hostname = ""
+        self.vendor_name = ""
 
-	def handle_io_in(self, data):
-		l=0
-		size = 0
-		chunk = b''
-		
-		if len(data) > l:
-			p = None
-			x = None
-			try:
+    def _handle_controll_message(self, message_type, data):
+        if self.state == self.ESTABLISHED:
+            if message_type == packets.PPTP_CTRMSG_TYPE_OUTGOINGCALL_REQUEST:
+                p = packets.PPTP_OutgoingCall_Request(data)
+                p.show()
+                r = packets.PPTP_OutgoingCall_Reply()
+                r.show()
+                self.send(r.build())
+                return len(data)
+            elif message_type == packets.CTRMSG_TYPE_CALLCLEAR_REQUEST:
+                p = packets.PPTP_CallClear_Request(data)
+                p.show()
+                r = packets.CallDisconnectNotify()
+                r.ResultCode = 4
+                r.show()
+                self.state = self.IDLE
+                self.send(r.build())
+                return len(data)
+            else:
+                logger.warning("Unexpected control message type %d", message_type)
+        return len(data)
 
-				if len(data) > 100:
-					p = PPTP_StartControlConnection_Request(data);
-					p.show()
+    def apply_config(self, config):
+        self.firmware_revision = config.get("firmware_revision", self.firmware_revision)
+        self.hostname = config.get("hostname", self.hostname)
+        self.vendor_name = config.get("vendor_name", self.vendor_name)
 
-					if p.Length == 0:
-						logger.warn("Bad PPTP Packet, Length = 0")
-						return l
+    def handle_established(self):
+        self.timeouts.idle = 120
+        self.processors()
 
-					self.pendingPacketType = p.ControlMessageType
+    def handle_io_in(self, data):
+        if self.state == self.IDLE:
+            p = packets.PPTP_StartControlConnection_Request(data)
+            p.show()
+            if p.Length == 0:
+                logger.warn("Bad PPTP Packet, Length = 0")
+                return len(data)
 
-				if len(data) < 100:
-					logger.warn("PPTP Packet, Length < 100")
-					
-			except:
-				t = traceback.format_exc()
-				logger.error(t)
-				return l
-	
-			if self.pendingPacketType == PPTP_CTRMSG_TYPE_STARTCTRCON_REQUEST:
-				x = PPTP_StartControlConnection_Request(data)
-				
-				# we can gather some values from the client, maybe use for fingerprinting clients
-				#l = p.getlayer(PPTP_StartControlConnection_Request)
-				i = incident("dionaea.modules.python.pptp.connect")
-				i.con = self
-				logger.debug("pptp remote hostname: %s", x.HostName)
-				i.remote_hostname = x.HostName
-				i.report()
+            i = incident("dionaea.modules.python.pptp.connect")
+            i.con = self
+            logger.debug("pptp remote hostname: %s", p.HostName)
+            i.firmware_revision = p.FirmwareRevision
+            i.max_channels = p.MaxChannels
+            i.protocol_version = p.ProtocolVersion
+            i.remote_hostname = p.HostName
+            i.vendor_name = p.VendorName
+            i.report()
+            self.state = self.ESTABLISHED
+            r = packets.PPTP_StartControlConnection_Reply()
+            r.FirmwareRevision = self.firmware_revision
+            r.HostName = self.hostname
+            r.VendorName = self.vendor_name
+            r.show()
+            self.send(r.build())
+            return len(data)
+        elif self.state == self.ESTABLISHED:
+            p = packets.BaseControllMessage(data)
+            if p.MessageType == 0x01:
+                return self._handle_controll_message(p.ControlMessageType, data)
 
-			elif self.pendingPacketType == PPTP_CTRMSG_TYPE_OUTGOINGCALL_REQUEST:
-				x = PPTP_OutgoingCall_Request(data)
+            logger.warning("Wrong message type %d", p.MessageType)
+            return len(data)
 
-			# FIXME after these, the client will send in Generic Routing Encapsulation (PPP) traffic
-			# dionaea currently not able to support these PPP traffic
+        return len(data)
 
-			self.buf = b''
-			x.show()
+    def handle_timeout_idle(self):
+        return False
 
-			r = None			
-			r = self.process( self.pendingPacketType, x)
-
-			if r:
-				r.show()
-				self.send(r.build())
-				
-		return len(data)
-
-	def process(self, PacketType, p):
-		r =''
-		rp = None
-		
-		if PacketType == PPTP_CTRMSG_TYPE_STARTCTRCON_REQUEST:
-			r = PPTP_StartControlConnection_Reply()
-		elif PacketType ==  PPTP_CTRMSG_TYPE_OUTGOINGCALL_REQUEST:
-			r = PPTP_OutgoingCall_Reply()
-		else:
-			logger.warn("UNKNOWN PACKET TYPE FOR PPTP %s", PacketType)
-		
-		return r
-	
-	def handle_timeout_idle(self):
-		return False
-
-	def handle_disconnect(self):
-		return False
-
+    def handle_disconnect(self):
+        return False
