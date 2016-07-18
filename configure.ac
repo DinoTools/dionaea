@@ -878,6 +878,7 @@ AC_CONFIG_FILES([Makefile
 				conf/dionaea.cfg
 				conf/ihandlers/fail2ban.yaml
 				conf/ihandlers/log_db_sql.yaml
+				conf/ihandlers/log_incident.yaml
 				conf/ihandlers/log_json.yaml
 				conf/ihandlers/log_sqlite.yaml
 				conf/ihandlers/virustotal.yaml
