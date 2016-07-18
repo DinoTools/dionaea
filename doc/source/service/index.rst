@@ -29,6 +29,7 @@ List of available services
     epmap
     ftp
     http
+    memcache
     mirror
     mqtt
     mssql
