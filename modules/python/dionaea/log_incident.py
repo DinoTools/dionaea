@@ -112,9 +112,13 @@ class LogJsonHandler(ihandler):
         for k in icd.keys():
             n = k.decode("ASCII")
             v = getattr(icd, n)
-            if isinstance(v, (int, float, str, bytes)):
+            if isinstance(v, (int, float, str, bytes, list, tuple, dict)):
                 logger.debug("Add '%s' to icd data", n)
                 idata[n] = v
+            elif isinstance(v, set):
+                # a set() is not JSON serializable, so we use lists instead
+                logger.debug("Add '%s' to icd data", n)
+                idata[n] = list(v)
             elif isinstance(v, connection):
                 k = k.decode("ASCII")
                 if k == "con":
