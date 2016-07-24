@@ -28,6 +28,7 @@ List of available ihandlers
     ftp
     hpfeeds
     log_db_sql
+    log_incident
     log_json
     log_sqlite
     nfq
