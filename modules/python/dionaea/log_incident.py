@@ -112,7 +112,7 @@ class LogJsonHandler(ihandler):
         for k in icd.keys():
             n = k.decode("ASCII")
             v = getattr(icd, n)
-            if isinstance(v, (int, float, str, bytes, list, tuple, dict)):
+            if isinstance(v, (int, float, str, bytes, list, tuple, dict)) or v is None:
                 logger.debug("Add '%s' to icd data", n)
                 idata[n] = v
             elif isinstance(v, set):
