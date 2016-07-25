@@ -112,13 +112,16 @@ class LogJsonHandler(ihandler):
         for k in icd.keys():
             n = k.decode("ASCII")
             v = getattr(icd, n)
-            if isinstance(v, (int, float, str, bytes, list, tuple, dict)):
+            if isinstance(v, (int, float, str, bytes, list, tuple, dict)) or v is None:
                 logger.debug("Add '%s' to icd data", n)
                 idata[n] = v
             elif isinstance(v, set):
                 # a set() is not JSON serializable, so we use lists instead
                 logger.debug("Add '%s' to icd data", n)
                 idata[n] = list(v)
+            elif isinstance(v, bytes):
+                logger.debug("Decode and add '%s' to icd data", n)
+                idata[n] = v.decode(encoding="utf-8", errors="replace")
             elif isinstance(v, connection):
                 k = k.decode("ASCII")
                 if k == "con":
@@ -135,7 +138,7 @@ class LogJsonHandler(ihandler):
                     "remote_port": v.remote.port
                 }
             else:
-                logger.warning("Incident '%s' with unknown data type '%s' for key '%s'", icd.origin, type(k), k)
+                logger.warning("Incident '%s' with unknown data type '%s' for key '%s'", icd.origin, type(v), k)
 
         data = {
             "timestamp": datetime.utcnow().isoformat(),
