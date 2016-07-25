@@ -138,7 +138,7 @@ class LogJsonHandler(ihandler):
                     "remote_port": v.remote.port
                 }
             else:
-                logger.warning("Incident '%s' with unknown data type '%s' for key '%s'", icd.origin, type(k), k)
+                logger.warning("Incident '%s' with unknown data type '%s' for key '%s'", icd.origin, type(v), k)
 
         data = {
             "timestamp": datetime.utcnow().isoformat(),
