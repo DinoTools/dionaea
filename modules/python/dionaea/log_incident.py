@@ -119,6 +119,9 @@ class LogJsonHandler(ihandler):
                 # a set() is not JSON serializable, so we use lists instead
                 logger.debug("Add '%s' to icd data", n)
                 idata[n] = list(v)
+            elif isinstance(v, bytes):
+                logger.debug("Decode and add '%s' to icd data", n)
+                idata[n] = v.decode(encoding="utf-8", errors="replace")
             elif isinstance(v, connection):
                 k = k.decode("ASCII")
                 if k == "con":
