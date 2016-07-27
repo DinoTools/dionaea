@@ -52,6 +52,7 @@ void ihandler_free(struct ihandler *i);
 enum opaque_data_type
 {
 	opaque_type_none,
+	opaque_type_bytes,
 	opaque_type_string,
 	opaque_type_int,
 	opaque_type_ptr,
@@ -77,6 +78,8 @@ struct opaque_data
 };
 struct opaque_data *opaque_data_new(void);
 void opaque_data_free(struct opaque_data *d);
+void opaque_data_bytes_set(struct opaque_data *d, GString *val);
+void opaque_data_bytes_get(struct opaque_data *d, GString **val);
 void opaque_data_string_set(struct opaque_data *d, GString *val);
 void opaque_data_string_get(struct opaque_data *d, GString **val);
 void opaque_data_int_set(struct opaque_data *d, long int val);
@@ -104,6 +107,8 @@ bool incident_value_int_set(struct incident *e, const char *name, long int val);
 bool incident_value_int_get(struct incident *e, const char *name, long int *val);
 bool incident_value_con_set(struct incident *e, const char *name, struct connection *val);
 bool incident_value_con_get(struct incident *e, const char *name, struct connection **val);
+bool incident_value_bytes_set(struct incident *e, const char *name, GString *str);
+bool incident_value_bytes_get(struct incident *e, const char *name, GString **str);
 bool incident_value_string_set(struct incident *e, const char *name, GString *str);
 bool incident_value_string_get(struct incident *e, const char *name, GString **str);
 bool incident_value_list_set(struct incident *e, const char *name, GList *list);
