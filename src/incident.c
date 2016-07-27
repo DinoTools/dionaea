@@ -46,6 +46,7 @@ void opaque_data_free(struct opaque_data *d)
 {
 	switch(d->type)
 	{
+	case opaque_type_bytes:
 	case opaque_type_string:
 		g_string_free(d->opaque.string, TRUE);
 		break;
@@ -68,6 +69,17 @@ void opaque_data_free(struct opaque_data *d)
 		break;
 	}
 	g_free(d);
+}
+
+void opaque_data_bytes_set(struct opaque_data *d, GString *val)
+{
+	d->type = opaque_type_bytes;
+	d->opaque.string = val;
+}
+
+void opaque_data_bytes_get(struct opaque_data *d, GString **val)
+{
+	*val = d->opaque.string;
 }
 
 void opaque_data_string_set(struct opaque_data *d, GString *val)
@@ -137,6 +149,7 @@ void opaque_data_dump(struct opaque_data *d, int indent)
 	case opaque_type_int:
 		g_snprintf(x+indent, 1023, "%s: (int) %li", d->name, d->opaque.integer);
 		break;
+	case opaque_type_bytes:
 	case opaque_type_string:
 		g_snprintf(x+indent, 1023, "%s: (string) %.*s", d->name, (int)d->opaque.string->len, d->opaque.string->str);
 		break;
@@ -251,6 +264,24 @@ bool incident_value_con_get(struct incident *e, const char *name, struct connect
 	if( d == NULL )
 		return false;
 	*con = d->opaque.con;
+	return true;
+}
+
+bool incident_value_bytes_set(struct incident *e, const char *name, GString *val)
+{
+	struct opaque_data *d = opaque_data_new();
+	opaque_data_bytes_set(d, val);
+	d->name = g_strdup(name);
+	g_hash_table_insert(e->data, (gpointer)d->name, d);
+	return true;
+}
+
+bool incident_value_bytes_get(struct incident *e, const char *name, GString **val)
+{
+	struct opaque_data *d = incident_value_get(e, name, opaque_type_bytes);
+	if( d == NULL )
+		return false;
+	*val = d->opaque.string;
 	return true;
 }
 

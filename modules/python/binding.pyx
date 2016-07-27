@@ -966,6 +966,8 @@ cdef extern from "../../include/incident.h":
 	c_bool c_incident_value_int_get "incident_value_int_get" (c_incident *e, char *name, long int *val)
 	c_bool c_incident_value_con_set "incident_value_con_set" (c_incident *e, char *name, c_connection *val)
 	c_bool c_incident_value_con_get "incident_value_con_get" (c_incident *e, char *name, c_connection **val)
+	c_bool c_incident_value_bytes_set "incident_value_bytes_set" (c_incident *e, char *name, c_GString *str)
+	c_bool c_incident_value_bytes_get "incident_value_bytes_get" (c_incident *e, char *name, c_GString **str)
 	c_bool c_incident_value_string_set "incident_value_string_set" (c_incident *e, char *name, c_GString *str)
 	c_bool c_incident_value_string_get "incident_value_string_get" (c_incident *e, char *name, c_GString **str)
 	c_bool c_incident_value_list_set "incident_value_list_set" (c_incident *e, char *name, c_GList *val)
@@ -1128,10 +1130,10 @@ cdef class incident:
 			c_incident_value_con_set(self.thisptr, key, con.thisptr)
 		elif isinstance(value, int) :
 			c_incident_value_int_set(self.thisptr, key, value)
+		elif isinstance(value, bytes):
+			c_incident_value_bytes_set(self.thisptr, key, c_g_string_new(value))
 		elif isinstance(value, unicode):
 			value = value.encode(u'UTF-8')
-			c_incident_value_string_set(self.thisptr, key, c_g_string_new(value))
-		elif isinstance(value, bytes):
 			c_incident_value_string_set(self.thisptr, key, c_g_string_new(value))
 		elif isinstance(value, list):
 			c_incident_value_list_set(self.thisptr, key, py_to_glist(value))
@@ -1155,6 +1157,8 @@ cdef class incident:
 			c.thisptr = <c_connection *>cc
 			INIT_C_CONNECTION_CLASS(c, c)
 			return c
+		elif c_incident_value_bytes_get(self.thisptr, key, &s) == True:
+			return bytesfrom(s.str, s.len)
 		elif c_incident_value_string_get(self.thisptr, key, &s) == True:
 			return stringfrom(s.str, s.len)
 		elif c_incident_value_int_get(self.thisptr, key, &i) == True:
