@@ -123,8 +123,8 @@ class LogJsonHandler(ihandler):
             return
 
         credentials = {
-            "password": icd.password,
-            "username": icd.username
+            "password": self._prepare_value(icd.password),
+            "username": self._prepare_value(icd.username)
         }
 
         if "credentials" not in data:
@@ -167,6 +167,17 @@ class LogJsonHandler(ihandler):
                 result[key].append(v)
         return result
 
+    def _prepare_value(self, v):
+        """
+        Prepare value to be JSON compatible.
+
+        :param v: The value to prepare.
+        :return: The prepared value
+        """
+        if isinstance(v, bytes):
+            return v.decode(encoding="utf-8", errors="replace")
+        return v
+
     def _serialize_connection(self, icd, connection_type):
         con = icd.con
 
@@ -178,7 +189,7 @@ class LogJsonHandler(ihandler):
             },
             "dst_ip": con.local.host,
             "dst_port": con.local.port,
-            "src_hostname": con.remote.hostname,
+            "src_hostname": self._prepare_value(con.remote.hostname),
             "src_ip": con.remote.host,
             "src_port": con.remote.port,
             "timestamp": datetime.utcnow().isoformat()
@@ -251,8 +262,8 @@ class LogJsonHandler(ihandler):
             data["ftp"]["commands"] = []
 
         data["ftp"]["commands"].append({
-            "command": icd.command,
-            "arguments": icd.arguments
+            "command": self._prepare_value(icd.command),
+            "arguments": self._prepare_value(icd.arguments)
         })
 
     def handle_incident_dionaea_modules_python_ftp_login(self, icd):
