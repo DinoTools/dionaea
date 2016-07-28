@@ -555,7 +555,7 @@ AZ_PYTHON_ENABLE( )             # Optional
 AZ_PYTHON_WITH( )               # Optional
 AZ_PYTHON_PATH( )               # or AZ_PYTHON_INSIST( )
 # if $PYTHON is not defined, then the following do nothing.
-AZ_PYTHON_VERSION_ENSURE( [3.2] )
+AZ_PYTHON_VERSION_ENSURE( [3.4] )
 AZ_PYTHON_CSPEC
 AZ_PYTHON_LSPEC
 
@@ -928,10 +928,6 @@ echo " - libs                            : $PYTHON_LSPEC"
 echo ""
 echo "cython                             : $enable_cython"
 echo " - binary                          : $CYTHON_BIN"
-echo ""
-echo "lcfg                               : $enable_lcfg"
-echo " - cflags                          : $LIB_LCFG_CFLAGS"
-echo " - libs                            : $LIB_LCFG_LIBS"
 echo ""
 echo "ssl                                : $enable_ssl"
 echo " - cflags                          : $LIB_SSL_CFLAGS"
