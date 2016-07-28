@@ -616,6 +616,21 @@ class logsqlhandler(ihandler):
         self.dbh.close()
         self.dbh = None
 
+    def _handle_credentials(self, icd):
+        """
+        Insert credentials into the logins table.
+
+        :param icd: Incident
+        """
+        con = icd.con
+        if con in self.attacks:
+            attack_id = self.attacks[con][1]
+            self.cursor.execute(
+                "INSERT INTO logins (connection, login_username, login_password) VALUES (?,?,?)",
+                (attack_id, icd.username, icd.password)
+            )
+            self.dbh.commit()
+
     def handle_incident(self, icd):
         #        print("unknown")
         pass
@@ -814,6 +829,9 @@ class logsqlhandler(ihandler):
             self.cursor.execute("INSERT INTO p0fs (connection, p0f_genre, p0f_link, p0f_detail, p0f_uptime, p0f_tos, p0f_dist, p0f_nat, p0f_fw) VALUES (?,?,?,?,?,?,?,?,?)",
                                 ( attackid, icd.genre, icd.link, icd.detail, icd.uptime, icd.tos, icd.dist, icd.nat, icd.fw))
             self.dbh.commit()
+
+    def handle_incident_dionaea_modules_python_ftp_login(self, icd):
+        self._handle_credentials(icd)
 
     def handle_incident_dionaea_modules_python_smb_dcerpc_request(self, icd):
         con=icd.con
