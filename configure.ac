@@ -555,7 +555,7 @@ AZ_PYTHON_ENABLE( )             # Optional
 AZ_PYTHON_WITH( )               # Optional
 AZ_PYTHON_PATH( )               # or AZ_PYTHON_INSIST( )
 # if $PYTHON is not defined, then the following do nothing.
-AZ_PYTHON_VERSION_ENSURE( [3.2] )
+AZ_PYTHON_VERSION_ENSURE( [3.4] )
 AZ_PYTHON_CSPEC
 AZ_PYTHON_LSPEC
 
