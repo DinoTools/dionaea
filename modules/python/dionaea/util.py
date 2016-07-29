@@ -27,6 +27,12 @@
 #*******************************************************************************/
 
 import hashlib
+import logging
+import re
+
+
+logger = logging.getLogger("util")
+logger.setLevel(logging.DEBUG)
 
 
 def md5file(filename):
@@ -68,3 +74,34 @@ def hashfile(filename, digest):
         digest.update(buf)
     fh.close()
     return digest.hexdigest()
+
+
+def detect_shellshock(connection, data, report_incidents=True):
+    """
+    Try to find Shellshock attacks, included download commands and URLs.
+
+    :param connection: The connection object
+    :param data: Data to analyse
+    :param report_incidents:
+    :return: List of urls or None
+    """
+    from dionaea.core import incident
+    regex = re.compile(b"\(\)\s*\t*\{.*;\s*\}\s*;")
+    if not regex.search(data):
+        return None
+    logger.debug("Shellshock attack found")
+
+    urls = []
+    regex = re.compile(
+        b"(wget|curl).+(?P<url>(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?)"
+    )
+    for m in regex.finditer(data):
+        logger.debug("Found download command with url %s", m.group("url"))
+        urls.append(m.group("url"))
+        if report_incidents:
+            i = incident("dionaea.download.offer")
+            i.con = connection
+            i.url = m.group("url")
+            i.report()
+
+    return urls
