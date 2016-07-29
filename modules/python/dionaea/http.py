@@ -28,6 +28,7 @@
 
 from dionaea import ServiceLoader
 from dionaea.core import connection, g_dionaea, incident, ihandler
+from dionaea.util import detect_shellshock
 from dionaea.exception import ServiceConfigError
 #from dionaea.services import g_slave
 import struct
@@ -275,6 +276,8 @@ class httpd(connection):
             data = data[soc:]
             self.header = httpreq(header)
             self.header.log_req()
+            for n, v in self.header.headers.items():
+                detect_shellshock(self, v)
 
             if self.header.type == b'GET':
                 self.handle_GET()
