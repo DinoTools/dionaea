@@ -583,13 +583,13 @@ static void curl_ihandler_cb(struct incident *i, void *ctx)
 	GString *url;
 	if( strcmp(i->origin, "dionaea.download.offer") == 0 )
 	{
-		if( incident_value_string_get(i, "url", &url) )
-		{
+		if( incident_value_bytes_get(i, "url", &url) || incident_value_string_get(i, "url", &url) ) {
 			if( strncasecmp(url->str,  "http", 4) != 0 )
 				return;
 			session_download_new(i, url->str);
-		} else
+		} else {
 			g_critical("download without url?");
+		}
 	} else
 		if( strcmp(i->origin, "dionaea.upload.request") == 0 )
 	{
