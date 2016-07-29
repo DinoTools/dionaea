@@ -1116,6 +1116,13 @@ class tftpdownloadhandler(ihandler):
         ihandler.__init__(self, path)
     def handle_incident(self, icd):
         url = icd.get("url")
+        if isinstance(url, bytes):
+            try:
+                url = url.decode(encoding="utf-8")
+            except UnicodeEncodeError as e:
+                logger.warning("Error decoding URL %s", url, exc_info=True)
+                return
+
         if url.startswith('tftp://'):
             # python fails parsing tftp://, ftp:// works, so ...
             logger.info("do download")
