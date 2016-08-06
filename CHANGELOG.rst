@@ -1,8 +1,43 @@
 Changelog
 =========
 
-0.5.0 - (`master`_)
-~~~~~~~~~~~~~~~~~~~
+0.6.0 - (`master`_)
+-------------------
+
+0.5.0 - 2016-08-06
+~~~~~~~~~~~~~~~~~~
+
+**dionaea**
+
+* Handle byte objects in incidents
+* Bump required Python version from 3.2 to 3.4
+
+**python/http**
+
+* Detect Shellshock attacks
+
+**python/log_incident**
+
+* Initial support to export raw incident information
+
+**python/log_sqlite**
+
+* Log credentials from the ftp service
+
+**python/memcache**
+
+* Initial support for the memcached protocol
+
+**python/pptp**
+
+* Clean up
+* Handle CallClearRequests packets
+* Values for hostname, vendor name and firmware revision are now customizable
+
+**python/util**
+
+* New function to detect shellshock attacks and report detected URLs
+
 
 0.4.2 - 2016-07-02
 ~~~~~~~~~~~~~~~~~~
