@@ -43,6 +43,8 @@ import tempfile
 logger = logging.getLogger('http')
 logger.setLevel(logging.DEBUG)
 
+STATE_HEADER, STATE_SENDFILE, STATE_POST, STATE_PUT = range(0, 4)
+
 
 class HTTPService(ServiceLoader):
     name = "http"
@@ -161,7 +163,7 @@ class httpd(connection):
     def __init__(self, proto="tcp"):
         logger.debug("http test")
         connection.__init__(self, proto)
-        self.state = 'HEADER'
+        self.state = STATE_HEADER
         self.rwchunksize = 64*1024
         self._out.speed.limit = 16*1024
         self.env = None
@@ -257,7 +259,7 @@ class httpd(connection):
         self.root = path
 
     def handle_io_in(self, data):
-        if self.state == 'HEADER':
+        if self.state == STATE_HEADER:
             # End Of Head
             eoh = data.find(b'\r\n\r\n')
             # Start Of Content
@@ -293,7 +295,7 @@ class httpd(connection):
                     # at least this information are needed for
                     # cgi.FieldStorage() to parse the content
                     self.env = {
-                        'REQUEST_METHOD':'POST',
+                        'REQUEST_METHOD': 'POST',
                         'CONTENT_LENGTH': self.header.headers[b'content-length'].decode("utf-8"),
                         'CONTENT_TYPE': self.header.headers[b'content-type'].decode("utf-8")
                     }
@@ -309,8 +311,7 @@ class httpd(connection):
                     self.handle_POST()
                     return len(data)
 
-
-                self.state = 'POST'
+                self.state = STATE_POST
                 # More on boundaries see:
                 # http://www.apps.ietf.org/rfc/rfc2046.html#sec-5.1.1
                 self.boundary = bytes(
@@ -346,7 +347,7 @@ class httpd(connection):
             self.handle_unknown()
             return len(data)
 
-        elif self.state == 'POST':
+        elif self.state == STATE_POST:
             pos = data.find(self.boundary)
             length = len(data)
             if pos < 0:
@@ -372,9 +373,9 @@ class httpd(connection):
             self.handle_POST()
             return pos + len(self.boundary)
 
-        elif self.state == 'PUT':
+        elif self.state == STATE_PUT:
             logger.debug("putting to me")
-        elif self.state == 'SENDFILE':
+        elif self.state == STATE_SENDFILE:
             logger.debug("sending file")
             return 0
 
@@ -467,7 +468,7 @@ class httpd(connection):
 
     def copyfile(self, f):
         self.file = f
-        self.state = 'SENDFILE'
+        self.state = STATE_SENDFILE
         self.handle_io_out()
 
     def send_head(self):
@@ -523,7 +524,7 @@ class httpd(connection):
 
     def handle_io_out(self):
         logger.debug("handle_io_out")
-        if self.state == 'SENDFILE':
+        if self.state == STATE_SENDFILE:
             w = self.file.read(self.rwchunksize)
             if len(w) > 0:
                 self.send(w)
