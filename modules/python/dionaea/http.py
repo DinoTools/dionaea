@@ -36,6 +36,7 @@ import os
 import sys
 import io
 import cgi
+import html
 import urllib.parse
 import re
 import tempfile
@@ -562,7 +563,7 @@ class httpd(connection):
             return None
         list.sort(key=lambda a: a.lower())
         r = []
-        displaypath = cgi.escape(self.header.path)
+        displaypath = html.escape(self.header.path)
         r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
         r.append("<html>\n<title>Directory listing for %s</title>\n" % displaypath)
         r.append("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
@@ -580,7 +581,7 @@ class httpd(connection):
             r.append(
                 '<li><a href="%s">%s</a>\n' % (
                     urllib.parse.quote(linkname),
-                    cgi.escape(displayname)
+                    html.escape(displayname)
                 )
             )
 
