@@ -164,6 +164,7 @@ class httpd(connection):
         logger.debug("http test")
         connection.__init__(self, proto)
         self.state = STATE_HEADER
+        self.header = None
         self.rwchunksize = 64*1024
         self._out.speed.limit = 16*1024
         self.env = None
@@ -304,8 +305,10 @@ class httpd(connection):
                     self.handle_POST()
                     return len(data)
 
-                m = re.compile("multipart/form-data;\s*boundary=(?P<boundary>.*)",
-                               re.IGNORECASE).match(self.env['CONTENT_TYPE'])
+                m = re.compile(
+                    "multipart/form-data;\s*boundary=(?P<boundary>.*)",
+                    re.IGNORECASE
+                ).match(self.env['CONTENT_TYPE'])
 
                 if not m:
                     self.handle_POST()
@@ -314,14 +317,13 @@ class httpd(connection):
                 self.state = STATE_POST
                 # More on boundaries see:
                 # http://www.apps.ietf.org/rfc/rfc2046.html#sec-5.1.1
-                self.boundary = bytes(
-                    "--" + m.group("boundary") + "--\r\n", 'utf-8')
+                self.boundary = bytes("--" + m.group("boundary") + "--\r\n", "utf-8")
 
                 # dump post content to file
                 self.fp_tmp = tempfile.NamedTemporaryFile(
                     delete=False,
                     dir=self.download_dir,
-                    prefix='http-',
+                    prefix="http-",
                     suffix=self.download_suffix
                 )
 
@@ -340,8 +342,8 @@ class httpd(connection):
                 return len(data)
 
             # ToDo
-            #elif self.header.type == b'PUT':
-            #   self.handle_PUT()
+            # elif self.header.type == b'PUT':
+            #     self.handle_PUT()
 
             # method not found
             self.handle_unknown()
@@ -381,17 +383,16 @@ class httpd(connection):
 
         return len(data)
 
-
     def handle_GET(self):
         """Handle the GET method. Send the header and the file."""
         x = self.send_head()
-        if x :
+        if x:
             self.copyfile(x)
 
     def handle_HEAD(self):
         """Handle the HEAD method. Send only the header but not the file."""
         x = self.send_head()
-        if x :
+        if x:
             x.close()
             self.close()
 
@@ -417,12 +418,12 @@ class httpd(connection):
         Handle the POST method. Send the head and the file. But ignore the POST params.
         Use the bistreams for a better analysis.
         """
-        if self.fp_tmp != None:
+        if self.fp_tmp is None:
             self.fp_tmp.seek(0)
-            form = cgi.FieldStorage(fp = self.fp_tmp, environ = self.env)
+            form = cgi.FieldStorage(fp=self.fp_tmp, environ=self.env)
             for field_name in form.keys():
                 # dump only files
-                if form[field_name].filename == None:
+                if form[field_name].filename is None:
                     continue
 
                 fp_post = form[field_name].file
@@ -455,7 +456,7 @@ class httpd(connection):
             os.unlink(self.fp_tmp.name)
 
         x = self.send_head()
-        if x :
+        if x:
             self.copyfile(x)
 
     def handle_PUT(self):
@@ -476,12 +477,21 @@ class httpd(connection):
         fpath = os.path.join(self.root, rpath[1:])
         apath = os.path.abspath(fpath)
         aroot = os.path.abspath(self.root)
-        logger.debug("root %s aroot %s rpath %s fpath %s apath %s" %
-                     (self.root, aroot, rpath, fpath, apath))
+        logger.debug(
+            "root %s aroot %s rpath %s fpath %s apath %s" % (
+                self.root,
+                aroot,
+                rpath,
+                fpath,
+                apath
+            )
+        )
+
         if not apath.startswith(aroot):
             self.send_response(404, "File not found")
             self.end_headers()
             self.close()
+
         if os.path.exists(apath):
             if os.path.isdir(apath):
                 if self.header.path.endswith('/'):
@@ -503,6 +513,7 @@ class httpd(connection):
                     self.close()
                     return None
                 return self.list_directory(apath)
+
             elif os.path.isfile(apath):
                 f = io.open(apath, 'rb')
                 self.send_response(200)
@@ -530,7 +541,7 @@ class httpd(connection):
                 self.send(w)
             # send call call handle_io_out
             # to avoid double close warning we check state
-            if len(w) < self.rwchunksize and self.state != None:
+            if len(w) < self.rwchunksize and self.state is not None:
                 self.state = None
                 self.close()
                 self.file.close()
@@ -553,8 +564,7 @@ class httpd(connection):
         r = []
         displaypath = cgi.escape(self.header.path)
         r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
-        r.append("<html>\n<title>Directory listing for %s</title>\n" %
-                 displaypath)
+        r.append("<html>\n<title>Directory listing for %s</title>\n" % displaypath)
         r.append("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
         r.append("<hr>\n<ul>\n")
         for name in list:
@@ -567,9 +577,12 @@ class httpd(connection):
             if os.path.islink(fullname):
                 displayname = name + "@"
                 # Note: a link to a directory displays with @ and links with /
-            r.append('<li><a href="%s">%s</a>\n' %
-                     (urllib.parse.quote(linkname), cgi.escape(displayname)))
-
+            r.append(
+                '<li><a href="%s">%s</a>\n' % (
+                    urllib.parse.quote(linkname),
+                    cgi.escape(displayname)
+                )
+            )
 
         r.append("</ul>\n<hr>\n</body>\n</html>\n")
         enc = sys.getfilesystemencoding()
@@ -598,7 +611,7 @@ class httpd(connection):
                 message = ''
         self.send("%s %d %s\r\n" % ("HTTP/1.1", code, message))
 
-    def send_error(self, code, message = None):
+    def send_error(self, code, message=None):
         if message is None:
             if code in self.responses:
                 message = self.responses[code][0]
@@ -608,12 +621,9 @@ class httpd(connection):
 
         r = []
         r.append('<?xml version="1.0" encoding="%s"?>\n' % (enc))
-        r.append(
-            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"\n')
-        r.append(
-            '         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">\n')
-        r.append(
-            '<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">\n')
+        r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"\n')
+        r.append('         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">\n')
+        r.append('<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">\n')
         r.append(' <head>\n')
         r.append('  <title>%d - %s</title>\n' % (code, message))
         r.append(' </head>\n')
