@@ -30,13 +30,10 @@ from dionaea import ServiceLoader
 from dionaea.core import connection, g_dionaea, incident, ihandler
 from dionaea.util import detect_shellshock
 from dionaea.exception import ServiceConfigError
-#from dionaea.services import g_slave
-import struct
 from collections import OrderedDict
 import logging
 import os
 import sys
-import datetime
 import io
 import cgi
 import urllib.parse
