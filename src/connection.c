@@ -667,7 +667,7 @@ void connection_free(struct connection *con)
 	ev_timer_stop(CL, &con->events.free);
 	if( con->events.free.repeat > 0. )
 	{
-		ev_timer_init(&con->events.free, connection_free_cb, 0., con->events.free.repeat);
+		ev_timer_init(&con->events.free, connection_free_report_cb, 0., con->events.free.repeat);
 		ev_timer_again(CL, &con->events.free);
 	}
 }
@@ -745,6 +745,20 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents, bool report_incid
 
 	memset(con, 0, sizeof(struct connection));
 	g_free(con);
+}
+
+/**
+ * we poll the connection to see if the refcount hit 0
+ * so we can free it
+ *
+ * @see connection_free_cb
+ *
+ * @param w
+ * @param revents
+ */
+void connection_free_report_cb(EV_P_ struct ev_timer *w, int revents)
+{
+	connection_free_cb(loop, w, revents, true);
 }
 
 /**
