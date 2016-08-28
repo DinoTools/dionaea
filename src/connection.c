@@ -667,7 +667,7 @@ void connection_free(struct connection *con)
 	ev_timer_stop(CL, &con->events.free);
 	if( con->events.free.repeat > 0. )
 	{
-		ev_timer_init(&con->events.free, connection_free_cb, 0., con->events.free.repeat);
+		ev_timer_init(&con->events.free, connection_free_report_cb, 0., con->events.free.repeat);
 		ev_timer_again(CL, &con->events.free);
 	}
 }
@@ -678,8 +678,9 @@ void connection_free(struct connection *con)
  *
  * @param w
  * @param revents
+ * @param report_incident Report an incident
  */
-void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
+void connection_free_cb(EV_P_ struct ev_timer *w, int revents, bool report_incident)
 {
 	struct connection *con = CONOFF_FREE(w);
 	g_debug("%s con %p",__PRETTY_FUNCTION__, con);
@@ -689,7 +690,7 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 
 	ev_timer_stop(EV_A_ w);
 
-	if( con->local.domain != AF_UNIX && con->remote.domain != AF_UNIX)
+	if( report_incident == true && con->local.domain != AF_UNIX && con->remote.domain != AF_UNIX)
 	{
 		g_debug("AF %i %i con->local.domain", con->local.domain, con->remote.domain);
 		struct incident *i = incident_new("dionaea.connection.free");
@@ -744,6 +745,20 @@ void connection_free_cb(EV_P_ struct ev_timer *w, int revents)
 
 	memset(con, 0, sizeof(struct connection));
 	g_free(con);
+}
+
+/**
+ * we poll the connection to see if the refcount hit 0
+ * so we can free it
+ *
+ * @see connection_free_cb
+ *
+ * @param w
+ * @param revents
+ */
+void connection_free_report_cb(EV_P_ struct ev_timer *w, int revents)
+{
+	connection_free_cb(loop, w, revents, true);
 }
 
 /**
@@ -1947,7 +1962,9 @@ void connection_tcp_accept_cb (EV_P_ struct ev_io *w, int revents)
 			g_warning("accepting connection failed, closing connection");
 			close(accepted->socket);
 			accepted->socket = -1;
-			connection_free_cb(loop, &accepted->events.free, 0);
+			// Free connection information but don't report
+			// incident.
+			connection_free_cb(loop, &accepted->events.free, 0, false);
 			continue;
 		}
 
@@ -3821,7 +3838,7 @@ void connection_dtls_accept_again(struct ev_loop *loop, struct ev_io *w, int rev
 			g_warning("CLIENT CONNECT WITHOUT COOKIE!");
 			g_hash_table_remove(con->transport.dtls.type.client.parent->transport.dtls.type.server.peers, con);
 			connection_dtls_drain_bio(con);
-			connection_free_cb(EV_A_ &con->events.free, 0);
+			connection_free_cb(EV_A_ &con->events.free, 0, true);
 			return;
 		}
 		switch( action )

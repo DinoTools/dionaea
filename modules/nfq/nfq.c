@@ -251,7 +251,7 @@ static int nfqueue_cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nf
 
 			incident_free(i);
 
-			connection_free_cb(g_dionaea->loop, &con->events.free, 0);
+			connection_free_cb(g_dionaea->loop, &con->events.free, 0, true);
 		}
 	
 	}else

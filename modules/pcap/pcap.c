@@ -189,7 +189,7 @@ static void pcap_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents)
 	incident_value_con_set(i, "con", con);
 	incident_report(i);
 	incident_free(i);
-	connection_free_cb(g_dionaea->loop, &con->events.free, 0);
+	connection_free_cb(g_dionaea->loop, &con->events.free, 0, true);
 }
 
 static bool pcap_config(void)
