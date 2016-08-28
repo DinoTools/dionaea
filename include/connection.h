@@ -269,7 +269,7 @@ void connection_process(struct connection *con);
 
 struct connection *connection_new(enum connection_transport type);
 void connection_free(struct connection *con);
-void connection_free_cb(struct ev_loop *loop, struct ev_timer *w, int revents);
+void connection_free_cb(struct ev_loop *loop, struct ev_timer *w, int revents, bool report_incident);
 
 
 void connection_set_nonblocking(struct connection *con);
