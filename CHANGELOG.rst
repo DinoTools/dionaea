@@ -4,6 +4,14 @@ Changelog
 0.6.0 - (`master`_)
 -------------------
 
+0.5.1 - 2016-09-05
+~~~~~~~~~~~~~~~~~~
+
+**dionaea**
+
+* Don't report 'connection.free' incident to early
+  to prevent segmentation faults
+
 0.5.0 - 2016-08-06
 ~~~~~~~~~~~~~~~~~~
 
