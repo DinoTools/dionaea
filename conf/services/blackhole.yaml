@@ -1,0 +1,16 @@
+- name: blackhole
+  config:
+    services:
+      # Telnet
+      - port: 23
+        protocol: tcp
+
+      # DNS
+      - port: 53
+        protocol: udp
+      - port: 53
+        protocol: tcp
+
+      # NTP
+      - port: 123
+        protocol: udp
