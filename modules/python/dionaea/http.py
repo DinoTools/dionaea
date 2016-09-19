@@ -41,6 +41,12 @@ import urllib.parse
 import re
 import tempfile
 
+try:
+    import jinja2
+    import jinja2.exceptions
+except ImportError:
+    jinja2 = None
+
 logger = logging.getLogger('http')
 logger.setLevel(logging.DEBUG)
 
@@ -159,7 +165,18 @@ class Headers(object):
 
 
 class httpd(connection):
-    shared_config_values = ["default_headers", "download_dir", "download_suffix", "headers", "root", "rwchunksize", "root"]
+    shared_config_values = [
+        "default_headers",
+        "download_dir",
+        "download_suffix",
+        "file_template",
+        "global_template",
+        "headers",
+        "root",
+        "rwchunksize",
+        "root",
+        "templates"
+    ]
 
     def __init__(self, proto="tcp"):
         logger.debug("http test")
@@ -184,12 +201,75 @@ class httpd(connection):
         ]
         self.default_headers = Headers(self._default_headers)
         self.root = None
+        self.global_template = None
+        self.file_template = None
+        self.templates = None
+
+    def _apply_template_config(self, config):
+        """
+        Load template config and if required load the template engine and the environment
+
+        :param dict config: Template config
+        :return: True = Success | False = Failure
+        """
+        enabled = config.get("enabled")
+        if not enabled:
+            return True
+
+        if jinja2 is None:
+            logger.warning("Templates enabled but jinja2 module not found")
+            return False
+
+        tpl_path = config.get("path")
+        if tpl_path is None:
+            logger.warning("Template path not set")
+            return False
+        if not os.path.isdir(tpl_path):
+            logger.warning("Configured template path '%s' is not a directory", tpl_path)
+            return False
+
+        self.global_template = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(tpl_path)
+        )
+        self.file_template = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(self.root)
+        )
+        self.templates = config.get("templates")
+        return True
 
     def _get_headers(self, code=None, filename=None, method=None):
         for header in self.headers:
             if header.match(code=code, filename=filename, method=method):
                 return header
         return self.default_headers
+
+    def _render_global_template(self, code, message):
+        if self.global_template is None:
+            return None
+        if self.templates is None:
+            return None
+        for tpl in self.templates:
+            tpl_codes = tpl.get("codes")
+            if tpl_codes and code not in tpl_codes:
+                continue
+            tpl_filename = tpl.get("filename")
+            if not tpl_filename:
+                logger.warning("Template filename not set")
+                continue
+            try:
+                template = self.global_template.get_template(
+                    name=tpl_filename.format(
+                        code=code
+                    )
+                )
+            except jinja2.exceptions.TemplateNotFound as e:
+                logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
+                return None
+            if template:
+                return template.render(
+                    code=code,
+                    message=message
+                )
 
     def apply_config(self, config):
         dionaea_config = g_dionaea.config().get("dionaea")
@@ -249,6 +329,11 @@ class httpd(connection):
                 logger.warning("Root path '%s' is not a directory", self.root)
             elif not os.access(self.root, os.R_OK):
                 logger.warning("Unable to read content of root directory '%s'", self.root)
+
+        template_config = config.get("template")
+        if template_config is None:
+            template_config = {}
+        self._apply_template_config(template_config)
 
     def handle_origin(self, parent):
         pass
@@ -620,20 +705,28 @@ class httpd(connection):
                 message = ''
         enc = sys.getfilesystemencoding()
 
-        r = []
-        r.append('<?xml version="1.0" encoding="%s"?>\n' % (enc))
-        r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"\n')
-        r.append('         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">\n')
-        r.append('<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">\n')
-        r.append(' <head>\n')
-        r.append('  <title>%d - %s</title>\n' % (code, message))
-        r.append(' </head>\n')
-        r.append(' <body>\n')
-        r.append('  <h1>%d - %s</h1>\n' % (code, message))
-        r.append(' </body>\n')
-        r.append('</html>\n')
+        content = self._render_global_template(
+            code=code,
+            message=message
+        )
 
-        encoded = ''.join(r).encode(enc)
+        if content is None:
+            r = []
+            r.append('<?xml version="1.0" encoding="%s"?>\n' % (enc))
+            r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"\n')
+            r.append('         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">\n')
+            r.append('<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">\n')
+            r.append(' <head>\n')
+            r.append('  <title>%d - %s</title>\n' % (code, message))
+            r.append(' </head>\n')
+            r.append(' <body>\n')
+            r.append('  <h1>%d - %s</h1>\n' % (code, message))
+            r.append(' </body>\n')
+            r.append('</html>\n')
+            content = ''.join(r)
+
+        if isinstance(content, str):
+            content = content.encode(enc)
 
         self.send_response(code, message)
 
@@ -642,14 +735,14 @@ class httpd(connection):
             self,
             {
                 "connection": "close",
-                "content_length": len(encoded),
+                "content_length": len(content),
                 "content_type": "text/html; charset=%s" % enc
             }
         )
         self.end_headers()
 
         f = io.BytesIO()
-        f.write(encoded)
+        f.write(content)
         f.seek(0)
         return f
 
