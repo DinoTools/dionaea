@@ -15,3 +15,9 @@
           - ["Content-Length", "{content_length}"]
           - ["Connection", "{connection}"]
           - ["X-Powered-By", "PHP/5.5.9-1ubuntu4.5"]
+    template:
+      enabled: true
+      file_extension: j2
+      path: "@LOCALESTATEDIR@/dionaea/roots/www_templates/test"
+      templates:
+        - filename: error/{code}.html.j2
