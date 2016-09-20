@@ -243,6 +243,20 @@ class httpd(connection):
                 return header
         return self.default_headers
 
+    def _render_file_template(self, filename):
+        filename = filename[len(self.root):] + ".j2"
+        filename = filename.lstrip("/")
+        if self.file_template is None:
+            return None
+        try:
+            template = self.file_template.get_template(filename)
+        except jinja2.exceptions.TemplateNotFound:
+            # ToDo: Do we need this?
+            # logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
+            return None
+
+        return template.render()
+
     def _render_global_template(self, code, message):
         if self.global_template is None:
             return None
@@ -578,46 +592,60 @@ class httpd(connection):
             self.end_headers()
             self.close()
 
-        if os.path.exists(apath):
-            if os.path.isdir(apath):
-                if self.header.path.endswith('/'):
-                    testpath = os.path.join(apath, "index.html")
-                    if os.path.isfile(testpath):
-                        apath = testpath
-            if os.path.isdir(apath):
-                if not self.header.path.endswith('/'):
-                    self.send_response(301)
-                    headers = self._get_headers(code=301)
-                    headers.send(
-                        self,
-                        {
-                            "connection": "close",
-                            "location": self.header.path + "/"
-                        }
-                    )
-                    self.end_headers()
-                    self.close()
-                    return None
-                return self.list_directory(apath)
-
-            elif os.path.isfile(apath):
-                f = io.open(apath, 'rb')
-                self.send_response(200)
-                headers = self._get_headers(code=200, filename=apath)
+        if os.path.isdir(apath):
+            if self.header.path.endswith('/'):
+                testpath = os.path.join(apath, "index.html")
+                if os.path.isfile(testpath) or os.path.isfile(testpath + ".j2"):
+                    apath = testpath
+            else:
+                self.send_response(301)
+                headers = self._get_headers(code=301)
                 headers.send(
                     self,
                     {
                         "connection": "close",
-                        "content_length": os.stat(apath).st_size
+                        "location": self.header.path + "/"
                     }
                 )
                 self.end_headers()
-                return f
-            else:
+                self.close()
+                return None
+
+        if os.path.isdir(apath):
+            return self.list_directory(apath)
+
+        elif os.path.isfile(apath) or os.path.isfile(apath + ".j2"):
+            if apath.endswith(".j2"):
+                # Don't return raw template files
                 return self.send_error(404)
-        else:
-            return self.send_error(404)
-        return None
+
+            content = self._render_file_template(apath)
+
+            if isinstance(content, str):
+                content = content.encode("utf-8")
+
+            if content:
+                f = io.BytesIO()
+                f.write(content)
+                f.seek(0)
+                content_length = len(content)
+            else:
+                f = io.open(apath, "rb")
+                content_length = os.stat(apath).st_size
+
+            self.send_response(200)
+            headers = self._get_headers(code=200, filename=apath)
+            headers.send(
+                self,
+                {
+                    "connection": "close",
+                    "content_length": content_length
+                }
+            )
+            self.end_headers()
+            return f
+
+        return self.send_error(404)
 
     def handle_io_out(self):
         logger.debug("handle_io_out")
@@ -654,6 +682,8 @@ class httpd(connection):
         r.append("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
         r.append("<hr>\n<ul>\n")
         for name in list:
+            if name.endswith(".j2"):
+                continue
             fullname = os.path.join(path, name)
             displayname = linkname = name
             # Append / for directories or @ for symbolic links
