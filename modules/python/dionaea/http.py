@@ -175,7 +175,7 @@ class httpd(connection):
         "root",
         "rwchunksize",
         "root",
-        "templates",
+        "template_error_pages",
         "template_file_extension"
     ]
 
@@ -204,7 +204,7 @@ class httpd(connection):
         self.root = None
         self.global_template = None
         self.file_template = None
-        self.templates = None
+        self.template_error_pages = None
         self.template_file_extension = ".j2"
 
     def _apply_template_config(self, config):
@@ -236,12 +236,14 @@ class httpd(connection):
         self.file_template = jinja2.Environment(
             loader=jinja2.FileSystemLoader(self.root)
         )
-        self.templates = config.get("templates")
+        tpl_cfg = config.get("templates")
+        if not tpl_cfg:
+            tpl_cfg = {}
+        self.template_error_pages = tpl_cfg.get("error_pages")
         self.template_file_extension = config.get("file_extension")
         if not self.template_file_extension:
             logger.info("File extension not configured using .j2")
             self.template_file_extension = ".j2"
-        print(self.template_file_extension)
         return True
 
     def _get_headers(self, code=None, filename=None, method=None):
@@ -267,9 +269,9 @@ class httpd(connection):
     def _render_global_template(self, code, message):
         if self.global_template is None:
             return None
-        if self.templates is None:
+        if self.template_error_pages is None:
             return None
-        for tpl in self.templates:
+        for tpl in self.template_error_pages:
             tpl_codes = tpl.get("codes")
             if tpl_codes and code not in tpl_codes:
                 continue
