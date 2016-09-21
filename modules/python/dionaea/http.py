@@ -175,6 +175,7 @@ class httpd(connection):
         "root",
         "rwchunksize",
         "root",
+        "template_autoindex",
         "template_error_pages",
         "template_file_extension"
     ]
@@ -204,6 +205,7 @@ class httpd(connection):
         self.root = None
         self.global_template = None
         self.file_template = None
+        self.template_autoindex = None
         self.template_error_pages = None
         self.template_file_extension = ".j2"
 
@@ -239,6 +241,7 @@ class httpd(connection):
         tpl_cfg = config.get("templates")
         if not tpl_cfg:
             tpl_cfg = {}
+        self.template_autoindex = tpl_cfg.get("autoindex")
         self.template_error_pages = tpl_cfg.get("error_pages")
         self.template_file_extension = config.get("file_extension")
         if not self.template_file_extension:
@@ -265,6 +268,22 @@ class httpd(connection):
             return None
 
         return template.render()
+
+    def _render_global_autoindex(self, files):
+        if self.global_template is None:
+            return None
+        if self.template_autoindex is None:
+            return None
+
+        try:
+            template = self.global_template.get_template(self.template_autoindex.get("filename"))
+        except jinja2.exceptions.TemplateNotFound as e:
+            logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
+            return None
+
+        return template.render(
+            files=files
+        )
 
     def _render_global_template(self, code, message):
         if self.global_template is None:
@@ -684,47 +703,54 @@ class httpd(connection):
             self.send_error(404, "No permission to list directory")
             return None
         list.sort(key=lambda a: a.lower())
-        r = []
-        displaypath = html.escape(self.header.path)
-        r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
-        r.append("<html>\n<title>Directory listing for %s</title>\n" % displaypath)
-        r.append("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
-        r.append("<hr>\n<ul>\n")
-        for name in list:
-            if name.endswith(self.template_file_extension):
-                continue
-            fullname = os.path.join(path, name)
-            displayname = linkname = name
-            # Append / for directories or @ for symbolic links
-            if os.path.isdir(fullname):
-                displayname = name + "/"
-                linkname = name + "/"
-            if os.path.islink(fullname):
-                displayname = name + "@"
-                # Note: a link to a directory displays with @ and links with /
-            r.append(
-                '<li><a href="%s">%s</a>\n' % (
-                    urllib.parse.quote(linkname),
-                    html.escape(displayname)
+        content = self._render_global_autoindex(files=list)
+        enc = "utf-8"
+        if content is None:
+            r = []
+            displaypath = html.escape(self.header.path)
+            r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
+            r.append("<html>\n<title>Directory listing for %s</title>\n" % displaypath)
+            r.append("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
+            r.append("<hr>\n<ul>\n")
+            for name in list:
+                if name.endswith(self.template_file_extension):
+                    continue
+                fullname = os.path.join(path, name)
+                displayname = linkname = name
+                # Append / for directories or @ for symbolic links
+                if os.path.isdir(fullname):
+                    displayname = name + "/"
+                    linkname = name + "/"
+                if os.path.islink(fullname):
+                    displayname = name + "@"
+                    # Note: a link to a directory displays with @ and links with /
+                r.append(
+                    '<li><a href="%s">%s</a>\n' % (
+                        urllib.parse.quote(linkname),
+                        html.escape(displayname)
+                    )
                 )
-            )
 
-        r.append("</ul>\n<hr>\n</body>\n</html>\n")
-        enc = sys.getfilesystemencoding()
-        encoded = ''.join(r).encode(enc)
+            r.append("</ul>\n<hr>\n</body>\n</html>\n")
+            enc = sys.getfilesystemencoding()
+            content = "".join(r).encode(enc)
+
+        if isinstance(content, str):
+            content = content.encode("utf-8")
+
         self.send_response(200)
         headers = self._get_headers(code=200)
         headers.send(
             self,
             {
                 "connection": "close",
-                "content_length": len(encoded),
+                "content_length": len(content),
                 "content_type": "text/html; charset=%s" % enc
             }
         )
         self.end_headers()
         f = io.BytesIO()
-        f.write(encoded)
+        f.write(content)
         f.seek(0)
         return f
 
