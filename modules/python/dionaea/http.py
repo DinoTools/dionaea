@@ -175,7 +175,8 @@ class httpd(connection):
         "root",
         "rwchunksize",
         "root",
-        "templates"
+        "templates",
+        "template_file_extension"
     ]
 
     def __init__(self, proto="tcp"):
@@ -204,6 +205,7 @@ class httpd(connection):
         self.global_template = None
         self.file_template = None
         self.templates = None
+        self.template_file_extension = ".j2"
 
     def _apply_template_config(self, config):
         """
@@ -235,6 +237,11 @@ class httpd(connection):
             loader=jinja2.FileSystemLoader(self.root)
         )
         self.templates = config.get("templates")
+        self.template_file_extension = config.get("file_extension")
+        if not self.template_file_extension:
+            logger.info("File extension not configured using .j2")
+            self.template_file_extension = ".j2"
+        print(self.template_file_extension)
         return True
 
     def _get_headers(self, code=None, filename=None, method=None):
@@ -244,7 +251,7 @@ class httpd(connection):
         return self.default_headers
 
     def _render_file_template(self, filename):
-        filename = filename[len(self.root):] + ".j2"
+        filename = filename[len(self.root):] + self.template_file_extension
         filename = filename.lstrip("/")
         if self.file_template is None:
             return None
@@ -595,7 +602,7 @@ class httpd(connection):
         if os.path.isdir(apath):
             if self.header.path.endswith('/'):
                 testpath = os.path.join(apath, "index.html")
-                if os.path.isfile(testpath) or os.path.isfile(testpath + ".j2"):
+                if os.path.isfile(testpath) or os.path.isfile(testpath + self.template_file_extension):
                     apath = testpath
             else:
                 self.send_response(301)
@@ -614,8 +621,8 @@ class httpd(connection):
         if os.path.isdir(apath):
             return self.list_directory(apath)
 
-        elif os.path.isfile(apath) or os.path.isfile(apath + ".j2"):
-            if apath.endswith(".j2"):
+        elif os.path.isfile(apath) or os.path.isfile(apath + self.template_file_extension):
+            if apath.endswith(self.template_file_extension):
                 # Don't return raw template files
                 return self.send_error(404)
 
@@ -682,7 +689,7 @@ class httpd(connection):
         r.append("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
         r.append("<hr>\n<ul>\n")
         for name in list:
-            if name.endswith(".j2"):
+            if name.endswith(self.template_file_extension):
                 continue
             fullname = os.path.join(path, name)
             displayname = linkname = name
