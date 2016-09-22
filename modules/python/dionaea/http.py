@@ -40,6 +40,7 @@ import html
 import urllib.parse
 import re
 import tempfile
+from datetime import datetime
 
 try:
     import jinja2
@@ -51,6 +52,41 @@ logger = logging.getLogger('http')
 logger.setLevel(logging.DEBUG)
 
 STATE_HEADER, STATE_SENDFILE, STATE_POST, STATE_PUT = range(0, 4)
+
+
+class FileListItem(object):
+    def __init__(self, path, name):
+        self.path = path
+        self.name = name
+        self._size = None
+        self._stat = None
+        self._file_type = None
+
+    @property
+    def fullname(self):
+        return os.path.join(self.path, self.name)
+
+    @property
+    def is_dir(self):
+        return os.path.isdir(self.fullname)
+
+    @property
+    def mtime(self):
+        return datetime.fromtimestamp(self.stat.st_mtime)
+
+    @property
+    def is_link(self):
+        return os.path.islink(self.fullname)
+
+    @property
+    def size(self):
+        return self.stat.st_size
+
+    @property
+    def stat(self):
+        if self._stat is None:
+            self._stat = os.stat(self.fullname)
+        return self._stat
 
 
 class HTTPService(ServiceLoader):
@@ -697,32 +733,44 @@ class httpd(connection):
 
         """
         try:
-            list = os.listdir(path)
-            list.append("..")
+            filenames = os.listdir(path)
         except os.error:
             self.send_error(404, "No permission to list directory")
             return None
-        list.sort(key=lambda a: a.lower())
-        content = self._render_global_autoindex(files=list)
+
+        files = []
+        for name in filenames:
+            if name.endswith(self.template_file_extension):
+                # ToDo: add templates to the file list
+                # How to calculate the size of the template file
+                continue
+            files.append(
+                FileListItem(
+                    path=path,
+                    name=name
+                )
+            )
+
+        content = self._render_global_autoindex(files=files)
         enc = "utf-8"
         if content is None:
+            files.sort(key=lambda a: a.name.lower())
             r = []
             displaypath = html.escape(self.header.path)
             r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
             r.append("<html>\n<title>Directory listing for %s</title>\n" % displaypath)
             r.append("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
             r.append("<hr>\n<ul>\n")
-            for name in list:
-                if name.endswith(self.template_file_extension):
-                    continue
-                fullname = os.path.join(path, name)
-                displayname = linkname = name
+            r.append('<li><a href="../">../</a>\n')
+
+            for file in files:
+                displayname = linkname = file.name
                 # Append / for directories or @ for symbolic links
-                if os.path.isdir(fullname):
-                    displayname = name + "/"
-                    linkname = name + "/"
-                if os.path.islink(fullname):
-                    displayname = name + "@"
+                if file.is_dir:
+                    displayname = file.name + "/"
+                    linkname = file.name + "/"
+                if file.is_link:
+                    displayname = file.name + "@"
                     # Note: a link to a directory displays with @ and links with /
                 r.append(
                     '<li><a href="%s">%s</a>\n' % (
