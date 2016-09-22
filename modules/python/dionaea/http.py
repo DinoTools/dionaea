@@ -653,9 +653,7 @@ class httpd(connection):
         )
 
         if not apath.startswith(aroot):
-            self.send_response(404, "File not found")
-            self.end_headers()
-            self.close()
+            return self.send_error(404, "File not found")
 
         if os.path.isdir(apath):
             if self.header.path.endswith('/'):
