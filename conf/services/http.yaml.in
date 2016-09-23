@@ -16,8 +16,17 @@
           - ["Connection", "{connection}"]
           - ["X-Powered-By", "PHP/5.5.9-1ubuntu4.5"]
     template:
-      enabled: true
-      file_extension: j2
-      path: "@LOCALESTATEDIR@/dionaea/roots/www_templates/test"
+      # set to true to enable template processing
+      # this feature requires jinja2 template engine http://jinja.pocoo.org/
+      enabled: false
+      file_extension: .j2
+      path: "@LOCALESTATEDIR@/dionaea/share/python/http/template/nginx"
       templates:
-        - filename: error/{code}.html.j2
+        autoindex:
+          filename: autoindex.html.j2
+        error_pages:
+          - filename: error.html.j2
+          # - filename: error/{code}.html.j2
+      # used to specify additional template values
+      values:
+        # full_name: nginx/1.1
