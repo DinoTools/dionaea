@@ -1,0 +1,12 @@
+<html>
+<head><title>Index of {{ connection.header.path }}</title></head>
+<body bgcolor="white">
+<h1>Index of {{ connection.header.path }}</h1><hr><pre><a href="../">../</a>
+{%- for file in files|selectattr("is_dir")|sort(attribute="name") %}
+<a href="{{ file.name }}">{{ file.name }}{% if file.is_dir %}/{% endif %}</a>{% set name_len = file.name|length %}{% for i in range(50 - name_len) %} {% endfor %}{{ file.mtime.strftime("%d-%b-%Y %H:%M") }}                   -
+{%- endfor %}
+{%- for file in files|rejectattr("is_dir")|sort(attribute="name") %}
+<a href="{{ file.name }}">{{ file.name }}{% if file.is_dir %}/{% endif %}</a>{% set name_len = file.name|length %}{% for i in range(51 - name_len) %} {% endfor %}{{ file.mtime.strftime("%d-%b-%Y %H:%M") }}{{ "% 20s"|format(file.size) }}
+{%- endfor %}
+</pre><hr></body>
+</html>

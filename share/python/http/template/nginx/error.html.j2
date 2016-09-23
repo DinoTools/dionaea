@@ -1,0 +1,15 @@
+<html>
+{%- if code == 301 %}{% set msg="301 Moved Permanently" %}
+{%- elif code == 302 %}{% set msg="302 Found" %}
+{%- elif code == 403 %}{% set msg="403 Forbidden" %}
+{%- elif code == 404 %}{% set msg="404 Not Found" %}
+{%- elif code == 413 %}{% set msg="413 Request Entity Too Large" %}
+{%- elif code == 500 %}{% set msg="500 Internal Server Error" %}
+{%- elif code == 501 %}{% set msg="501 Not Implemented" %}
+{%- endif %}
+<head><title>{{ msg }}</title></head>
+<body bgcolor="white">
+<center><h1>{{ msg }}</h1></center>
+<hr><center>{{ values.full_name|default("nginx") }}</center>
+</body>
+</html>
