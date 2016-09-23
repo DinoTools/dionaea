@@ -19,6 +19,9 @@ install-data-local:
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/roots/tftp
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/roots/upnp
 	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/roots/www
+	$(mkinstalldirs) $(DESTDIR)$(localstatedir)/dionaea/share/python/http/template/nginx
+	$(INSTALL) -t $(DESTDIR)$(localstatedir)/dionaea/share/python/http/template/nginx/ \
+	    share/python/http/template/nginx/*.j2
 	if [ ! -e $(DESTDIR)$(sysconfdir)/dionaea/ ]; then \
 		$(mkinstalldirs) $(DESTDIR)$(sysconfdir); \
 		$(mkinstalldirs) $(DESTDIR)$(sysconfdir)/dionaea; \
