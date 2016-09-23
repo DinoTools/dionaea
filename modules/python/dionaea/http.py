@@ -213,7 +213,8 @@ class httpd(connection):
         "root",
         "template_autoindex",
         "template_error_pages",
-        "template_file_extension"
+        "template_file_extension",
+        "template_values"
     ]
 
     def __init__(self, proto="tcp"):
@@ -244,6 +245,7 @@ class httpd(connection):
         self.template_autoindex = None
         self.template_error_pages = None
         self.template_file_extension = ".j2"
+        self.template_values = {}
 
     def _apply_template_config(self, config):
         """
@@ -283,6 +285,9 @@ class httpd(connection):
         if not self.template_file_extension:
             logger.info("File extension not configured using .j2")
             self.template_file_extension = ".j2"
+        self.template_values = config.get("values")
+        if not self.template_values:
+            self.template_values = {}
         return True
 
     def _get_headers(self, code=None, filename=None, method=None):
@@ -303,7 +308,9 @@ class httpd(connection):
             # logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
             return None
 
-        return template.render()
+        return template.render(
+            values=self.template_values
+        )
 
     def _render_global_autoindex(self, files):
         if self.global_template is None:
@@ -319,7 +326,8 @@ class httpd(connection):
 
         return template.render(
             connection=self,
-            files=files
+            files=files,
+            values=self.template_values
         )
 
     def _render_global_template(self, code, message):
@@ -347,7 +355,8 @@ class httpd(connection):
             if template:
                 return template.render(
                     code=code,
-                    message=message
+                    message=message,
+                    values=self.template_values
                 )
 
     def apply_config(self, config):
