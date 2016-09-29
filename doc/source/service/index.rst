@@ -26,6 +26,7 @@ List of available services
 .. toctree::
     :maxdepth: 2
 
+    blackhole
     epmap
     ftp
     http

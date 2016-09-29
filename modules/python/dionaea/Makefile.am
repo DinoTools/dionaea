@@ -2,7 +2,8 @@
 
 AUTOMAKE_OPTIONS = foreign
 
-PYSCRIPTS = sip/__init__.py
+PYSCRIPTS = blackhole.py
+PYSCRIPTS += sip/__init__.py
 PYSCRIPTS += sip/extras.py
 PYSCRIPTS += sip/rfc2396.py
 PYSCRIPTS += sip/rfc2617.py
