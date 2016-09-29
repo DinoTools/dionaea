@@ -30,21 +30,63 @@ from dionaea import ServiceLoader
 from dionaea.core import connection, g_dionaea, incident, ihandler
 from dionaea.util import detect_shellshock
 from dionaea.exception import ServiceConfigError
-#from dionaea.services import g_slave
-import struct
 from collections import OrderedDict
 import logging
 import os
 import sys
-import datetime
 import io
 import cgi
+import html
 import urllib.parse
 import re
 import tempfile
+from datetime import datetime
+
+try:
+    import jinja2
+    import jinja2.exceptions
+except ImportError:
+    jinja2 = None
 
 logger = logging.getLogger('http')
 logger.setLevel(logging.DEBUG)
+
+STATE_HEADER, STATE_SENDFILE, STATE_POST, STATE_PUT = range(0, 4)
+
+
+class FileListItem(object):
+    def __init__(self, path, name):
+        self.path = path
+        self.name = name
+        self._size = None
+        self._stat = None
+        self._file_type = None
+
+    @property
+    def fullname(self):
+        return os.path.join(self.path, self.name)
+
+    @property
+    def is_dir(self):
+        return os.path.isdir(self.fullname)
+
+    @property
+    def mtime(self):
+        return datetime.fromtimestamp(self.stat.st_mtime)
+
+    @property
+    def is_link(self):
+        return os.path.islink(self.fullname)
+
+    @property
+    def size(self):
+        return self.stat.st_size
+
+    @property
+    def stat(self):
+        if self._stat is None:
+            self._stat = os.stat(self.fullname)
+        return self._stat
 
 
 class HTTPService(ServiceLoader):
@@ -159,12 +201,27 @@ class Headers(object):
 
 
 class httpd(connection):
-    shared_config_values = ["default_headers", "download_dir", "download_suffix", "headers", "root", "rwchunksize", "root"]
+    shared_config_values = [
+        "default_headers",
+        "download_dir",
+        "download_suffix",
+        "file_template",
+        "global_template",
+        "headers",
+        "root",
+        "rwchunksize",
+        "root",
+        "template_autoindex",
+        "template_error_pages",
+        "template_file_extension",
+        "template_values"
+    ]
 
     def __init__(self, proto="tcp"):
         logger.debug("http test")
         connection.__init__(self, proto)
-        self.state = 'HEADER'
+        self.state = STATE_HEADER
+        self.header = None
         self.rwchunksize = 64*1024
         self._out.speed.limit = 16*1024
         self.env = None
@@ -183,12 +240,124 @@ class httpd(connection):
         ]
         self.default_headers = Headers(self._default_headers)
         self.root = None
+        self.global_template = None
+        self.file_template = None
+        self.template_autoindex = None
+        self.template_error_pages = None
+        self.template_file_extension = ".j2"
+        self.template_values = {}
+
+    def _apply_template_config(self, config):
+        """
+        Load template config and if required load the template engine and the environment
+
+        :param dict config: Template config
+        :return: True = Success | False = Failure
+        """
+        enabled = config.get("enabled")
+        if not enabled:
+            return True
+
+        if jinja2 is None:
+            logger.warning("Templates enabled but jinja2 module not found")
+            return False
+
+        tpl_path = config.get("path")
+        if tpl_path is None:
+            logger.warning("Template path not set")
+            return False
+        if not os.path.isdir(tpl_path):
+            logger.warning("Configured template path '%s' is not a directory", tpl_path)
+            return False
+
+        self.global_template = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(tpl_path)
+        )
+        self.file_template = jinja2.Environment(
+            loader=jinja2.FileSystemLoader(self.root)
+        )
+        tpl_cfg = config.get("templates")
+        if not tpl_cfg:
+            tpl_cfg = {}
+        self.template_autoindex = tpl_cfg.get("autoindex")
+        self.template_error_pages = tpl_cfg.get("error_pages")
+        self.template_file_extension = config.get("file_extension")
+        if not self.template_file_extension:
+            logger.info("File extension not configured using .j2")
+            self.template_file_extension = ".j2"
+        self.template_values = config.get("values")
+        if not self.template_values:
+            self.template_values = {}
+        return True
 
     def _get_headers(self, code=None, filename=None, method=None):
         for header in self.headers:
             if header.match(code=code, filename=filename, method=method):
                 return header
         return self.default_headers
+
+    def _render_file_template(self, filename):
+        filename = filename[len(self.root):] + self.template_file_extension
+        filename = filename.lstrip("/")
+        if self.file_template is None:
+            return None
+        try:
+            template = self.file_template.get_template(filename)
+        except jinja2.exceptions.TemplateNotFound:
+            # ToDo: Do we need this?
+            # logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
+            return None
+
+        return template.render(
+            values=self.template_values
+        )
+
+    def _render_global_autoindex(self, files):
+        if self.global_template is None:
+            return None
+        if self.template_autoindex is None:
+            return None
+
+        try:
+            template = self.global_template.get_template(self.template_autoindex.get("filename"))
+        except jinja2.exceptions.TemplateNotFound as e:
+            logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
+            return None
+
+        return template.render(
+            connection=self,
+            files=files,
+            values=self.template_values
+        )
+
+    def _render_global_template(self, code, message):
+        if self.global_template is None:
+            return None
+        if self.template_error_pages is None:
+            return None
+        for tpl in self.template_error_pages:
+            tpl_codes = tpl.get("codes")
+            if tpl_codes and code not in tpl_codes:
+                continue
+            tpl_filename = tpl.get("filename")
+            if not tpl_filename:
+                logger.warning("Template filename not set")
+                continue
+            try:
+                template = self.global_template.get_template(
+                    name=tpl_filename.format(
+                        code=code
+                    )
+                )
+            except jinja2.exceptions.TemplateNotFound as e:
+                logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
+                return None
+            if template:
+                return template.render(
+                    code=code,
+                    message=message,
+                    values=self.template_values
+                )
 
     def apply_config(self, config):
         dionaea_config = g_dionaea.config().get("dionaea")
@@ -249,6 +418,11 @@ class httpd(connection):
             elif not os.access(self.root, os.R_OK):
                 logger.warning("Unable to read content of root directory '%s'", self.root)
 
+        template_config = config.get("template")
+        if template_config is None:
+            template_config = {}
+        self._apply_template_config(template_config)
+
     def handle_origin(self, parent):
         pass
 
@@ -260,7 +434,7 @@ class httpd(connection):
         self.root = path
 
     def handle_io_in(self, data):
-        if self.state == 'HEADER':
+        if self.state == STATE_HEADER:
             # End Of Head
             eoh = data.find(b'\r\n\r\n')
             # Start Of Content
@@ -296,7 +470,7 @@ class httpd(connection):
                     # at least this information are needed for
                     # cgi.FieldStorage() to parse the content
                     self.env = {
-                        'REQUEST_METHOD':'POST',
+                        'REQUEST_METHOD': 'POST',
                         'CONTENT_LENGTH': self.header.headers[b'content-length'].decode("utf-8"),
                         'CONTENT_TYPE': self.header.headers[b'content-type'].decode("utf-8")
                     }
@@ -305,25 +479,25 @@ class httpd(connection):
                     self.handle_POST()
                     return len(data)
 
-                m = re.compile("multipart/form-data;\s*boundary=(?P<boundary>.*)",
-                               re.IGNORECASE).match(self.env['CONTENT_TYPE'])
+                m = re.compile(
+                    "multipart/form-data;\s*boundary=(?P<boundary>.*)",
+                    re.IGNORECASE
+                ).match(self.env['CONTENT_TYPE'])
 
                 if not m:
                     self.handle_POST()
                     return len(data)
 
-
-                self.state = 'POST'
+                self.state = STATE_POST
                 # More on boundaries see:
                 # http://www.apps.ietf.org/rfc/rfc2046.html#sec-5.1.1
-                self.boundary = bytes(
-                    "--" + m.group("boundary") + "--\r\n", 'utf-8')
+                self.boundary = bytes("--" + m.group("boundary") + "--\r\n", "utf-8")
 
                 # dump post content to file
                 self.fp_tmp = tempfile.NamedTemporaryFile(
                     delete=False,
                     dir=self.download_dir,
-                    prefix='http-',
+                    prefix="http-",
                     suffix=self.download_suffix
                 )
 
@@ -342,14 +516,14 @@ class httpd(connection):
                 return len(data)
 
             # ToDo
-            #elif self.header.type == b'PUT':
-            #   self.handle_PUT()
+            # elif self.header.type == b'PUT':
+            #     self.handle_PUT()
 
             # method not found
             self.handle_unknown()
             return len(data)
 
-        elif self.state == 'POST':
+        elif self.state == STATE_POST:
             pos = data.find(self.boundary)
             length = len(data)
             if pos < 0:
@@ -375,25 +549,24 @@ class httpd(connection):
             self.handle_POST()
             return pos + len(self.boundary)
 
-        elif self.state == 'PUT':
+        elif self.state == STATE_PUT:
             logger.debug("putting to me")
-        elif self.state == 'SENDFILE':
+        elif self.state == STATE_SENDFILE:
             logger.debug("sending file")
             return 0
 
         return len(data)
 
-
     def handle_GET(self):
         """Handle the GET method. Send the header and the file."""
         x = self.send_head()
-        if x :
+        if x:
             self.copyfile(x)
 
     def handle_HEAD(self):
         """Handle the HEAD method. Send only the header but not the file."""
         x = self.send_head()
-        if x :
+        if x:
             x.close()
             self.close()
 
@@ -419,12 +592,12 @@ class httpd(connection):
         Handle the POST method. Send the head and the file. But ignore the POST params.
         Use the bistreams for a better analysis.
         """
-        if self.fp_tmp != None:
+        if self.fp_tmp is None:
             self.fp_tmp.seek(0)
-            form = cgi.FieldStorage(fp = self.fp_tmp, environ = self.env)
+            form = cgi.FieldStorage(fp=self.fp_tmp, environ=self.env)
             for field_name in form.keys():
                 # dump only files
-                if form[field_name].filename == None:
+                if form[field_name].filename is None:
                     continue
 
                 fp_post = form[field_name].file
@@ -457,7 +630,7 @@ class httpd(connection):
             os.unlink(self.fp_tmp.name)
 
         x = self.send_head()
-        if x :
+        if x:
             self.copyfile(x)
 
     def handle_PUT(self):
@@ -470,7 +643,7 @@ class httpd(connection):
 
     def copyfile(self, f):
         self.file = f
-        self.state = 'SENDFILE'
+        self.state = STATE_SENDFILE
         self.handle_io_out()
 
     def send_head(self):
@@ -478,61 +651,83 @@ class httpd(connection):
         fpath = os.path.join(self.root, rpath[1:])
         apath = os.path.abspath(fpath)
         aroot = os.path.abspath(self.root)
-        logger.debug("root %s aroot %s rpath %s fpath %s apath %s" %
-                     (self.root, aroot, rpath, fpath, apath))
+        logger.debug(
+            "root %s aroot %s rpath %s fpath %s apath %s" % (
+                self.root,
+                aroot,
+                rpath,
+                fpath,
+                apath
+            )
+        )
+
         if not apath.startswith(aroot):
-            self.send_response(404, "File not found")
-            self.end_headers()
-            self.close()
-        if os.path.exists(apath):
-            if os.path.isdir(apath):
-                if self.header.path.endswith('/'):
-                    testpath = os.path.join(apath, "index.html")
-                    if os.path.isfile(testpath):
-                        apath = testpath
-            if os.path.isdir(apath):
-                if not self.header.path.endswith('/'):
-                    self.send_response(301)
-                    headers = self._get_headers(code=301)
-                    headers.send(
-                        self,
-                        {
-                            "connection": "close",
-                            "location": self.header.path + "/"
-                        }
-                    )
-                    self.end_headers()
-                    self.close()
-                    return None
-                return self.list_directory(apath)
-            elif os.path.isfile(apath):
-                f = io.open(apath, 'rb')
-                self.send_response(200)
-                headers = self._get_headers(code=200, filename=apath)
+            return self.send_error(404, "File not found")
+
+        if os.path.isdir(apath):
+            if self.header.path.endswith('/'):
+                testpath = os.path.join(apath, "index.html")
+                if os.path.isfile(testpath) or os.path.isfile(testpath + self.template_file_extension):
+                    apath = testpath
+            else:
+                self.send_response(301)
+                headers = self._get_headers(code=301)
                 headers.send(
                     self,
                     {
                         "connection": "close",
-                        "content_length": os.stat(apath).st_size
+                        "location": self.header.path + "/"
                     }
                 )
                 self.end_headers()
-                return f
-            else:
+                self.close()
+                return None
+
+        if os.path.isdir(apath):
+            return self.list_directory(apath)
+
+        elif os.path.isfile(apath) or os.path.isfile(apath + self.template_file_extension):
+            if apath.endswith(self.template_file_extension):
+                # Don't return raw template files
                 return self.send_error(404)
-        else:
-            return self.send_error(404)
-        return None
+
+            content = self._render_file_template(apath)
+
+            if isinstance(content, str):
+                content = content.encode("utf-8")
+
+            if content:
+                f = io.BytesIO()
+                f.write(content)
+                f.seek(0)
+                content_length = len(content)
+            else:
+                f = io.open(apath, "rb")
+                content_length = os.stat(apath).st_size
+
+            self.send_response(200)
+            headers = self._get_headers(code=200, filename=apath)
+            headers.send(
+                self,
+                {
+                    "connection": "close",
+                    "content_length": content_length
+                }
+            )
+            self.end_headers()
+            return f
+
+        return self.send_error(404)
 
     def handle_io_out(self):
         logger.debug("handle_io_out")
-        if self.state == 'SENDFILE':
+        if self.state == STATE_SENDFILE:
             w = self.file.read(self.rwchunksize)
             if len(w) > 0:
                 self.send(w)
             # send call call handle_io_out
             # to avoid double close warning we check state
-            if len(w) < self.rwchunksize and self.state != None:
+            if len(w) < self.rwchunksize and self.state is not None:
                 self.state = None
                 self.close()
                 self.file.close()
@@ -546,49 +741,72 @@ class httpd(connection):
 
         """
         try:
-            list = os.listdir(path)
-            list.append("..")
+            filenames = os.listdir(path)
         except os.error:
             self.send_error(404, "No permission to list directory")
             return None
-        list.sort(key=lambda a: a.lower())
-        r = []
-        displaypath = cgi.escape(self.header.path)
-        r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
-        r.append("<html>\n<title>Directory listing for %s</title>\n" %
-                 displaypath)
-        r.append("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
-        r.append("<hr>\n<ul>\n")
-        for name in list:
-            fullname = os.path.join(path, name)
-            displayname = linkname = name
-            # Append / for directories or @ for symbolic links
-            if os.path.isdir(fullname):
-                displayname = name + "/"
-                linkname = name + "/"
-            if os.path.islink(fullname):
-                displayname = name + "@"
-                # Note: a link to a directory displays with @ and links with /
-            r.append('<li><a href="%s">%s</a>\n' %
-                     (urllib.parse.quote(linkname), cgi.escape(displayname)))
 
+        files = []
+        for name in filenames:
+            if name.endswith(self.template_file_extension):
+                # ToDo: add templates to the file list
+                # How to calculate the size of the template file
+                continue
+            files.append(
+                FileListItem(
+                    path=path,
+                    name=name
+                )
+            )
 
-        r.append("</ul>\n<hr>\n</body>\n</html>\n")
-        enc = sys.getfilesystemencoding()
-        encoded = ''.join(r).encode(enc)
+        content = self._render_global_autoindex(files=files)
+        enc = "utf-8"
+        if content is None:
+            files.sort(key=lambda a: a.name.lower())
+            r = []
+            displaypath = html.escape(self.header.path)
+            r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD HTML 3.2 Final//EN">')
+            r.append("<html>\n<title>Directory listing for %s</title>\n" % displaypath)
+            r.append("<body>\n<h2>Directory listing for %s</h2>\n" % displaypath)
+            r.append("<hr>\n<ul>\n")
+            r.append('<li><a href="../">../</a>\n')
+
+            for file in files:
+                displayname = linkname = file.name
+                # Append / for directories or @ for symbolic links
+                if file.is_dir:
+                    displayname = file.name + "/"
+                    linkname = file.name + "/"
+                if file.is_link:
+                    displayname = file.name + "@"
+                    # Note: a link to a directory displays with @ and links with /
+                r.append(
+                    '<li><a href="%s">%s</a>\n' % (
+                        urllib.parse.quote(linkname),
+                        html.escape(displayname)
+                    )
+                )
+
+            r.append("</ul>\n<hr>\n</body>\n</html>\n")
+            enc = sys.getfilesystemencoding()
+            content = "".join(r).encode(enc)
+
+        if isinstance(content, str):
+            content = content.encode("utf-8")
+
         self.send_response(200)
         headers = self._get_headers(code=200)
         headers.send(
             self,
             {
                 "connection": "close",
-                "content_length": len(encoded),
+                "content_length": len(content),
                 "content_type": "text/html; charset=%s" % enc
             }
         )
         self.end_headers()
         f = io.BytesIO()
-        f.write(encoded)
+        f.write(content)
         f.seek(0)
         return f
 
@@ -600,7 +818,7 @@ class httpd(connection):
                 message = ''
         self.send("%s %d %s\r\n" % ("HTTP/1.1", code, message))
 
-    def send_error(self, code, message = None):
+    def send_error(self, code, message=None):
         if message is None:
             if code in self.responses:
                 message = self.responses[code][0]
@@ -608,23 +826,28 @@ class httpd(connection):
                 message = ''
         enc = sys.getfilesystemencoding()
 
-        r = []
-        r.append('<?xml version="1.0" encoding="%s"?>\n' % (enc))
-        r.append(
-            '<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"\n')
-        r.append(
-            '         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">\n')
-        r.append(
-            '<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">\n')
-        r.append(' <head>\n')
-        r.append('  <title>%d - %s</title>\n' % (code, message))
-        r.append(' </head>\n')
-        r.append(' <body>\n')
-        r.append('  <h1>%d - %s</h1>\n' % (code, message))
-        r.append(' </body>\n')
-        r.append('</html>\n')
+        content = self._render_global_template(
+            code=code,
+            message=message
+        )
 
-        encoded = ''.join(r).encode(enc)
+        if content is None:
+            r = []
+            r.append('<?xml version="1.0" encoding="%s"?>\n' % (enc))
+            r.append('<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"\n')
+            r.append('         "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">\n')
+            r.append('<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">\n')
+            r.append(' <head>\n')
+            r.append('  <title>%d - %s</title>\n' % (code, message))
+            r.append(' </head>\n')
+            r.append(' <body>\n')
+            r.append('  <h1>%d - %s</h1>\n' % (code, message))
+            r.append(' </body>\n')
+            r.append('</html>\n')
+            content = ''.join(r)
+
+        if isinstance(content, str):
+            content = content.encode(enc)
 
         self.send_response(code, message)
 
@@ -633,14 +856,14 @@ class httpd(connection):
             self,
             {
                 "connection": "close",
-                "content_length": len(encoded),
+                "content_length": len(content),
                 "content_type": "text/html; charset=%s" % enc
             }
         )
         self.end_headers()
 
         f = io.BytesIO()
-        f.write(encoded)
+        f.write(content)
         f.seek(0)
         return f
 
