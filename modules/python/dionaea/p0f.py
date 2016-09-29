@@ -88,6 +88,10 @@ class p0fconnection(connection):
             if type(s) == bytes:
                 if s.find(b'\x00'):
                     s = s[:s.find(b'\x00')]
+                try:
+                    s = s.decode("ascii")
+                except UnicodeDecodeError:
+                    logger.warning("Unable to decode p0f information %s=%r", i, s, exc_info=True)
                 icd.set(names[i], s)
             elif type(s) == int:
                 icd.set(names[i], str(s))
