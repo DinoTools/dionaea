@@ -26,8 +26,10 @@
 #*******************************************************************************/
 
 import logging
+import os
 import re
 import sqlite3
+import tempfile
 
 from dionaea.core import incident, connection, g_dionaea
 from .include.packets import *
@@ -37,16 +39,27 @@ logger = logging.getLogger('mysqld')
 
 class mysqld(connection):
     shared_config_values = [
-        "config"
+        "config",
+        "download_dir",
+        "download_suffix"
     ]
 
     def __init__(self):
         connection.__init__(self, "tcp")
         self.config = None
         self.state = ""
+        self.regex_statement = re.compile(
+            b"""([A-Za-z_.]+\(.*?\)+|\(.*?\)+|"(?:[^"]|\"|"")*"+|'[^'](?:|\'|'')*'+|`(?:[^`]|``)*`+|[^ ,]+|,)"""
+        )
+        self.download_dir = None
+        self.download_suffix = ".tmp"
 
     def apply_config(self, config):
         self.config = config.get("databases")
+
+        dionaea_config = g_dionaea.config().get("dionaea")
+        self.download_dir = dionaea_config.get("download.dir")
+        self.download_suffix = dionaea_config.get("download.suffix", ".tmp")
 
     def handle_established(self):
         self.processors()
@@ -104,6 +117,19 @@ class mysqld(connection):
 
     def _handle_COM_QUERY(self, p):
         r = None
+        query = self.regex_statement.findall(p.Query)
+
+        if len(query) > 0 and query[0].lower() == b"select":
+            print("foo")
+            r = self._handle_com_query_select(p, query[1:])
+
+        # ToDo: Support for MySQL_Result_*()
+        if isinstance(r, list):
+            return r
+
+        if r is True:
+            return MySQL_Result_OK(Message="")
+
         if re.match(b'set ', p.Query, re.I):
             r = MySQL_Result_OK(Message="#2")
 
@@ -229,6 +255,52 @@ class mysqld(connection):
                 logger.warn("SQL ERROR in %s" % p.Query)
                 r = MySQL_Result_Error(Message="Learn SQL!")
         return r
+
+    def _handle_com_query_select(self, p, query):
+        """
+
+        :param p:
+        :param bytes[] query:
+        :return:
+        """
+        if len(query) == 0:
+            return False
+
+        # ToDo: move import to top
+        if query[0].startswith(b"0x"):
+            if len(query) < 4:
+                return False
+
+            if query[1].lower() != b"into" or query[2].lower() != b"dumpfile":
+                return False
+
+            logger.info("Looks like someone tries to dump a hex encoded file")
+            try:
+                data = bytearray.fromhex(query[0][2:].decode("ascii"))
+            except UnicodeDecodeError as e:
+                logger.warning("Unable to decode hex string %r", query[0][2:], exc_info=True)
+                return False
+
+            fp_tmp = tempfile.NamedTemporaryFile(
+                delete=False,
+                dir=self.download_dir,
+                prefix='mysql-',
+                suffix=self.download_suffix
+            )
+
+            fp_tmp.write(data)
+
+            icd = incident("dionaea.download.complete")
+            icd.path = fp_tmp.name
+            icd.con = self
+            # We need the url for logging
+            icd.url = ""
+            fp_tmp.close()
+            icd.report()
+            os.unlink(fp_tmp.name)
+            return True
+
+        return False
 
     def handle_io_in(self,data):
         offset = 0
