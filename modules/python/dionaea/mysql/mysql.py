@@ -49,7 +49,7 @@ class mysqld(connection):
         self.config = None
         self.state = ""
         self.regex_statement = re.compile(
-            b"""([A-Za-z_.]+\(.*?\)+|\(.*?\)+|"(?:[^"]|\"|"")*"+|'[^'](?:|\'|'')*'+|`(?:[^`]|``)*`+|[^ ,]+|,)"""
+            b"""([A-Za-z0-9_.]+\(.*?\)+|\(.*?\)+|"(?:[^"]|\"|"")*"+|'[^'](?:|\'|'')*'+|`(?:[^`]|``)*`+|[^ ,]+|,)"""
         )
         self.download_dir = None
         self.download_suffix = ".tmp"
@@ -266,7 +266,8 @@ class mysqld(connection):
         if len(query) == 0:
             return False
 
-        regex_function = re.compile(b"(?P<name>[A-Za-z_.]+)\((?P<args>.*?)\)+")
+        regex_function = re.compile(b"(?P<name>[A-Za-z0-9_.]+)\((?P<args>.*?)\)+")
+        regex_url = re.compile(b"(?P<url>(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?)")
 
         m = regex_function.match(query[0])
 
@@ -306,6 +307,16 @@ class mysqld(connection):
                 return False
 
             self._report_raw_data(data)
+            return True
+
+        if m and m.group("name") == b"xpdl3":
+            args = m.group("args")
+            m_url = regex_url.search(args)
+            if m_url:
+                i = incident("dionaea.download.offer")
+                i.con = self
+                i.url = m_url.group("url")
+                i.report()
             return True
 
         return False
