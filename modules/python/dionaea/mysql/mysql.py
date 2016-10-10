@@ -281,26 +281,34 @@ class mysqld(connection):
                 logger.warning("Unable to decode hex string %r", query[0][2:], exc_info=True)
                 return False
 
-            fp_tmp = tempfile.NamedTemporaryFile(
-                delete=False,
-                dir=self.download_dir,
-                prefix='mysql-',
-                suffix=self.download_suffix
-            )
-
-            fp_tmp.write(data)
-
-            icd = incident("dionaea.download.complete")
-            icd.path = fp_tmp.name
-            icd.con = self
-            # We need the url for logging
-            icd.url = ""
-            fp_tmp.close()
-            icd.report()
-            os.unlink(fp_tmp.name)
+            self._report_raw_data(data)
             return True
 
         return False
+
+    def _report_raw_data(self, data):
+        """
+        Create temporary file and report incident
+
+        :param bytes data: File data
+        """
+        fp_tmp = tempfile.NamedTemporaryFile(
+            delete=False,
+            dir=self.download_dir,
+            prefix='mysql-',
+            suffix=self.download_suffix
+        )
+
+        fp_tmp.write(data)
+
+        icd = incident("dionaea.download.complete")
+        icd.path = fp_tmp.name
+        icd.con = self
+        # We need the url for logging
+        icd.url = ""
+        fp_tmp.close()
+        icd.report()
+        os.unlink(fp_tmp.name)
 
     def handle_io_in(self,data):
         offset = 0
