@@ -266,6 +266,30 @@ class mysqld(connection):
         if len(query) == 0:
             return False
 
+        regex_function = re.compile(b"(?P<name>[A-Za-z_.]+)\((?P<args>.*?)\)+")
+
+        m = regex_function.match(query[0])
+
+        if m and m.group("name") == b"unhex":
+            if len(query) < 4:
+                return False
+
+            if query[1].lower() != b"into" or query[2].lower() != b"dumpfile":
+                return False
+
+            data = m.group("args")
+            data = data.strip(b"' ")
+
+            logger.info("Looks like someone tries to dump a hex encoded file")
+            try:
+                data = bytearray.fromhex(data.decode("ascii"))
+            except (UnicodeDecodeError, ValueError):
+                logger.warning("Unable to decode hex string %r", query[0][2:], exc_info=True)
+                return False
+
+            self._report_raw_data(data)
+            return True
+
         # ToDo: move import to top
         if query[0].startswith(b"0x"):
             if len(query) < 4:
