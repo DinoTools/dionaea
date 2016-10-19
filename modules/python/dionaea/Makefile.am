@@ -3,6 +3,8 @@
 AUTOMAKE_OPTIONS = foreign
 
 PYSCRIPTS = blackhole.py
+PYSCRIPTS += emu_scripts/__init__.py
+PYSCRIPTS += emu_scripts/handler.py
 PYSCRIPTS += sip/__init__.py
 PYSCRIPTS += sip/extras.py
 PYSCRIPTS += sip/rfc2396.py
