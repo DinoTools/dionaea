@@ -81,7 +81,12 @@ class EmulateScriptsHandler(ihandler):
 
     def handle_incident_dionaea_connection_free(self, icd):
         # Delete levels for this connection
-        del self.connection_url_levels[icd.con]
+        if icd.con not in self.connection_url_levels:
+            return
+        try:
+            del self.connection_url_levels[icd.con]
+        except KeyError:
+            pass
 
     def handle_incident_dionaea_download_complete(self, icd):
         urls = []
