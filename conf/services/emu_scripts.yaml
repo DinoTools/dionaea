@@ -1,0 +1,5 @@
+- name: emu_scripts
+  config:
+    enabled_handlers:
+      # Be very careful if you use the raw_url handler
+      - raw_url
