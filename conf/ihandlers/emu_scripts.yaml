@@ -1,5 +1,7 @@
 - name: emu_scripts
   config:
+    # Maximum dumber of subdownloads
+    # max_subdownloads: 20
     enabled_handlers:
       - powershell
       - vbscript
