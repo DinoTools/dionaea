@@ -1,5 +1,7 @@
 - name: emu_scripts
   config:
     enabled_handlers:
+      - powershell
+      - vbscript
       # Be very careful if you use the raw_url handler
-      - raw_url
+      #- raw_url
