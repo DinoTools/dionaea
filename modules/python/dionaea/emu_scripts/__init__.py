@@ -50,12 +50,17 @@ class EmulateScriptsHandler(ihandler):
         self._config = config
         self.handlers = []
         self.connection_url_levels = {}
+        self.max_subdownloads = 20
 
         from .handler import PowerShell, RawURL, VBScript
 
         tmp_handlers = {}
         for h in (PowerShell, RawURL,VBScript):
             tmp_handlers[h.name] = h
+
+        tmp = config.get("max_subdownloads")
+        if isinstance(tmp, int):
+            self.max_subdownloads = tmp
 
         enabled_handlers = config.get("enabled_handlers")
         if not isinstance(enabled_handlers, list) or len(enabled_handlers) == 0:
@@ -119,6 +124,9 @@ class EmulateScriptsHandler(ihandler):
                 # don't download a file multiple times
                 continue
 
+            if len(url_levels) > self.max_subdownloads:
+                logger.warning("Max number of subdownloads reached")
+                break
             url_levels[url] = next_level
             i = incident("dionaea.download.offer")
             i.con = icd.con
