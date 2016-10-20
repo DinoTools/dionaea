@@ -51,10 +51,10 @@ class EmulateScriptsHandler(ihandler):
         self.handlers = []
         self.connection_url_levels = {}
 
-        from .handler import RawURL
+        from .handler import PowerShell, RawURL
 
         tmp_handlers = {}
-        for h in (RawURL,):
+        for h in (PowerShell, RawURL,):
             tmp_handlers[h.name] = h
 
         enabled_handlers = config.get("enabled_handlers")
@@ -89,8 +89,6 @@ class EmulateScriptsHandler(ihandler):
             pass
 
     def handle_incident_dionaea_download_complete(self, icd):
-        urls = []
-
         url_levels = self.connection_url_levels.get(icd.con)
         if not isinstance(url_levels, dict):
             url_levels = {}
@@ -106,8 +104,15 @@ class EmulateScriptsHandler(ihandler):
         # ToDo: check size
         data = fp.read()
         fp.close()
+        urls = None
+        # use the url list of the first handler that matches
         for handler in self.handlers:
-            urls = urls + handler.run(data)
+            urls = handler.run(data)
+            if urls is not None:
+                break
+
+        if urls is None:
+            return
 
         for url in set(urls):
             if url in url_levels:
