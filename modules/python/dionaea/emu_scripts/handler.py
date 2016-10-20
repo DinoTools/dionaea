@@ -12,6 +12,31 @@ class BaseHandler(object):
         if isinstance(config, dict):
             self._config = config
 
+        self.min_match_count = 0
+        self._regex_detect = []
+
+        self._regex_url = re.compile(
+            b"(?P<url>(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?)"
+        )
+
+    def run(self, data):
+        match_count = 0
+        for regex in self._regex_detect:
+            m = regex.search(data)
+            if m:
+                match_count += 1
+
+        if match_count < self.min_match_count:
+            logger.info("Match count for %s is %d should at least be %d", self.name, match_count, self.min_match_count)
+            return
+
+        logger.info("Looking for URLs '%s'", self.name)
+        urls = []
+        for m in self._regex_url.finditer(data):
+            urls.append(m.group("url"))
+        return urls
+
+
 class RawURL(object):
     name = "raw_url"
 
@@ -62,3 +87,19 @@ class PowerShell(BaseHandler):
         for m in self._regex_url.finditer(data):
             urls.append(m.group("url"))
         return urls
+
+
+class VBScript(BaseHandler):
+    name = "vbscript"
+
+    def __init__(self, config=None):
+        BaseHandler.__init__(self, config=config)
+
+        self.min_match_count = 1
+        self._regex_detect = [
+            re.compile(b"Set\s+\w+\s+=\s+CreateObject\(.*?(Msxml2.XMLHTTP|Wscript.Shell).*?\)")
+        ]
+
+        self._regex_url = re.compile(
+            b"\.Open\s+\"GET\"\s*,\s*\"(?P<url>(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?)\""
+        )

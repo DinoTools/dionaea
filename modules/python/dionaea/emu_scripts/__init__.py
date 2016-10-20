@@ -51,10 +51,10 @@ class EmulateScriptsHandler(ihandler):
         self.handlers = []
         self.connection_url_levels = {}
 
-        from .handler import PowerShell, RawURL
+        from .handler import PowerShell, RawURL, VBScript
 
         tmp_handlers = {}
-        for h in (PowerShell, RawURL,):
+        for h in (PowerShell, RawURL,VBScript):
             tmp_handlers[h.name] = h
 
         enabled_handlers = config.get("enabled_handlers")
