@@ -101,7 +101,7 @@ Install required build dependencies before configuring and building dionaea.
         libudns-dev \
         python3 \
         python3-dev \
-        python3-yaml \
+        python3-yaml
 
 After all dependencies have been installed successfully run :code:`autreconf` to build or rebuild the build scripts.
 
