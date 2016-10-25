@@ -34,6 +34,8 @@ import tempfile
 from dionaea.core import incident, connection, g_dionaea
 from .include.packets import *
 
+from .var import VarHandler
+
 logger = logging.getLogger('mysqld')
 
 
@@ -43,6 +45,7 @@ class mysqld(connection):
         "download_dir",
         "download_suffix"
     ]
+    stat_vars = VarHandler()
 
     def __init__(self):
         connection.__init__(self, "tcp")
@@ -60,6 +63,9 @@ class mysqld(connection):
         dionaea_config = g_dionaea.config().get("dionaea")
         self.download_dir = dionaea_config.get("download.dir")
         self.download_suffix = dionaea_config.get("download.suffix", ".tmp")
+
+        from .var import CFG_VARS
+        self.stat_vars.load(CFG_VARS)
 
     def handle_established(self):
         self.processors()
@@ -122,6 +128,9 @@ class mysqld(connection):
         if len(query) > 0 and query[0].lower() == b"select":
             print("foo")
             r = self._handle_com_query_select(p, query[1:])
+
+        elif len(query) > 0 and query[0].lower() == b"show":
+            r = self._handle_com_query_show(p, query[1:])
 
         # ToDo: Support for MySQL_Result_*()
         if isinstance(r, list):
@@ -320,6 +329,50 @@ class mysqld(connection):
             return True
 
         return False
+
+    def _handle_com_query_show(self, p, query):
+        """
+
+        :param p:
+        :param bytes[] query:
+        :return:
+        """
+        if len(query) == 0:
+            return False
+
+        r = []
+        r.append(MySQL_Result_Header(FieldCount=2))
+        r.append(
+            MySQL_Result_Field(
+                Catalog='def',
+                Name="Variable_name",
+                CharSet=33,
+                Length=75,
+                Type=FIELD_TYPE_VAR_STRING,
+                Flags=FLAG_NOT_NULL,
+                Decimals=0
+            )
+        )
+        r.append(
+            MySQL_Result_Field(
+                Catalog='def',
+                Name="Value",
+                CharSet=33,
+                Length=75,
+                Type=FIELD_TYPE_VAR_STRING,
+                Flags=FLAG_NOT_NULL,
+                Decimals=0
+            )
+        )
+        r.append(MySQL_Result_EOF(ServerStatus=0x002))
+        for name, var in self.stat_vars.values.items():
+            r.append(
+                MySQL_Result_Row_Data(ColumnValues=[name + '\0', "%s\0" % var])
+            )
+
+        r.append(MySQL_Result_EOF(ServerStatus=0x002))
+
+        return r
 
     def _report_raw_data(self, data):
         """
