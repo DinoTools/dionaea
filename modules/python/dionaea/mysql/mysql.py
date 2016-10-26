@@ -45,7 +45,7 @@ class mysqld(connection):
         "download_dir",
         "download_suffix"
     ]
-    stat_vars = VarHandler()
+    vars = VarHandler()
 
     def __init__(self):
         connection.__init__(self, "tcp")
@@ -65,7 +65,17 @@ class mysqld(connection):
         self.download_suffix = dionaea_config.get("download.suffix", ".tmp")
 
         from .var import CFG_VARS
-        self.stat_vars.load(CFG_VARS)
+        self.vars.load(CFG_VARS)
+        vars = config.get("vars")
+        if not isinstance(vars, dict):
+            vars = {}
+
+        for name, value in vars.items():
+            obj = self.vars.values.get(name)
+            if obj is None:
+                logger.warning("Config value '%s' does not exist")
+                continue
+            obj.value = value
 
     def handle_established(self):
         self.processors()
@@ -365,7 +375,7 @@ class mysqld(connection):
             )
         )
         r.append(MySQL_Result_EOF(ServerStatus=0x002))
-        for name, var in self.stat_vars.values.items():
+        for name, var in self.vars.values.items():
             r.append(
                 MySQL_Result_Row_Data(ColumnValues=[name + '\0', "%s\0" % var])
             )
