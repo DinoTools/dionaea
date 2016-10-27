@@ -38,6 +38,11 @@ from .var import VarHandler
 
 logger = logging.getLogger('mysqld')
 
+re_show_var = re.compile(
+    b"show\s+((?P<global>global)\s+)?variables(\s+like\s+(?P<sep>\"|')(?P<like>.*?)(?P=sep))?",
+    re.I
+)
+
 
 class mysqld(connection):
     shared_config_values = [
@@ -347,42 +352,51 @@ class mysqld(connection):
         :param bytes[] query:
         :return:
         """
-        if len(query) == 0:
-            return False
 
-        r = []
-        r.append(MySQL_Result_Header(FieldCount=2))
-        r.append(
-            MySQL_Result_Field(
-                Catalog='def',
-                Name="Variable_name",
-                CharSet=33,
-                Length=75,
-                Type=FIELD_TYPE_VAR_STRING,
-                Flags=FLAG_NOT_NULL,
-                Decimals=0
-            )
-        )
-        r.append(
-            MySQL_Result_Field(
-                Catalog='def',
-                Name="Value",
-                CharSet=33,
-                Length=75,
-                Type=FIELD_TYPE_VAR_STRING,
-                Flags=FLAG_NOT_NULL,
-                Decimals=0
-            )
-        )
-        r.append(MySQL_Result_EOF(ServerStatus=0x002))
-        for name, var in self.vars.values.items():
+        m = re_show_var.match(p.Query)
+        if m:
+            r = []
+            r.append(MySQL_Result_Header(FieldCount=2))
             r.append(
-                MySQL_Result_Row_Data(ColumnValues=[name + '\0', "%s\0" % var])
+                MySQL_Result_Field(
+                    Catalog='def',
+                    Name="Variable_name",
+                    CharSet=33,
+                    Length=75,
+                    Type=FIELD_TYPE_VAR_STRING,
+                    Flags=FLAG_NOT_NULL,
+                    Decimals=0
+                )
             )
+            r.append(
+                MySQL_Result_Field(
+                    Catalog='def',
+                    Name="Value",
+                    CharSet=33,
+                    Length=75,
+                    Type=FIELD_TYPE_VAR_STRING,
+                    Flags=FLAG_NOT_NULL,
+                    Decimals=0
+                )
+            )
+            r.append(MySQL_Result_EOF(ServerStatus=0x002))
 
-        r.append(MySQL_Result_EOF(ServerStatus=0x002))
+            var_name = None
+            if m.group("like"):
+                var_name = re.escape(m.group("like"))
+                var_name = var_name.replace(b"%", b".*")
+                var_name = re.compile(var_name)
 
-        return r
+            for name, var in self.vars.values.items():
+                if var_name and not var_name.match(name.encode("ascii")):
+                    continue
+                r.append(
+                    MySQL_Result_Row_Data(ColumnValues=[name + '\0', "%s\0" % var])
+                )
+
+            r.append(MySQL_Result_EOF(ServerStatus=0x002))
+
+            return r
 
     def _report_raw_data(self, data):
         """
