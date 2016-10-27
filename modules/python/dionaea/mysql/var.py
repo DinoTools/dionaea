@@ -3120,13 +3120,25 @@ CFG_VARS = [
         }
     },
     {
+        "name": "version",
+        "type": "string",
+        "type_options": {
+            "dynamic": False,
+            "scopes": [
+                "global"
+            ],
+            "value_default": "5.7.16"
+        }
+    },
+    {
         "name": "version_comment",
         "type": "string",
         "type_options": {
             "dynamic": False,
             "scopes": [
                 "global"
-            ]
+            ],
+            "value_default": "MySQL Community Server (GPL)"
         }
     },
     {
@@ -3136,7 +3148,8 @@ CFG_VARS = [
             "dynamic": False,
             "scopes": [
                 "global"
-            ]
+            ],
+            "value_default": "x86_64"
         }
     },
     {
@@ -3146,7 +3159,8 @@ CFG_VARS = [
             "dynamic": False,
             "scopes": [
                 "global"
-            ]
+            ],
+            "value_default": "Linux"
         }
     },
     {
