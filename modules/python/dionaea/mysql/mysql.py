@@ -90,7 +90,11 @@ class mysqld(connection):
     def handle_established(self):
         self.processors()
         self.state = 'greeting'
-        a = MySQL_Packet_Header(Number=0) / MySQL_Server_Greeting()
+        var_version = self.vars.values.get("version")
+        greeting = MySQL_Server_Greeting(
+            ServerVersion="%s\0" % var_version
+        )
+        a = MySQL_Packet_Header(Number=0) / greeting
         a.show()
         self.send(a.build())
         self._open_db('information_schema')
