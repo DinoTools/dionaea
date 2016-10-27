@@ -162,25 +162,6 @@ class mysqld(connection):
         if re.match(b'set ', p.Query, re.I):
             r = MySQL_Result_OK(Message="#2")
 
-        elif re.match(b'select @@version_comment limit 1$', p.Query, re.I) or \
-                re.match(b'select\S+version\S*\(\S*\)$', p.Query, re.I):
-
-            r = [
-                MySQL_Result_Header(FieldCount=1),
-                MySQL_Result_Field(
-                    Catalog='def',
-                    Name='@@version_comment',
-                    CharSet=33,
-                    Length=75,
-                    Type=FIELD_TYPE_VAR_STRING,
-                    Flags=FLAG_NOT_NULL,
-                    Decimals=0
-                ),
-                MySQL_Result_EOF(ServerStatus=0x002),
-                MySQL_Result_Row_Data(ColumnValues=['Gentoo Linux mysql-5.0.54\0']),
-                MySQL_Result_EOF(ServerStatus=0x002)
-            ]
-
         elif re.match(b'select\S+database\S*\(\S*\)$', p.Query, re.I):
             r = [
                 MySQL_Result_Header(FieldCount=1),
