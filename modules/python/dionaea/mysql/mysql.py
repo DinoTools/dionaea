@@ -43,6 +43,11 @@ re_show_var = re.compile(
     re.I
 )
 
+re_select_var = re.compile(
+    b"select\s+(?P<full_name>@(?P<global>@)?(?P<name>\w+))(\s+limit\s+\d+)?",
+    re.I
+)
+
 
 class mysqld(connection):
     shared_config_values = [
@@ -292,6 +297,35 @@ class mysqld(connection):
 
         regex_function = re.compile(b"(?P<name>[A-Za-z0-9_.]+)\((?P<args>.*?)\)+")
         regex_url = re.compile(b"(?P<url>(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?)")
+
+        m = re_select_var.match(p.Query)
+        if m:
+            r = []
+            var_name = m.group("name").decode("ascii")
+            var_full_name = m.group("full_name").decode("ascii")
+            var = self.vars.values.get(var_name)
+            if var is None:
+                return [MySQL_Result_Error(Message="ERROR 1193 (HY000): Unknown system variable '%s'" % var_name)]
+
+            r.append(MySQL_Result_Header(FieldCount=1))
+            r.append(
+                MySQL_Result_Field(
+                    Catalog='def',
+                    Name=var_full_name,
+                    CharSet=33,
+                    Length=75,
+                    Type=FIELD_TYPE_VAR_STRING,
+                    Flags=FLAG_NOT_NULL,
+                    Decimals=0
+                )
+            )
+            r.append(MySQL_Result_EOF(ServerStatus=0x002))
+
+            r.append(
+                MySQL_Result_Row_Data(ColumnValues=["%s\0" % var])
+            )
+            r.append(MySQL_Result_EOF(ServerStatus=0x002))
+            return r
 
         m = regex_function.match(query[0])
 
