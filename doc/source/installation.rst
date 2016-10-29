@@ -122,7 +122,7 @@ Run :code:`configure` to configure the build scripts.
         --with-ev-lib=/usr/lib \
         --with-emu-lib=/usr/lib/libemu \
         --with-emu-include=/usr/include \
-        --with-nl-include=/usr/include \
+        --with-nl-include=/usr/include/libnl3 \
         --with-nl-lib=/usr/lib
 
 
