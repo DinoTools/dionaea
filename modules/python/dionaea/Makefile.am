@@ -3,6 +3,8 @@
 AUTOMAKE_OPTIONS = foreign
 
 PYSCRIPTS = blackhole.py
+PYSCRIPTS += emu_scripts/__init__.py
+PYSCRIPTS += emu_scripts/handler.py
 PYSCRIPTS += sip/__init__.py
 PYSCRIPTS += sip/extras.py
 PYSCRIPTS += sip/rfc2396.py
@@ -63,6 +65,7 @@ PYSCRIPTS += mssql/include/tds.py
 PYSCRIPTS += mssql/include/__init__.py
 PYSCRIPTS += mysql/__init__.py
 PYSCRIPTS += mysql/mysql.py
+PYSCRIPTS += mysql/var.py
 PYSCRIPTS += mysql/include/packets.py
 PYSCRIPTS += mysql/include/fields.py
 PYSCRIPTS += mysql/include/__init__.py

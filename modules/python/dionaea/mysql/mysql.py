@@ -26,32 +26,75 @@
 #*******************************************************************************/
 
 import logging
+import os
 import re
 import sqlite3
+import tempfile
 
 from dionaea.core import incident, connection, g_dionaea
 from .include.packets import *
 
+from .var import VarHandler
+
 logger = logging.getLogger('mysqld')
+
+re_show_var = re.compile(
+    b"show\s+((?P<global>global)\s+)?variables(\s+like\s+(?P<sep>\"|')(?P<like>.*?)(?P=sep))?",
+    re.I
+)
+
+re_select_var = re.compile(
+    b"select\s+(?P<full_name>@(?P<global>@)?(?P<name>\w+))(\s+limit\s+\d+)?",
+    re.I
+)
 
 
 class mysqld(connection):
     shared_config_values = [
-        "config"
+        "config",
+        "download_dir",
+        "download_suffix"
     ]
+    vars = VarHandler()
 
     def __init__(self):
         connection.__init__(self, "tcp")
         self.config = None
         self.state = ""
+        self.regex_statement = re.compile(
+            b"""([A-Za-z0-9_.]+\(.*?\)+|\(.*?\)+|"(?:[^"]|\"|"")*"+|'[^'](?:|\'|'')*'+|`(?:[^`]|``)*`+|[^ ,]+|,)"""
+        )
+        self.download_dir = None
+        self.download_suffix = ".tmp"
 
     def apply_config(self, config):
         self.config = config.get("databases")
 
+        dionaea_config = g_dionaea.config().get("dionaea")
+        self.download_dir = dionaea_config.get("download.dir")
+        self.download_suffix = dionaea_config.get("download.suffix", ".tmp")
+
+        from .var import CFG_VARS
+        self.vars.load(CFG_VARS)
+        vars = config.get("vars")
+        if not isinstance(vars, dict):
+            vars = {}
+
+        for name, value in vars.items():
+            obj = self.vars.values.get(name)
+            if obj is None:
+                logger.warning("Config value '%s' does not exist")
+                continue
+            obj.value = value
+
     def handle_established(self):
         self.processors()
         self.state = 'greeting'
-        a = MySQL_Packet_Header(Number=0) / MySQL_Server_Greeting()
+        var_version = self.vars.values.get("version")
+        greeting = MySQL_Server_Greeting(
+            ServerVersion="%s\0" % var_version
+        )
+        a = MySQL_Packet_Header(Number=0) / greeting
         a.show()
         self.send(a.build())
         self._open_db('information_schema')
@@ -104,27 +147,24 @@ class mysqld(connection):
 
     def _handle_COM_QUERY(self, p):
         r = None
+        query = self.regex_statement.findall(p.Query)
+
+        if len(query) > 0 and query[0].lower() == b"select":
+            print("foo")
+            r = self._handle_com_query_select(p, query[1:])
+
+        elif len(query) > 0 and query[0].lower() == b"show":
+            r = self._handle_com_query_show(p, query[1:])
+
+        # ToDo: Support for MySQL_Result_*()
+        if isinstance(r, list):
+            return r
+
+        if r is True:
+            return MySQL_Result_OK(Message="")
+
         if re.match(b'set ', p.Query, re.I):
             r = MySQL_Result_OK(Message="#2")
-
-        elif re.match(b'select @@version_comment limit 1$', p.Query, re.I) or \
-                re.match(b'select\S+version\S*\(\S*\)$', p.Query, re.I):
-
-            r = [
-                MySQL_Result_Header(FieldCount=1),
-                MySQL_Result_Field(
-                    Catalog='def',
-                    Name='@@version_comment',
-                    CharSet=33,
-                    Length=75,
-                    Type=FIELD_TYPE_VAR_STRING,
-                    Flags=FLAG_NOT_NULL,
-                    Decimals=0
-                ),
-                MySQL_Result_EOF(ServerStatus=0x002),
-                MySQL_Result_Row_Data(ColumnValues=['Gentoo Linux mysql-5.0.54\0']),
-                MySQL_Result_EOF(ServerStatus=0x002)
-            ]
 
         elif re.match(b'select\S+database\S*\(\S*\)$', p.Query, re.I):
             r = [
@@ -229,6 +269,177 @@ class mysqld(connection):
                 logger.warn("SQL ERROR in %s" % p.Query)
                 r = MySQL_Result_Error(Message="Learn SQL!")
         return r
+
+    def _handle_com_query_select(self, p, query):
+        """
+
+        :param p:
+        :param bytes[] query:
+        :return:
+        """
+        if len(query) == 0:
+            return False
+
+        regex_function = re.compile(b"(?P<name>[A-Za-z0-9_.]+)\((?P<args>.*?)\)+")
+        regex_url = re.compile(b"(?P<url>(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?)")
+
+        m = re_select_var.match(p.Query)
+        if m:
+            r = []
+            var_name = m.group("name").decode("ascii")
+            var_full_name = m.group("full_name").decode("ascii")
+            var = self.vars.values.get(var_name)
+            if var is None:
+                return [MySQL_Result_Error(Message="ERROR 1193 (HY000): Unknown system variable '%s'" % var_name)]
+
+            r.append(MySQL_Result_Header(FieldCount=1))
+            r.append(
+                MySQL_Result_Field(
+                    Catalog='def',
+                    Name=var_full_name,
+                    CharSet=33,
+                    Length=75,
+                    Type=FIELD_TYPE_VAR_STRING,
+                    Flags=FLAG_NOT_NULL,
+                    Decimals=0
+                )
+            )
+            r.append(MySQL_Result_EOF(ServerStatus=0x002))
+
+            r.append(
+                MySQL_Result_Row_Data(ColumnValues=["%s\0" % var])
+            )
+            r.append(MySQL_Result_EOF(ServerStatus=0x002))
+            return r
+
+        m = regex_function.match(query[0])
+
+        if m and m.group("name") == b"unhex":
+            if len(query) < 4:
+                return False
+
+            if query[1].lower() != b"into" or query[2].lower() != b"dumpfile":
+                return False
+
+            data = m.group("args")
+            data = data.strip(b"' ")
+
+            logger.info("Looks like someone tries to dump a hex encoded file")
+            try:
+                data = bytearray.fromhex(data.decode("ascii"))
+            except (UnicodeDecodeError, ValueError):
+                logger.warning("Unable to decode hex string %r", query[0][2:], exc_info=True)
+                return False
+
+            self._report_raw_data(data)
+            return True
+
+        # ToDo: move import to top
+        if query[0].startswith(b"0x"):
+            if len(query) < 4:
+                return False
+
+            if query[1].lower() != b"into" or query[2].lower() != b"dumpfile":
+                return False
+
+            logger.info("Looks like someone tries to dump a hex encoded file")
+            try:
+                data = bytearray.fromhex(query[0][2:].decode("ascii"))
+            except UnicodeDecodeError as e:
+                logger.warning("Unable to decode hex string %r", query[0][2:], exc_info=True)
+                return False
+
+            self._report_raw_data(data)
+            return True
+
+        if m and m.group("name") == b"xpdl3":
+            args = m.group("args")
+            m_url = regex_url.search(args)
+            if m_url:
+                i = incident("dionaea.download.offer")
+                i.con = self
+                i.url = m_url.group("url")
+                i.report()
+            return True
+
+        return False
+
+    def _handle_com_query_show(self, p, query):
+        """
+
+        :param p:
+        :param bytes[] query:
+        :return:
+        """
+
+        m = re_show_var.match(p.Query)
+        if m:
+            r = []
+            r.append(MySQL_Result_Header(FieldCount=2))
+            r.append(
+                MySQL_Result_Field(
+                    Catalog='def',
+                    Name="Variable_name",
+                    CharSet=33,
+                    Length=75,
+                    Type=FIELD_TYPE_VAR_STRING,
+                    Flags=FLAG_NOT_NULL,
+                    Decimals=0
+                )
+            )
+            r.append(
+                MySQL_Result_Field(
+                    Catalog='def',
+                    Name="Value",
+                    CharSet=33,
+                    Length=75,
+                    Type=FIELD_TYPE_VAR_STRING,
+                    Flags=FLAG_NOT_NULL,
+                    Decimals=0
+                )
+            )
+            r.append(MySQL_Result_EOF(ServerStatus=0x002))
+
+            var_name = None
+            if m.group("like"):
+                var_name = re.escape(m.group("like"))
+                var_name = var_name.replace(b"%", b".*")
+                var_name = re.compile(var_name)
+
+            for name, var in self.vars.values.items():
+                if var_name and not var_name.match(name.encode("ascii")):
+                    continue
+                r.append(
+                    MySQL_Result_Row_Data(ColumnValues=[name + '\0', "%s\0" % var])
+                )
+
+            r.append(MySQL_Result_EOF(ServerStatus=0x002))
+
+            return r
+
+    def _report_raw_data(self, data):
+        """
+        Create temporary file and report incident
+
+        :param bytes data: File data
+        """
+        fp_tmp = tempfile.NamedTemporaryFile(
+            delete=False,
+            dir=self.download_dir,
+            prefix='mysql-',
+            suffix=self.download_suffix
+        )
+
+        fp_tmp.write(data)
+
+        icd = incident("dionaea.download.complete")
+        icd.path = fp_tmp.name
+        icd.con = self
+        # We need the url for logging
+        icd.url = ""
+        fp_tmp.close()
+        icd.report()
+        os.unlink(fp_tmp.name)
 
     def handle_io_in(self,data):
         offset = 0
