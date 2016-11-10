@@ -32,7 +32,9 @@ Logging
 Documentation
 -------------
 
-* [Documentation](http://dionaea.readthedocs.org)
+* [Documentation](https://dionaea.readthedocs.io/)
+* [Source](https://github.com/DinoTools/dionaea)
+* [Issues](https://github.com/DinoTools/dionaea/issues)
 
 Licenses
 --------
