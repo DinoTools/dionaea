@@ -6,12 +6,12 @@
 #    vendor_name: Cisco Systems
 
 # DrayTek
-#    firmware: 1
+#    firmware_revision: 1
 #    hostname: Vigor
 #    vendor_name: DrayTek
 
 # Linux
-#    firmware: 1
+#    firmware_revision: 1
 #    hostname: local
 #    vendor_name: linux
 
