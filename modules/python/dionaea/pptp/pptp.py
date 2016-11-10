@@ -69,6 +69,9 @@ class pptpd(connection):
         return len(data)
 
     def apply_config(self, config):
+        if config is None:
+            logger.warning("No config provided. Using default values")
+            return
         self.firmware_revision = config.get("firmware_revision", self.firmware_revision)
         self.hostname = config.get("hostname", self.hostname)
         self.vendor_name = config.get("vendor_name", self.vendor_name)
