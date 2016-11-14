@@ -1,8 +1,55 @@
 Changelog
 =========
 
-0.6.0 - (`master`_)
+0.7.0 - (`master`_)
 -------------------
+
+
+0.6.0 - (2016-11-14)
+--------------------
+
+**dionaea**
+
+* Fix build for musl lib
+
+**doc**
+
+* Fix install instructions
+* Extend README.md
+
+**python/blackhole**
+
+* New service/Initial version
+
+**python/emu_scripts**
+
+* New handler to analyse downloaded scripts
+* Detect VBScript and PowerShell
+* Limit number of subdownloads
+
+**python/http**
+
+* Clean up
+* Use state vars instead of strings
+* Add template support
+  * Jinja 2 template engine
+  * nginx template
+
+**python/mysql**
+
+* Dump files from SELECT queries
+* Extract URLs from functions
+* Variable handler
+* Support for selecting variables
+
+**python/p0f**
+
+* Fix decode error
+
+**python/pptp**
+
+* Fix error if config is empty
+
 
 0.5.1 - 2016-09-05
 ~~~~~~~~~~~~~~~~~~
