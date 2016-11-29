@@ -15,6 +15,7 @@
           - ["Content-Length", "{content_length}"]
           - ["Connection", "{connection}"]
           - ["X-Powered-By", "PHP/5.5.9-1ubuntu4.5"]
+    # soap_enabled: false
     template:
       # set to true to enable template processing
       # this feature requires jinja2 template engine http://jinja.pocoo.org/
