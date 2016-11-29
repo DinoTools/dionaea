@@ -647,7 +647,7 @@ class httpd(connection):
             return 0
 
         if soap_action == b"urn:dslforum-org:service:Time:1#SetNTPServers":
-            regex = re.compile(b"<NewNTPServer1>(?P<data>.*?)</NewNTPServer1>")
+            regex = re.compile(b"<(?P<tag_name>NewNTPServer\d)[^>]*>(?P<data>.*?)</(?P=tag_name)\s*>")
             for d in regex.finditer(data[:content_length], re.I):
                 from .util import find_shell_download
                 find_shell_download(self, d.group("data"))
