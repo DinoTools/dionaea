@@ -211,6 +211,7 @@ class httpd(connection):
         "root",
         "rwchunksize",
         "root",
+        "soap_enabled",
         "template_autoindex",
         "template_error_pages",
         "template_file_extension",
@@ -242,6 +243,7 @@ class httpd(connection):
         self.root = None
         self.global_template = None
         self.file_template = None
+        self.soap_enabled = False
         self.template_autoindex = None
         self.template_error_pages = None
         self.template_file_extension = ".j2"
@@ -409,6 +411,8 @@ class httpd(connection):
             except ValueError:
                 logger.warning("Error while converting 'max_request_size' to an integer value. Using default value.")
 
+        self.soap_enabled = True if config.get("soap_enabled") else False
+
         self.root = config.get("root")
         if self.root is None:
             logger.warningfigError("Root directory not configured")
@@ -466,7 +470,7 @@ class httpd(connection):
                     self.handle_POST()
                     return len(data)
 
-                if b"soapaction" in self.header.headers:
+                if self.soap_enabled and b"soapaction" in self.header.headers:
                     return self.handle_POST_SOAP(data)
 
                 try:
