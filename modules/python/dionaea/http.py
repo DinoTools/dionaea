@@ -466,6 +466,9 @@ class httpd(connection):
                     self.handle_POST()
                     return len(data)
 
+                if b"soapaction" in self.header.headers:
+                    return self.handle_POST_SOAP(data)
+
                 try:
                     # at least this information are needed for
                     # cgi.FieldStorage() to parse the content
@@ -632,6 +635,22 @@ class httpd(connection):
         x = self.send_head()
         if x:
             self.copyfile(x)
+
+    def handle_POST_SOAP(self, data):
+        soap_action = self.header.headers[b'soapaction']
+        content_length = int(self.header.headers[b'content-length'].decode("ascii"))
+        if len(data) < content_length:
+            return 0
+
+        if soap_action == b"urn:dslforum-org:service:Time:1#SetNTPServers":
+            regex = re.compile(b"<NewNTPServer1>(?P<data>.*?)</NewNTPServer1>")
+            for d in regex.finditer(data[:content_length], re.I):
+                from .util import find_shell_download
+                find_shell_download(self, d.group("data"))
+
+        # ToDo: response
+        self.close()
+        return content_length
 
     def handle_PUT(self):
         pass
