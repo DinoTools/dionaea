@@ -211,6 +211,7 @@ class httpd(connection):
         "root",
         "rwchunksize",
         "root",
+        "soap_enabled",
         "template_autoindex",
         "template_error_pages",
         "template_file_extension",
@@ -242,6 +243,7 @@ class httpd(connection):
         self.root = None
         self.global_template = None
         self.file_template = None
+        self.soap_enabled = False
         self.template_autoindex = None
         self.template_error_pages = None
         self.template_file_extension = ".j2"
@@ -409,6 +411,8 @@ class httpd(connection):
             except ValueError:
                 logger.warning("Error while converting 'max_request_size' to an integer value. Using default value.")
 
+        self.soap_enabled = True if config.get("soap_enabled") else False
+
         self.root = config.get("root")
         if self.root is None:
             logger.warningfigError("Root directory not configured")
@@ -465,6 +469,9 @@ class httpd(connection):
                 if b'content-type' not in self.header.headers and b'content-type' not in self.header.headers:
                     self.handle_POST()
                     return len(data)
+
+                if self.soap_enabled and b"soapaction" in self.header.headers:
+                    return self.handle_POST_SOAP(data)
 
                 try:
                     # at least this information are needed for
@@ -632,6 +639,22 @@ class httpd(connection):
         x = self.send_head()
         if x:
             self.copyfile(x)
+
+    def handle_POST_SOAP(self, data):
+        soap_action = self.header.headers[b'soapaction']
+        content_length = int(self.header.headers[b'content-length'].decode("ascii"))
+        if len(data) < content_length:
+            return 0
+
+        if soap_action == b"urn:dslforum-org:service:Time:1#SetNTPServers":
+            regex = re.compile(b"<(?P<tag_name>NewNTPServer\d)[^>]*>(?P<data>.*?)</(?P=tag_name)\s*>")
+            for d in regex.finditer(data[:content_length], re.I):
+                from .util import find_shell_download
+                find_shell_download(self, d.group("data"))
+
+        # ToDo: response
+        self.close()
+        return content_length
 
     def handle_PUT(self):
         pass
