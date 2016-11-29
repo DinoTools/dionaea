@@ -105,3 +105,29 @@ def detect_shellshock(connection, data, report_incidents=True):
             i.report()
 
     return urls
+
+
+def find_shell_download(connection, data, report_incidents=True):
+    """
+    Try to analyse the data and find download commands
+
+    :param connection: The connection object
+    :param data: Data to analyse
+    :param report_incidents:
+    :return: List of urls or None
+    """
+    from dionaea.core import incident
+    urls = []
+    regex = re.compile(
+        b"(wget|curl).+(?P<url>(http|ftp|https)://([\w_-]+(?:(?:\.[\w_-]+)+))([\w.,@?^=%&:/~+#-]*[\w@?^=%&/~+#-])?)"
+    )
+    for m in regex.finditer(data):
+        logger.debug("Found download command with url %s", m.group("url"))
+        urls.append(m.group("url"))
+        if report_incidents:
+            i = incident("dionaea.download.offer")
+            i.con = connection
+            i.url = m.group("url")
+            i.report()
+
+    return urls
