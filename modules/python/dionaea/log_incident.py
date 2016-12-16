@@ -21,6 +21,7 @@
 ################################################################################
 
 from datetime import datetime
+import hashlib
 import json
 import logging
 from urllib.parse import urlparse
@@ -90,6 +91,7 @@ class LogJsonHandler(ihandler):
         ihandler.__init__(self, path)
         self.path = path
         self._config = config
+        self._connection_ids = {}
 
         self.handlers = []
         handlers = config.get("handlers")
@@ -126,17 +128,29 @@ class LogJsonHandler(ihandler):
                 k = k.decode("ASCII")
                 if k == "con":
                     k = "connection"
-                idata[k] = {
-                    "id": id(v),
+
+                tmp_data = {
                     "protocol": v.protocol,
                     "transport": v.transport,
-                    #"type": v.connection_type,
+                    # "type": v.connection_type,
                     "local_ip": v.local.host,
                     "local_port": v.local.port,
                     "remote_hostname": v.remote.hostname,
                     "remote_ip": v.remote.host,
                     "remote_port": v.remote.port
                 }
+                conn_id = self._connection_ids.get(v)
+                if conn_id is None:
+                    raw_id = "%r_%d_%r" % (
+                        tmp_data,
+                        id(v),
+                        datetime.utcnow()
+                    )
+
+                    conn_id = hashlib.sha256(raw_id.encode("ASCII")).hexdigest()
+                    self._connection_ids[v] = conn_id
+                tmp_data["id"] = conn_id
+                idata[k] = tmp_data
             else:
                 logger.warning("Incident '%s' with unknown data type '%s' for key '%s'", icd.origin, type(v), k)
 
