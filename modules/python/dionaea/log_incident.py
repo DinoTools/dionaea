@@ -161,5 +161,11 @@ class LogJsonHandler(ihandler):
             "data": idata
         }
 
+        if icd.origin == "dionaea.connection.free":
+            con = icd.con
+            if con in self._connection_ids:
+                logger.debug("Remove connection ID '%s' from list.", self._connection_ids.get(con))
+                del self._connection_ids[con]
+
         for handler in self.handlers:
             handler.submit(data)
