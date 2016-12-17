@@ -109,6 +109,11 @@ class LogJsonHandler(ihandler):
 
     def handle_incident(self, icd):
         icd.dump()
+        if icd.origin == "dionaea.connection.link":
+            if icd.parent not in self._connection_ids:
+                # Don't link connections if parent is not available
+                # This should only happen if the parent is the listening server connection
+                return
 
         idata = {}
         for k in icd.keys():
