@@ -4017,7 +4017,7 @@ void connection_dtls_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents
 				peer->transport.dtls.type.client.parent = con;
 				peer->transport.dtls.ctx = con->transport.dtls.ctx;
 				peer->transport.dtls.ssl = SSL_new(peer->transport.dtls.ctx);
-#if OPENSSL_VERSION_NUMBER >= 0x009080ffL // OpenSSL 0.9.8o 01 Jun 2010
+#if OPENSSL_VERSION_NUMBER < 0x10100000L // OpenSSL 1.1.0
 				peer->transport.dtls.ssl->d1->listen = 1;
 #endif
 				SSL_CTX_set_session_cache_mode(peer->transport.dtls.ctx, SSL_SESS_CACHE_OFF);
