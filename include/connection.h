@@ -53,6 +53,21 @@ typedef void (*event_fn)(struct connection *con);
 #define SSL_TMP_KEY_DH_1024  (3)
 #define SSL_TMP_KEY_MAX      (4)
 
+#define CONOFF(x)							((void *)x - sizeof(struct connection))
+#define CONOFF_IO_IN(x)  					((struct connection *)(((void *)x) - offsetof (struct connection, events.io_in)))
+#define CONOFF_IO_OUT(x) 					((struct connection *)(((void *)x) - offsetof (struct connection, events.io_out)))
+#define CONOFF_LISTEN_TIMEOUT(x) 			((struct connection *)(((void *)x) - offsetof (struct connection, events.listen_timeout)))
+#define CONOFF_CONNECTING_TIMEOUT(x) 		((struct connection *)(((void *)x) - offsetof (struct connection, events.connecting_timeout)))
+#define CONOFF_SUSTAIN_TIMEOUT(x)			((struct connection *)(((void *)x) - offsetof (struct connection, events.sustain_timeout)))
+#define CONOFF_IDLE_TIMEOUT(x) 				((struct connection *)(((void *)x) - offsetof (struct connection, events.idle_timeout)))
+#define CONOFF_DNS_TIMEOUT(x) 				((struct connection *)(((void *)x) - offsetof (struct connection, events.dns_timeout)))
+#define CONOFF_HANDSHAKE_TIMEOUT(x) 		((struct connection *)(((void *)x) - offsetof (struct connection, events.handshake_timeout)))
+#define CONOFF_CLOSE_TIMEOUT(x) 			((struct connection *)(((void *)x) - offsetof (struct connection, events.close_timeout)))
+#define CONOFF_RECONNECT_TIMEOUT(x) 		((struct connection *)(((void *)x) - offsetof (struct connection, events.reconnect_timeout)))
+#define CONOFF_THROTTLE_IO_IN_TIMEOUT(x) 	((struct connection *)(((void *)x) - offsetof (struct connection, events.throttle_io_in_timeout)))
+#define CONOFF_THROTTLE_IO_OUT_TIMEOUT(x) 	((struct connection *)(((void *)x) - offsetof (struct connection, events.throttle_io_out_timeout)))
+#define CONOFF_FREE(x)						((struct connection *)(((void *)x) - offsetof (struct connection, events.free)))
+
 struct ev_loop;
 struct ev_io;
 struct ev_timer;
