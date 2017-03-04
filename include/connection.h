@@ -278,6 +278,8 @@ enum connection_flags
 #define connection_flag_isset(c, fl)   ((c)->flags & ( 1 << (fl)))
 
 
+bool mkcert(SSL_CTX *);
+
 void connection_stop(struct connection *con);
 const char *connection_strerror(enum connection_error error);
 void connection_process(struct connection *con);
@@ -287,6 +289,8 @@ void connection_free(struct connection *con);
 void connection_free_cb(struct ev_loop *loop, struct ev_timer *w, int revents, bool report_incident);
 void connection_free_report_cb(EV_P_ struct ev_timer *, int);
 
+bool connection_node_set_local(struct connection *);
+bool connection_node_set_remote(struct connection *);
 
 void connection_set_nonblocking(struct connection *con);
 void connection_set_blocking(struct connection *con);
@@ -358,6 +362,8 @@ void connection_tcp_disconnect(struct connection *con);
 void connection_udp_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_udp_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_udp_disconnect(struct connection *con);
+ssize_t recvfromto(int, void *, size_t, int, const struct sockaddr *, socklen_t *, const struct sockaddr *, socklen_t *);
+void _connection_send_packets(struct connection *, int, GList **);
 
 void connection_tls_accept_cb (struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_handshake_again_cb (struct ev_loop *loop, struct ev_io *w, int revents);
