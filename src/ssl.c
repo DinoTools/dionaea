@@ -58,7 +58,6 @@
 #include <linux/sockios.h>
 #endif
 
-#include <udns.h>
 #include <glib.h>
 
 #define D_LOG_DOMAIN "connection"
@@ -67,12 +66,7 @@
 
 #include "dionaea.h"
 #include "connection.h"
-#include "dns.h"
-#include "util.h"
 #include "log.h"
-#include "pchild.h"
-#include "incident.h"
-#include "processor.h"
 
 
 int ssl_tmp_keys_init(struct connection *con);

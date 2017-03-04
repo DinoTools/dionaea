@@ -47,9 +47,6 @@
 #include <sys/time.h>
 #include <time.h>
 
-#include <openssl/x509v3.h>
-#include <openssl/pem.h>
-#include <openssl/rand.h>
 #include <stddef.h>
 #include <sys/ioctl.h>
 #include <sys/uio.h>
@@ -58,7 +55,6 @@
 #include <linux/sockios.h>
 #endif
 
-#include <udns.h>
 #include <glib.h>
 
 #define D_LOG_DOMAIN "connection"
@@ -67,10 +63,8 @@
 
 #include "dionaea.h"
 #include "connection.h"
-#include "dns.h"
 #include "util.h"
 #include "log.h"
-#include "pchild.h"
 #include "incident.h"
 #include "processor.h"
 
