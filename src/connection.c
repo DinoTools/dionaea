@@ -110,7 +110,11 @@ struct connection *connection_new(enum connection_transport type)
 //		SSL_CTX_set_timeout(con->transport.ssl.ctx, 60);
 		break;
 	case connection_transport_dtls:
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 		con->transport.tls.meth = DTLSv1_method();
+#else
+		con->transport.tls.meth = DTLS_method();
+#endif
 		con->transport.tls.ctx = SSL_CTX_new((SSL_METHOD *)con->transport.tls.meth);
 		break;
 	case connection_transport_udp:
