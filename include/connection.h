@@ -278,6 +278,7 @@ enum connection_flags
 #define connection_flag_isset(c, fl)   ((c)->flags & ( 1 << (fl)))
 
 
+void init_dh_params(void);
 bool mkcert(SSL_CTX *);
 
 void connection_stop(struct connection *con);
