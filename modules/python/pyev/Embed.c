@@ -2,21 +2,18 @@
 * utilities
 *******************************************************************************/
 
-/* set the Embed */
 int
-set_Embed(Embed *self, Loop *other)
+Embed_Set(Embed *self, Loop *other)
 {
-    PyObject *tmp;
-
     if (!(ev_backend(other->loop) & ev_embeddable_backends())) {
         PyErr_SetString(Error, "'other' must be embeddable");
         return -1;
     }
-    tmp = (PyObject *)self->other;
+    PyObject *tmp = (PyObject *)self->other;
     Py_INCREF(other);
     self->other = other;
     Py_XDECREF(tmp);
-    ev_embed_set(&self->embed, other->loop);
+    ev_embed_set((ev_embed *)((Watcher *)self)->watcher, other->loop);
     return 0;
 }
 
@@ -57,17 +54,54 @@ Embed_tp_dealloc(Embed *self)
 }
 
 
-/* EmbedType.tp_new */
+/* Embed.set(other) */
+PyDoc_STRVAR(Embed_set_doc,
+"set(other)");
+
 static PyObject *
-Embed_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
+Embed_set(Embed *self, PyObject *args)
 {
-    Embed *self = (Embed *)WatcherType.tp_new(type, args, kwargs);
-    if (!self) {
+    Loop *other;
+
+    PYEV_WATCHER_SET((Watcher *)self);
+    if (!PyArg_ParseTuple(args, "O!:set", &LoopType, &other)) {
         return NULL;
     }
-    new_Watcher((Watcher *)self, (ev_watcher *)&self->embed, EV_EMBED);
-    return (PyObject *)self;
+    if (Embed_Set(self, other)) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
+
+
+/* Embed.sweep() */
+PyDoc_STRVAR(Embed_sweep_doc,
+"sweep()");
+
+static PyObject *
+Embed_sweep(Embed *self)
+{
+    ev_embed_sweep(((Watcher *)self)->loop->loop,
+                   (ev_embed *)((Watcher *)self)->watcher);
+    Py_RETURN_NONE;
+}
+
+
+/* EmbedType.tp_methods */
+static PyMethodDef Embed_tp_methods[] = {
+    {"set", (PyCFunction)Embed_set,
+     METH_VARARGS, Embed_set_doc},
+    {"sweep", (PyCFunction)Embed_sweep,
+     METH_NOARGS, Embed_sweep_doc},
+    {NULL}  /* Sentinel */
+};
+
+
+/* EmbedType.tp_members */
+static PyMemberDef Embed_tp_members[] = {
+    {"other", T_OBJECT_EX, offsetof(Embed, other), READONLY, NULL},
+    {NULL}  /* Sentinel */
+};
 
 
 /* EmbedType.tp_init */
@@ -86,79 +120,19 @@ Embed_tp_init(Embed *self, PyObject *args, PyObject *kwargs)
             &LoopType, &loop, &callback, &data, &priority)) {
         return -1;
     }
-    if (init_Watcher((Watcher *)self, loop, callback, 0, data, priority)) {
+    if (Watcher_Init((Watcher *)self, loop, callback, data, priority)) {
         return -1;
     }
-    return set_Embed(self, other);
+    return Embed_Set(self, other);
 }
 
 
-/* Embed.set(other) */
-PyDoc_STRVAR(Embed_set_doc,
-"set(other)");
-
+/* EmbedType.tp_new */
 static PyObject *
-Embed_set(Embed *self, PyObject *args)
+Embed_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 {
-    Loop *other;
-
-    PYEV_SET_ACTIVE_WATCHER(self);
-    if (!PyArg_ParseTuple(args, "O!:set", &LoopType, &other)) {
-        return NULL;
-    }
-    if (set_Embed(self, other)) {
-        return NULL;
-    }
-    Py_RETURN_NONE;
+    return (PyObject *)Watcher_New(type, EV_EMBED, sizeof(ev_embed));
 }
-
-
-/* Embed.sweep() */
-PyDoc_STRVAR(Embed_sweep_doc,
-"sweep()");
-
-static PyObject *
-Embed_sweep(Embed *self)
-{
-    ev_embed_sweep(((Watcher *)self)->loop->loop, &self->embed);
-    Py_RETURN_NONE;
-}
-
-
-/* EmbedType.tp_methods */
-static PyMethodDef Embed_tp_methods[] = {
-    {"set", (PyCFunction)Embed_set,
-     METH_VARARGS, Embed_set_doc},
-    {"sweep", (PyCFunction)Embed_sweep,
-     METH_NOARGS, Embed_sweep_doc},
-    {NULL}  /* Sentinel */
-};
-
-
-/* Embed.other */
-PyDoc_STRVAR(Embed_other_doc,
-"other");
-
-
-/* EmbedType.tp_members */
-static PyMemberDef Embed_tp_members[] = {
-    {"other", T_OBJECT_EX, offsetof(Embed, other),
-     READONLY, Embed_other_doc},
-    {NULL}  /* Sentinel */
-};
-
-
-/* Embed.callback */
-PyDoc_STRVAR(Embed_callback_doc,
-"callback");
-
-
-/* EmbedType.tp_getsets */
-static PyGetSetDef Embed_tp_getsets[] = {
-    {"callback", (getter)Watcher_callback_get, (setter)Watcher_callback_set,
-     Embed_callback_doc, NULL},
-    {NULL}  /* Sentinel */
-};
 
 
 /* EmbedType */
@@ -192,7 +166,7 @@ static PyTypeObject EmbedType = {
     0,                                        /*tp_iternext*/
     Embed_tp_methods,                         /*tp_methods*/
     Embed_tp_members,                         /*tp_members*/
-    Embed_tp_getsets,                         /*tp_getsets*/
+    0,                                        /*tp_getsets*/
     0,                                        /*tp_base*/
     0,                                        /*tp_dict*/
     0,                                        /*tp_descr_get*/

@@ -3,10 +3,11 @@
 *******************************************************************************/
 
 /* set the Child */
-void
-set_Child(Child *self, int pid, PyObject *trace)
+int
+Child_Set(Watcher *self, int pid, int trace)
 {
-    ev_child_set(&self->child, pid, (trace == Py_True) ? 1 : 0);
+    ev_child_set((ev_child *)self->watcher, pid, trace);
+    return 0;
 }
 
 
@@ -19,64 +20,22 @@ PyDoc_STRVAR(Child_tp_doc,
 "Child(pid, trace, loop, callback[, data=None, priority=0])");
 
 
-/* ChildType.tp_new */
-static PyObject *
-Child_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
-{
-    Child *self = (Child *)WatcherType.tp_new(type, args, kwargs);
-    if (!self) {
-        return NULL;
-    }
-    new_Watcher((Watcher *)self, (ev_watcher *)&self->child, EV_CHILD);
-    return (PyObject *)self;
-}
-
-
-/* ChildType.tp_init */
-static int
-Child_tp_init(Child *self, PyObject *args, PyObject *kwargs)
-{
-    int pid;
-    PyObject *trace;
-    Loop *loop;
-    PyObject *callback, *data = NULL;
-    int priority = 0;
-
-    static char *kwlist[] = {"pid", "trace",
-                             "loop", "callback", "data", "priority", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iO!O!O|Oi:__init__", kwlist,
-            &pid, &PyBool_Type, &trace,
-            &LoopType, &loop, &callback, &data, &priority)) {
-        return -1;
-    }
-    if (!ev_is_default_loop(loop->loop)) {
-        PyErr_SetString(Error, "loop must be the 'default loop'");
-        return -1;
-    }
-    if (init_Watcher((Watcher *)self, loop, callback, 1, data, priority)) {
-        return -1;
-    }
-    set_Child(self, pid, trace);
-    return 0;
-}
-
-
 /* Child.set(pid, trace) */
 PyDoc_STRVAR(Child_set_doc,
 "set(pid, trace)");
 
 static PyObject *
-Child_set(Child *self, PyObject *args)
+Child_set(Watcher *self, PyObject *args)
 {
-    int pid;
-    PyObject *trace;
+    int pid, trace;
 
-    PYEV_SET_ACTIVE_WATCHER(self);
-    if (!PyArg_ParseTuple(args, "iO!:set", &pid, &PyBool_Type, &trace)) {
+    PYEV_WATCHER_SET(self);
+    if (!PyArg_ParseTuple(args, "iO&:set", &pid, Boolean_Predicate, &trace)) {
         return NULL;
     }
-    set_Child(self, pid, trace);
+    if (Child_Set(self, pid, trace)) {
+        return NULL;
+    }
     Py_RETURN_NONE;
 }
 
@@ -89,38 +48,104 @@ static PyMethodDef Child_tp_methods[] = {
 };
 
 
-/* Child.pid */
-PyDoc_STRVAR(Child_pid_doc,
-"pid");
-
-
 /* Child.rpid */
-PyDoc_STRVAR(Child_rpid_doc,
-"rpid");
+static PyObject *
+Child_rpid_get(Watcher *self, void *closure)
+{
+    return PyInt_FromLong(((ev_child *)self->watcher)->rpid);
+}
+
+static int
+Child_rpid_set(Watcher *self, PyObject *value, void *closure)
+{
+    PYEV_PROTECTED_ATTRIBUTE(value);
+    long rpid = PyInt_AsLong(value);
+    PYEV_CHECK_INT_ATTRIBUTE(rpid);
+    ((ev_child *)self->watcher)->rpid = rpid;
+    return 0;
+}
 
 
 /* Child.rstatus */
-PyDoc_STRVAR(Child_rstatus_doc,
-"rstatus");
+static PyObject *
+Child_rstatus_get(Watcher *self, void *closure)
+{
+    return PyInt_FromLong(((ev_child *)self->watcher)->rstatus);
+}
+
+static int
+Child_rstatus_set(Watcher *self, PyObject *value, void *closure)
+{
+    PYEV_PROTECTED_ATTRIBUTE(value);
+    long rstatus = PyInt_AsLong(value);
+    PYEV_CHECK_INT_ATTRIBUTE(rstatus);
+    ((ev_child *)self->watcher)->rstatus = rstatus;
+    return 0;
+}
 
 
-/* ChildType.tp_members */
-static PyMemberDef Child_tp_members[] = {
-    {"pid", T_INT, offsetof(Child, child.pid),
-     READONLY, Child_pid_doc},
-    {"rpid", T_INT, offsetof(Child, child.rpid),
-     0, Child_rpid_doc},
-    {"rstatus", T_INT, offsetof(Child, child.rstatus),
-     0, Child_rstatus_doc},
+/* Child.pid */
+static PyObject *
+Child_pid_get(Watcher *self, void *closure)
+{
+    return PyInt_FromLong(((ev_child *)self->watcher)->pid);
+}
+
+
+/* ChildType.tp_getsets */
+static PyGetSetDef Child_tp_getsets[] = {
+    {"rpid", (getter)Child_rpid_get,
+     (setter)Child_rpid_set, NULL, NULL},
+    {"rstatus", (getter)Child_rstatus_get,
+     (setter)Child_rstatus_set, NULL, NULL},
+    {"pid", (getter)Child_pid_get,
+     Readonly_attribute_set, NULL, NULL},
     {NULL}  /* Sentinel */
 };
+
+
+/* ChildType.tp_init */
+static int
+Child_tp_init(Watcher *self, PyObject *args, PyObject *kwargs)
+{
+    int pid, trace;
+    Loop *loop;
+    PyObject *callback, *data = NULL;
+    int priority = 0;
+
+    static char *kwlist[] = {"pid", "trace",
+                             "loop", "callback", "data", "priority", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "iO&O!O|Oi:__init__", kwlist,
+            &pid, Boolean_Predicate, &trace,
+            &LoopType, &loop, &callback, &data, &priority)) {
+        return -1;
+    }
+    if (!ev_is_default_loop(loop->loop)) {
+        PyErr_SetString(Error,
+                        "Child watchers are only supported in the 'default loop'");
+        return -1;
+    }
+    if (Watcher_Init(self, loop, callback, data, priority)) {
+        return -1;
+    }
+    return Child_Set(self, pid, trace);
+}
+
+
+/* ChildType.tp_new */
+static PyObject *
+Child_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
+{
+    return (PyObject *)Watcher_New(type, EV_CHILD, sizeof(ev_child));
+}
 
 
 /* ChildType */
 static PyTypeObject ChildType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "pyev.Child",                             /*tp_name*/
-    sizeof(Child),                            /*tp_basicsize*/
+    sizeof(Watcher),                          /*tp_basicsize*/
     0,                                        /*tp_itemsize*/
     0,                                        /*tp_dealloc*/
     0,                                        /*tp_print*/
@@ -146,8 +171,8 @@ static PyTypeObject ChildType = {
     0,                                        /*tp_iter*/
     0,                                        /*tp_iternext*/
     Child_tp_methods,                         /*tp_methods*/
-    Child_tp_members,                         /*tp_members*/
-    0,                                        /*tp_getsets*/
+    0,                                        /*tp_members*/
+    Child_tp_getsets,                         /*tp_getsets*/
     0,                                        /*tp_base*/
     0,                                        /*tp_dict*/
     0,                                        /*tp_descr_get*/

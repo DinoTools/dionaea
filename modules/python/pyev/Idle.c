@@ -11,12 +11,7 @@ PyDoc_STRVAR(Idle_tp_doc,
 static PyObject *
 Idle_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 {
-    Idle *self = (Idle *)WatcherType.tp_new(type, args, kwargs);
-    if (!self) {
-        return NULL;
-    }
-    new_Watcher((Watcher *)self, (ev_watcher *)&self->idle, EV_IDLE);
-    return (PyObject *)self;
+    return (PyObject *)Watcher_New(type, EV_IDLE, sizeof(ev_idle));
 }
 
 
@@ -24,7 +19,7 @@ Idle_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 static PyTypeObject IdleType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "pyev.Idle",                              /*tp_name*/
-    sizeof(Idle),                             /*tp_basicsize*/
+    sizeof(Watcher),                          /*tp_basicsize*/
     0,                                        /*tp_itemsize*/
     0,                                        /*tp_dealloc*/
     0,                                        /*tp_print*/

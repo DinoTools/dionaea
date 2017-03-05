@@ -11,12 +11,7 @@ PyDoc_STRVAR(Fork_tp_doc,
 static PyObject *
 Fork_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 {
-    Fork *self = (Fork *)WatcherType.tp_new(type, args, kwargs);
-    if (!self) {
-        return NULL;
-    }
-    new_Watcher((Watcher *)self, (ev_watcher *)&self->fork, EV_FORK);
-    return (PyObject *)self;
+    return (PyObject *)Watcher_New(type, EV_FORK, sizeof(ev_fork));
 }
 
 
@@ -24,7 +19,7 @@ Fork_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 static PyTypeObject ForkType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "pyev.Fork",                              /*tp_name*/
-    sizeof(Fork),                             /*tp_basicsize*/
+    sizeof(Watcher),                          /*tp_basicsize*/
     0,                                        /*tp_itemsize*/
     0,                                        /*tp_dealloc*/
     0,                                        /*tp_print*/

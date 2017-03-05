@@ -7,27 +7,14 @@ PyDoc_STRVAR(Async_tp_doc,
 "Async(loop, callback[, data=None, priority=0])");
 
 
-/* AsyncType.tp_new */
-static PyObject *
-Async_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
-{
-    Async *self = (Async *)WatcherType.tp_new(type, args, kwargs);
-    if (!self) {
-        return NULL;
-    }
-    new_Watcher((Watcher *)self, (ev_watcher *)&self->async, EV_ASYNC);
-    return (PyObject *)self;
-}
-
-
 /* Async.send() */
 PyDoc_STRVAR(Async_send_doc,
 "send()");
 
 static PyObject *
-Async_send(Async *self)
+Async_send(Watcher *self)
 {
-    ev_async_send(((Watcher *)self)->loop->loop, &self->async);
+    ev_async_send(self->loop->loop, (ev_async *)self->watcher);
     Py_RETURN_NONE;
 }
 
@@ -41,29 +28,34 @@ static PyMethodDef Async_tp_methods[] = {
 
 
 /* Async.sent */
-PyDoc_STRVAR(Async_sent_doc,
-"sent");
-
 static PyObject *
-Async_sent_get(Async *self, void *closure)
+Async_sent_get(Watcher *self, void *closure)
 {
-    PYEV_RETURN_BOOL(ev_async_pending(&self->async));
+    return PyBool_FromLong(ev_async_pending((ev_async *)self->watcher));
 }
 
 
 /* AsyncType.tp_getsets */
 static PyGetSetDef Async_tp_getsets[] = {
-    {"sent", (getter)Async_sent_get, NULL,
-     Async_sent_doc, NULL},
+    {"sent", (getter)Async_sent_get,
+     Readonly_attribute_set, NULL, NULL},
     {NULL}  /* Sentinel */
 };
+
+
+/* AsyncType.tp_new */
+static PyObject *
+Async_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
+{
+    return (PyObject *)Watcher_New(type, EV_ASYNC, sizeof(ev_async));
+}
 
 
 /* AsyncType */
 static PyTypeObject AsyncType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "pyev.Async",                             /*tp_name*/
-    sizeof(Async),                            /*tp_basicsize*/
+    sizeof(Watcher),                          /*tp_basicsize*/
     0,                                        /*tp_itemsize*/
     0,                                        /*tp_dealloc*/
     0,                                        /*tp_print*/

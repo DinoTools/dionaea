@@ -4,10 +4,10 @@
 
 /* set the Timer */
 int
-set_Timer(Timer *self, double after, double repeat)
+Timer_Set(Watcher *self, double after, double repeat)
 {
-    PYEV_NEGATIVE_FLOAT(repeat);
-    ev_timer_set(&self->timer, after, repeat);
+    PYEV_CHECK_POSITIVE_OR_ZERO_FLOAT(repeat);
+    ev_timer_set((ev_timer *)self->watcher, after, repeat);
     return 0;
 }
 
@@ -21,22 +21,91 @@ PyDoc_STRVAR(Timer_tp_doc,
 "Timer(after, repeat, loop, callback[, data=None, priority=0])");
 
 
-/* TimerType.tp_new */
+/* Timer.set(after, repeat) */
+PyDoc_STRVAR(Timer_set_doc,
+"set(after, repeat)");
+
 static PyObject *
-Timer_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
+Timer_set(Watcher *self, PyObject *args)
 {
-    Timer *self = (Timer *)WatcherType.tp_new(type, args, kwargs);
-    if (!self) {
+    double after, repeat;
+
+    PYEV_WATCHER_SET(self);
+    if (!PyArg_ParseTuple(args, "dd:set", &after, &repeat)) {
         return NULL;
     }
-    new_Watcher((Watcher *)self, (ev_watcher *)&self->timer, EV_TIMER);
-    return (PyObject *)self;
+    if (Timer_Set(self, after, repeat)) {
+        return NULL;
+    }
+    Py_RETURN_NONE;
 }
+
+
+/* Timer.reset() */
+PyDoc_STRVAR(Timer_reset_doc,
+"reset()");
+
+static PyObject *
+Timer_reset(Watcher *self)
+{
+    ev_timer_again(self->loop->loop, (ev_timer *)self->watcher);
+    Py_RETURN_NONE;
+}
+
+
+/* TimerType.tp_methods */
+static PyMethodDef Timer_tp_methods[] = {
+    {"set", (PyCFunction)Timer_set,
+     METH_VARARGS, Timer_set_doc},
+    {"reset", (PyCFunction)Timer_reset,
+     METH_NOARGS, Timer_reset_doc},
+    {NULL}  /* Sentinel */
+};
+
+
+/* Timer.repeat */
+static PyObject *
+Timer_repeat_get(Watcher *self, void *closure)
+{
+    return PyFloat_FromDouble(((ev_timer *)self->watcher)->repeat);
+}
+
+static int
+Timer_repeat_set(Watcher *self, PyObject *value, void *closure)
+{
+    PYEV_PROTECTED_ATTRIBUTE(value);
+    double repeat = PyFloat_AsDouble(value);
+    if (repeat == -1.0 && PyErr_Occurred()) {
+        return -1;
+    }
+    PYEV_CHECK_POSITIVE_OR_ZERO_FLOAT(repeat);
+    ((ev_timer *)self->watcher)->repeat = repeat;
+    return 0;
+}
+
+
+/* Timer.remaining */
+static PyObject *
+Timer_remaining_get(Watcher *self, void *closure)
+{
+    return PyFloat_FromDouble(
+        ev_timer_remaining(self->loop->loop, (ev_timer *)self->watcher));
+}
+
+
+/* TimerType.tp_getsets */
+static PyGetSetDef Timer_tp_getsets[] = {
+    {"repeat", (getter)Timer_repeat_get,
+     (setter)Timer_repeat_set, NULL, NULL},
+    {"remaining", (getter)Timer_remaining_get,
+     Readonly_attribute_set, NULL, NULL},
+    {NULL}  /* Sentinel */
+};
 
 
 /* TimerType.tp_init */
 static int
-Timer_tp_init(Timer *self, PyObject *args, PyObject *kwargs)
+Timer_tp_init(Watcher *self, PyObject *args, PyObject *kwargs)
 {
     double after, repeat;
     Loop *loop;
@@ -51,108 +120,26 @@ Timer_tp_init(Timer *self, PyObject *args, PyObject *kwargs)
             &LoopType, &loop, &callback, &data, &priority)) {
         return -1;
     }
-    if (init_Watcher((Watcher *)self, loop, callback, 1, data, priority)) {
+    if (Watcher_Init(self, loop, callback, data, priority)) {
         return -1;
     }
-    return set_Timer(self, after, repeat);
+    return Timer_Set(self, after, repeat);
 }
 
 
-/* Timer.set(after, repeat) */
-PyDoc_STRVAR(Timer_set_doc,
-"set(after, repeat)");
-
+/* TimerType.tp_new */
 static PyObject *
-Timer_set(Timer *self, PyObject *args)
+Timer_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 {
-    double after, repeat;
-
-    PYEV_SET_ACTIVE_WATCHER(self);
-    if (!PyArg_ParseTuple(args, "dd:set", &after, &repeat)) {
-        return NULL;
-    }
-    if (set_Timer(self, after, repeat)) {
-        return NULL;
-    }
-    Py_RETURN_NONE;
+    return (PyObject *)Watcher_New(type, EV_TIMER, sizeof(ev_timer));
 }
-
-
-/* Timer.reset() */
-PyDoc_STRVAR(Timer_reset_doc,
-"reset()");
-
-static PyObject *
-Timer_reset(Timer *self)
-{
-    ev_timer_again(((Watcher *)self)->loop->loop, &self->timer);
-    Py_RETURN_NONE;
-}
-
-
-/* Timer.remaining() -> float */
-PyDoc_STRVAR(Timer_remaining_doc,
-"remaining() -> float");
-
-static PyObject *
-Timer_remaining(Timer *self)
-{
-    return PyFloat_FromDouble(ev_timer_remaining(((Watcher *)self)->loop->loop,
-                                                 &self->timer));
-}
-
-
-/* TimerType.tp_methods */
-static PyMethodDef Timer_tp_methods[] = {
-    {"set", (PyCFunction)Timer_set,
-     METH_VARARGS, Timer_set_doc},
-    {"reset", (PyCFunction)Timer_reset,
-     METH_NOARGS, Timer_reset_doc},
-    {"remaining", (PyCFunction)Timer_remaining,
-     METH_NOARGS, Timer_remaining_doc},
-    {NULL}  /* Sentinel */
-};
-
-
-/* Timer.repeat */
-PyDoc_STRVAR(Timer_repeat_doc,
-"repeat");
-
-static PyObject *
-Timer_repeat_get(Timer *self, void *closure)
-{
-    return PyFloat_FromDouble(self->timer.repeat);
-}
-
-static int
-Timer_repeat_set(Timer *self, PyObject *value, void *closure)
-{
-    double repeat;
-
-    PYEV_NULL_VALUE(value);
-    repeat = PyFloat_AsDouble(value);
-    if (repeat == -1 && PyErr_Occurred()) {
-        return -1;
-    }
-    PYEV_NEGATIVE_FLOAT(repeat);
-    self->timer.repeat = repeat;
-    return 0;
-}
-
-
-/* TimerType.tp_getsets */
-static PyGetSetDef Timer_tp_getsets[] = {
-    {"repeat", (getter)Timer_repeat_get, (setter)Timer_repeat_set,
-     Timer_repeat_doc, NULL},
-    {NULL}  /* Sentinel */
-};
 
 
 /* TimerType */
 static PyTypeObject TimerType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "pyev.Timer",                             /*tp_name*/
-    sizeof(Timer),                            /*tp_basicsize*/
+    sizeof(Watcher),                          /*tp_basicsize*/
     0,                                        /*tp_itemsize*/
     0,                                        /*tp_dealloc*/
     0,                                        /*tp_print*/

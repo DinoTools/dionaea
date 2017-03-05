@@ -2,39 +2,15 @@
 * PeriodicBaseType
 *******************************************************************************/
 
-/* PeriodicBaseType.tp_new */
-static PyObject *
-PeriodicBase_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
-{
-    PeriodicBase *self = (PeriodicBase *)WatcherType.tp_new(type, args, kwargs);
-    if (!self) {
-        return NULL;
-    }
-    new_Watcher((Watcher *)self, (ev_watcher *)&self->periodic, EV_PERIODIC);
-    return (PyObject *)self;
-}
-
-
 /* PeriodicBase.reset() */
 PyDoc_STRVAR(PeriodicBase_reset_doc,
 "reset()");
 
 static PyObject *
-PeriodicBase_reset(PeriodicBase *self)
+PeriodicBase_reset(Watcher *self)
 {
-    ev_periodic_again(((Watcher *)self)->loop->loop, &self->periodic);
+    ev_periodic_again(self->loop->loop, (ev_periodic *)self->watcher);
     Py_RETURN_NONE;
-}
-
-
-/* PeriodicBase.at() -> float */
-PyDoc_STRVAR(PeriodicBase_at_doc,
-"at() -> float");
-
-static PyObject *
-PeriodicBase_at(PeriodicBase *self)
-{
-    return PyFloat_FromDouble(ev_periodic_at(&self->periodic));
 }
 
 
@@ -42,17 +18,40 @@ PeriodicBase_at(PeriodicBase *self)
 static PyMethodDef PeriodicBase_tp_methods[] = {
     {"reset", (PyCFunction)PeriodicBase_reset,
      METH_NOARGS, PeriodicBase_reset_doc},
-    {"at", (PyCFunction)PeriodicBase_at,
-     METH_NOARGS, PeriodicBase_at_doc},
     {NULL}  /* Sentinel */
 };
+
+
+/* PeriodicBase.at */
+static PyObject *
+PeriodicBase_at_get(Watcher *self, void *closure)
+{
+    return PyFloat_FromDouble(
+        ev_periodic_at((ev_periodic *)self->watcher));
+}
+
+
+/* PeriodicBaseType.tp_getsets */
+static PyGetSetDef PeriodicBase_tp_getsets[] = {
+    {"at", (getter)PeriodicBase_at_get,
+     Readonly_attribute_set, NULL, NULL},
+    {NULL}  /* Sentinel */
+};
+
+
+/* PeriodicBaseType.tp_new */
+static PyObject *
+PeriodicBase_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
+{
+    return (PyObject *)Watcher_New(type, EV_PERIODIC, sizeof(ev_periodic));
+}
 
 
 /* PeriodicBaseType */
 static PyTypeObject PeriodicBaseType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "pyev.PeriodicBase",                      /*tp_name*/
-    sizeof(PeriodicBase),                     /*tp_basicsize*/
+    sizeof(Watcher),                          /*tp_basicsize*/
     0,                                        /*tp_itemsize*/
     0,                                        /*tp_dealloc*/
     0,                                        /*tp_print*/
@@ -69,7 +68,7 @@ static PyTypeObject PeriodicBaseType = {
     0,                                        /*tp_getattro*/
     0,                                        /*tp_setattro*/
     0,                                        /*tp_as_buffer*/
-    Py_TPFLAGS_DEFAULT | Py_TPFLAGS_BASETYPE, /*tp_flags*/
+    Py_TPFLAGS_DEFAULT,                       /*tp_flags*/
     0,                                        /*tp_doc*/
     0,                                        /*tp_traverse*/
     0,                                        /*tp_clear*/
@@ -79,7 +78,7 @@ static PyTypeObject PeriodicBaseType = {
     0,                                        /*tp_iternext*/
     PeriodicBase_tp_methods,                  /*tp_methods*/
     0,                                        /*tp_members*/
-    0,                                        /*tp_getsets*/
+    PeriodicBase_tp_getsets,                  /*tp_getsets*/
     0,                                        /*tp_base*/
     0,                                        /*tp_dict*/
     0,                                        /*tp_descr_get*/
