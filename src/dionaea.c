@@ -59,6 +59,7 @@
 
 #include "config.h"
 #include "dionaea.h"
+#include "connection.h"
 #include "dns.h"
 #include "modules.h"
 #include "log.h"
@@ -634,6 +635,7 @@ opt->stdOUT.filter);
 	_SSL_connection_index = SSL_get_ex_new_index(0, "connection", NULL, NULL, NULL);
 	SSL_COMP_add_compression_method(0xe0, COMP_zlib());
 	g_message("%s", SSLeay_version(SSLEAY_VERSION));
+	init_dh_params();
 
 
 	// udns 
