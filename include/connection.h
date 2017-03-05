@@ -383,7 +383,11 @@ bool connection_tls_mkcert(struct connection *con);
 guint connection_addrs_hash(gconstpointer key);
 gboolean connection_addrs_cmp(gconstpointer a, gconstpointer b);
 int dtls_generate_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 int dtls_verify_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int cookie_len);
+#else
+int dtls_verify_cookie_cb(SSL *ssl, const unsigned char *cookie, unsigned int cookie_len);
+#endif
 void connection_dtls_accept_again(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_dtls_connect_again(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_dtls_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);

@@ -144,7 +144,11 @@ int dtls_generate_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int *len)
  *
  * @return int 0 on error
  */
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 int dtls_verify_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int len)
+#else
+int dtls_verify_cookie_cb(SSL *ssl, const unsigned char *cookie, unsigned int len)
+#endif
 {
 	struct connection *con = SSL_get_ex_data(ssl, _SSL_connection_index);
 	g_debug("%s con %p cookie %p len %i", __PRETTY_FUNCTION__, con, cookie, len);
