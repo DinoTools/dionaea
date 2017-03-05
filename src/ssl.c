@@ -218,14 +218,15 @@ void ssl_tmp_keys_free(struct connection *con)
 	MYSSL_TMP_KEYS_FREE(con, RSA);
 }
 
+
 int ssl_tmp_key_init_rsa(struct connection *con, int bits, int idx)
 {
-	if( !(con->transport.tls.pTmpKeys[idx] = RSA_generate_key(bits, RSA_F4, NULL, NULL)) )
+/*	if( !(con->transport.tls.pTmpKeys[idx] = RSA_generate_key(bits, RSA_F4, NULL, NULL)) )
 	{
 		g_error("Init: Failed to generate temporary %d bit RSA private key", bits);
 		return -1;
 	}
-
+*/
 	return 0;
 }
 
@@ -270,7 +271,7 @@ int add_ext(X509 *cert, int nid, char *value)
 	X509_EXTENSION_free(ex);
 	return 1;
 }
-
+/* TODO: Rewrite
 static void callback(int p, int n, void *arg)
 {
 	char c='B';
@@ -281,6 +282,7 @@ static void callback(int p, int n, void *arg)
 	if( p == 3 ) c='\n';
 	fputc(c,stderr);
 }
+*/
 
 
 bool mkcert(SSL_CTX *ctx)
@@ -291,23 +293,39 @@ bool mkcert(SSL_CTX *ctx)
 	gchar *value = NULL;
 	GError *error = NULL;
 
+	int ret = 0;
+	bool res = false;
+	BIGNUM *bne = NULL;
+	unsigned long e = RSA_F4;
 
 	X509 *x;
 	EVP_PKEY *pk;
-	RSA *rsa;
+	RSA *rsa  = NULL;
 	X509_NAME *name=NULL;
 
 	if( (pk=EVP_PKEY_new()) == NULL )
-		goto err;
+		goto free_all;
 
 	if( (x=X509_new()) == NULL )
-		goto err;
+		goto free_all;
 
-	rsa=RSA_generate_key(bits,RSA_F4,callback,NULL);
+	bne = BN_new();
+	ret = BN_set_word(bne,e);
+	if(ret != 1){
+		goto free_all;
+	}
+
+	rsa = RSA_new();
+	//ret = RSA_generate_key_ex(rsa, bits, bne, callback);
+	ret = RSA_generate_key_ex(rsa, bits, bne, NULL);
+	if(ret != 1) {
+		g_error("Init: Failed to generate temporary %d bit RSA private key", bits);
+		goto free_all;
+	}
 	if( !EVP_PKEY_assign_RSA(pk,rsa) )
 	{
 		perror("EVP_PKEY_assign_RSA");
-		goto err;
+		goto free_all;
 	}
 	rsa=NULL;
 
@@ -361,24 +379,26 @@ bool mkcert(SSL_CTX *ctx)
 	add_ext(x, NID_netscape_ssl_server_name, "localhost");
 
 	if( !X509_sign(x,pk,EVP_md5()) )
-		goto err;
+		goto free_all;
 
 
-	int ret = SSL_CTX_use_PrivateKey(ctx, pk);
+	ret = SSL_CTX_use_PrivateKey(ctx, pk);
 	if( ret != 1 )
 	{
 		perror("SSL_CTX_use_PrivateKey");
-		return false;
+		goto free_all;
 	}
 
 	ret = SSL_CTX_use_certificate(ctx, x);
 	if( ret != 1 )
 	{
 		perror("SSL_CTX_use_certificate");
-		return false;
+		goto free_all;
 	}
 
-	return true;
-	err:
-	return false;
+	res = true;
+free_all:
+	BN_free(bne);
+
+	return res;
 }
