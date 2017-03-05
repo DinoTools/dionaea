@@ -1,6 +1,6 @@
 /********************************************************************************
- *                               Dionaea
- *                           - catches bugs -
+ *							   Dionaea
+ *						   - catches bugs -
  *
  *
  *
@@ -21,7 +21,7 @@
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
  *
  *
- *             contact nepenthesdev@gmail.com
+ *			 contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -78,124 +78,111 @@ int ssl_tmp_keys_init(struct connection *con);
  *
  */
 
-/*
- * the ssl dh key setup is taken from the mod_ssl package from apache
- */
-
-#ifndef SSLC_VERSION_NUMBER
-#define SSLC_VERSION_NUMBER 0x0000
-#endif
-
-DH *myssl_dh_configure(unsigned char *p, int plen,
-					   unsigned char *g, int glen)
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+/* OpenSSL Pre-1.1.0 compatibility */
+/* Taken from OpenSSL 1.1.0 snapshot 20160410 */
+static int DH_set0_pqg(DH *dh, BIGNUM *p, BIGNUM *q, BIGNUM *g)
 {
-	DH *dh;
+	/* q is optional */
+	if (p == NULL || g == NULL)
+		return 0;
+	BN_free(dh->p);
+	BN_free(dh->q);
+	BN_free(dh->g);
+	dh->p = p;
+	dh->q = q;
+	dh->g = g;
 
-	if( !(dh = DH_new()) )
-	{
-		return NULL;
+	if (q != NULL) {
+		dh->length = BN_num_bits(q);
 	}
 
-#if defined(OPENSSL_VERSION_NUMBER) || (SSLC_VERSION_NUMBER < 0x2000)
-	dh->p = BN_bin2bn(p, plen, NULL);
-	dh->g = BN_bin2bn(g, glen, NULL);
-	if( !(dh->p && dh->g) )
-	{
+	return 1;
+}
+#endif
+
+/*
+ * Grab well-defined DH parameters from OpenSSL, see the BN_get_rfc*
+ * functions in <openssl/bn.h> for all available primes.
+ */
+static DH *make_dh_params(BIGNUM *(*prime)(BIGNUM *))
+{
+	DH *dh = DH_new();
+	BIGNUM *p, *g;
+
+	if (!dh) {
+		return NULL;
+	}
+	p = prime(NULL);
+	g = BN_new();
+	if (g != NULL) {
+		BN_set_word(g, 2);
+	}
+	if (!p || !g || !DH_set0_pqg(dh, p, NULL, g)) {
 		DH_free(dh);
+		BN_free(p);
+		BN_free(g);
 		return NULL;
 	}
+	return dh;
+}
+
+
+/* Storage and initialization for DH parameters. */
+static struct dhparam {
+	BIGNUM *(*const prime)(BIGNUM *); /* function to generate... */
+	DH *dh;						   /* ...this, used for keys.... */
+	const unsigned int min;		   /* ...of length >= this. */
+} dhparams[] = {
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
+	{ get_rfc3526_prime_8192, NULL, 6145 },
+	{ get_rfc3526_prime_6144, NULL, 4097 },
+	{ get_rfc3526_prime_4096, NULL, 3073 },
+	{ get_rfc3526_prime_3072, NULL, 2049 },
+	{ get_rfc3526_prime_2048, NULL, 1025 },
+	{ get_rfc2409_prime_1024, NULL, 0 }
 #else
-	R_EITEMS_add(dh->data, PK_TYPE_DH, PK_DH_P, 0, p, plen, R_EITEMS_PF_COPY);
-	R_EITEMS_add(dh->data, PK_TYPE_DH, PK_DH_G, 0, g, glen, R_EITEMS_PF_COPY);
+	{ BN_get_rfc3526_prime_8192, NULL, 6145 },
+	{ BN_get_rfc3526_prime_6144, NULL, 4097 },
+	{ BN_get_rfc3526_prime_4096, NULL, 3073 },
+	{ BN_get_rfc3526_prime_3072, NULL, 2049 },
+	{ BN_get_rfc3526_prime_2048, NULL, 1025 },
+	{ BN_get_rfc2409_prime_1024, NULL, 0 }
 #endif
+};
 
-	return dh;
+
+void init_dh_params(void)
+{
+	unsigned n;
+
+	for (n = 0; n < sizeof(dhparams)/sizeof(dhparams[0]); n++)
+		dhparams[n].dh = make_dh_params(dhparams[n].prime);
+}
+
+static void free_dh_params(void)
+{
+	unsigned n;
+
+	/* DH_free() is a noop for a NULL parameter, so these are harmless
+	 * in the (unexpected) case where these variables are already
+	 * NULL. */
+	for (n = 0; n < sizeof(dhparams)/sizeof(dhparams[0]); n++) {
+		DH_free(dhparams[n].dh);
+		dhparams[n].dh = NULL;
+	}
 }
 
 
-
-
-
-/*
- * Handle the Temporary RSA Keys and DH Params
- */
-
-
-/*
-** Diffie-Hellman-Parameters: (512 bit)
-**     prime:
-**         00:9f:db:8b:8a:00:45:44:f0:04:5f:17:37:d0:ba:
-**         2e:0b:27:4c:df:1a:9f:58:82:18:fb:43:53:16:a1:
-**         6e:37:41:71:fd:19:d8:d8:f3:7c:39:bf:86:3f:d6:
-**         0e:3e:30:06:80:a3:03:0c:6e:4c:37:57:d0:8f:70:
-**         e6:aa:87:10:33
-**     generator: 2 (0x2)
-** Diffie-Hellman-Parameters: (1024 bit)
-**     prime:
-**         00:d6:7d:e4:40:cb:bb:dc:19:36:d6:93:d3:4a:fd:
-**         0a:d5:0c:84:d2:39:a4:5f:52:0b:b8:81:74:cb:98:
-**         bc:e9:51:84:9f:91:2e:63:9c:72:fb:13:b4:b4:d7:
-**         17:7e:16:d5:5a:c1:79:ba:42:0b:2a:29:fe:32:4a:
-**         46:7a:63:5e:81:ff:59:01:37:7b:ed:dc:fd:33:16:
-**         8a:46:1a:ad:3b:72:da:e8:86:00:78:04:5b:07:a7:
-**         db:ca:78:74:08:7d:15:10:ea:9f:cc:9d:dd:33:05:
-**         07:dd:62:db:88:ae:aa:74:7d:e0:f4:d6:e2:bd:68:
-**         b0:e7:39:3e:0f:24:21:8e:b3
-**     generator: 2 (0x2)
-*/
-
-static unsigned char dh512_p[] = {
-	0x9F, 0xDB, 0x8B, 0x8A, 0x00, 0x45, 0x44, 0xF0, 0x04, 0x5F, 0x17, 0x37,
-	0xD0, 0xBA, 0x2E, 0x0B, 0x27, 0x4C, 0xDF, 0x1A, 0x9F, 0x58, 0x82, 0x18,
-	0xFB, 0x43, 0x53, 0x16, 0xA1, 0x6E, 0x37, 0x41, 0x71, 0xFD, 0x19, 0xD8,
-	0xD8, 0xF3, 0x7C, 0x39, 0xBF, 0x86, 0x3F, 0xD6, 0x0E, 0x3E, 0x30, 0x06,
-	0x80, 0xA3, 0x03, 0x0C, 0x6E, 0x4C, 0x37, 0x57, 0xD0, 0x8F, 0x70, 0xE6,
-	0xAA, 0x87, 0x10, 0x33,
-};
-static unsigned char dh512_g[] = {
-	0x02,
-};
-
-static DH *get_dh512(void)
+DH *ssl_dh_GetTmpParam(unsigned keylen)
 {
-	return myssl_dh_configure(dh512_p, sizeof(dh512_p),
-							  dh512_g, sizeof(dh512_g));
-}
+	unsigned n;
 
-static unsigned char dh1024_p[] = {
-	0xD6, 0x7D, 0xE4, 0x40, 0xCB, 0xBB, 0xDC, 0x19, 0x36, 0xD6, 0x93, 0xD3,
-	0x4A, 0xFD, 0x0A, 0xD5, 0x0C, 0x84, 0xD2, 0x39, 0xA4, 0x5F, 0x52, 0x0B,
-	0xB8, 0x81, 0x74, 0xCB, 0x98, 0xBC, 0xE9, 0x51, 0x84, 0x9F, 0x91, 0x2E,
-	0x63, 0x9C, 0x72, 0xFB, 0x13, 0xB4, 0xB4, 0xD7, 0x17, 0x7E, 0x16, 0xD5,
-	0x5A, 0xC1, 0x79, 0xBA, 0x42, 0x0B, 0x2A, 0x29, 0xFE, 0x32, 0x4A, 0x46,
-	0x7A, 0x63, 0x5E, 0x81, 0xFF, 0x59, 0x01, 0x37, 0x7B, 0xED, 0xDC, 0xFD,
-	0x33, 0x16, 0x8A, 0x46, 0x1A, 0xAD, 0x3B, 0x72, 0xDA, 0xE8, 0x86, 0x00,
-	0x78, 0x04, 0x5B, 0x07, 0xA7, 0xDB, 0xCA, 0x78, 0x74, 0x08, 0x7D, 0x15,
-	0x10, 0xEA, 0x9F, 0xCC, 0x9D, 0xDD, 0x33, 0x05, 0x07, 0xDD, 0x62, 0xDB,
-	0x88, 0xAE, 0xAA, 0x74, 0x7D, 0xE0, 0xF4, 0xD6, 0xE2, 0xBD, 0x68, 0xB0,
-	0xE7, 0x39, 0x3E, 0x0F, 0x24, 0x21, 0x8E, 0xB3,
-};
-static unsigned char dh1024_g[] = {
-	0x02,
-};
+	for (n = 0; n < sizeof(dhparams)/sizeof(dhparams[0]); n++)
+		if (keylen >= dhparams[n].min)
+			return dhparams[n].dh;
 
-static DH *get_dh1024(void)
-{
-	return myssl_dh_configure(dh1024_p, sizeof(dh1024_p),
-							  dh1024_g, sizeof(dh1024_g));
-}
-
-/* ----END GENERATED SECTION---------- */
-
-DH *ssl_dh_GetTmpParam(int nKeyLen)
-{
-	DH *dh;
-
-	if( nKeyLen == 512 )
-		dh = get_dh512();
-	else
-		dh = get_dh1024();
-	return dh;
+   return NULL; /* impossible to reach. */
 }
 
 DH *ssl_dh_GetParamFromFile(char *file)
@@ -214,21 +201,21 @@ DH *ssl_dh_GetParamFromFile(char *file)
 	return(dh);
 }
 
-
 #define MYSSL_TMP_KEY_FREE(con, type, idx) \
-    if (con->transport.tls.pTmpKeys[idx]) { \
-        type##_free((type *)con->transport.tls.pTmpKeys[idx]); \
-        con->transport.tls.pTmpKeys[idx] = NULL; \
-    }
+	if (con->transport.tls.pTmpKeys[idx]) { \
+		type##_free((type *)con->transport.tls.pTmpKeys[idx]); \
+		con->transport.tls.pTmpKeys[idx] = NULL; \
+	}
 
 #define MYSSL_TMP_KEYS_FREE(con, type) \
-    MYSSL_TMP_KEY_FREE(con, type, SSL_TMP_KEY_##type##_512); \
-    MYSSL_TMP_KEY_FREE(con, type, SSL_TMP_KEY_##type##_1024)
+	MYSSL_TMP_KEY_FREE(con, type, SSL_TMP_KEY_##type##_512); \
+	MYSSL_TMP_KEY_FREE(con, type, SSL_TMP_KEY_##type##_1024)
+
 
 void ssl_tmp_keys_free(struct connection *con)
 {
+	free_dh_params();
 	MYSSL_TMP_KEYS_FREE(con, RSA);
-	MYSSL_TMP_KEYS_FREE(con, DH);
 }
 
 int ssl_tmp_key_init_rsa(struct connection *con, int bits, int idx)
@@ -242,22 +229,11 @@ int ssl_tmp_key_init_rsa(struct connection *con, int bits, int idx)
 	return 0;
 }
 
-static int ssl_tmp_key_init_dh(struct connection *con, int bits, int idx)
-{
-	if( !(con->transport.tls.pTmpKeys[idx] = ssl_dh_GetTmpParam(bits)) )
-	{
-		g_error("Init: Failed to generate temporary %d bit DH parameters", bits);
-		return -1;
-	}
-
-	return 0;
-}
-
 #define MYSSL_TMP_KEY_INIT_RSA(s, bits) \
-    ssl_tmp_key_init_rsa(s, bits, SSL_TMP_KEY_RSA_##bits)
+	ssl_tmp_key_init_rsa(s, bits, SSL_TMP_KEY_RSA_##bits)
 
 #define MYSSL_TMP_KEY_INIT_DH(s, bits) \
-    ssl_tmp_key_init_dh(s, bits, SSL_TMP_KEY_DH_##bits)
+	ssl_tmp_key_init_dh(s, bits, SSL_TMP_KEY_DH_##bits)
 
 int ssl_tmp_keys_init(struct connection *con)
 {
@@ -270,13 +246,7 @@ int ssl_tmp_keys_init(struct connection *con)
 		return -1;
 	}
 
-	g_message("Init: Generating temporary DH parameters (512/1024 bits)");
-
-	if( MYSSL_TMP_KEY_INIT_DH(con, 512) ||
-		MYSSL_TMP_KEY_INIT_DH(con, 1024) )
-	{
-		return -1;
-	}
+//	g_message("Init: Generating temporary DH parameters (512/1024 bits)");
 
 	return 0;
 }
