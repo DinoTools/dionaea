@@ -52,7 +52,7 @@ Ubuntu 14.04
 
 Instead of using Vagrant you can use a Ubuntu 14.04 system to setup your development environment.
 In this section we will use the scripts used to setup the Vagrant environment to bootstrap a fresh Ubuntu system.
-If you like you can follow the :doc:`installation` 'From Source' guide to setup everything by hand.
+If you like you can follow the :doc:`../installation` 'From Source' guide to setup everything by hand.
 
 Install
 ^^^^^^^
