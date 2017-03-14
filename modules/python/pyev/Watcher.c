@@ -1,23 +1,10 @@
 /*******************************************************************************
-* utilities
+* utils
 *******************************************************************************/
 
-/* fwd decl */
-#if EV_STAT_ENABLE
-int
-update_Stat(Stat *self);
-#endif
-
-
-/* start/stop Watcher */
-#define PYEV_WATCHER_START(t, w) t##_start(w->loop->loop, (t *)w->watcher)
-#define PYEV_WATCHER_STOP(t, w) t##_stop(w->loop->loop, (t *)w->watcher)
-
-int
-start_Watcher(Watcher *self)
+void
+Watcher_Start(Watcher *self)
 {
-    int result = 0;
-
     switch (self->type) {
         case EV_IO:
             PYEV_WATCHER_START(ev_io, self);
@@ -38,14 +25,6 @@ start_Watcher(Watcher *self)
 #if EV_CHILD_ENABLE
         case EV_CHILD:
             PYEV_WATCHER_START(ev_child, self);
-            break;
-#endif
-#if EV_STAT_ENABLE
-        case EV_STAT:
-            if (!ev_is_active(self->watcher)) {
-                PYEV_WATCHER_START(ev_stat, self);
-                result = update_Stat((Stat *)self);
-            }
             break;
 #endif
 #if EV_IDLE_ENABLE
@@ -79,14 +58,13 @@ start_Watcher(Watcher *self)
             break;
 #endif
         default:
+            Py_FatalError("unknown watcher type");
             break;
     }
-    return result;
 }
 
-
 void
-stop_Watcher(Watcher *self)
+Watcher_Stop(Watcher *self)
 {
     switch (self->type) {
         case EV_IO:
@@ -108,11 +86,6 @@ stop_Watcher(Watcher *self)
 #if EV_CHILD_ENABLE
         case EV_CHILD:
             PYEV_WATCHER_STOP(ev_child, self);
-            break;
-#endif
-#if EV_STAT_ENABLE
-        case EV_STAT:
-            PYEV_WATCHER_STOP(ev_stat, self);
             break;
 #endif
 #if EV_IDLE_ENABLE
@@ -146,6 +119,7 @@ stop_Watcher(Watcher *self)
             break;
 #endif
         default:
+            Py_FatalError("unknown watcher type");
             break;
     }
 }
@@ -153,43 +127,36 @@ stop_Watcher(Watcher *self)
 
 /* watcher callback */
 static void
-callback_Watcher(ev_loop *loop, ev_watcher *watcher, int revents)
+Watcher_Callback(struct ev_loop *loop, ev_watcher *watcher, int revents)
 {
-    PyGILState_STATE gstate = PyGILState_Ensure();
     Watcher *self = watcher->data;
-    PyObject *pyresult, *pyrevents, *pymsg = NULL;
-
     if (revents & EV_ERROR) {
         if (!PyErr_Occurred()) {
             if (errno) { // there's a high probability it is related
-                pymsg = PyString_FromFormat("<%s object at %p> has been stopped",
-                                            Py_TYPE(self)->tp_name, self);
+                PyObject *pymsg =
+                    PyString_FromFormat("<%s object at %p> has been stopped",
+                                        Py_TYPE(self)->tp_name, self);
                 PyErr_SetFromErrnoWithFilenameObject(PyExc_OSError, pymsg);
                 Py_XDECREF(pymsg);
             }
             else {
                 PyErr_Format(Error, "unspecified libev error: "
-                             "'<%s object at %p> has been stopped'",
+                             "<%s object at %p> has been stopped",
                              Py_TYPE(self)->tp_name, self);
             }
         }
-        PYEV_EXIT_LOOP(loop);
+        PYEV_LOOP_EXIT(loop);
     }
-#if EV_STAT_ENABLE
-    else if ((revents & EV_STAT) && update_Stat((Stat *)self)) {
-        PYEV_EXIT_LOOP(loop);
-    }
-#endif
     else if (self->callback != Py_None) {
-        pyrevents = PyInt_FromLong(revents);
+        PyObject *pyrevents = PyInt_FromLong(revents);
         if (!pyrevents) {
-            PYEV_EXIT_LOOP(loop);
+            PYEV_LOOP_EXIT(loop);
         }
         else {
-            pyresult = PyObject_CallFunctionObjArgs(self->callback, self,
-                                                    pyrevents, NULL);
+            PyObject *pyresult =
+                PyObject_CallFunctionObjArgs(self->callback, self, pyrevents, NULL);
             if (!pyresult) {
-                set_error_Loop(ev_userdata(loop), self->callback);
+                Loop_WarnOrStop(ev_userdata(loop), self->callback);
             }
             else {
                 Py_DECREF(pyresult);
@@ -202,71 +169,78 @@ callback_Watcher(ev_loop *loop, ev_watcher *watcher, int revents)
         ev_embed_sweep(loop, (ev_embed *)watcher);
     }
 #endif
-    PyGILState_Release(gstate);
 }
 
 
-/* setup the Watcher - called by subtypes tp_new */
-void
-new_Watcher(Watcher *self, ev_watcher *watcher, int type)
+Watcher *
+Watcher_New(PyTypeObject *type, int ev_type, size_t size)
 {
-    self->watcher = watcher;
-    self->type = type;
-    self->watcher->data = (void *)self;
-    /* init the watcher*/
-    ev_init(self->watcher, callback_Watcher);
+    Watcher *self = (Watcher *)type->tp_alloc(type, 0);
+    if (!self) {
+        return NULL;
+    }
+    self->watcher = PyMem_Malloc(size);
+    if (!self->watcher) {
+        PyErr_NoMemory();
+        Py_DECREF(self);
+        return NULL;
+    }
+    ev_init(self->watcher, Watcher_Callback);
+    self->watcher->data = self;
+    self->type = ev_type;
+    return self;
 }
 
 
-/* set the watcher's callback */
+/* set watcher callback */
 int
-set_callback_Watcher(Watcher *self, PyObject *value, char required)
+Watcher_SetCallback(Watcher *self, PyObject *callback)
 {
-    PyObject *tmp;
-
-    if (required) {
-        PYEV_CALLABLE_VALUE(value);
+    /*switch (self->type) {
+        case EV_EMBED:
+            PYEV_CHECK_CALLABLE_OR_NONE(callback);
+            break;
+        default:
+            PYEV_CHECK_CALLABLE(callback);
+            break;
+    }*/
+    if (self->type == EV_EMBED) {
+        PYEV_CHECK_CALLABLE_OR_NONE(callback);
     }
     else {
-        PYEV_CALLABLE_OR_NONE_VALUE(value);
+        PYEV_CHECK_CALLABLE(callback);
     }
-    tmp = self->callback;
-    Py_INCREF(value);
-    self->callback = value;
+    PyObject *tmp = self->callback;
+    Py_INCREF(callback);
+    self->callback = callback;
     Py_XDECREF(tmp);
     return 0;
 }
 
 
-/* set the watcher's priority */
+/* set watcher priority */
 int
-set_priority_Watcher(Watcher *self, int priority)
+Watcher_SetPriority(Watcher *self, int priority)
 {
-    PYEV_PENDING_WATCHER(self, "cannot set the priority of", -1);
+    PYEV_WATCHER_CHECK_PENDING(self, "set the priority of", -1);
     ev_set_priority(self->watcher, priority);
     return 0;
 }
 
 
-/* init the Watcher - called by subtypes tp_init */
 int
-init_Watcher(Watcher *self, Loop *loop, PyObject *callback, char required,
+Watcher_Init(Watcher *self, Loop *loop, PyObject *callback,
              PyObject *data, int priority)
 {
-    PyObject *tmp;
-
-    PYEV_ACTIVE_WATCHER(self, "init", -1);
-    /* self->loop */
-    tmp = (PyObject *)self->loop;
+    PYEV_WATCHER_CHECK_ACTIVE(self, "init", -1);
+    PyObject *tmp = (PyObject *)self->loop;
     Py_INCREF(loop);
     self->loop = loop;
-    Py_XDECREF(tmp);
-    /* self->callback, priority */
-    if (set_callback_Watcher(self, callback, required) ||
-        set_priority_Watcher(self, priority)) {
+    Py_CLEAR(tmp);
+    if (Watcher_SetCallback(self, callback) ||
+        Watcher_SetPriority(self, priority)) {
         return -1;
     }
-    /* self->data */
     if (data) {
         tmp = self->data;
         Py_INCREF(data);
@@ -307,29 +281,15 @@ Watcher_tp_clear(Watcher *self)
 static void
 Watcher_tp_dealloc(Watcher *self)
 {
-    if (self->loop) {
-        stop_Watcher(self);
-    }
     Watcher_tp_clear(self);
-    Py_TYPE(self)->tp_free((PyObject *)self);
-}
-
-
-/* WatcherType.tp_init */
-static int
-Watcher_tp_init(Watcher *self, PyObject *args, PyObject *kwargs)
-{
-    Loop *loop;
-    PyObject *callback, *data = NULL;
-    int priority = 0;
-
-    static char *kwlist[] = {"loop", "callback", "data", "priority", NULL};
-
-    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O|Oi:__init__", kwlist,
-            &LoopType, &loop, &callback, &data, &priority)) {
-        return -1;
+    if (self->watcher) {
+        if (self->loop) {
+            Watcher_Stop(self);
+        }
+        PyMem_Free(self->watcher);
+        self->watcher = NULL;
     }
-    return init_Watcher(self, loop, callback, 1, data, priority);
+    Py_TYPE(self)->tp_free((PyObject *)self);
 }
 
 
@@ -340,9 +300,7 @@ PyDoc_STRVAR(Watcher_start_doc,
 static PyObject *
 Watcher_start(Watcher *self)
 {
-    if (start_Watcher(self)) {
-        return NULL;
-    }
+    Watcher_Start(self);
     Py_RETURN_NONE;
 }
 
@@ -354,19 +312,8 @@ PyDoc_STRVAR(Watcher_stop_doc,
 static PyObject *
 Watcher_stop(Watcher *self)
 {
-    stop_Watcher(self);
+    Watcher_Stop(self);
     Py_RETURN_NONE;
-}
-
-
-/* Watcher.clear() -> int */
-PyDoc_STRVAR(Watcher_clear_doc,
-"clear() -> int");
-
-static PyObject *
-Watcher_clear(Watcher *self)
-{
-    return PyInt_FromLong(ev_clear_pending(self->loop->loop, self->watcher));
 }
 
 
@@ -387,9 +334,20 @@ Watcher_invoke(Watcher *self, PyObject *args)
 }
 
 
+/* Watcher.clear() -> int */
+PyDoc_STRVAR(Watcher_clear_doc,
+"clear() -> int");
+
+static PyObject *
+Watcher_clear(Watcher *self)
+{
+    return PyInt_FromLong(ev_clear_pending(self->loop->loop, self->watcher));
+}
+
+
 /* Watcher.feed(revents) */
 PyDoc_STRVAR(Watcher_feed_doc,
-"feed(revents) ");
+"feed(revents)");
 
 static PyObject *
 Watcher_feed(Watcher *self, PyObject *args)
@@ -410,62 +368,25 @@ static PyMethodDef Watcher_tp_methods[] = {
      METH_NOARGS, Watcher_start_doc},
     {"stop", (PyCFunction)Watcher_stop,
      METH_NOARGS, Watcher_stop_doc},
-    {"clear", (PyCFunction)Watcher_clear,
-     METH_NOARGS, Watcher_clear_doc},
     {"invoke", (PyCFunction)Watcher_invoke,
      METH_VARARGS, Watcher_invoke_doc},
+    {"clear", (PyCFunction)Watcher_clear,
+     METH_NOARGS, Watcher_clear_doc},
     {"feed", (PyCFunction)Watcher_feed,
      METH_VARARGS, Watcher_feed_doc},
     {NULL}  /* Sentinel */
 };
 
 
-/* Watcher.loop */
-PyDoc_STRVAR(Watcher_loop_doc,
-"loop");
-
-
-/* Watcher.data */
-PyDoc_STRVAR(Watcher_data_doc,
-"data");
-
-
 /* WatcherType.tp_members */
 static PyMemberDef Watcher_tp_members[] = {
-    {"loop", T_OBJECT_EX, offsetof(Watcher, loop),
-     READONLY, Watcher_loop_doc},
-    {"data", T_OBJECT, offsetof(Watcher, data),
-     0, Watcher_data_doc},
+    {"data", T_OBJECT, offsetof(Watcher, data), 0, NULL},
+    {"loop", T_OBJECT_EX, offsetof(Watcher, loop), READONLY, NULL},
     {NULL}  /* Sentinel */
 };
 
 
-/* Watcher.active */
-PyDoc_STRVAR(Watcher_active_doc,
-"active");
-
-static PyObject *
-Watcher_active_get(Watcher *self, void *closure)
-{
-    PYEV_RETURN_BOOL(ev_is_active(self->watcher));
-}
-
-
-/* Watcher.pending */
-PyDoc_STRVAR(Watcher_pending_doc,
-"pending");
-
-static PyObject *
-Watcher_pending_get(Watcher *self, void *closure)
-{
-    PYEV_RETURN_BOOL(ev_is_pending(self->watcher));
-}
-
-
 /* Watcher.callback */
-PyDoc_STRVAR(Watcher_callback_doc,
-"callback");
-
 static PyObject *
 Watcher_callback_get(Watcher *self, void *closure)
 {
@@ -476,15 +397,12 @@ Watcher_callback_get(Watcher *self, void *closure)
 static int
 Watcher_callback_set(Watcher *self, PyObject *value, void *closure)
 {
-    PYEV_NULL_VALUE(value);
-    return set_callback_Watcher(self, value, closure ? 1 : 0);
+    PYEV_PROTECTED_ATTRIBUTE(value);
+    return Watcher_SetCallback(self, value);
 }
 
 
 /* Watcher.priority */
-PyDoc_STRVAR(Watcher_priority_doc,
-"priority");
-
 static PyObject *
 Watcher_priority_get(Watcher *self, void *closure)
 {
@@ -494,40 +412,60 @@ Watcher_priority_get(Watcher *self, void *closure)
 static int
 Watcher_priority_set(Watcher *self, PyObject *value, void *closure)
 {
-    long priority;
+    PYEV_PROTECTED_ATTRIBUTE(value);
+    PYEV_WATCHER_CHECK_ACTIVE(self, "set the priority of", -1);
+    long priority = PyInt_AsLong(value);
+    PYEV_CHECK_INT_ATTRIBUTE(priority);
+    return Watcher_SetPriority(self, priority);
+}
 
-    PYEV_NULL_VALUE(value);
-    PYEV_ACTIVE_WATCHER(self, "cannot set the priority of", -1);
-    priority = PyLong_AsLong(value);
-    if (priority == -1 && PyErr_Occurred()) {
-        return -1;
-    }
-    if (priority < INT_MIN) {
-        PyErr_SetString(PyExc_OverflowError,
-                        "signed integer is less than minimum");
-        return -1;
-    }
-    if (priority > INT_MAX) {
-        PyErr_SetString(PyExc_OverflowError,
-                        "signed integer is greater than maximum");
-        return -1;
-    }
-    return set_priority_Watcher(self, (int)priority);
+
+/* Watcher.active */
+static PyObject *
+Watcher_active_get(Watcher *self, void *closure)
+{
+    return PyBool_FromLong(ev_is_active(self->watcher));
+}
+
+
+/* Watcher.pending */
+static PyObject *
+Watcher_pending_get(Watcher *self, void *closure)
+{
+    return PyBool_FromLong(ev_is_pending(self->watcher));
 }
 
 
 /* WatcherType.tp_getsets */
 static PyGetSetDef Watcher_tp_getsets[] = {
-    {"active", (getter)Watcher_active_get, NULL,
-     Watcher_active_doc, NULL},
-    {"pending", (getter)Watcher_pending_get, NULL,
-     Watcher_pending_doc, NULL},
-    {"callback", (getter)Watcher_callback_get, (setter)Watcher_callback_set,
-     Watcher_callback_doc, (void *)1},
-    {"priority", (getter)Watcher_priority_get, (setter)Watcher_priority_set,
-     Watcher_priority_doc, NULL},
+    {"callback", (getter)Watcher_callback_get,
+     (setter)Watcher_callback_set, NULL, NULL},
+    {"priority", (getter)Watcher_priority_get,
+     (setter)Watcher_priority_set, NULL, NULL},
+    {"active", (getter)Watcher_active_get,
+     Readonly_attribute_set, NULL, NULL},
+    {"pending", (getter)Watcher_pending_get,
+     Readonly_attribute_set, NULL, NULL},
     {NULL}  /* Sentinel */
 };
+
+
+/* WatcherType.tp_init */
+static int
+Watcher_tp_init(Watcher *self, PyObject *args, PyObject *kwargs)
+{
+    Loop *loop;
+    PyObject *callback, *data = NULL;
+    int priority = 0;
+
+    static char *kwlist[] = {"loop", "callback", "data", "priority", NULL};
+
+    if (!PyArg_ParseTupleAndKeywords(args, kwargs, "O!O|Oi:__init__", kwlist,
+            &LoopType, &loop, &callback, &data, &priority)) {
+        return -1;
+    }
+    return Watcher_Init(self, loop, callback, data, priority);
+}
 
 
 /* WatcherType */

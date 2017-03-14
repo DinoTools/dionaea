@@ -11,12 +11,7 @@ PyDoc_STRVAR(Check_tp_doc,
 static PyObject *
 Check_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 {
-    Check *self = (Check *)WatcherType.tp_new(type, args, kwargs);
-    if (!self) {
-        return NULL;
-    }
-    new_Watcher((Watcher *)self, (ev_watcher *)&self->check, EV_CHECK);
-    return (PyObject *)self;
+    return (PyObject *)Watcher_New(type, EV_CHECK, sizeof(ev_check));
 }
 
 
@@ -24,7 +19,7 @@ Check_tp_new(PyTypeObject *type, PyObject *args, PyObject *kwargs)
 static PyTypeObject CheckType = {
     PyVarObject_HEAD_INIT(NULL, 0)
     "pyev.Check",                             /*tp_name*/
-    sizeof(Check),                            /*tp_basicsize*/
+    sizeof(Watcher),                          /*tp_basicsize*/
     0,                                        /*tp_itemsize*/
     0,                                        /*tp_dealloc*/
     0,                                        /*tp_print*/

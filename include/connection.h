@@ -53,6 +53,21 @@ typedef void (*event_fn)(struct connection *con);
 #define SSL_TMP_KEY_DH_1024  (3)
 #define SSL_TMP_KEY_MAX      (4)
 
+#define CONOFF(x)							((void *)x - sizeof(struct connection))
+#define CONOFF_IO_IN(x)  					((struct connection *)(((void *)x) - offsetof (struct connection, events.io_in)))
+#define CONOFF_IO_OUT(x) 					((struct connection *)(((void *)x) - offsetof (struct connection, events.io_out)))
+#define CONOFF_LISTEN_TIMEOUT(x) 			((struct connection *)(((void *)x) - offsetof (struct connection, events.listen_timeout)))
+#define CONOFF_CONNECTING_TIMEOUT(x) 		((struct connection *)(((void *)x) - offsetof (struct connection, events.connecting_timeout)))
+#define CONOFF_SUSTAIN_TIMEOUT(x)			((struct connection *)(((void *)x) - offsetof (struct connection, events.sustain_timeout)))
+#define CONOFF_IDLE_TIMEOUT(x) 				((struct connection *)(((void *)x) - offsetof (struct connection, events.idle_timeout)))
+#define CONOFF_DNS_TIMEOUT(x) 				((struct connection *)(((void *)x) - offsetof (struct connection, events.dns_timeout)))
+#define CONOFF_HANDSHAKE_TIMEOUT(x) 		((struct connection *)(((void *)x) - offsetof (struct connection, events.handshake_timeout)))
+#define CONOFF_CLOSE_TIMEOUT(x) 			((struct connection *)(((void *)x) - offsetof (struct connection, events.close_timeout)))
+#define CONOFF_RECONNECT_TIMEOUT(x) 		((struct connection *)(((void *)x) - offsetof (struct connection, events.reconnect_timeout)))
+#define CONOFF_THROTTLE_IO_IN_TIMEOUT(x) 	((struct connection *)(((void *)x) - offsetof (struct connection, events.throttle_io_in_timeout)))
+#define CONOFF_THROTTLE_IO_OUT_TIMEOUT(x) 	((struct connection *)(((void *)x) - offsetof (struct connection, events.throttle_io_out_timeout)))
+#define CONOFF_FREE(x)						((struct connection *)(((void *)x) - offsetof (struct connection, events.free)))
+
 struct ev_loop;
 struct ev_io;
 struct ev_timer;
@@ -263,6 +278,9 @@ enum connection_flags
 #define connection_flag_isset(c, fl)   ((c)->flags & ( 1 << (fl)))
 
 
+void init_dh_params(void);
+bool mkcert(SSL_CTX *);
+
 void connection_stop(struct connection *con);
 const char *connection_strerror(enum connection_error error);
 void connection_process(struct connection *con);
@@ -272,6 +290,8 @@ void connection_free(struct connection *con);
 void connection_free_cb(struct ev_loop *loop, struct ev_timer *w, int revents, bool report_incident);
 void connection_free_report_cb(EV_P_ struct ev_timer *, int);
 
+bool connection_node_set_local(struct connection *);
+bool connection_node_set_remote(struct connection *);
 
 void connection_set_nonblocking(struct connection *con);
 void connection_set_blocking(struct connection *con);
@@ -343,6 +363,8 @@ void connection_tcp_disconnect(struct connection *con);
 void connection_udp_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_udp_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_udp_disconnect(struct connection *con);
+ssize_t recvfromto(int, void *, size_t, int, const struct sockaddr *, socklen_t *, const struct sockaddr *, socklen_t *);
+void _connection_send_packets(struct connection *, int, GList **);
 
 void connection_tls_accept_cb (struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_handshake_again_cb (struct ev_loop *loop, struct ev_io *w, int revents);
@@ -361,7 +383,11 @@ bool connection_tls_mkcert(struct connection *con);
 guint connection_addrs_hash(gconstpointer key);
 gboolean connection_addrs_cmp(gconstpointer a, gconstpointer b);
 int dtls_generate_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int *cookie_len);
+#if OPENSSL_VERSION_NUMBER < 0x10100000L
 int dtls_verify_cookie_cb(SSL *ssl, unsigned char *cookie, unsigned int cookie_len);
+#else
+int dtls_verify_cookie_cb(SSL *ssl, const unsigned char *cookie, unsigned int cookie_len);
+#endif
 void connection_dtls_accept_again(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_dtls_connect_again(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_dtls_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents);
