@@ -32,6 +32,7 @@ List of available services
     http
     memcache
     mirror
+    mongo
     mqtt
     mssql
     mysql
