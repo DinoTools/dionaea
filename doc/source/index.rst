@@ -15,6 +15,7 @@ Content:
     introduction
     installation
     configuration
+    run
     module/index
     service/index
     ihandler/index
@@ -33,7 +34,6 @@ Old documentation:
     old/downloads
     old/submit
     old/development
-    old/run
     old/configuration
     old/utils
     old/seagfaults
