@@ -44,6 +44,32 @@ I use Redhat/Centos 5 and the installation is frustrating and a mess as nothing 
     *Centos is the best distro ... to change distros*.
     No matter what you choose, it can't get worse./
 
+Unable to build.
+
+    .. code-block:: console
+
+        ==> default: cp build/*/dionaea/*.so /opt/dionaea/lib/dionaea/python.so
+        ==> default: cp:
+        ==> default: target ‘/opt/dionaea/lib/dionaea/python.so’ is not a directory
+
+    .. code-block:: console
+
+        ==> default: libtool: Version mismatch error.  This is libtool 2.4.6 Debian-2.4.6-2, but the
+        ==> default: libtool: definition of this LT_INIT comes from libtool 2.4.2.
+        ==> default: libtool: You should recreate aclocal.m4 with macros from libtool 2.4.6 Debian-2.4.6-2
+        ==> default: libtool: and run autoconf again.
+
+    Try to clean your build environment.
+
+    .. warning::
+
+        This will remove all ignored and untracked files from the directory.
+        Use `--dry-run`
+
+    .. code-block:: console
+
+        git clean -xdf
+
 Run
 ---
 
