@@ -44,6 +44,8 @@ class mongod(connection):
 
     def __init__(self):
         connection.__init__(self, "tcp")
+        if bson is None:
+            logger.warning("Unable to load 'bson' module. Some functions might be very limited.")
         self.config = None
         self.state = ""
 
