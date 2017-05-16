@@ -571,7 +571,10 @@ class smbd(connection):
                     rdata.Bytes = self.outbuf
 
             r /= rdata
-        elif p.getlayer(SMB_Header).Command == SMB_COM_TRANSACTION2:
+        elif Command == SMB_COM_TRANSACTION2:
+            if p.getlayer(SMB_Trans2_Request).Setup == [SMB_TRANS2_SESSION_SETUP]:
+                smblog.info("Possible MS17-010/ETERNALBLUE exploit request!")
+                rstatus = 0xC0000002 #STATUS_NOT_IMPLEMENTED
             r = SMB_Trans2_Response()
         elif Command == SMB_COM_DELETE:
             # specific for NMAP smb-enum-shares.nse support
