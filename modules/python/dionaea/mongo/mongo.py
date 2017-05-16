@@ -52,9 +52,9 @@ class mongod(connection):
     def _handle_command(self, database, command_name, metadata, command_args, input_docs):
         database = database.strip(b"\x00")
         command_name = command_name.strip(b"\x00")
-        print(database)
-        print(command_name)
-        print(metadata)
+        # print(database)
+        # print(command_name)
+        # print(metadata)
         result = None
         if database == b"admin":
             result = self._handle_command_db_admin(command_name, metadata, command_args, input_docs)
