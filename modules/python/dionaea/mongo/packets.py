@@ -22,6 +22,19 @@ from dionaea.smb.include.packet import Packet, bind_bottom_up
 from dionaea.smb.include.fieldtypes import ByteField, StrNullField, LEIntField, PacketLenField, LELongField
 
 
+class MsgCommand(Packet):
+    name = "Wire Protocol OP_COMMAND"
+    fields_desc = [
+        StrNullField("database", ""),
+        StrNullField("commandName", "")
+    ]
+
+
+class MsgCommandReply(Packet):
+    name = "Wire Protocol OP_COMMANDREPLY"
+    fields_desc = []
+
+
 class MsgHeader(Packet):
     name="Wire Protocol Message Header"
     fields_desc = [
