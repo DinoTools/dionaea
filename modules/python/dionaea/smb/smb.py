@@ -364,6 +364,12 @@ class smbd(connection):
                     PrimaryDomain=self.config.primary_domain + "\0"
                 )
                 rstatus = 0xc0000022 #STATUS_ACCESS_DENIED
+            # support for CVE-2017-7494 Samba SMB RCE
+            elif h.Path[-6:] == b'share\0':
+                smblog.critical('Possible CVE-2017-7494 Samba SMB RCE attempts..')
+                r.AndXOffset = 0
+                r.Service = "A:\0"
+                r.NativeFileSystem = "NTFS\0"
         elif Command == SMB_COM_TREE_DISCONNECT:
             r = SMB_Treedisconnect()
         elif Command == SMB_COM_CLOSE:
@@ -378,6 +384,7 @@ class smbd(connection):
                 icd.report()
                 self.fids[p.FID].unlink(self.fids[p.FID].name)
                 del self.fids[p.FID]
+                r = SMB_Close_Response()
         elif Command == SMB_COM_LOGOFF_ANDX:
             r = SMB_Logoff_AndX()
         elif Command == SMB_COM_NT_CREATE_ANDX:
@@ -676,14 +683,16 @@ class smbd(connection):
                     icd.url = self.remote.host
                     icd.con = self
                     icd.report()
-            r = SMB_Trans2_Response()
-            rstatus = 0xc0000002  # STATUS_NOT_IMPLEMENTED
+                r = SMB_Trans2_Response()
+                rstatus = 0xc0000002  # STATUS_NOT_IMPLEMENTED
+            elif h.Setup[0] == SMB_TRANS2_FIND_FIRST2:
+                r = SMB_Trans2_FIND_FIRST2_Response()
+            else:
+                r = SMB_Trans2_Response()
 
         elif Command == SMB_COM_DELETE:
-            # specific for NMAP smb-enum-shares.nse support
             h = p.getlayer(SMB_Delete_Request)
-            if h.FileName == b'nmap-test-file\0':
-                r = SMB_Delete_Response()
+            r = SMB_Delete_Response()
         elif Command == SMB_COM_TRANSACTION2_SECONDARY:
             h = p.getlayer(SMB_Trans2_Secondary_Request)
             # TODO: need some extra works
@@ -700,18 +709,16 @@ class smbd(connection):
             smbh = SMB_Header(Status=rstatus)
             smbh.Command = r.smb_cmd
             smbh.Flags2 = p.getlayer(SMB_Header).Flags2
-            if Command == SMB_COM_TRANSACTION:
-                smbh.Flags2 = p.getlayer(SMB_Header).Flags2 | SMB_FLAGS2_ERR_STATUS
-                smblog.info('MS17-010 - responded with legitimate SMB with #STATUS_INSUFF_SERVER_RESOURCES')
-                smblog.info('MS17-010 - waiting for next incoming request.. ')
 #			smbh.Flags2 = p.getlayer(SMB_Header).Flags2 & ~SMB_FLAGS2_EXT_SEC
             smbh.MID = p.getlayer(SMB_Header).MID
             smbh.PID = p.getlayer(SMB_Header).PID
             # Deception for DoublePulsar, we fix the XOR key first as 0x5273365E
             # WannaCry will use the XOR key to encrypt and deliver next payload, so we can decode easily later
             if Command == SMB_COM_TRANSACTION2:
-                smbh.MID = p.getlayer(SMB_Header).MID + 16
-                smbh.Signature = 0x000000009cf9c567
+                h = p.getlayer(SMB_Trans2_Request)
+                if h.Setup[0] == SMB_TRANS2_SESSION_SETUP:
+                    smbh.MID = p.getlayer(SMB_Header).MID + 16
+                    smbh.Signature = 0x000000009cf9c567
             rp = NBTSession()/smbh/r
 
         if Command in SMB_Commands:
