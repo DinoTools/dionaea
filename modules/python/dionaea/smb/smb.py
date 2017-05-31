@@ -42,7 +42,7 @@ from .include.packet import Raw
 from .include.asn1.ber import BER_len_dec, BER_len_enc, BER_identifier_dec
 from .include.asn1.ber import BER_CLASS_APP, BER_CLASS_CON,BER_identifier_enc
 from .include.asn1.ber import BER_Exception
-from dionaea.util import xor
+from dionaea.util import calculate_doublepulsar_opcode, xor
 
 
 smblog = logging.getLogger('SMB')
@@ -618,6 +618,21 @@ class smbd(connection):
             h = p.getlayer(SMB_Trans2_Request)
             if h.Setup[0] == SMB_TRANS2_SESSION_SETUP:
                 smblog.info('Possible DoublePulsar connection attempts..')
+                # determine DoublePulsar opcode and command
+                # https://zerosum0x0.blogspot.sg/2017/04/doublepulsar-initial-smb-backdoor-ring.html
+                # The opcode list is as follows:
+                # 0x23 = ping
+                # 0xc8 = exec
+                # 0x77 = kil
+                op = calculate_doublepulsar_opcode(h.Timeout)
+                op2 = hex(op)[-2:]
+                oplist = [('23','ping'), ('c8','exec'), ('77','kill')]
+                for fid,command in oplist:
+                    if op2 == fid:
+                        smblog.info("DoublePulsar request opcode: %s command: %s" % (op2, command))
+                if op2 != '23' and op2 != 'c8' and op2 != '77':
+                    smblog.info("unknown opcode: %s" % op2)
+
                 # make sure the payload size not larger than 10MB
                 if len(self.buf2) > 10485760:
                     self.buf2 = ''
@@ -633,15 +648,13 @@ class smbd(connection):
                     hash_buf2 = hashlib.md5(self.buf2);
                     smblog.info('DoublePulsar payload - MD5 (before XOR decryption): %s' % (hash_buf2.hexdigest()))
                     hash_xor_output = hashlib.md5(xor_output);
-                    smblog.info(
-                        'DoublePulsar payload - MD5 (after XOR decryption ): %s' % (hash_xor_output.hexdigest()))
+                    smblog.info('DoublePulsar payload - MD5 (after XOR decryption ): %s' % (hash_xor_output.hexdigest()))
 
-                    # f = tempfile.NamedTemporaryFile(delete=False, prefix="xorfull-"+hash_xor_output.hexdigest()+"-", suffix="", dir=g_dionaea.config()['downloads']['dir'])
                     dir = g_dionaea.config()['downloads']['dir'] + "/"
-                    f = open(dir + hash_xor_output.hexdigest(), 'wb')
-                    f.write(xor_output)
-                    f.close
 
+                    # payload = some data(shellcode or code to load the executable) + executable itself
+                    # try to locate the executable and remove the prepended data
+                    # now, we will have the executable itself
                     offset = 0
                     for i, c in enumerate(xor_output):
                         if ((xor_output[i] == 0x4d and xor_output[i + 1] == 0x5a) and xor_output[i + 2] == 0x90):
@@ -649,12 +662,12 @@ class smbd(connection):
                             smblog.info('DoublePulsar payload - MZ header found...')
                             break
 
-                    hash_xor_output_mz = hashlib.md5(xor_output[offset:]);
+                    hash_xor_output_mz = hashlib.md5(xor_output[offset:])
+                    # save the captured payload/gift/evil/buddy to disk
                     smblog.info('DoublePulsar payload - MD5 final: %s. Save to disk' % (hash_xor_output_mz.hexdigest()))
-                    # f1 = tempfile.NamedTemporaryFile(delete=False, prefix=hash_xor_output_mz.hexdigest()+"-", suffix="", dir=g_dionaea.config()['downloads']['dir'])
                     f1 = open(dir + hash_xor_output_mz.hexdigest(), 'wb')
                     f1.write(xor_output[offset:])
-                    f1.close
+                    f1.close()
                     self.buf2 = b''
                     xor_output = b''
 
