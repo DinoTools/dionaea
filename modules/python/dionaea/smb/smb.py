@@ -29,6 +29,7 @@
 from dionaea.core import incident, connection, g_dionaea
 
 import traceback
+import hashlib
 import logging
 import tempfile
 from uuid import UUID
@@ -41,6 +42,7 @@ from .include.packet import Raw
 from .include.asn1.ber import BER_len_dec, BER_len_enc, BER_identifier_dec
 from .include.asn1.ber import BER_CLASS_APP, BER_CLASS_CON,BER_identifier_enc
 from .include.asn1.ber import BER_Exception
+from dionaea.util import xor
 
 
 smblog = logging.getLogger('SMB')
@@ -72,6 +74,7 @@ class smbd(connection):
             'stop': False,
         }
         self.buf = b''
+        self.buf2 = b''  # ms17-010 SMB_COM_TRANSACTION2
         self.outbuf = None
         self.fids = {}
         self.printer = b'' # spoolss file "queue"
@@ -340,6 +343,8 @@ class smbd(connection):
             if Service.startswith('\\\\'):
                 Service = Service[1:]
             Service = Service.split('\\')[-1]
+            if Service[-1] == '\x00':
+                Service = Service[:-1]
             if Service[-1] == '$':
                 Service = Service[:-1]
             r.Service = Service + '\x00'
@@ -600,14 +605,80 @@ class smbd(connection):
                     rdata.ByteCount = dceplen
                     rdata.Bytes = self.outbuf
 
+                if socket.htons(h.Setup[0]) == TRANS_NMPIPE_PEEK:
+                    SetupCount = h.SetupCount
+                    if SetupCount > 0:
+                        smblog.info('MS17-010 - SMB RCE exploit scanning..')
+                        r = SMB_Trans_Response_Simple()
+                        # returned #STATUS_INSUFF_SERVER_RESOURCE as we not being patched
+                        rstatus = 0xc0000205  # STATUS_INSUFF_SERVER_RESOURCES
+
             r /= rdata
-        elif p.getlayer(SMB_Header).Command == SMB_COM_TRANSACTION2:
+        elif Command == SMB_COM_TRANSACTION2:
+            h = p.getlayer(SMB_Trans2_Request)
+            if h.Setup[0] == SMB_TRANS2_SESSION_SETUP:
+                smblog.info('Possible DoublePulsar connection attempts..')
+                # make sure the payload size not larger than 10MB
+                if len(self.buf2) > 10485760:
+                    self.buf2 = ''
+                elif len(self.buf2) == 0 and h.DataCount == 4096:
+                    self.buf2 = self.buf2 + h.Data
+                elif len(self.buf2) != 0 and h.DataCount == 4096:
+                    self.buf2 = self.buf2 + h.Data
+                elif len(self.buf2) != 0 and h.DataCount < 4096:
+                    smblog.info('DoublePulsar payload receiving..')
+                    self.buf2 = self.buf2 + h.Data
+                    key = bytearray([0x52, 0x73, 0x36, 0x5E])
+                    xor_output = xor(self.buf2, key)
+                    hash_buf2 = hashlib.md5(self.buf2);
+                    smblog.info('DoublePulsar payload - MD5 (before XOR decryption): %s' % (hash_buf2.hexdigest()))
+                    hash_xor_output = hashlib.md5(xor_output);
+                    smblog.info(
+                        'DoublePulsar payload - MD5 (after XOR decryption ): %s' % (hash_xor_output.hexdigest()))
+
+                    # f = tempfile.NamedTemporaryFile(delete=False, prefix="xorfull-"+hash_xor_output.hexdigest()+"-", suffix="", dir=g_dionaea.config()['downloads']['dir'])
+                    dir = g_dionaea.config()['downloads']['dir'] + "/"
+                    f = open(dir + hash_xor_output.hexdigest(), 'wb')
+                    f.write(xor_output)
+                    f.close
+
+                    offset = 0
+                    for i, c in enumerate(xor_output):
+                        if ((xor_output[i] == 0x4d and xor_output[i + 1] == 0x5a) and xor_output[i + 2] == 0x90):
+                            offset = i
+                            smblog.info('DoublePulsar payload - MZ header found...')
+                            break
+
+                    hash_xor_output_mz = hashlib.md5(xor_output[offset:]);
+                    smblog.info('DoublePulsar payload - MD5 final: %s. Save to disk' % (hash_xor_output_mz.hexdigest()))
+                    # f1 = tempfile.NamedTemporaryFile(delete=False, prefix=hash_xor_output_mz.hexdigest()+"-", suffix="", dir=g_dionaea.config()['downloads']['dir'])
+                    f1 = open(dir + hash_xor_output_mz.hexdigest(), 'wb')
+                    f1.write(xor_output[offset:])
+                    f1.close
+                    self.buf2 = b''
+                    xor_output = b''
+
+                    icd = incident("dionaea.download.complete")
+                    icd.path = dir + hash_xor_output_mz.hexdigest()
+                    icd.url = self.remote.host
+                    icd.con = self
+                    icd.report()
             r = SMB_Trans2_Response()
+            rstatus = 0xc0000002  # STATUS_NOT_IMPLEMENTED
+
         elif Command == SMB_COM_DELETE:
             # specific for NMAP smb-enum-shares.nse support
             h = p.getlayer(SMB_Delete_Request)
             if h.FileName == b'nmap-test-file\0':
                 r = SMB_Delete_Response()
+        elif Command == SMB_COM_TRANSACTION2_SECONDARY:
+            h = p.getlayer(SMB_Trans2_Secondary_Request)
+            # TODO: need some extra works
+            pass
+        elif Command == SMB_COM_NT_TRANSACT:
+            h = p.getlayer(SMB_NT_Trans_Request)
+            r = SMB_NT_Trans_Response()
+            rstatus = 0x00000000  # STATUS_SUCCESS
         else:
             smblog.error('...unknown SMB Command. bailing out.')
             p.show()
@@ -616,9 +687,18 @@ class smbd(connection):
             smbh = SMB_Header(Status=rstatus)
             smbh.Command = r.smb_cmd
             smbh.Flags2 = p.getlayer(SMB_Header).Flags2
+            if Command == SMB_COM_TRANSACTION:
+                smbh.Flags2 = p.getlayer(SMB_Header).Flags2 | SMB_FLAGS2_ERR_STATUS
+                smblog.info('MS17-010 - responded with legitimate SMB with #STATUS_INSUFF_SERVER_RESOURCES')
+                smblog.info('MS17-010 - waiting for next incoming request.. ')
 #			smbh.Flags2 = p.getlayer(SMB_Header).Flags2 & ~SMB_FLAGS2_EXT_SEC
             smbh.MID = p.getlayer(SMB_Header).MID
             smbh.PID = p.getlayer(SMB_Header).PID
+            # Deception for DoublePulsar, we fix the XOR key first as 0x5273365E
+            # WannaCry will use the XOR key to encrypt and deliver next payload, so we can decode easily later
+            if Command == SMB_COM_TRANSACTION2:
+                smbh.MID = p.getlayer(SMB_Header).MID + 16
+                smbh.Signature = 0x000000009cf9c567
             rp = NBTSession()/smbh/r
 
         if Command in SMB_Commands:
