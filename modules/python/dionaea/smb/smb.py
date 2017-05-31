@@ -85,6 +85,10 @@ class smbd(connection):
         # Avoid import loops
         from .extras import SmbConfig
         self.config = SmbConfig(config=config)
+        # Set the global OS_TYPE value
+        # ToDo: This is a quick and dirty hack
+        from . import rpcservices
+        rpcservices.OS_TYPE = self.config.os_type
 
     def handle_established(self):
         #		self.timeouts.sustain = 120
@@ -94,7 +98,8 @@ class smbd(connection):
         self.processors()
 
     def handle_io_in(self,data):
-
+        from .rpcservices import OS_TYPE
+        print(OS_TYPE)
         try:
             p = NBTSession(data, _ctx=self)
         except:

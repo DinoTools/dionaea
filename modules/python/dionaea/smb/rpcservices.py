@@ -43,6 +43,8 @@ rpclog = logging.getLogger('rpcservices')
 # 1:"Windows XP Service Pack 0/1",
 # 2:"Windows XP Service Pack 2",
 # 3:"Windows XP Service Pack 3",
+# 4:"Windows 7 Service Pack 1",
+# 5:"Linux Samba 4.3.11"
 OS_TYPE = 2
 
 class DCERPCValueError(Exception):

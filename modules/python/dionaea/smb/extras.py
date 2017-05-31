@@ -18,6 +18,7 @@ class SmbConfig(object):
         self.native_os = "Windows 5.1"
         self.native_lan_manager = "Windows 2000 LAN Manager"
         self.oem_domain_name = "WORKGROUP"
+        self.os_type = 2
         self.primary_domain = "WORKGROUP"
         self.server_name = "HOMEUSER-3AF6FE"
 
@@ -25,6 +26,7 @@ class SmbConfig(object):
             "native_lan_manager",
             "native_os",
             "oem_domain_name",
+            "os_type",
             "primary_domain",
             "server_name"
         ]
