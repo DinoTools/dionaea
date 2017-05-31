@@ -1,5 +1,6 @@
 from dionaea import ServiceLoader
-from .smb import epmapper, smbd
+from dionaea.exception import ServiceConfigError
+from .smb import epmapper, smbd, smblog
 
 
 class EPMAPService(ServiceLoader):
@@ -19,6 +20,11 @@ class SMBService(ServiceLoader):
     @classmethod
     def start(cls, addr,  iface=None, config=None):
         daemon = smbd()
+        try:
+            daemon.apply_config(config=config)
+        except ServiceConfigError as e:
+            smblog.error(e.msg, *e.args)
+            return
         daemon.bind(addr, 445, iface=iface)
         daemon.listen()
         return daemon

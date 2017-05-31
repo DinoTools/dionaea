@@ -60,7 +60,11 @@ def register_rpc_service(service):
 
 
 class smbd(connection):
-    def __init__ (self):
+    shared_config_values = [
+        "config"
+    ]
+
+    def __init__ (self, proto="tcp", config=None):
         connection.__init__(self,"tcp")
         self.state = {
             'lastcmd': None,
@@ -71,6 +75,13 @@ class smbd(connection):
         self.outbuf = None
         self.fids = {}
         self.printer = b'' # spoolss file "queue"
+
+        self.config = None
+
+    def apply_config(self, config=None):
+        # Avoid import loops
+        from .extras import SmbConfig
+        self.config = SmbConfig(config=config)
 
     def handle_established(self):
         #		self.timeouts.sustain = 120
@@ -173,7 +184,10 @@ class smbd(connection):
         if Command == SMB_COM_NEGOTIATE:
             # Negociate Protocol -> Send response that supports minimal features in NT LM 0.12 dialect
             # (could be randomized later to avoid detection - but we need more dialects/options support)
-            r = SMB_Negociate_Protocol_Response()
+            r = SMB_Negociate_Protocol_Response(
+                OemDomainName=self.config.oem_domain_name + "\0",
+                ServerName=self.config.server_name + "\0"
+            )
             # we have to select dialect
             c = 0
             tmp = p.getlayer(SMB_Negociate_Protocol_Request_Counts)
@@ -193,7 +207,11 @@ class smbd(connection):
         # p.getlayer(SMB_Header).Command == 0x73:
         elif Command == SMB_COM_SESSION_SETUP_ANDX:
             if p.haslayer(SMB_Sessionsetup_ESEC_AndX_Request):
-                r = SMB_Sessionsetup_ESEC_AndX_Response()
+                r = SMB_Sessionsetup_ESEC_AndX_Response(
+                    NativeOS=self.config.native_os + "\0",
+                    NativeLanManager=self.config.native_lan_manager + "\0",
+                    PrimaryDomain=self.config.primary_domain
+                )
                 ntlmssp = None
                 sb = p.getlayer(
                     SMB_Sessionsetup_ESEC_AndX_Request).SecurityBlob
@@ -296,7 +314,11 @@ class smbd(connection):
                         r.SecurityBlob = BER_identifier_enc(
                             BER_CLASS_CON,1,1) + BER_len_enc(len(raw)) + raw
             elif p.haslayer(SMB_Sessionsetup_AndX_Request2):
-                r = SMB_Sessionsetup_AndX_Response2()
+                r = SMB_Sessionsetup_AndX_Response2(
+                    NativeOS=self.config.native_os + "\0",
+                    NativeLanManager=self.config.native_lan_manager + "\0",
+                    PrimaryDomain=self.config.primary_domain
+                )
             else:
                 smblog.warn("Unknown Session Setup Type used")
 
@@ -324,10 +346,18 @@ class smbd(connection):
 
             # specific for NMAP smb-enum-shares.nse support
             if h.Path == b'nmap-share-test\0':
-                r = SMB_Treeconnect_AndX_Response2()
+                r = SMB_Treeconnect_AndX_Response2(
+                    NativeOS=self.config.native_os + "\0",
+                    NativeLanManager=self.config.native_lan_manager + "\0",
+                    PrimaryDomain=self.config.primary_domain + "\0"
+                )
                 rstatus = 0xc00000cc #STATUS_BAD_NETWORK_NAME
             elif h.Path == b'ADMIN$\0' or h.Path == b'C$\0':
-                r = SMB_Treeconnect_AndX_Response2()
+                r = SMB_Treeconnect_AndX_Response2(
+                    NativeOS=self.config.native_os + "\0",
+                    NativeLanManager=self.config.native_lan_manager + "\0",
+                    PrimaryDomain=self.config.primary_domain + "\0"
+                )
                 rstatus = 0xc0000022 #STATUS_ACCESS_DENIED
         elif Command == SMB_COM_TREE_DISCONNECT:
             r = SMB_Treedisconnect()

@@ -1,1 +1,7 @@
 - name: smb
+#  config:
+#    native_os: Windows 7 Professional 7600
+#    native_lan_manager: Windows 7 Professional 6.1
+#    primary_domain: Test
+#    oem_domain_name: Test
+#    server_name: TEST-SERVER
