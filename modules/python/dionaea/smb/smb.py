@@ -31,6 +31,7 @@ from dionaea.core import incident, connection, g_dionaea
 import traceback
 import hashlib
 import logging
+import os
 import tempfile
 from uuid import UUID
 
@@ -662,8 +663,6 @@ class smbd(connection):
                     hash_xor_output = hashlib.md5(xor_output);
                     smblog.info('DoublePulsar payload - MD5 (after XOR decryption ): %s' % (hash_xor_output.hexdigest()))
 
-                    dir = g_dionaea.config()['downloads']['dir'] + "/"
-
                     # payload = some data(shellcode or code to load the executable) + executable itself
                     # try to locate the executable and remove the prepended data
                     # now, we will have the executable itself
@@ -674,20 +673,32 @@ class smbd(connection):
                             smblog.info('DoublePulsar payload - MZ header found...')
                             break
 
-                    hash_xor_output_mz = hashlib.md5(xor_output[offset:])
                     # save the captured payload/gift/evil/buddy to disk
-                    smblog.info('DoublePulsar payload - MD5 final: %s. Save to disk' % (hash_xor_output_mz.hexdigest()))
-                    f1 = open(dir + hash_xor_output_mz.hexdigest(), 'wb')
-                    f1.write(xor_output[offset:])
-                    f1.close()
+                    smblog.info('DoublePulsar payload - Save to disk')
+
+                    dionaea_config = g_dionaea.config().get("dionaea")
+                    download_dir = dionaea_config.get("download.dir")
+                    download_suffix = dionaea_config.get("download.suffix", ".tmp")
+
+                    fp = tempfile.NamedTemporaryFile(
+                        delete=False,
+                        prefix="smb-",
+                        suffix=download_suffix,
+                        dir=download_dir
+                    )
+                    fp.write(xor_output[offset:])
+                    fp.close()
                     self.buf2 = b''
                     xor_output = b''
 
                     icd = incident("dionaea.download.complete")
-                    icd.path = dir + hash_xor_output_mz.hexdigest()
-                    icd.url = self.remote.host
+                    icd.path = fp.name
+                    # We need the url for logging
+                    icd.url = ""
                     icd.con = self
                     icd.report()
+                    os.unlink(fp.name)
+
                 r = SMB_Trans2_Response()
                 rstatus = 0xc0000002  # STATUS_NOT_IMPLEMENTED
             elif h.Setup[0] == SMB_TRANS2_FIND_FIRST2:
