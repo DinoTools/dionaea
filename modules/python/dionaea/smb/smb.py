@@ -324,7 +324,7 @@ class smbd(connection):
                 r = SMB_Sessionsetup_AndX_Response2(
                     NativeOS=self.config.native_os + "\0",
                     NativeLanManager=self.config.native_lan_manager + "\0",
-                    PrimaryDomain=self.config.primary_domain
+                    PrimaryDomain=self.config.primary_domain + "\0"
                 )
             else:
                 smblog.warn("Unknown Session Setup Type used")
