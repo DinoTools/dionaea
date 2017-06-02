@@ -99,8 +99,6 @@ class smbd(connection):
         self.processors()
 
     def handle_io_in(self,data):
-        from .rpcservices import OS_TYPE
-        print(OS_TYPE)
         try:
             p = NBTSession(data, _ctx=self)
         except:
