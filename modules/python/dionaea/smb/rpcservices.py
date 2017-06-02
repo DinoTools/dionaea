@@ -2931,29 +2931,8 @@ STYPE_SPECIAL  = 0x80000000 # Special share reserved for interprocess
 STYPE_TEMPORARY= 0x40000000 # A temporary share that is not persisted
 # for creation each time the file server initializes.
 
-__shares__ = {
-    'ADMIN$' : {
-        'type': STYPE_DISKTREE,
-        'comment' : 'Remote Admin',
-        'path': 'C:\\Windows'
-    },
-    'C$' : {
-        'type': STYPE_DISKTREE|STYPE_SPECIAL,
-        'comment' : 'Default Share',
-        'path': 'C:\\'
-    },
-    'IPC$' : {
-        'type': STYPE_IPC,
-        'comment' : 'Remote IPC',
-        'path': ''
-    },
-    'Printer' : {
-        'type' : STYPE_PRINTQ,
-        'comment' : 'Microsoft XPS Document Writer',
-        'path': '',
-    }
-}
-
+# Overwritten by smb config
+__shares__ = {}
 
 
 class SRVSVC(RPCService):

@@ -89,6 +89,7 @@ class smbd(connection):
         # Set the global OS_TYPE value
         # ToDo: This is a quick and dirty hack
         from . import rpcservices
+        rpcservices.__shares__ = self.config.shares
         rpcservices.OS_TYPE = self.config.os_type
 
     def handle_established(self):
