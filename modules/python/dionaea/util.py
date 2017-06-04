@@ -131,3 +131,13 @@ def find_shell_download(connection, data, report_incidents=True):
             i.report()
 
     return urls
+
+def xor(data, key):
+    l = len(key)
+    return bytearray((
+        (data[i] ^ key[i % l]) for i in range(0, len(data))
+    ))
+
+def calculate_doublepulsar_opcode(t):
+    op = (t) + (t >> 8) + (t >> 16) + (t >> 24)
+    return op

@@ -34,6 +34,7 @@ PYSCRIPTS += smb/include/asn1/mib.py
 PYSCRIPTS += smb/include/ntlmfields.py
 PYSCRIPTS += smb/include/gssapifields.py
 PYSCRIPTS += smb/__init__.py
+PYSCRIPTS += smb/extras.py
 PYSCRIPTS += smb/smb.py
 PYSCRIPTS += smb/rpcservices.py
 PYSCRIPTS += mirror.py

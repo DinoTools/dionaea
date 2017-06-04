@@ -43,6 +43,8 @@ rpclog = logging.getLogger('rpcservices')
 # 1:"Windows XP Service Pack 0/1",
 # 2:"Windows XP Service Pack 2",
 # 3:"Windows XP Service Pack 3",
+# 4:"Windows 7 Service Pack 1",
+# 5:"Linux Samba 4.3.11"
 OS_TYPE = 2
 
 class DCERPCValueError(Exception):
@@ -2929,29 +2931,8 @@ STYPE_SPECIAL  = 0x80000000 # Special share reserved for interprocess
 STYPE_TEMPORARY= 0x40000000 # A temporary share that is not persisted
 # for creation each time the file server initializes.
 
-__shares__ = {
-    'ADMIN$' : {
-        'type': STYPE_DISKTREE,
-        'comment' : 'Remote Admin',
-        'path': 'C:\\Windows'
-    },
-    'C$' : {
-        'type': STYPE_DISKTREE|STYPE_SPECIAL,
-        'comment' : 'Default Share',
-        'path': 'C:\\'
-    },
-    'IPC$' : {
-        'type': STYPE_IPC,
-        'comment' : 'Remote IPC',
-        'path': ''
-    },
-    'Printer' : {
-        'type' : STYPE_PRINTQ,
-        'comment' : 'Microsoft XPS Document Writer',
-        'path': '',
-    }
-}
-
+# Overwritten by smb config
+__shares__ = {}
 
 
 class SRVSVC(RPCService):
