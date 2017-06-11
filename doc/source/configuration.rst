@@ -71,6 +71,28 @@ It is not recommended to analyse this files to track attacks.
 
     Only log messages that match the specified log level get logged to the logfile.
 
+    Available log levels:
+
+    * debug
+    * info
+    * warning
+    * error
+    * critical
+
+    * all = Special log level including all log levels
+
+    Examples:
+
+    .. code-blocK:: ini
+        :caption: Log only messages with level warning and error
+
+        errors.levels=warning,error
+
+    .. code-blocK:: ini
+        :caption: Log all log messages but exclude messages with log level debug
+
+        errors.levels=all,-debug
+
 **domain**
 
     Only log messages in a specified domain.

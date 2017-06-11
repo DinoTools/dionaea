@@ -96,3 +96,28 @@ I'm facing a bug, it fails, and I can't figure out why.
     as it does not sound like pebcak, I may ask for a shell/screen and
     have a look myself, and if it is worth it, you'll even get a FAQ
     entry for some specialties of your OS.
+
+Unable to bind to port after dropping privileges
+
+    Dropping privileges and binding to ports lower than 1024 is only support on Linux systems.
+    If some of the optional build dependencies are missing dionaea might not be able to bind to these ports too.
+    After enabling all log levels it should display some log messages like in the example below.
+
+    .. code-block:: console
+
+        [10052017 15:58:17] connection connection.c:200: bind_local con 0x55f21b1ec720
+        [10052017 15:58:17] connection connection.c:216: bind_local socket 10 1.2.3.4:21
+        [10052017 15:58:17] connection connection.c:230: Could not bind 1.2.3.4:21 (Permission denied)
+
+    To fix this issue you have to install the **kernel headers** for your kernel and rebuild dionaea.
+    If everything works as it should you might get log messages like in the example below.
+    You might have noticed that there is now a pchild section.
+    This means dionaea is using a child process with extended privileges to bind to the port.
+
+    .. code-block:: console
+
+        [10052017 15:58:17] connection connection.c:200: bind_local con 0x55f21b1ec720
+        [10052017 15:58:17] connection connection.c:216: bind_local socket 10 1.2.3.4:21
+        [10052017 15::58:17] pchild pchild.c:199: sending msg to child to bind port ...
+        [10052017 15::58:17] pchild pchild.c:218: child could bind the socket!
+        [10052017 15::58:17] connection connection.c:316: ip '1.2.3.4' node '1.2.3.4:21'
