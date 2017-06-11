@@ -4,6 +4,51 @@ Changelog
 0.7.0 - (`master`_)
 -------------------
 
+**ci**
+
+* Add Debian 9
+
+**dionaea**
+
+* Fix build error with OpenSSL 1.1.0
+* Improve OpenSSL 1.1.0 support
+* Cleanup connection code
+
+**doc**
+
+* Add additional information
+* Doxygen config file for dionaea c core
+
+**python**
+
+* Fix typo in config key
+
+**python/http**
+
+* Initial support to handle SOAP requests
+
+**python/log_incident**
+
+* Improve hash generator
+* Fix bug if parent is unknown
+* Remove IDs from list if processed
+
+**python/mongo**
+
+* Initial support to simulate a MongoDB server
+
+**python/pyev**
+
+* Update from 0.8 to 0.9 to support Python >= 3.6
+
+**python/smb**
+
+* Add support for WannaCry and SambaCry (Big thanks to gento)
+* Add additional config options to change identity
+
+**python/util**
+
+* Find Download commands for Linux shell
 
 0.6.0 - (2016-11-14)
 --------------------
