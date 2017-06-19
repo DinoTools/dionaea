@@ -47,6 +47,7 @@ from dionaea.sip import rfc4566
 from dionaea.sip import rfc2617 # auth
 
 g_default_loop = pyev.default_loop()
+g_timer_cleanup = None
 
 logger = logging.getLogger('sip')
 logger.setLevel(logging.DEBUG)
@@ -68,8 +69,6 @@ def cleanup(watcher, events):
             del g_call_ids[key]
 
 
-g_timer_cleanup = pyev.Timer(60.0, 60.0, g_default_loop, cleanup)
-g_timer_cleanup.start()
 
 #########
 # Classes
@@ -91,6 +90,11 @@ class SIPService(ServiceLoader):
                 daemon.bind(addr, port, iface=iface)
                 daemon.listen()
                 daemons.append(daemon)
+
+        if len(daemons) > 0:
+            global g_timer_cleanup
+            g_timer_cleanup = pyev.Timer(60.0, 60.0, g_default_loop, cleanup)
+            g_timer_cleanup.start()
         return daemons
 
 
