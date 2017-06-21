@@ -93,8 +93,11 @@ class SIPService(ServiceLoader):
 
         if len(daemons) > 0:
             global g_timer_cleanup
-            g_timer_cleanup = pyev.Timer(60.0, 60.0, g_default_loop, cleanup)
-            g_timer_cleanup.start()
+            if g_timer_cleanup is None:
+                g_timer_cleanup = pyev.Timer(60.0, 60.0, g_default_loop, cleanup)
+                g_timer_cleanup.start()
+            else:
+                logger.debug("Cleanup loop already started!")
         return daemons
 
 
