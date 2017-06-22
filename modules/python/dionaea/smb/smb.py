@@ -109,7 +109,7 @@ class smbd(connection):
 
         if len(data) < (p.LENGTH+4):
             #we probably do not have the whole packet yet -> return 0
-            smblog.error('=== SMB did not get enough data')
+            smblog.info('=== SMB did not get enough data')
             return 0
 
         if p.TYPE == 0x81:
@@ -371,7 +371,7 @@ class smbd(connection):
                 rstatus = 0xc0000022 #STATUS_ACCESS_DENIED
             # support for CVE-2017-7494 Samba SMB RCE
             elif h.Path[-6:] == b'share\0':
-                smblog.critical('Possible CVE-2017-7494 Samba SMB RCE attempts..')
+                smblog.info('Possible CVE-2017-7494 Samba SMB RCE attempts..')
                 r.AndXOffset = 0
                 r.Service = "A:\0"
                 r.NativeFileSystem = "NTFS\0"
