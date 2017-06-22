@@ -387,7 +387,7 @@ class smbd(connection):
                 icd.url = "smb://" + self.remote.host
                 icd.con = self
                 icd.report()
-                self.fids[p.FID].unlink(self.fids[p.FID].name)
+                os.unlink(self.fids[p.FID].name)
                 del self.fids[p.FID]
                 r = SMB_Close_Response()
         elif Command == SMB_COM_LOGOFF_ANDX:
@@ -832,7 +832,8 @@ class smbd(connection):
         for i in self.fids:
             if self.fids[i] is not None:
                 self.fids[i].close()
-                self.fids[i].unlink(self.fids[i].name)
+                os.unlink(self.fids[i].name)
+                del self.fids[i]
         return 0
 
 class epmapper(smbd):
