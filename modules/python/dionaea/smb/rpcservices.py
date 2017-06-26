@@ -3276,7 +3276,7 @@ class SRVSVC(RPCService):
                 self.Max_uses = 0xffffffff
                 self.Current_uses = 1
                 self.Path_pointer = 0x6789
-                self.Passwd_pointer = 0x0
+                self.Passwd_pointer = 0x56789
             elif isinstance(self.__packer,ndrlib.Unpacker):
                 self.ref = self.__packer.unpack_pointer()
                 self.netname = self.__packer.unpack_pointer()
@@ -3321,6 +3321,11 @@ class SRVSVC(RPCService):
                     # Path
                     self.__packer.pack_string_fix(
                         str(data['path']+'\0').encode('utf16')[2:])
+                    # Password
+		    # this is necessary for Metasploit module /exploit/linux/samba/is_known_pipename
+                    self.__packer.pack_string_fix(
+                        str('\0').encode('utf16')[2:])
+
 
     class SERVER_INFO_101(object):
         # 2.2.4.41 SERVER_INFO_101
