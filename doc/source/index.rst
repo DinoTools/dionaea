@@ -25,6 +25,7 @@ Content:
     development/index
     changelog
     faq
+    support
 
 Old documentation:
 
@@ -39,7 +40,6 @@ Old documentation:
     old/utils
     old/seagfaults
     old/tips_and_tricks
-    old/support
 
 
 Indices and tables
