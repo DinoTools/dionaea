@@ -16,6 +16,7 @@ Content:
     installation
     configuration
     run
+    integration
     module/index
     service/index
     ihandler/index
