@@ -35,7 +35,6 @@ Old documentation:
     old/exploitation
     old/downloads
     old/submit
-    old/development
     old/configuration
     old/utils
     old/seagfaults
