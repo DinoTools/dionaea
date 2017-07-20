@@ -101,7 +101,7 @@ RESPONSE = {
     "file_status":                        '213 {value}',
     #"help_msg":                           '214 help: %s',
     "name_sys_type":                      '215 UNIX Type: L8',
-    "welcome_msg":                        "220 Welcome to the ftp service",
+    "welcome_msg":                        "220 Microsoft FTP Service",
     "svc_ready_for_new_user":             '220 Service ready',
     "goodbye_msg":                        '221 Goodbye.',
     "data_cnx_open_no_xfr_in_progress":   '225 data connection open, no transfer in progress',

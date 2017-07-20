@@ -28,10 +28,12 @@
 
 import datetime
 from uuid import UUID
+import random
 
 from .packet import Packet, bind_bottom_up, bind_top_down
 from .fieldtypes import *
 
+source_str = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ'
 
 #
 # http://www.snia.org/tech_activities/CIFS/CIFS-TR-1p00_FINAL.pdf
@@ -752,11 +754,11 @@ class SMB_Negociate_Protocol_Response(Packet):
         ConditionalField(StrLenField("EncryptionKey", b'',length_from=lambda x: 0),
                          lambda x: not x.Capabilities & CAP_EXTENDED_SECURITY),
         ConditionalField(UnicodeNullField(
-            "OemDomainName", "WORKGROUP"), lambda x: not x.Capabilities & CAP_EXTENDED_SECURITY),
+            "OemDomainName", "".join([random.choice(source_str) for x in xrange(9)])), lambda x: not x.Capabilities & CAP_EXTENDED_SECURITY),
         # In [MS-SMB].pdf page 49,
         # "ServerName" field needed for case without CAP_EXTENDED_SECURITY
         ConditionalField(UnicodeNullField(
-            "ServerName", "HOMEUSER-3AF6FE"), lambda x: not x.Capabilities & CAP_EXTENDED_SECURITY),
+            "ServerName", "".join([random.choice(source_str) for x in xrange(10)])), lambda x: not x.Capabilities & CAP_EXTENDED_SECURITY),
         # with CAP_EXTENDED_SECURITY
         ConditionalField(StrLenField("ServerGUID", b'\x0B\xFF\x65\x38\x54\x7E\x6C\x42\xA4\x3E\x12\xD2\x11\x97\x16\x44',
                                      length_from=lambda x: 16), lambda x: x.Capabilities & CAP_EXTENDED_SECURITY),
