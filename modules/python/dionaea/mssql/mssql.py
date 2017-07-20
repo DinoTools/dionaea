@@ -144,7 +144,7 @@ class mssqld(connection):
         if PacketType == TDS_TYPES_PRE_LOGIN:
             r = TDS_Prelogin_Response()
             #FIXME: any better way to initialise this?
-            r.VersionToken.TokenType = 0x00
+            r.VersionToken.TokenType = 0x01
             r.VersionToken.Offset = 26
             r.VersionToken.Len = 6
             r.EncryptionToken.TokenType = 0x01

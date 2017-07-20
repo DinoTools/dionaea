@@ -267,7 +267,7 @@ class mysqld(connection):
             except Exception as e:
                 logger.warn("SQL ERROR %s" % e)
                 logger.warn("SQL ERROR in %s" % p.Query)
-                r = MySQL_Result_Error(Message="Learn SQL!")
+                r = MySQL_Result_Error(Message='(1064, "You have an error in your SQL syntax; check the manual that corresponds to your MariaDB server version for the right syntax to use near ' + "'" + query + "'" + ' at line 1")')
         return r
 
     def _handle_com_query_select(self, p, query):
