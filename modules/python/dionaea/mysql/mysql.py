@@ -166,14 +166,18 @@ class mysqld(connection):
         if re.match(b'set ', p.Query, re.I):
             r = MySQL_Result_OK(Message="#2")
 
-        elif re.match(b'select\S+database\S*\(\S*\)$', p.Query, re.I):
+        elif re.match(b'select\s+database\s*\(\s*\)$', p.Query, re.I):
             r = [
                 MySQL_Result_Header(FieldCount=1),
                 MySQL_Result_Field(
                     Catalog='def',
+                    Table=b'',
                     Name=b'DATABASE()',
+                    Database=b'',
+                    ORGName=b'',
+                    ORGTable=b'',
                     CharSet=33,
-                    Length=75,
+                    Length=34,
                     Type=FIELD_TYPE_VAR_STRING,
                     Flags=FLAG_NOT_NULL,
                     Decimals=0
@@ -183,13 +187,16 @@ class mysqld(connection):
                 MySQL_Result_EOF(ServerStatus=0x002)
             ]
 
-        elif re.match(b"show\S+databases$", p.Query, re.I):
+        elif re.match(b"show\s+databases$", p.Query, re.I):
             r = [
                 MySQL_Result_Header(FieldCount=1),
                 MySQL_Result_Field(
                     Catalog='def',
                     Table=b'SCHEMATA',
                     Name=b'Database',
+                    Database=b'information_schema',
+                    ORGName=b'SCHEMA_NAME',
+                    ORGTable=b'SCHEMATA',
                     CharSet=33,
                     Length=192,
                     Type=FIELD_TYPE_VAR_STRING,
@@ -205,13 +212,16 @@ class mysqld(connection):
             # r.append(MySQL_Result_Row_Data(ColumnValues=['information_schema']))
             r.append(MySQL_Result_EOF(ServerStatus=0x002))
 
-        elif re.match(b'show\S+tables$', p.Query, re.I):
+        elif re.match(b'show\s+tables$', p.Query, re.I):
             r = [
                 MySQL_Result_Header(FieldCount=1),
                 MySQL_Result_Field(
                     Catalog='def',
+                    Database=self.database.encode("ascii"),
                     Table=b'TABLE_NAMES',
-                    Name=b'Tables_in_test',
+                    Name=b'Tables_in_' + self.database.encode("ascii"),
+                    ORGName=b"TABLE_NAME",
+                    ORGTable=b"TABLE_NAMES",
                     CharSet=33,
                     Length=192,
                     Type=FIELD_TYPE_VAR_STRING,
