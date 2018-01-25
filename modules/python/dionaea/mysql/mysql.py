@@ -166,14 +166,18 @@ class mysqld(connection):
         if re.match(b'set ', p.Query, re.I):
             r = MySQL_Result_OK(Message="#2")
 
-        elif re.match(b'select\s+database\S*\(\s*\)$', p.Query, re.I):
+        elif re.match(b'select\s+database\s*\(\s*\)$', p.Query, re.I):
             r = [
                 MySQL_Result_Header(FieldCount=1),
                 MySQL_Result_Field(
                     Catalog='def',
+                    Table=b'',
                     Name=b'DATABASE()',
+                    Database=b'',
+                    ORGName=b'',
+                    ORGTable=b'',
                     CharSet=33,
-                    Length=75,
+                    Length=34,
                     Type=FIELD_TYPE_VAR_STRING,
                     Flags=FLAG_NOT_NULL,
                     Decimals=0
