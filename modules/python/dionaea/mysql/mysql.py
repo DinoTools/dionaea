@@ -217,8 +217,11 @@ class mysqld(connection):
                 MySQL_Result_Header(FieldCount=1),
                 MySQL_Result_Field(
                     Catalog='def',
+                    Database=self.database.encode("ascii"),
                     Table=b'TABLE_NAMES',
-                    Name=b'Tables_in_test',
+                    Name=b'Tables_in_' + self.database.encode("ascii"),
+                    ORGName=b"TABLE_NAME",
+                    ORGTable=b"TABLE_NAMES",
                     CharSet=33,
                     Length=192,
                     Type=FIELD_TYPE_VAR_STRING,
