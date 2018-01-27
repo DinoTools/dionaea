@@ -599,7 +599,7 @@ class httpd(connection):
         Handle the POST method. Send the head and the file. But ignore the POST params.
         Use the bistreams for a better analysis.
         """
-        if self.fp_tmp is None:
+        if self.fp_tmp is not None:
             self.fp_tmp.seek(0)
             form = cgi.FieldStorage(fp=self.fp_tmp, environ=self.env)
             for field_name in form.keys():
