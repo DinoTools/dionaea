@@ -62,7 +62,10 @@ class SubmitHTTPPost(ihandler):
                 i._url = url
 
                 # copy all values for this url
-                for k, v in to.get("field_values", {}):
+                field_values = to.get("field_values")
+                if field_values is None:
+                    field_values = {}
+                for k, v in field_values.items():
                     i.set(k, v)
 
                 file_fieldname = to.get("file_fieldname")
