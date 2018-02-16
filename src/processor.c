@@ -365,7 +365,7 @@ ssize_t format_timeval(struct timeval *tv, char *buf, size_t sz)
     written = (ssize_t)strftime(buf, sz, "%Y-%m-%dT%H:%M:%d", gm);
     if ((written > 0) && ((size_t)written < sz))
     {
-      int w = snprintf(buf+written, sz-(size_t)written, ".%06d", tv->tv_usec);
+      int w = snprintf(buf+written, sz-(size_t)written, ".%06ld", tv->tv_usec);
       written = (w > 0) ? written + w : -1;
     }
   }
