@@ -289,6 +289,7 @@ class logsqlhandler(ihandler):
 
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS
             downloads (
+                download_timestamp INTEGER NOT NULL,
                 download INTEGER PRIMARY KEY,
                 connection INTEGER,
                 download_url TEXT,
@@ -384,11 +385,13 @@ class logsqlhandler(ihandler):
             self.cursor.execute("""CREATE INDEX IF NOT EXISTS mssql_commands_%s_idx
             ON mssql_commands (mssql_command_%s)""" % (idx, idx))
 
-
-
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS virustotals (
                 virustotal INTEGER PRIMARY KEY,
                 virustotal_md5_hash TEXT NOT NULL,
+                virustotal_sha1_hash TEXT NOT NULL,
+                virustotal_sha256_hash TEXT NOT NULL,
+                virustotal_positives INTEGER NOT NULL,
+                virustotal_total INTEGER NOT NULL,
                 virustotal_timestamp INTEGER NOT NULL,
                 virustotal_permalink TEXT NOT NULL
             )""")
@@ -797,10 +800,9 @@ class logsqlhandler(ihandler):
             return
         attackid = self.attacks[con][1]
         logger.info("complete for attackid %i" % attackid)
-        self.cursor.execute("INSERT INTO downloads (connection, download_url, download_md5_hash) VALUES (?,?,?)",
-                            (attackid, icd.url, icd.md5hash) )
+        self.cursor.execute("INSERT INTO downloads (download_timestamp, connection, download_url, download_md5_hash) VALUES (?,?,?,?)",
+                            (time.time(), attackid, icd.url, icd.md5hash) )
         self.dbh.commit()
-
 
     def handle_incident_dionaea_service_shell_listen(self, icd):
         con=icd.con
@@ -874,9 +876,16 @@ class logsqlhandler(ihandler):
 
         if j['response_code'] == 1: # file was known to virustotal
             permalink = j['permalink']
-            date = j['scan_date']
-            self.cursor.execute("INSERT INTO virustotals (virustotal_md5_hash, virustotal_permalink, virustotal_timestamp) VALUES (?,?,strftime('%s',?))",
-                                (md5, permalink, date))
+            scan_date = j['scan_date']
+            sha1 = j['sha1']
+            sha256 = j['sha256']
+            positives = j['positives']
+            total = j['total']
+
+            logger.debug("Trying to update table: virustotals (%s)", md5)
+
+            self.cursor.execute("INSERT INTO virustotals (virustotal_md5_hash, virustotal_sha1_hash, virustotal_sha256_hash, virustotal_positives,      virustotal_total, virustotal_permalink, virustotal_timestamp) VALUES (?,?,?,?,?,?,strftime('%s',?))",
+                                (md5, sha1, sha256, positives, total, permalink, scan_date))            
             self.dbh.commit()
 
             virustotal = self.cursor.lastrowid
