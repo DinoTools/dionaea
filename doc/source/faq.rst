@@ -6,6 +6,11 @@ FAQ
 
 Build/Install
 -------------
+I got these error while installation from source code 
+"libtool: Version mismatch error.  This is libtool 2.4.6, but the
+libtool: definition of this LT_INIT comes from libtool 2.4.2.
+libtool: You should recreate aclocal.m4 with macros from libtool 2.4.6
+libtool: and run autoconf again.".
 
 I get gcc: command not found?
 
