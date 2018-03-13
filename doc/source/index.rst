@@ -25,6 +25,7 @@ Content:
     development/index
     changelog
     faq
+    tips_and_tricks
     support
 
 Old documentation:
