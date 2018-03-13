@@ -1,7 +1,26 @@
 Installation
 ============
 
-At the time of writing the best choice to install dionaea on a server is to use Ubuntu 14.04.
+At the time of writing the best choice to install dionaea on a server is to use `Ubuntu 14.04`_,
+but below you can find how to install it (from source) on other distributions/operating systems.
+
+Basic stuff
+-----------
+
+.. _Download the source code:
+
+Download the source code
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can download the source code from the `release page`_ or by using the git command.
+
+.. code-block:: console
+
+    git clone https://github.com/DinoTools/dionaea.git
+    cd  dionaea
+
+
+.. _release page: https://github.com/DinoTools/dionaea/releases
 
 Arch Linux
 ----------
@@ -30,6 +49,74 @@ If everything looks fine the dionaea service can bee started by using the follow
     $ sudo systemctl start dionaea
 
 The log files and everything captured can be found in the directory /var/lib/dionaea/.
+
+Ubuntu 16.04
+------------
+
+From Source
+^^^^^^^^^^^
+
+Before you start `download the source code`_ of dionaea.
+
+Install required build dependencies before configuring and building dionaea. ('ttf-liberation' required to 'util/gnuplotsql.py')
+
+.. code-block:: console
+
+    sudo apt-get install \
+        autoconf \
+        automake \
+        build-essential \
+        check \
+        cython3 \
+        libcurl4-openssl-dev \
+        libemu-dev \
+        libev-dev \
+        libglib2.0-dev \
+        libloudmouth1-dev \
+        libnetfilter-queue-dev \
+        libnl-3-dev \
+        libpcap-dev \
+        libssl-dev \
+        libtool \
+        libudns-dev \
+        python3 \
+        python3-dev \
+        python3-bson \
+        python3-yaml \
+        ttf-liberation
+
+After all dependencies have been installed successfully run :code:`autreconf` to build or rebuild the build scripts.
+
+.. code-block:: console
+   
+    autoreconf -vi
+
+Run :code:`configure` to configure the build scripts.
+
+.. code-block:: console
+
+    ./configure \
+        --disable-werror \
+        --prefix=/opt/dionaea \
+        --with-python=/usr/bin/python3 \
+        --with-cython-dir=/usr/bin \
+        --with-ev-include=/usr/include/ \
+        --with-ev-lib=/usr/lib \
+        --with-emu-lib=/usr/lib/libemu \
+        --with-emu-include=/usr/include \
+        --with-nl-include=/usr/include/libnl3 \
+        --with-nl-lib=/usr/lib
+
+Now you should be able to run :code:`make` to build and run :code:`make install` to install the honeypot.
+
+.. code-block:: console
+
+    make
+    sudo make install
+
+The new honeypot can be found in the directory :code:`/opt/dionaea`.
+
+.. _Ubuntu 14.04:
 
 Ubuntu 14.04
 ------------
@@ -77,6 +164,8 @@ The log files can be found in the directory /var/log/dionaea/ and everything els
 
 From Source
 ^^^^^^^^^^^
+
+Before you start `download the source code`_ of dionaea.
 
 Install required build dependencies before configuring and building dionaea.
 
@@ -134,6 +223,8 @@ Now you should be able to run :code:`make` to build and run :code:`make install`
     make
     sudo make install
 
+
+The new honeypot can be found in the directory :code:`/opt/dionaea`.
 
 3rd-party packages
 ------------------
