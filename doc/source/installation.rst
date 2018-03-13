@@ -1,8 +1,26 @@
 Installation
 ============
 
-At the time of writing the best choice to install dionaea on a server is to use Ubuntu 14.04,
-but below you can found how to install it (from source) on Ubuntu 16.04.
+At the time of writing the best choice to install dionaea on a server is to use `Ubuntu 14.04`_,
+but below you can find how to install it (from source) on other distributions/operating systems.
+
+Basic stuff
+-----------
+
+.. _Download the source code:
+
+Download the source code
+^^^^^^^^^^^^^^^^^^^^^^^^
+
+You can download the source code from the `release page`_ or by using the git command.
+
+.. code-block:: console
+
+    git clone https://github.com/DinoTools/dionaea.git
+    cd  dionaea
+
+
+.. _release page: https://github.com/DinoTools/dionaea/releases
 
 Arch Linux
 ----------
@@ -38,23 +56,7 @@ Ubuntu 16.04
 From Source
 ^^^^^^^^^^^
 
-Clone the ufficial repository.
-
-.. code-block:: console
-
-    git clone https://github.com/DinoTools/dionaea.git
-    mv dionaea /dionaea-src
-    cd /dionaea-src
-
-Install OpenSSL 1.0.2n
-
-.. code-block:: console
-
-    wget https://www.openssl.org/source/openssl-1.0.2n.tar.gz
-    tar xzvf openssl-1.0.2n.tar.gz
-    cd openssl-1.0.2n/
-    ./config --prefix=/dionaea-src/openssl
-    make && make install
+Before you start `download the source code`_ of dionaea.
 
 Install required build dependencies before configuring and building dionaea. ('ttf-liberation' required to 'util/gnuplotsql.py')
 
@@ -87,7 +89,6 @@ After all dependencies have been installed successfully run :code:`autreconf` to
 
 .. code-block:: console
    
-    cd /dionaea-src
     autoreconf -vi
 
 Run :code:`configure` to configure the build scripts.
@@ -95,23 +96,16 @@ Run :code:`configure` to configure the build scripts.
 .. code-block:: console
 
     ./configure \
-        --enable-nl \
-        --enable-lcfg \
-        --prefix=/dionaea \
+        --disable-werror \
+        --prefix=/opt/dionaea \
         --with-python=/usr/bin/python3 \
         --with-cython-dir=/usr/bin \
-        --with-ev-include=/dionaea/include/ \
-        --with-ev-lib=/dionaea/lib \
-        --with-emu-lib=/opt/libemu/lib \
-        --with-emu-include=/opt/libemu/include/ \
+        --with-ev-include=/usr/include/ \
+        --with-ev-lib=/usr/lib \
+        --with-emu-lib=/usr/lib/libemu \
+        --with-emu-include=/usr/include \
         --with-nl-include=/usr/include/libnl3 \
-        --with-nl-lib=/usr/lib \
-        --with-lcfg-lib=/dionaea/lib/ \
-        --with-lcfg-include=/dionaea/include/ \
-        --with-gc-include=/usr/include/gc \
-        --with-nl-include=/usr/include/libnl3/ \
-        --with-nl-lib=/lib/i386-linux-gnu/ \
-        --with-ssl-lib=/dionaea-src/openssl
+        --with-nl-lib=/usr/lib
 
 Now you should be able to run :code:`make` to build and run :code:`make install` to install the honeypot.
 
@@ -120,7 +114,9 @@ Now you should be able to run :code:`make` to build and run :code:`make install`
     make
     sudo make install
 
-The your new honeypot can be found in the directory '/dionaea'.
+The new honeypot can be found in the directory :code:`/opt/dionaea`.
+
+.. _Ubuntu 14.04:
 
 Ubuntu 14.04
 ------------
@@ -168,6 +164,8 @@ The log files can be found in the directory /var/log/dionaea/ and everything els
 
 From Source
 ^^^^^^^^^^^
+
+Before you start `download the source code`_ of dionaea.
 
 Install required build dependencies before configuring and building dionaea.
 
@@ -225,6 +223,8 @@ Now you should be able to run :code:`make` to build and run :code:`make install`
     make
     sudo make install
 
+
+The new honeypot can be found in the directory :code:`/opt/dionaea`.
 
 3rd-party packages
 ------------------
