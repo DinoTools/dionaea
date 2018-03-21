@@ -8,6 +8,9 @@ AM_CFLAGS += -fno-strict-aliasing
 AM_CFLAGS += $(LIB_PCAP_CFLAGS)
 AM_LDFLAGS = $(LIB_PCAP_LIBS)
 
+AM_CFLAGS += $(LIB_GLIB_CFLAGS)
+AM_LDFLAGS += $(LIB_GLIB_LDFLAGS)
+
 pkglib_LTLIBRARIES = pcap.la
 
 pcap_la_SOURCES = pcap.c

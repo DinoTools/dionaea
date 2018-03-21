@@ -10,6 +10,8 @@ AM_CFLAGS += $(LIB_NL_CFLAGS)
 #AM_LDFLAGS = -Wl,-rpath,/opt/dionaea/lib -L/opt/dionaea/lib -lnl -lnl-route -lnl-genl -lnl-nf
 AM_LDFLAGS = $(LIB_NL_LIBS)
 
+AM_CFLAGS += $(LIB_GLIB_CFLAGS)
+AM_LDFLAGS += $(LIB_GLIB_LDFLAGS)
 
 pkglib_LTLIBRARIES = nl.la
 
