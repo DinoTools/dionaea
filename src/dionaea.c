@@ -725,7 +725,10 @@ opt->stdOUT.filter);
 			g_error("Could not chroot(\"%s\") (%s)", opt->root, strerror(errno));
 		} else
 		{
-			chdir("/");
+			if ( chdir("/") != 0 ) {
+				g_error("Could change to root directory '/' ... this shuoldn't happen exitting.\nErr: (%s)", strerror(errno));
+				return EXIT_FAILURE;
+			}
 		}
 	}
 
