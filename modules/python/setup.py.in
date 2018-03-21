@@ -86,7 +86,7 @@ PYEV_VERSION = "\"{0}\"".format(pyev_version)
 
 ext_modules=[
 	Extension("dionaea.core", 
-		['binding.pyx', 'module.c', 'pyev/pyev.c'], 
+		['binding.pyx', 'module.c'],
 		language="c",
 		include_dirs=['../../include', '../../'] + [k for k in sorted(include_dir_dict)],
 		extra_compile_args=[k for k in sorted(extra_compile_dict)],

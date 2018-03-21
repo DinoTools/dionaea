@@ -32,7 +32,7 @@ import logging
 import json
 import uuid
 import sqlite3
-from dionaea import pyev
+import pyev
 
 logger = logging.getLogger('virustotal')
 logger.setLevel(logging.DEBUG)
