@@ -2,6 +2,9 @@
 
 AUTOMAKE_OPTIONS = foreign
 
+PYTHON_SITELIB=$(pkglibdir)"/python"
+
+
 PYSCRIPTS = blackhole.py
 PYSCRIPTS += emu_scripts/__init__.py
 PYSCRIPTS += emu_scripts/handler.py
@@ -87,11 +90,11 @@ PYSCRIPTS += upnp/upnp.py
 
 
 all: $(PYSCRIPTS)
-	
+
 
 install-data-am: all
 	for i in $(PYSCRIPTS); do \
-		location=$(DESTDIR)$(pkglibdir)"/python/dionaea/$$i"; \
+		location=$(DESTDIR)$(PYTHON_SITELIB)"/dionaea/$$i"; \
 		scriptdir=`dirname "$$location"`; \
 		if [ ! -d $$scriptdir ]; then \
 			$(mkinstalldirs) $$scriptdir; \
