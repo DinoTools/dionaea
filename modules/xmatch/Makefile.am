@@ -8,6 +8,9 @@ AM_CFLAGS += -fno-strict-aliasing
 AM_CFLAGS += $(LIB_XMATCH_CFLAGS)
 AM_LDFLAGS = $(LIB_XMATCH_LIBS)
 
+AM_CFLAGS += $(LIB_GLIB_CFLAGS)
+AM_LDFLAGS += $(LIB_GLIB_LDFLAGS)
+
 pkglib_LTLIBRARIES = xmatch.la
 
 xmatch_la_SOURCES = module.c xmatch.c
