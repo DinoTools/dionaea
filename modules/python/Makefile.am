@@ -10,7 +10,8 @@ binding.c: setup.py setup.py.in binding.pyx module.c module.h ../../config.h ../
 	$(PYTHON) setup.py build
 
 install-exec-am: all
-	$(PYTHON) setup.py install -O1 --skip-build --root $(DESTDIR)/
+	cp build/*/dionaea/*.so $(DESTDIR)$(pkglibdir)/python.so
+	(cd $(DESTDIR)$(pkglibdir)/python/dionaea && rm -f core.so && ln -s ../../python.so core.so)
 
 clean:
 	$(PYTHON) setup.py clean
