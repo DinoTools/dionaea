@@ -210,10 +210,10 @@ class logsqlhandler(ihandler):
                     """UPDATE dcerpcserviceops SET dcerpcserviceop_name = 'NetPathCompare' WHERE dcerpcserviceop_name = 'NetCompare'""")
                 logger.debug("... done")
             else:
-                logger.info("... not required")
+                logger.debug("... not required")
         except Exception as e:
             print(e)
-            logger.info("... not required")
+            logger.debug("... not required")
 
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS
             emu_profiles (
@@ -229,10 +229,8 @@ class logsqlhandler(ihandler):
         # 1) rename table, create the proper table
         try:
             logger.debug("Trying to update table: emu_services")
-            self.cursor.execute(
-                """SELECT emu_serivce FROM emu_services LIMIT 1""")
-            self.cursor.execute(
-                """ALTER TABLE emu_services RENAME TO emu_services_old""")
+            self.cursor.execute("""SELECT emu_serivce FROM emu_services LIMIT 1""")
+            self.cursor.execute("""ALTER TABLE emu_services RENAME TO emu_services_old""")
             update = True
         except Exception as e:
             logger.debug("... not required")
@@ -261,7 +259,6 @@ class logsqlhandler(ihandler):
             logger.debug(
                 "Updating emu_services failed, copying old table failed (%s)" % e)
 
-
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS
             offers (
                 offer INTEGER PRIMARY KEY,
@@ -273,20 +270,19 @@ class logsqlhandler(ihandler):
         self.cursor.execute(
             """CREATE INDEX IF NOT EXISTS offers_url_idx ON offers (offer_url)""")
 
-        # fix a type on downloads table definition
+        # fix a typo on downloads table definition
         # downloads.downloads is wrong, should be downloads.download
         # 1) rename table, create the proper table
         try:
-            logger.debug("Trying to update table: downloads")
+            logger.debug("Trying to update table (fix typo): downloads")
             self.cursor.execute("""SELECT downloads FROM downloads LIMIT 1""")
-            self.cursor.execute(
-                """ALTER TABLE downloads RENAME TO downloads_old""")
+            self.cursor.execute("""ALTER TABLE downloads RENAME TO downloads_old""")
             update = True
         except Exception as e:
-            #            print(e)
+            #print(e)
             logger.debug("... not required")
             update = False
-
+        
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS
             downloads (
                 download_timestamp INTEGER NOT NULL,
@@ -296,8 +292,8 @@ class logsqlhandler(ihandler):
                 download_md5_hash TEXT
                 -- CONSTRAINT downloads_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
             )""")
-
-        # 2) copy all values to proper table, drop old table
+        
+	# 2) copy all values to proper table, drop old table
         try:
             if update == True:
                 self.cursor.execute("""
@@ -316,6 +312,14 @@ class logsqlhandler(ihandler):
             self.cursor.execute("""CREATE INDEX IF NOT EXISTS downloads_%s_idx
             ON downloads (download_%s)""" % (idx, idx))
 
+        # 3) add new column 'download_timestamp'
+        try:
+            logger.debug("Trying to update table (add column): downloads")
+            self.cursor.execute("""SELECT download_timestamp FROM downloads LIMIT 1""")
+            logger.debug("... not required")
+        except Exception as e:
+            self.cursor.execute("""ALTER TABLE downloads ADD COLUMN download_timestamp INTEGER""")
+            logger.debug("... done")
 
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS
             resolves (
@@ -384,7 +388,7 @@ class logsqlhandler(ihandler):
         for idx in ["status"]:
             self.cursor.execute("""CREATE INDEX IF NOT EXISTS mssql_commands_%s_idx
             ON mssql_commands (mssql_command_%s)""" % (idx, idx))
-
+        
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS virustotals (
                 virustotal INTEGER PRIMARY KEY,
                 virustotal_md5_hash TEXT NOT NULL,
@@ -396,7 +400,29 @@ class logsqlhandler(ihandler):
                 virustotal_permalink TEXT NOT NULL
             )""")
 
+	# add new columns about sha1, sha256 and positives/total 
+        try:
+            logger.debug("Trying to update table: virustotals")
+            self.cursor.execute("""
+               SELECT virustotal_sha1_hash,virustotal_sha256_hash,virustotal_positives,virustotal_total FROM virustotals LIMIT 1
+            """)
+            logger.debug("... not required")
+        except Exception as e:
+            self.cursor.execute("""ALTER TABLE virustotals ADD COLUMN virustotal_sha1_hash TEXT""")
+            self.cursor.execute("""ALTER TABLE virustotals ADD COLUMN virustotal_sha256_hash TEXT""")
+            self.cursor.execute("""ALTER TABLE virustotals ADD COLUMN virustotal_positives INTEGER""")
+            self.cursor.execute("""ALTER TABLE virustotals ADD COLUMN virustotal_total INTEGER""")
+            logger.debug("... done")
+
         for idx in ["md5_hash"]:
+            self.cursor.execute("""CREATE INDEX IF NOT EXISTS virustotals_%s_idx
+            ON virustotals (virustotal_%s)""" % (idx, idx))
+        
+        for idx in ["sha1_hash"]:
+            self.cursor.execute("""CREATE INDEX IF NOT EXISTS virustotals_%s_idx
+            ON virustotals (virustotal_%s)""" % (idx, idx))
+        
+        for idx in ["sha256_hash"]:
             self.cursor.execute("""CREATE INDEX IF NOT EXISTS virustotals_%s_idx
             ON virustotals (virustotal_%s)""" % (idx, idx))
 
@@ -406,7 +432,6 @@ class logsqlhandler(ihandler):
             virustotalscan_scanner TEXT NOT NULL,
             virustotalscan_result TEXT
         )""")
-
 
         for idx in ["scanner","result"]:
             self.cursor.execute("""CREATE INDEX IF NOT EXISTS virustotalscans_%s_idx
