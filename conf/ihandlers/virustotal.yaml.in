@@ -1,5 +1,6 @@
 - name: virustotal
   config:
-    # grab it from your virustotal account at My account -> Inbox -> Public API
+    # grab it from your virustotal account at My account -> My API Key (https://www.virustotal.com/en/user/<username>/apikey/)
     apikey: "........."
     file: "@LOCALESTATEDIR@/dionaea/vtcache.sqlite"
+    comment: "This sample was captured in the wild and uploaded by the dionaea honeypot.\n#honeypot #malware #networkworm"
