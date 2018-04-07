@@ -774,10 +774,19 @@ opt->stdOUT.filter);
 		g_error("Could not change group");
 	}
 
-	if( opt->user.name != NULL && 
-		setresuid(opt->user.id, opt->user.id, opt->user.id) < 0 )
-	{
-		g_error("Could not change user");
+	if( opt->user.name != NULL )
+        {
+		/* try to drop any (superuser) groups before dropping root privileges */
+		if ( setgroups(0, NULL) < 0 )
+		{
+			g_warning("Setgroups dropping groups failed");
+		}
+
+		/* drop from root privileges to normal user */
+		if( setresuid(opt->user.id, opt->user.id, opt->user.id) < 0 )
+		{
+			g_error("Could not change user");
+		}
 	}
 
 	options_free(opt);
