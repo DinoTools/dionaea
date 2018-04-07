@@ -18,7 +18,7 @@ Configuration
 Example config
 --------------
 
-.. literalinclude:: ../../../conf/ihandlers/virustotal.yaml.in
+.. literalinclude:: ../../../conf/ihandlers/virustotal.yaml
    :language: yaml
    :caption: ihandlers/virustotal.yaml
 

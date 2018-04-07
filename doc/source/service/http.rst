@@ -41,7 +41,7 @@ root
 Example config
 --------------
 
-.. literalinclude:: ../../../conf/services/http.yaml.in
+.. literalinclude:: ../../../conf/services/http.yaml
     :language: yaml
     :caption: services/http.yaml
 

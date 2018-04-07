@@ -28,21 +28,19 @@ when retrieving the data from the database:
 
 Additionally, you can query the database for many different things, refer to:
 
-* dionaea sql logging 2009/11/06
-  <http://carnivore.it/2009/11/06/dionaea_sql_logging>
-* post it yourself 2009/12/08
-  <http://carnivore.it/2009/12/08/post_it_yourself>
-* sqlite performance 2009/12/12
-  <http://carnivore.it/2009/12/12/sqlite_performance>
-* virustotal fun 2009/12/14
-  <http://carnivore.it/2009/12/14/virustotal_fun>
-* Andrew Waite's Blog <http://infosanity.wordpress.com/> for mimic-nepstats.py
+* `dionaea sql logging 2009/11/06  <http://carnivore.it/2009/11/06/dionaea_sql_logging>`_
+* `post it yourself 2009/12/08  <http://carnivore.it/2009/12/08/post_it_yourself>`_
+* `sqlite performance 2009/12/12  <http://carnivore.it/2009/12/12/sqlite_performance>`_
+* `virustotal fun 2009/12/14  <http://carnivore.it/2009/12/14/virustotal_fun>`_
+* `Andrew Waite's Blog <http://infosanity.wordpress.com/>`_ for mimic-nepstats.py
 
 for more examples how to make use of the database.
 
 Example config
 --------------
 
-.. literalinclude:: ../../../conf/ihandlers/log_sqlite.yaml.in
-   :language: yaml
-   :caption: ihandlers/log_sqlite.yaml
+.. literalinclude:: ../../../conf/ihandlers/log_sqlite.yaml
+    :language: yaml
+    :caption: ihandlers/log_sqlite.yaml
+
+
