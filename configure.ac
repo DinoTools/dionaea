@@ -25,7 +25,7 @@ AC_C_BIGENDIAN
 # Checks for programs.
 AC_PROG_CC
 AC_PROG_MAKE_SET
-AC_PROG_LIBTOOL
+LT_INIT
 
 AC_CHECK_HEADERS([stdint.h stdlib.h string.h strings.h unistd.h netpacket/packet.h execinfo.h linux/sockios.h])
 
