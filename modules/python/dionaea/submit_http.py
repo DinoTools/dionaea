@@ -1,7 +1,8 @@
 from dionaea.core import ihandler, incident, g_dionaea
 from dionaea.util import md5file, sha512file
-from dionaea import pyev, IHandlerLoader
+from dionaea import IHandlerLoader
 
+import pyev
 import logging
 import uuid
 import struct

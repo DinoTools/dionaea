@@ -36,9 +36,10 @@ import random
 import os
 import datetime
 import tempfile
+import pyev
 
 from dionaea.core import connection, g_dionaea, incident
-from dionaea import pyev, ServiceLoader
+from dionaea import ServiceLoader
 
 from dionaea.sip.extras import msg_to_icd, SipConfig, ErrorWithResponse
 

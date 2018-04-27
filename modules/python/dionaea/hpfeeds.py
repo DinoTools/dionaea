@@ -38,7 +38,7 @@ import datetime
 from time import gmtime, strftime
 
 try:
-    from dionaea import pyev
+    import pyev
 except ImportError:
     pyev = None
 

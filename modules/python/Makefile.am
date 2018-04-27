@@ -12,11 +12,10 @@ binding.c: setup.py setup.py.in binding.pyx module.c module.h ../../config.h ../
 install-exec-am: all
 	cp build/*/dionaea/*.so $(DESTDIR)$(pkglibdir)/python.so
 	(cd $(DESTDIR)$(pkglibdir)/python/dionaea && rm -f core.so && ln -s ../../python.so core.so)
-	(cd $(DESTDIR)$(pkglibdir)/python/dionaea && rm -f pyev.so && ln -s ../../python.so pyev.so)
 
 clean:
 	$(PYTHON) setup.py clean
-	rm -rf ./build binding.{c,h} 
+	rm -rf ./build binding.{c,h}
 
 dist-clean: clean
 
