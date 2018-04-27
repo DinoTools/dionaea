@@ -1,4 +1,4 @@
-#!/opt/dionaea/bin/python3.2
+#!/usr/bin/env python3
 
 from __future__ import print_function
 from optparse import OptionParser
