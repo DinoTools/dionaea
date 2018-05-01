@@ -1,8 +1,15 @@
 Changelog
 =========
 
-0.7.0 - (`master`_)
+0.8.0 - (`master`_)
 -------------------
+
+0.7.0 - (2018-05-01)
+-------------------
+
+**build**
+
+* Add initial cmake support
 
 **ci**
 
@@ -13,15 +20,24 @@ Changelog
 * Fix build error with OpenSSL 1.1.0
 * Improve OpenSSL 1.1.0 support
 * Cleanup connection code
+* Enable bistream for SSL/TLS connections (Thanks Aws0mus)
+* Fixing chroot bugs (Thanks Michal Ambroz)
 
 **doc**
 
 * Add additional information
 * Doxygen config file for dionaea c core
+* Ubuntu 16.04 install instructions
+
+**package**
+
+* Remove old and deprecated debian package config
 
 **python**
 
 * Fix typo in config key
+* Fix hardcoded python path
+* Fix compilation on CentOS7 (Thanks Michal Ambroz)
 
 **python/http**
 
