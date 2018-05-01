@@ -1,0 +1,6 @@
+version: '2'
+services:
+  dionaea:
+    build:
+      context: ../../
+      dockerfile: ci/ubuntu-18.04/dionaea/Dockerfile
