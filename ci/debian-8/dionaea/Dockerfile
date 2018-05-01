@@ -6,10 +6,11 @@ RUN echo 'force-unsafe-io' | tee /etc/dpkg/dpkg.cfg.d/02apt-speedup && \
     echo 'DPkg::Post-Invoke {"/bin/rm -f /var/cache/apt/archives/*.deb || true";};' | tee /etc/apt/apt.conf.d/no-cache && \
     echo 'Acquire::http {No-Cache=True;};' | tee /etc/apt/apt.conf.d/no-http-cache
 
-RUN apt-get update && \
+# We need backport repo to get recent cmake version
+RUN echo "deb http://httpredir.debian.org/debian jessie-backports main non-free" > /etc/apt/sources.list.d/backports.list && \
+    echo "deb-src http://httpredir.debian.org/debian jessie-backports main non-free" >> /etc/apt/sources.list.d/backports.list && \
+    apt-get update && \
     apt-get install -y \
-        autoconf \
-        automake \
         build-essential \
         check \
         cython3 \
@@ -28,22 +29,13 @@ RUN apt-get update && \
         python3-dev \
         python3-yaml \
         && \
+    apt-get -t jessie-backports install -y cmake && \
     apt-get clean
 
 COPY . /code
 RUN cd /code && \
-    autoreconf -vi && \
-    ./configure \
-        --prefix=/opt/dionaea \
-        --with-python=/usr/bin/python3 \
-        --with-cython-dir=/usr/bin \
-        --with-ev-include=/usr/include \
-        --with-ev-lib=/usr/lib \
-        --with-emu-lib=/usr/lib/libemu \
-        --with-emu-include=/usr/include \
-        --with-gc-include=/usr/include/gc \
-        --enable-nl \
-        --with-nl-include=/usr/include/libnl3 \
-        --with-nl-lib=/usr/lib && \
-     make && \
-     make install
+    mkdir build && \
+    cd build && \
+    cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea .. && \
+    make && \
+    make install
