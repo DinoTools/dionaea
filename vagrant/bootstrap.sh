@@ -3,9 +3,8 @@
 export DEBIAN_FRONTEND noninteractive
 sudo apt-get update
 sudo apt-get install -y \
-    autoconf \
-    automake \
     check \
+    cmake \
     cython3 \
     libcurl4-openssl-dev \
     libemu-dev \
@@ -13,7 +12,6 @@ sudo apt-get install -y \
     libglib2.0-dev \
     libloudmouth1-dev \
     libnetfilter-queue-dev \
-    libnl-dev \
     libpcap-dev \
     libreadline-dev \
     libsqlite3-dev \
