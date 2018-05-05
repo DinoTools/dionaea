@@ -1,7 +1,7 @@
 Installation
 ============
 
-At the time of writing the best choice to install dionaea on a server is to use `Ubuntu 14.04`_,
+At the time of writing the best choice to install dionaea on a server is to use `Ubuntu 16.04`_,
 but below you can find how to install it (from source) on other distributions/operating systems.
 
 Basic stuff
@@ -63,9 +63,8 @@ Install required build dependencies before configuring and building dionaea. ('t
 .. code-block:: console
 
     sudo apt-get install \
-        autoconf \
-        automake \
         build-essential \
+        cmake \
         check \
         cython3 \
         libcurl4-openssl-dev \
@@ -85,27 +84,13 @@ Install required build dependencies before configuring and building dionaea. ('t
         python3-yaml \
         ttf-liberation
 
-After all dependencies have been installed successfully run :code:`autreconf` to build or rebuild the build scripts.
-
-.. code-block:: console
-   
-    autoreconf -vi
-
-Run :code:`configure` to configure the build scripts.
+After all dependencies have been installed successfully create a build directory and run :code:`cmake` to setup the build process.
 
 .. code-block:: console
 
-    ./configure \
-        --disable-werror \
-        --prefix=/opt/dionaea \
-        --with-python=/usr/bin/python3 \
-        --with-cython-dir=/usr/bin \
-        --with-ev-include=/usr/include/ \
-        --with-ev-lib=/usr/lib \
-        --with-emu-lib=/usr/lib/libemu \
-        --with-emu-include=/usr/include \
-        --with-nl-include=/usr/include/libnl3 \
-        --with-nl-lib=/usr/lib
+    mkdir build
+    cd build
+    cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea ..
 
 Now you should be able to run :code:`make` to build and run :code:`make install` to install the honeypot.
 
@@ -172,10 +157,9 @@ Install required build dependencies before configuring and building dionaea.
 .. code-block:: console
 
     $ sudo apt-get install \
-        autoconf \
-        automake \
         build-essential \
         check \
+        cmake3 \
         cython3 \
         libcurl4-openssl-dev \
         libemu-dev \
@@ -193,28 +177,13 @@ Install required build dependencies before configuring and building dionaea.
         python3-bson \
         python3-yaml
 
-After all dependencies have been installed successfully run :code:`autreconf` to build or rebuild the build scripts.
+After all dependencies have been installed successfully create a build directory and run :code:`cmake` to setup the build process.
 
 .. code-block:: console
 
-    autoreconf -vi
-
-Run :code:`configure` to configure the build scripts.
-
-.. code-block:: console
-
-    ./configure \
-        --disable-werror \
-        --prefix=/opt/dionaea \
-        --with-python=/usr/bin/python3 \
-        --with-cython-dir=/usr/bin \
-        --with-ev-include=/usr/include \
-        --with-ev-lib=/usr/lib \
-        --with-emu-lib=/usr/lib/libemu \
-        --with-emu-include=/usr/include \
-        --with-nl-include=/usr/include/libnl3 \
-        --with-nl-lib=/usr/lib
-
+    mkdir build
+    cd build
+    cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea ..
 
 Now you should be able to run :code:`make` to build and run :code:`make install` to install the honeypot.
 
@@ -222,7 +191,6 @@ Now you should be able to run :code:`make` to build and run :code:`make install`
 
     make
     sudo make install
-
 
 The new honeypot can be found in the directory :code:`/opt/dionaea`.
 
