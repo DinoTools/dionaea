@@ -8,10 +8,9 @@ RUN echo 'force-unsafe-io' | tee /etc/dpkg/dpkg.cfg.d/02apt-speedup && \
 
 RUN apt-get update && \
     apt-get install -y \
-        autoconf \
-        automake \
         build-essential \
-        check \
+	check \
+        cmake \
         cython3 \
         libcurl4-openssl-dev \
         libemu-dev \
@@ -32,18 +31,8 @@ RUN apt-get update && \
 
 COPY . /code
 RUN cd /code && \
-    autoreconf -vi && \
-    ./configure \
-        --prefix=/opt/dionaea \
-        --with-python=/usr/bin/python3 \
-        --with-cython-dir=/usr/bin \
-        --with-ev-include=/usr/include \
-        --with-ev-lib=/usr/lib \
-        --with-emu-lib=/usr/lib/libemu \
-        --with-emu-include=/usr/include \
-        --with-gc-include=/usr/include/gc \
-        --enable-nl \
-        --with-nl-include=/usr/include/libnl3 \
-        --with-nl-lib=/usr/lib && \
-     make && \
-     make install
+    mkdir build && \
+    cd build && \
+    cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea .. && \
+    make && \
+    make install

@@ -1,4 +1,4 @@
-FROM ubuntu:14.04
+FROM ubuntu:18.04
 ENV DEBIAN_FRONTEND noninteractive
 
 # Speedup
@@ -9,8 +9,8 @@ RUN echo 'force-unsafe-io' | tee /etc/dpkg/dpkg.cfg.d/02apt-speedup && \
 RUN apt-get update && \
     apt-get install -y \
         build-essential \
-        check \
-        cmake3 \
+	check \
+        cmake \
         cython3 \
         libcurl4-openssl-dev \
         libemu-dev \
@@ -18,7 +18,7 @@ RUN apt-get update && \
         libglib2.0-dev \
         libloudmouth1-dev \
         libnetfilter-queue-dev \
-        libnl-dev \
+        libnl-3-dev \
         libpcap-dev \
         libssl-dev \
         libtool \
