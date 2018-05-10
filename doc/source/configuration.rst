@@ -5,7 +5,7 @@ If you want to change the software, it is really important to understand how it 
 :file:`dionaea.cfg` is the main configuration file.
 In the example below you can see the default configuration.
 
-.. literalinclude:: ../../conf/dionaea.cfg.in
+.. literalinclude:: ../../conf/dionaea.cfg
     :language: ini
     :caption: dionaea.cfg
 

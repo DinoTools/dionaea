@@ -9,7 +9,7 @@ It uses `SQLAlchemy`_ to support different databases.
 Example config
 --------------
 
-.. literalinclude:: ../../../conf/ihandlers/log_db_sql.yaml.in
+.. literalinclude:: ../../../conf/ihandlers/log_db_sql.yaml
    :language: yaml
    :caption: ihandlers/log_db_sql.yaml
 

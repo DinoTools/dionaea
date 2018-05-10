@@ -39,6 +39,6 @@ Format
 Example config
 --------------
 
-.. literalinclude:: ../../../conf/ihandlers/log_incident.yaml.in
+.. literalinclude:: ../../../conf/ihandlers/log_incident.yaml
    :language: yaml
    :caption: ihandlers/log_incident.yaml

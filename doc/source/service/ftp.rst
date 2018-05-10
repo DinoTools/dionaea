@@ -9,6 +9,7 @@ something interesting happening on port 21.
 Example config
 --------------
 
-.. literalinclude:: ../../../conf/services/ftp.yaml.in
+.. literalinclude:: ../../../conf/services/ftp.yaml
     :language: yaml
     :caption: services/ftp.yaml
+

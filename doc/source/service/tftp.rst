@@ -9,6 +9,6 @@ tftp services.
 Example config
 --------------
 
-.. literalinclude:: ../../../conf/services/tftp.yaml.in
+.. literalinclude:: ../../../conf/services/tftp.yaml
     :language: yaml
     :caption: services/tftp.yaml
