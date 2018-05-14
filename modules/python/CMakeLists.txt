@@ -156,6 +156,32 @@ install_enabled_python_config(
 
 ##### Services
 
+### HTTP
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/http/htdocs
+)
+
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/http/template
+)
+
+file(
+  GLOB_RECURSE item
+  RELATIVE "${PROJECT_SOURCE_DIR}/share/python/http/template"
+  "${PROJECT_SOURCE_DIR}/share/python/http/template/*.html.j2"
+)
+
+message("${item}")
+foreach(filename ${item})
+  get_filename_component(FILENAME_PATH ${filename} DIRECTORY)
+  install_if_not_exists(
+    ${PROJECT_SOURCE_DIR}/share/python/http/template/${filename}
+    ${DIONAEA_STATEDIR}/http/template/${FILENAME_PATH}
+  )
+endforeach()
+
 ### SIP
 install(
   DIRECTORY
