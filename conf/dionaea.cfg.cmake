@@ -1,5 +1,5 @@
 [dionaea]
-download.dir=@CMAKE_INSTALL_FULL_LOCALESTATEDIR@/lib/dionaea/binaries/
+download.dir=@DIONAEA_STATEDIR@/binaries/
 modules=curl,python,nfq,emu,pcap
 processors=filter_streamdumper,filter_emu
 
@@ -17,11 +17,11 @@ listen.mode=getifaddrs
 # ssl.default.ou=
 
 [logging]
-default.filename=@CMAKE_INSTALL_FULL_LOCALSTATEDIR@/log/dionaea/dionaea.log
+default.filename=@DIONAEA_LOGDIR@/dionaea.log
 default.levels=all
 default.domains=*
 
-errors.filename=@CMAKE_INSTALL_FULL_LOCALSTATEDIR@/log/dionaea/dionaea-errors.log
+errors.filename=@DIONAEA_LOGDIR@/dionaea-errors.log
 errors.levels=warning,error
 errors.domains=*
 
@@ -40,7 +40,7 @@ next=streamdumper
 
 [processor.streamdumper]
 name=streamdumper
-config.path=@CMAKE_INSTALL_FULL_LOCALSTATEDIR@/lib/dionaea/bistreams/%Y-%m-%d/
+config.path=@DIONAEA_STATEDIR@/bistreams/%Y-%m-%d/
 
 [processor.emu]
 name=emu
@@ -65,8 +65,8 @@ lookup_ethernet_addr=no
 [module.python]
 imports=dionaea.log,dionaea.services,dionaea.ihandlers
 sys_paths=default
-service_configs=@CMAKE_INSTALL_FULL_SYSCONFDIR@/dionaea/services-enabled/*.yaml
-ihandler_configs=@CMAKE_INSTALL_FULL_SYSCONFDIR@/dionaea/ihandlers-enabled/*.yaml
+service_configs=@DIONAEA_CONFDIR@/services-enabled/*.yaml
+ihandler_configs=@DIONAEA_CONFDIR@/ihandlers-enabled/*.yaml
 
 [module.pcap]
 any.interface=any

@@ -70,9 +70,17 @@ install_if_not_exists(
 
 install(
     DIRECTORY
-    DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/dionaea
+    DESTINATION ${DIONAEA_STATEDIR}
 )
 install(
     DIRECTORY
-    DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log/dionaea
+    DESTINATION ${DIONAEA_STATEDIR}/binaries
+)
+install(
+    DIRECTORY
+    DESTINATION ${DIONAEA_STATEDIR}/bistreams
+)
+install(
+    DIRECTORY
+    DESTINATION ${DIONAEA_LOGDIR}
 )

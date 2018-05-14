@@ -69,6 +69,9 @@ endif()
 set(DIONAEA_USER "dionaea" CACHE STRING "Dionaea user")
 set(DIONAEA_GROUP "dionaea" CACHE STRING "Dionaea group")
 set(DIONAEA_MODDIR ${CMAKE_INSTALL_FULL_LIBDIR}/dionaea)
+set(DIONAEA_CONFDIR ${CMAKE_INSTALL_FULL_SYSCONFDIR}/dionaea)
+set(DIONAEA_STATEDIR ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/dionaea)
+set(DIONAEA_LOGDIR ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log/dionaea)
 set(DIONAEA_PYTHON_SITELIBDIR ${CMAKE_INSTALL_FULL_LIBDIR}/dionaea/python)
 
 ########### requirements ###############
