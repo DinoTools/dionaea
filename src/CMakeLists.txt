@@ -69,8 +69,10 @@ install_if_not_exists(
 )
 
 install(
-    CODE "file(MAKE_DIRECTORY \"${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/dionaea\")"
+    DIRECTORY
+    DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/dionaea
 )
 install(
-    CODE "file(MAKE_DIRECTORY \"${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log/dionaea\")"
+    DIRECTORY
+    DESTINATION ${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log/dionaea
 )
