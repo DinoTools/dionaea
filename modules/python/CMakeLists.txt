@@ -198,3 +198,9 @@ install(
   DIRECTORY
   DESTINATION ${DIONAEA_STATEDIR}/sip/rtp
 )
+
+### TFTP
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/tftp/root
+)
