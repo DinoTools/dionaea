@@ -153,3 +153,16 @@ install_enabled_python_config(
         store.yaml
         tftp_download.yaml
 )
+
+##### Services
+
+### SIP
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/sip/
+)
+
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/sip/rtp
+)
