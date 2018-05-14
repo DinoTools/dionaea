@@ -1,5 +1,5 @@
 - name: ftp
   config:
-    root: @LOCALESTATEDIR@/dionaea/roots/ftp
+    root: "@DIONAEA_STATEDIR@/ftp/root"
     response_messages:
       welcome_msg: 220 DiskStation FTP server ready.

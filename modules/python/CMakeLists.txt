@@ -156,6 +156,12 @@ install_enabled_python_config(
 
 ##### Services
 
+### FTP
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/ftp/root
+)
+
 ### HTTP
 install(
   DIRECTORY
