@@ -204,3 +204,9 @@ install(
   DIRECTORY
   DESTINATION ${DIONAEA_STATEDIR}/tftp/root
 )
+
+### UPNP
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/upnp/root
+)
