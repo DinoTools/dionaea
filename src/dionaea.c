@@ -439,7 +439,7 @@ void show_help(bool defaults)
 	puts("\n\nexamples:\n"
 		 "\t# dionaea -l all,-debug -L '*'\n"
 		 "\t# dionaea -l all,-debug -L 'con*,py*'\n"
-		 "\t# dionaea -u nobody -g nogroup -w /opt/dionaea -p /opt/dionaea/var/run/dionaea.pid\n");
+		 "\t# dionaea -u nobody -g nogroup -w " PREFIX " -p " DIONAEA_RUNDIR "/dionaea.pid\n");
 
 }
 
