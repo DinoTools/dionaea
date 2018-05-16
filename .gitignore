@@ -27,7 +27,7 @@ Session.vim
 Makefile.in
 .deps
 .libs
-config.*
+config.h
 aclocal.m4
 autom4te.cache/
 configure
