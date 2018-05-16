@@ -202,7 +202,7 @@ bool options_parse(struct options* options, int argc, char* argv[])
 		}
 	}
 	if(options->config == NULL) {
-		options->config = g_strdup(SYSCONFDIR"/dionaea/dionaea.cfg");
+		options->config = g_strdup(DIONAEA_CONFDIR"/dionaea.cfg");
 	}
 	if(options->workingdir == NULL) {
 		options->workingdir = g_strdup(PREFIX);
@@ -410,7 +410,7 @@ void show_help(bool defaults)
 
 	help_info myopts[]=
 	{
-		{"c",   "config=FILE",          "use FILE as configuration file",               SYSCONFDIR "/dionaea/dionaea.cfg"},
+		{"c",   "config=FILE",          "use FILE as configuration file",               DIONAEA_CONFDIR "/dionaea.cfg"},
 		{"D",   "daemonize",            "run as daemon",                        0},
 		{"g",   "group=GROUP",          "switch to GROUP after startup (use with -u)", "keep current group"},
 		{"h",   "help",                 "display help",                         0},
