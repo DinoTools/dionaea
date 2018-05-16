@@ -566,7 +566,24 @@ class httpd(connection):
 
     def handle_GET(self):
         """Handle the GET method. Send the header and the file."""
-        x = self.send_head()
+        r=self.header.path.find("?")
+        if r==-1:
+            x = self.send_head()
+        else:
+            hlines=self.header.path.split("?")
+            self.header.path=hlines[0]
+            self.template_values={}
+            r=hlines[1].find("&")
+            if r==-1:
+                x = self.send_head()
+            else:
+                hlines=hlines[1].split("&")
+                for hline in hlines:
+                    hset=hline.split("=",1)
+                    self.template_values[hset[0].lower()]=hset[1].strip()
+                for i in self.template_values:
+                    logger.debug(i+":"+self.template_values[i])
+                x=self.send_head()
         if x:
             self.copyfile(x)
 
