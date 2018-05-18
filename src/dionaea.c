@@ -293,7 +293,7 @@ void show_version(struct version *ver)
 	#define MY_COMPILER "gcc"
 #elif defined(__CYGWIN__)
 	#define MY_COMPILER "cygwin"
-#else	
+#else
 	#define MY_COMPILER "unknown Compiler"
 #endif
 
@@ -356,7 +356,7 @@ void show_version(struct version *ver)
 	struct utsname sysinfo;
 	int i = uname(&sysinfo);
 
-	ver->dionaea.version = VERSION;
+	ver->dionaea.version = DIONAEA_VERSION;
 	ver->compiler.os = MY_OS;
 	ver->compiler.arch = MY_ARCH;
 	ver->compiler.date = __DATE__;
