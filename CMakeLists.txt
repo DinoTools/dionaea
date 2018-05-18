@@ -1,3 +1,19 @@
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+    if(NOT DEFINED WITH_IN_SOURCE_BUILD)
+        message(FATAL_ERROR
+                "In-source build detected. It is not allowed to build out-of-source!"
+                "\n Remove \"${CMAKE_SOURCE_DIR}/CMakeCache.txt\" and try again from another folder, e.g.:"
+                "\n "
+                "\n rm CMakeCache.txt"
+                "\n mkdir build"
+                "\n cd build"
+                "\n cmake .."
+                "\n "
+                "\n Alternately define WITH_IN_SOURCE_BUILD to force this option (not recommended!)"
+                )
+    endif()
+endif()
+
 cmake_minimum_required(VERSION 3.4 FATAL_ERROR)
 
 project(
@@ -12,13 +28,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 list(APPEND CMAKE_C_FLAGS "-D_GNU_SOURCE")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
-
-message(STATUS "Source directory: ${CMAKE_SOURCE_DIR}")
-message(STATUS "Build directory: ${CMAKE_BINARY_DIR}")
-if(CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR)
-    message(WARNING "In-source build detected. It is recommended to build out-of-source.")
-endif()
 
 # Hide messages from Check*.cmake (e.g. CheckCSourceCompiles)
 if(NOT VERBOSE)
