@@ -1,6 +1,10 @@
 cmake_minimum_required(VERSION 3.4 FATAL_ERROR)
 
-project(dionaea LANGUAGES C)
+project(
+    dionaea
+    VERSION 0.7.0
+    LANGUAGES C
+)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -50,19 +54,21 @@ option(RELEASE_BUILD "Remove Git revision from program version (use for stable r
 include(GNUInstallDirs)
 include(InstallConfig)
 
-if(NOT RELEASE_BUILD AND EXISTS ${CMAKE_SOURCE_DIR}/.git)
+# Set default version
+set(DIONAEA_VERSION ${PROJECT_VERSION})
+if(NOT RELEASE_BUILD AND EXISTS ${PROJECT_SOURCE_DIR}/.git)
     find_package(Git)
     if(GIT_FOUND)
         exec_program(
             ${GIT_EXECUTABLE}
-            ${CMAKE_SOURCE_DIR}
+            ${PROJECT_SOURCE_DIR}
             ARGS "describe --tag --dirty=-dev"
-            OUTPUT_VARIABLE DIONAEA_GIT_REVISION
+            OUTPUT_VARIABLE DIONAEA_VERSION
             RETURN_VALUE TAG_RESULT
         )
     else()
         message(STATUS "Git revision could not be determined")
-        set(DIONAEA_GIT_REVISION "dev-build-no-version")
+        set(DIONAEA_REVISION "${PROJECT_VERSION}-dev-build")
     endif()
 endif()
 
