@@ -62,6 +62,7 @@ option(RELEASE_BUILD "Remove Git revision from program version (use for stable r
 
 include(GNUInstallDirs)
 include(InstallConfig)
+include(Packaging)
 
 # Set default version
 set(DIONAEA_VERSION ${PROJECT_VERSION})
