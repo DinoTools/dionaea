@@ -65,7 +65,7 @@ configure_file(
 
 install_if_not_exists(
     ${CMAKE_CURRENT_BINARY_DIR}/conf/dionaea.cfg
-    ${CMAKE_INSTALL_FULL_SYSCONFDIR}/dionaea
+    ${DIONAEA_CONFDIR}
 )
 
 install(
