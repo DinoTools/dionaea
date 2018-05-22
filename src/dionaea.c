@@ -488,18 +488,10 @@ int logger_load(struct options *opt)
     }
 
     struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
-    if( opt->root == NULL ) {
-      if( *file != '/' ) {
-        g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
-      } else {
-        strncpy(fd->file, file, PATH_MAX);
-      }
-    } else {
-      if( *file == '/' ) {
-        g_error("log path has to be relative to var/ for chroot");
-      }
-      g_snprintf(fd->file, PATH_MAX, "var/%s", file);
+    if( opt->root != NULL && *file == '/') {
+      g_error("log path has to be relative to '%s' for chroot", opt->root);
     }
+    strncpy(fd->file, file, PATH_MAX);
 
     fd->filter = lf;
 
