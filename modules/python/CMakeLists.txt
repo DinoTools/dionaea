@@ -154,6 +154,15 @@ install_enabled_python_config(
         tftp_download.yaml
 )
 
+##### IHandler
+
+### fail2ban
+
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/fail2ban
+)
+
 ##### Services
 
 ### FTP
