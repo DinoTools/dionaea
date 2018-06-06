@@ -202,7 +202,7 @@ bool options_parse(struct options* options, int argc, char* argv[])
 		}
 	}
 	if(options->config == NULL) {
-		options->config = g_strdup(SYSCONFDIR"/dionaea/dionaea.cfg");
+		options->config = g_strdup(DIONAEA_CONFDIR"/dionaea.cfg");
 	}
 	if(options->workingdir == NULL) {
 		options->workingdir = g_strdup(PREFIX);
@@ -293,7 +293,7 @@ void show_version(struct version *ver)
 	#define MY_COMPILER "gcc"
 #elif defined(__CYGWIN__)
 	#define MY_COMPILER "cygwin"
-#else	
+#else
 	#define MY_COMPILER "unknown Compiler"
 #endif
 
@@ -356,7 +356,7 @@ void show_version(struct version *ver)
 	struct utsname sysinfo;
 	int i = uname(&sysinfo);
 
-	ver->dionaea.version = VERSION;
+	ver->dionaea.version = DIONAEA_VERSION;
 	ver->compiler.os = MY_OS;
 	ver->compiler.arch = MY_ARCH;
 	ver->compiler.date = __DATE__;
@@ -410,7 +410,7 @@ void show_help(bool defaults)
 
 	help_info myopts[]=
 	{
-		{"c",   "config=FILE",          "use FILE as configuration file",               SYSCONFDIR "/dionaea/dionaea.cfg"},
+		{"c",   "config=FILE",          "use FILE as configuration file",               DIONAEA_CONFDIR "/dionaea.cfg"},
 		{"D",   "daemonize",            "run as daemon",                        0},
 		{"g",   "group=GROUP",          "switch to GROUP after startup (use with -u)", "keep current group"},
 		{"h",   "help",                 "display help",                         0},
@@ -439,7 +439,7 @@ void show_help(bool defaults)
 	puts("\n\nexamples:\n"
 		 "\t# dionaea -l all,-debug -L '*'\n"
 		 "\t# dionaea -l all,-debug -L 'con*,py*'\n"
-		 "\t# dionaea -u nobody -g nogroup -w /opt/dionaea -p /opt/dionaea/var/run/dionaea.pid\n");
+		 "\t# dionaea -u nobody -g nogroup -w " PREFIX " -p " DIONAEA_RUNDIR "/dionaea.pid\n");
 
 }
 
@@ -488,18 +488,10 @@ int logger_load(struct options *opt)
     }
 
     struct logger_file_data *fd = g_malloc0(sizeof(struct logger_file_data));
-    if( opt->root == NULL ) {
-      if( *file != '/' ) {
-        g_snprintf(fd->file, PATH_MAX, "%s/%s", LOCALESTATEDIR, file);
-      } else {
-        strncpy(fd->file, file, PATH_MAX);
-      }
-    } else {
-      if( *file == '/' ) {
-        g_error("log path has to be relative to var/ for chroot");
-      }
-      g_snprintf(fd->file, PATH_MAX, "var/%s", file);
+    if( opt->root != NULL && *file == '/') {
+      g_error("log path has to be relative to '%s' for chroot", opt->root);
     }
+    strncpy(fd->file, file, PATH_MAX);
 
     fd->filter = lf;
 

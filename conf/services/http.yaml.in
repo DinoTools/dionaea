@@ -1,6 +1,6 @@
 - name: http
   config:
-    root: "@LOCALESTATEDIR@/dionaea/roots/www"
+    root: "@DIONAEA_STATEDIR@/http/root"
     ports:
       - 80
     ssl_ports:
@@ -21,7 +21,7 @@
       # this feature requires jinja2 template engine http://jinja.pocoo.org/
       enabled: false
       file_extension: .j2
-      path: "@LOCALESTATEDIR@/dionaea/share/python/http/template/nginx"
+      path: "@DIONAEA_STATEDIR@/http/template/nginx"
       templates:
         autoindex:
           filename: autoindex.html.j2

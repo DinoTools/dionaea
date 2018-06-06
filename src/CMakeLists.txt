@@ -65,12 +65,22 @@ configure_file(
 
 install_if_not_exists(
     ${CMAKE_CURRENT_BINARY_DIR}/conf/dionaea.cfg
-    ${CMAKE_INSTALL_FULL_SYSCONFDIR}/dionaea
+    ${DIONAEA_CONFDIR}
 )
 
 install(
-    CODE "file(MAKE_DIRECTORY \"${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/lib/dionaea\")"
+    DIRECTORY
+    DESTINATION ${DIONAEA_STATEDIR}
 )
 install(
-    CODE "file(MAKE_DIRECTORY \"${CMAKE_INSTALL_FULL_LOCALSTATEDIR}/log/dionaea\")"
+    DIRECTORY
+    DESTINATION ${DIONAEA_STATEDIR}/binaries
+)
+install(
+    DIRECTORY
+    DESTINATION ${DIONAEA_STATEDIR}/bistreams
+)
+install(
+    DIRECTORY
+    DESTINATION ${DIONAEA_LOGDIR}
 )

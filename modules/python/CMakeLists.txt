@@ -25,7 +25,7 @@ if (PYTHONINTERP_FOUND)
     )
 
     #install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install --prefix=${CMAKE_INSTALL_PREFIX})")
-    install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install --install-lib=${DIONAEA_PYTHON_SITELIBDIR})")
+    install(CODE "execute_process(COMMAND ${PYTHON_EXECUTABLE} ${SETUP_PY} install --install-lib=\$ENV{DESTDIR}\${CMAKE_INSTALL_PREFIX}/${DIONAEA_PYTHON_SITELIBDIR})")
 endif()
 
 add_library(
@@ -152,4 +152,70 @@ install_enabled_python_config(
         log_sqlite.yaml
         store.yaml
         tftp_download.yaml
+)
+
+##### IHandler
+
+### fail2ban
+
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/fail2ban
+)
+
+##### Services
+
+### FTP
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/ftp/root
+)
+
+### HTTP
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/http/root
+)
+
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/http/template
+)
+
+file(
+  GLOB_RECURSE item
+  RELATIVE "${PROJECT_SOURCE_DIR}/share/python/http/template"
+  "${PROJECT_SOURCE_DIR}/share/python/http/template/*.html.j2"
+)
+
+message("${item}")
+foreach(filename ${item})
+  get_filename_component(FILENAME_PATH ${filename} DIRECTORY)
+  install_if_not_exists(
+    ${PROJECT_SOURCE_DIR}/share/python/http/template/${filename}
+    ${DIONAEA_STATEDIR}/http/template/${FILENAME_PATH}
+  )
+endforeach()
+
+### SIP
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/sip/
+)
+
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/sip/rtp
+)
+
+### TFTP
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/tftp/root
+)
+
+### UPNP
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/upnp/root
 )

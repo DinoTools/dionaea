@@ -2,4 +2,4 @@
   config:
     # grab it from your virustotal account at My account -> Inbox -> Public API
     apikey: "........."
-    file: "@LOCALESTATEDIR@/dionaea/vtcache.sqlite"
+    file: "@DIONAEA_STATEDIR@/vtcache.sqlite"

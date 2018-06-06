@@ -1,6 +1,26 @@
+if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
+    if(NOT DEFINED WITH_IN_SOURCE_BUILD)
+        message(FATAL_ERROR
+                "In-source build detected. It is not allowed to build out-of-source!"
+                "\n Remove \"${CMAKE_SOURCE_DIR}/CMakeCache.txt\" and try again from another folder, e.g.:"
+                "\n "
+                "\n rm CMakeCache.txt"
+                "\n mkdir build"
+                "\n cd build"
+                "\n cmake .."
+                "\n "
+                "\n Alternately define WITH_IN_SOURCE_BUILD to force this option (not recommended!)"
+                )
+    endif()
+endif()
+
 cmake_minimum_required(VERSION 3.4 FATAL_ERROR)
 
-project(dionaea LANGUAGES C)
+project(
+    dionaea
+    VERSION 0.7.0
+    LANGUAGES C
+)
 
 set(CMAKE_C_STANDARD 11)
 set(CMAKE_C_STANDARD_REQUIRED ON)
@@ -8,13 +28,6 @@ set(CMAKE_C_STANDARD_REQUIRED ON)
 list(APPEND CMAKE_C_FLAGS "-D_GNU_SOURCE")
 
 list(APPEND CMAKE_MODULE_PATH ${CMAKE_CURRENT_SOURCE_DIR}/cmake)
-
-
-message(STATUS "Source directory: ${CMAKE_SOURCE_DIR}")
-message(STATUS "Build directory: ${CMAKE_BINARY_DIR}")
-if(CMAKE_BINARY_DIR STREQUAL CMAKE_SOURCE_DIR)
-    message(WARNING "In-source build detected. It is recommended to build out-of-source.")
-endif()
 
 # Hide messages from Check*.cmake (e.g. CheckCSourceCompiles)
 if(NOT VERBOSE)
@@ -49,27 +62,34 @@ option(RELEASE_BUILD "Remove Git revision from program version (use for stable r
 
 include(GNUInstallDirs)
 include(InstallConfig)
+include(Packaging)
 
-if(NOT RELEASE_BUILD AND EXISTS ${CMAKE_SOURCE_DIR}/.git)
+# Set default version
+set(DIONAEA_VERSION ${PROJECT_VERSION})
+if(NOT RELEASE_BUILD AND EXISTS ${PROJECT_SOURCE_DIR}/.git)
     find_package(Git)
     if(GIT_FOUND)
         exec_program(
             ${GIT_EXECUTABLE}
-            ${CMAKE_SOURCE_DIR}
+            ${PROJECT_SOURCE_DIR}
             ARGS "describe --tag --dirty=-dev"
-            OUTPUT_VARIABLE DIONAEA_GIT_REVISION
+            OUTPUT_VARIABLE DIONAEA_VERSION
             RETURN_VALUE TAG_RESULT
         )
     else()
         message(STATUS "Git revision could not be determined")
-        set(DIONAEA_GIT_REVISION "dev-build-no-version")
+        set(DIONAEA_REVISION "${PROJECT_VERSION}-dev-build")
     endif()
 endif()
 
 set(DIONAEA_USER "dionaea" CACHE STRING "Dionaea user")
 set(DIONAEA_GROUP "dionaea" CACHE STRING "Dionaea group")
-set(DIONAEA_MODDIR ${CMAKE_INSTALL_FULL_LIBDIR}/dionaea)
-set(DIONAEA_PYTHON_SITELIBDIR ${CMAKE_INSTALL_FULL_LIBDIR}/dionaea/python)
+set(DIONAEA_MODDIR ${CMAKE_INSTALL_LIBDIR}/dionaea)
+set(DIONAEA_CONFDIR ${CMAKE_INSTALL_SYSCONFDIR}/dionaea)
+set(DIONAEA_RUNDIR "${CMAKE_INSTALL_LOCALSTATEDIR}/run" CACHE STRING "/run directory")
+set(DIONAEA_STATEDIR ${CMAKE_INSTALL_LOCALSTATEDIR}/lib/dionaea)
+set(DIONAEA_LOGDIR ${CMAKE_INSTALL_LOCALSTATEDIR}/log/dionaea)
+set(DIONAEA_PYTHON_SITELIBDIR ${CMAKE_INSTALL_LIBDIR}/dionaea/python)
 
 ########### requirements ###############
 

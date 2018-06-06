@@ -1,6 +1,6 @@
 - name: upnp
   config:
-    root: @LOCALESTATEDIR@/dionaea/roots/upnp
+    root: @DIONAEA_STATEDIR@/upnp/root
     # maximum size in kbytes of the request (32MB)
     max_request_size: 32768
     personality:

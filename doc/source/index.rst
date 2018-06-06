@@ -14,6 +14,7 @@ Content:
 
     introduction
     installation
+    migration
     configuration
     run
     integration

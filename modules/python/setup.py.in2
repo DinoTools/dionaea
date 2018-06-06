@@ -106,6 +106,7 @@ ext_modules=[
 
 setup(
     name = 'dionaea',
+    version="${DIONAEA_VERSION}",
     cmdclass = {'build_ext': build_ext},
     ext_modules = ext_modules,
     packages=find_packages(base_path='${CMAKE_CURRENT_SOURCE_DIR}'),

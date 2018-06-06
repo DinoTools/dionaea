@@ -1,4 +1,4 @@
 - name: fail2ban
   config:
-    downloads: "@LOCALESTATEDIR@/dionaea/downloads.f2b"
-    offers: "@LOCALESTATEDIR@/dionaea/offers.f2b"
+    downloads: "@DIONAEA_STATEDIR@/fail2ban/downloads.f2b"
+    offers: "@DIONAEA_STATEDIR@/fail2ban/offers.f2b"
