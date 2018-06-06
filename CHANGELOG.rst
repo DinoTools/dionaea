@@ -4,8 +4,12 @@ Changelog
 0.8.0 - (`master`_)
 -------------------
 
+**build**
+
+* Replace autotools with cmake
+
 0.7.0 - (2018-05-01)
--------------------
+--------------------
 
 **build**
 
