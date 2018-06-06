@@ -174,7 +174,7 @@ install(
 ### HTTP
 install(
   DIRECTORY
-  DESTINATION ${DIONAEA_STATEDIR}/http/htdocs
+  DESTINATION ${DIONAEA_STATEDIR}/http/root
 )
 
 install(
