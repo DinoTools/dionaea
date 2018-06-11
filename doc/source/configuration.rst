@@ -22,7 +22,7 @@ dionaea
 
     - **getifaddrs** - auto
         This will get a list of all IP addresses of all available interfaces and bind the services to each IP.
-        It is also possible to specify a list of interfaces to use by using the :code:`listen.interfaces` perameter.
+        It is also possible to specify a list of interfaces to use by using the :code:`listen.interfaces` parameter.
 
     - **manual** - your decision
         In this mode you have to specify an additional parameter :code:`listen.addresses`.
