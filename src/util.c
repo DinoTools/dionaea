@@ -164,6 +164,9 @@ bool parse_addr(char const * const addr, char const * const iface, uint16_t cons
 	struct sockaddr_in *si;
 	struct sockaddr_un *su;
 
+	GError *error = NULL;
+	gboolean use_ipv4_mapped_ipv6;
+
 	si6 = (struct sockaddr_in6 *)sa;
 	si  = (struct sockaddr_in  *)sa;
 	su  = (struct sockaddr_un  *)sa;
@@ -195,13 +198,26 @@ bool parse_addr(char const * const addr, char const * const iface, uint16_t cons
 		si->sin_family = PF_INET;
 		si->sin_port = htons(port);
 
+		use_ipv4_mapped_ipv6 = g_key_file_get_boolean(g_dionaea->config, "dionaea", "listen.use_ipv4_mapped_ipv6", &error);
+		// ToDo: handler error
+		if (error != NULL) {
+			g_debug("%s", error->message);
+		}
+		g_clear_error(&error);
+		if (use_ipv4_mapped_ipv6 == TRUE) {
 #ifdef CAN_BIND_IPV4_MAPPED_IPV6
-		ipv6_v4_map_v6(si, si6);
-		*sizeof_sa = sizeof(struct sockaddr_in6);
-		*socket_domain = PF_INET6;
+            ipv6_v4_map_v6(si, si6);
+            *sizeof_sa = sizeof(struct sockaddr_in6);
+            *socket_domain = PF_INET6;
+		} else {
 #else
+			g_warning("IPv4 mapped IPv6 enabled but not available");
+		}
+#endif
 		*sizeof_sa = sizeof(struct sockaddr_in);
 		*socket_domain = PF_INET;
+#ifdef CAN_BIND_IPV4_MAPPED_IPV6
+		}
 #endif
 		return true;
 	}
