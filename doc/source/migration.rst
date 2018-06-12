@@ -8,6 +8,12 @@ Please also have a look at the :doc:`changelog` for additional information.
 0.7.0 -> 0.8.0
 --------------
 
+**Config**
+
+* IPv4 mapped IPv6 is now disabled by default
+
+**Path**
+
 During the steps from autotools to cmake nearly all log and data directories have been changed.
 But it should be possible to keep the old config files and also use the old directories.
 
