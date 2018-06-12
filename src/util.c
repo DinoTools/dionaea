@@ -195,7 +195,7 @@ bool parse_addr(char const * const addr, char const * const iface, uint16_t cons
 		si->sin_family = PF_INET;
 		si->sin_port = htons(port);
 
-#ifdef BIND_IPV4_MAPPED_LOCALHOST
+#ifdef CAN_BIND_IPV4_MAPPED_IPV6
 		ipv6_v4_map_v6(si, si6);
 		*sizeof_sa = sizeof(struct sockaddr_in6);
 		*socket_domain = PF_INET6;

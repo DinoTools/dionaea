@@ -112,6 +112,9 @@ find_package(EV REQUIRED)
 find_package(CURL)
 find_package(PCAP)
 
+include(CheckCSourceRuns)
+include(CheckIPv4MappedIPv6)
+
 configure_file(config.h.cmake ${CMAKE_BINARY_DIR}/config.h ESCAPE_QUOTES)
 include_directories(${CMAKE_BINARY_DIR})
 
