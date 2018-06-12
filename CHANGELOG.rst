@@ -8,6 +8,11 @@ Changelog
 
 * Replace autotools with cmake
 
+**dionaea**
+
+* Add option to enable/disable IPv4 mapped IPv6 addresses
+
+
 0.7.0 - (2018-05-01)
 --------------------
 
