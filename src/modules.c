@@ -114,7 +114,7 @@ void modules_load(gchar **names)
   for (name = names; *name; name++) {
 
 		gchar module_path[1024];
-		if( g_snprintf(module_path, 1023, PREFIX"/lib/dionaea/%s.so", *name) == -1 )
+		if( g_snprintf(module_path, 1023, LIBDIR"/dionaea/%s.so", *name) == -1 )
 			return;
 
 		g_message("loading module %s (%s)", *name, module_path);
