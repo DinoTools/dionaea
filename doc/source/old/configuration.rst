@@ -90,18 +90,12 @@ gnuplotsql <#gnuplotsql> script.
 
 The blog on logsql:
 
-  * 2009-11-06 dionaea sql logging
-    <http://carnivore.it/2009/11/06/dionaea_sql_logging>
-  * 2009-12-08 post it yourself
-    <http://carnivore.it/2009/12/08/post_it_yourself>
-  * 2009-12-12 sqlite performance
-    <http://carnivore.it/2009/12/12/sqlite_performance>
-  * 2009-12-14 virustotal fun
-    <http://carnivore.it/2009/12/14/virustotal_fun>
-  * 2009-12-15 paris mission pack avs
-    <http://carnivore.it/2009/12/15/paris_mission_pack_avs>
-  * 2010-06-06 data visualisation
-    <http://carnivore.it/2010/06/06/data_visualisation>
+  * `2009-11-06 dionaea sql logging <http://carnivore.it/2009/11/06/dionaea_sql_logging>`_
+  * `2009-12-08 post it yourself <http://carnivore.it/2009/12/08/post_it_yourself>`_
+  * `2009-12-12 sqlite performance <http://carnivore.it/2009/12/12/sqlite_performance>`_
+  * `2009-12-14 virustotal fun <http://carnivore.it/2009/12/14/virustotal_fun>`_
+  * `2009-12-15 paris mission pack avs <http://carnivore.it/2009/12/15/paris_mission_pack_avs>`_
+  * `2010-06-06 data visualisation <http://carnivore.it/2010/06/06/data_visualisation>`_
 
 
 logxmpp
@@ -114,9 +108,9 @@ sensors anonymously.
 
 The blog on logxmpp:
 
-  * 2010-02-10 xmpp backend <http://carnivore.it/2010/02/10/xmpp_backend>
-  * 2010-05-12 xmpp take #2 <http://carnivore.it/2010/05/12/xmpp_-_take_2>
-  * 2010-05-15 xmpp take #3 <http://carnivore.it/2010/05/15/xmpp_-_take_3>
+  * `2010-02-10 xmpp backend <http://carnivore.it/2010/02/10/xmpp_backend>`_
+  * `2010-05-12 xmpp take #2 <http://carnivore.it/2010/05/12/xmpp_-_take_2>`_
+  * `2010-05-15 xmpp take #3 <http://carnivore.it/2010/05/15/xmpp_-_take_3>`_
 
 pg_backend <#pg_backend> can be used as a backend for xmpp logging sensors.
 
@@ -130,8 +124,7 @@ and start p0f as suggested in the config. It costs nothing, and gives
 some pretty cool, even if outdated, informations about the attackers
 operating system, and you can look them up from the sqlite database,
 even the rejected connections.
-If you face problems, here
-<http://blog.infosanity.co.uk/2010/12/04/dionaea-with-p0f/> are some hints.
+If you face problems, `here <http://blog.infosanity.co.uk/2010/12/04/dionaea-with-p0f/>`_ are some hints.
 
 
 
