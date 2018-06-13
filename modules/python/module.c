@@ -348,7 +348,7 @@ static bool new(struct dionaea *dionaea)
 
 	Py_Initialize();
 
-	runtime.sys_path = g_string_new(PREFIX"/lib/dionaea/python/");
+	runtime.sys_path = g_string_new(DIONAEA_PYTHON_SITELIBDIR);
 
 	PyObject *name = PyUnicode_FromString("traceback");
 	runtime.traceback.module = PyImport_Import(name);
@@ -366,7 +366,7 @@ static bool new(struct dionaea *dionaea)
 
 	for (sys_path = sys_paths; *sys_path; sys_path++) {
 		if( strcmp(*sys_path, "default") == 0 ) {
-			sprintf(relpath, "sys.path.insert(%i, '%s/lib/dionaea/python/')", i, PREFIX);
+			sprintf(relpath, "sys.path.insert(%i, '%s')", i, DIONAEA_PYTHON_SITELIBDIR);
 		} else {
 			// ToDO
 		/*	if( *sys_path == '/' )
