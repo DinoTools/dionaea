@@ -4,9 +4,19 @@ Changelog
 0.8.0 - (`master`_)
 -------------------
 
+0.8.0 - (2018-06-15)
+--------------------
+
+**doc**
+
+* Add migration instructions
+* Fix warnings
+
 **build**
 
 * Replace autotools with cmake
+* Remove autotools files
+* Add git information to version string on development builds
 
 **dionaea**
 
