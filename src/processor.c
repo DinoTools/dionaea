@@ -355,6 +355,22 @@ void proc_streamdumper_ctx_free(void *ctx0)
 	g_free(ctx);
 }
 
+ssize_t format_timeval(struct timeval *tv, char *buf, size_t sz)
+{
+	ssize_t written = -1;
+	struct tm *gm = gmtime(&tv->tv_sec);
+
+	if (gm) {
+		written = (ssize_t)strftime(buf, sz, "%Y-%m-%dT%H:%M:%d", gm);
+		if ((written > 0) && ((size_t)written < sz)) {
+			int w = snprintf(buf+written, sz-(size_t)written, ".%06ld", tv->tv_usec);
+			written = (w > 0) ? written + w : -1;
+		}
+	}
+	return written;
+}
+
+
 void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, void *data, int size, enum bistream_direction dir)
 {
 //	g_warning("%s con %p pd %p data %p size %i dir %i", __PRETTY_FUNCTION__, con, pd, data, size, dir);
@@ -381,10 +397,15 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 		char path[128];
 		strftime(path, sizeof(path), ((struct streamdumper_config *)pd->processor->config)->path, &t);
 		char prefix[512];
-		snprintf(prefix, sizeof(prefix), "%s-%i-%s-",
+		char timebuf[28];
+		format_timeval(&con->stats.start, timebuf, sizeof(timebuf));
+		snprintf(prefix, sizeof(prefix), "%s-%s-%i-%s-%i-%s-",
 				 con->protocol.name,
+				 con->local.ip_string,
 				 ntohs(con->local.port),
-				 con->remote.ip_string);
+				 con->remote.ip_string,
+				 ntohs(con->remote.port),
+				 timebuf);
 
 		struct stat s;
 		if( stat(path, &s) != 0 &&
