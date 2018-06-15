@@ -357,19 +357,17 @@ void proc_streamdumper_ctx_free(void *ctx0)
 
 ssize_t format_timeval(struct timeval *tv, char *buf, size_t sz)
 {
-  ssize_t written = -1;
-  struct tm *gm = gmtime(&tv->tv_sec);
+	ssize_t written = -1;
+	struct tm *gm = gmtime(&tv->tv_sec);
 
-  if (gm)
-  {
-    written = (ssize_t)strftime(buf, sz, "%Y-%m-%dT%H:%M:%d", gm);
-    if ((written > 0) && ((size_t)written < sz))
-    {
-      int w = snprintf(buf+written, sz-(size_t)written, ".%06ld", tv->tv_usec);
-      written = (w > 0) ? written + w : -1;
-    }
-  }
-  return written;
+	if (gm) {
+		written = (ssize_t)strftime(buf, sz, "%Y-%m-%dT%H:%M:%d", gm);
+		if ((written > 0) && ((size_t)written < sz)) {
+			int w = snprintf(buf+written, sz-(size_t)written, ".%06ld", tv->tv_usec);
+			written = (w > 0) ? written + w : -1;
+		}
+	}
+	return written;
 }
 
 
