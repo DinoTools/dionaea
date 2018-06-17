@@ -58,6 +58,10 @@ class virustotalhandler(ihandler):
         logger.debug("%s ready!" % (self.__class__.__name__))
         ihandler.__init__(self, path)
         self.apikey = config.get("apikey")
+        comment = config.get("comment")
+        if comment is None:
+            comment = "This sample was captured in the wild and uploaded by the dionaea honeypot.\n#honeypot #malware #networkworm"
+        self.comment = comment
         self.cookies = {}
         self.loop = pyev.default_loop()
 
@@ -227,8 +231,8 @@ class virustotalhandler(ihandler):
         i = incident("dionaea.upload.request")
         i._url = "https://www.virustotal.com/vtapi/v2/comments/put"
         i.apikey = self.apikey
+        i.comment = self.comment
         i.resource = md5_hash
-        i.comment = "This sample was captured in the wild and uploaded by the dionaea honeypot.\n#honeypot #malware #networkworm"
         i._callback = "dionaea.modules.python.virustotal_make_comment"
         i._userdata = cookie
         i.report()
