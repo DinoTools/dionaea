@@ -58,7 +58,10 @@ class virustotalhandler(ihandler):
         logger.debug("%s ready!" % (self.__class__.__name__))
         ihandler.__init__(self, path)
         self.apikey = config.get("apikey")
-        self.comment = config.get("comment")
+        comment = config.get("comment")
+        if comment is None:
+            comment = "This sample was captured in the wild and uploaded by the dionaea honeypot.\n#honeypot #malware #networkworm"
+        self.comment = comment
         self.cookies = {}
         self.loop = pyev.default_loop()
 
