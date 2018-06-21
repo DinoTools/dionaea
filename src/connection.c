@@ -1143,7 +1143,7 @@ void connection_reconnect_timeout_cb(EV_P_ struct ev_timer *w, int revents)
 	ev_timer_stop(EV_A_ w);
 	connection_set_state(con, connection_state_none);
 
-	if( !parse_addr(con->remote.hostname, NULL, ntohs(con->remote.port), &sa, &socket_domain, &sizeof_sa) )
+	if( con->remote.hostname != NULL && !parse_addr(con->remote.hostname, NULL, ntohs(con->remote.port), &sa, &socket_domain, &sizeof_sa) )
 	{ /* domain */
 		if( con->remote.dns.resolved_address_count == con->remote.dns.current_address )
 		{ /* tried all resolved ips already */
