@@ -256,7 +256,7 @@ class hpclient(connection):
         return 1
 
     def handle_error(self, err):
-        logger.warn('hpclient error {0}'.format(err))
+        logger.warn(str(err))
         self.connected = False
         return 1
 
