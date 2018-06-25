@@ -431,13 +431,19 @@ cdef extern from "processor.h":
 	void c_python_processor_bistream_create "python_processor_bistream_create"(c_connection *con)
 
 
-cdef extern from "protocol.h":
-	cpdef enum:
-		ECONDNSTIMEOUT
-		ECONUNREACH
-		ECONNOSUCHDOMAIN
-		ECONMANY
-
+# Works only with Cython >= 0.21
+# Drop support for Ubuntu 14.04 and re-enable it
+# cdef extern from "protocol.h":
+# 	cpdef enum:
+# 		ECONDNSTIMEOUT
+# 		ECONUNREACH
+# 		ECONNOSUCHDOMAIN
+# 		ECONMANY
+ctypedef enum:
+	ECONDNSTIMEOUT   = 0,
+	ECONUNREACH      = 1,
+	ECONNOSUCHDOMAIN = 2,
+	ECONMANY         = 4
 
 cdef class connection:
 	"""the connection"""
