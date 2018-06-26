@@ -297,7 +297,7 @@ class hpfeedihandler(ihandler):
         self.dynip_resolve = config.get('dynip_resolve', '')
         self.dynip_timer = None
         self.ownip = None
-        if self.dynip_resolve and 'http' in self.dynip_resolve:
+        if isinstance(self.dynip_resolve, str) and self.dynip_resolve.startswith("http"):
             if pyev is None:
                 logger.debug('You are missing the python pyev binding in your dionaea installation.')
             else:
