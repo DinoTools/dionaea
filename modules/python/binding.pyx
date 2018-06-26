@@ -188,7 +188,7 @@ cdef extern from "../../include/connection.h":
 	int c_connection_unref "connection_unref"(c_connection *)
 	
 	void c_PyErr_Print "PyErr_Print"()
-	
+
 
 cdef class node_info:
 	"""node_info stores information about a node"""
@@ -431,7 +431,19 @@ cdef extern from "processor.h":
 	void c_python_processor_bistream_create "python_processor_bistream_create"(c_connection *con)
 
 
-
+# Works only with Cython >= 0.21
+# Drop support for Ubuntu 14.04 and re-enable it
+# cdef extern from "protocol.h":
+# 	cpdef enum:
+# 		ECONDNSTIMEOUT
+# 		ECONUNREACH
+# 		ECONNOSUCHDOMAIN
+# 		ECONMANY
+ctypedef enum:
+	ECONDNSTIMEOUT   = 0,
+	ECONUNREACH      = 1,
+	ECONNOSUCHDOMAIN = 2,
+	ECONMANY         = 4
 
 cdef class connection:
 	"""the connection"""
@@ -814,7 +826,35 @@ cdef c_bool handle_error_cb(c_connection *con, c_connection_error err) except *:
 #	print "connect_error_cb"
 	cdef connection instance
 	instance = <connection>c_connection_protocol_ctx_get(con)
-	r = instance.handle_error(err)
+	i = None
+	from dionaea import exception
+	if err == ECONDNSTIMEOUT:
+		i = exception.ConnectionDNSTimeout(
+			connection=instance,
+			error_id=err
+		)
+	elif err == ECONUNREACH:
+		i = exception.ConnectionUnreachable(
+			connection=instance,
+			error_id=err
+		)
+	elif err == ECONNOSUCHDOMAIN:
+		i = exception.ConnectionNoSuchDomain(
+			connection=instance,
+			error_id=err
+		)
+	elif err == ECONMANY:
+		i = exception.ConnectionTooMany(
+			connection=instance,
+			error_id=err
+		)
+	else:
+		i = exception.ConnectionUnknownError(
+			connection=connection,
+			error_id=err
+		)
+
+	r = instance.handle_error(i)
 	return <bint>r
 
 cdef c_bool handle_timeout_sustain_cb(c_connection *con, void *ctx) except *:
