@@ -6,3 +6,5 @@
     secret: ""
     # dynip_resolve: enable to lookup the sensor ip through a webservice
     dynip_resolve: "http://hpfriends.honeycloud.net/ip"
+    # Try to reconnect after N seconds if disconnected from hpfeeds broker
+    # reconnect_timeout: 10.0

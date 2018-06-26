@@ -155,14 +155,14 @@ class FeedUnpack(object):
 
 
 class hpclient(connection):
-    def __init__(self, server, port, ident, secret):
+    def __init__(self, server, port, ident, secret, reconnect_timeout=10.0):
         logger.debug('hpclient init')
         connection.__init__(self, 'tcp')
         self.unpacker = FeedUnpack()
         self.ident, self.secret = ident.encode('latin1'), secret.encode('latin1')
 
         self.connect(server, port)
-        self.timeouts.reconnect = 10.0
+        self.timeouts.reconnect = reconnect_timeout
         self.sendfiles = []
         self.msgqueue = []
         self.filehandle = None
@@ -262,9 +262,26 @@ class hpclient(connection):
 
 
 class hpfeedihandler(ihandler):
+    default_reconnect_timeout = 10.0
+
     def __init__(self, path, config=None):
         logger.debug('hpfeedhandler init')
-        self.client = hpclient(config['server'], int(config['port']), config['ident'], config['secret'])
+        reconnect_timeout = config.get("reconnect_timeout")
+        if reconnect_timeout is None:
+            reconnect_timeout = self.default_reconnect_timeout
+        try:
+            reconnect_timeout = float(reconnect_timeout)
+        except (TypeError, ValueError) as e:
+            logger.warn("Unable to convert value '%s' for reconnect timeout to float" % reconnect_timeout)
+            reconnect_timeout = self.default_reconnect_timeout
+
+        self.client = hpclient(
+            config['server'],
+            int(config['port']),
+            config['ident'],
+            config['secret'],
+            reconnect_timeout=reconnect_timeout
+        )
         ihandler.__init__(self, path)
 
         self.dynip_resolve = config.get('dynip_resolve', '')
