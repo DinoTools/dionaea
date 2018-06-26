@@ -1,7 +1,8 @@
 - name: hpfeeds
   config:
+    # fqdn/ip and port of the hpfeeds broker
     server: "hpfriends.honeycloud.net"
-    port: 10000
+    # port: 10000
     ident: ""
     secret: ""
     # dynip_resolve: enable to lookup the sensor ip through a webservice

@@ -263,6 +263,7 @@ class hpclient(connection):
 
 class hpfeedihandler(ihandler):
     default_reconnect_timeout = 10.0
+    default_port = 10000
 
     def __init__(self, path, config=None):
         logger.debug('hpfeedhandler init')
@@ -275,9 +276,18 @@ class hpfeedihandler(ihandler):
             logger.warn("Unable to convert value '%s' for reconnect timeout to float" % reconnect_timeout)
             reconnect_timeout = self.default_reconnect_timeout
 
+        port = config.get("port")
+        if port is None:
+            port = self.default_port
+        try:
+            port = int(port)
+        except (TypeError, ValueError) as e:
+            logger.warn("Unable to convert value '%s' for port to int" % port)
+            port = self.default_port
+
         self.client = hpclient(
             config['server'],
-            int(config['port']),
+            port,
             config['ident'],
             config['secret'],
             reconnect_timeout=reconnect_timeout
