@@ -59,13 +59,14 @@ author = 'dionaea'
 #
 # The short X.Y version.
 version = "undefined"
-regex_version = re.compile("^AC_INIT\(\[.*? \[(?P<version>[0-9]+\.[0-9]+\.[0-0]+)\], .*?")
-fp = open("../../configure.ac", "r")
-for line in fp.readlines():
-    m = regex_version.match(line)
-    if m:
-        version = m.group("version")
-        break
+regex_version = re.compile(
+    "^project\s*\([^)]+?\s+VERSION\s+(?P<version>[0-9]+\.[0-9]+\.[0-9]+)$",
+    re.MULTILINE|re.DOTALL
+)
+data = open("../../CMakeLists.txt", "r").read()
+m = regex_version.search(data)
+if m:
+    version = m.group("version")
 
 # The full version, including alpha/beta/rc tags.
 release = version
