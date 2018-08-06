@@ -141,9 +141,25 @@ def new():
 
     if mode == 'manual':
         addrs = {}
+        whildcard_addresses = {'0.0.0.0', '::'}
 
         addresses = dionaea_config.get("listen.addresses")
         ifaces = g_dionaea.getifaddrs()
+        if whildcard_addresses.intersection(addresses):
+            listen_ifaces = dionaea_config.get("listen.interfaces")
+            if listen_ifaces is not None:
+                for iface in listen_ifaces:
+                    if iface not in addrs:
+                        addrs[iface] = []
+                    for whildcard_address in whildcard_addresses.intersection(addresses):
+                        addrs[iface].append(whildcard_address)
+            else:
+                for iface in ifaces.keys():
+                    if iface not in addrs:
+                        addrs[iface] = []
+                    for whildcard_address in whildcard_addresses.intersection(addresses):
+                        addrs[iface].append(whildcard_address)
+
         for iface in ifaces.keys():
             afs = ifaces[iface]
             for af in afs.keys():
