@@ -1223,7 +1223,7 @@ BOOL WriteFile(
 
 	if( tf->fd != -1 )
 	{
-		if( fwrite(lpBuffer, nNumberOfBytesToWrite, 1, tf->fh) != 1 )
+		if( fwrite(lpBuffer, 1, nNumberOfBytesToWrite, tf->fh) != 1 )
 		{
 			g_warning("fwrite failed %s",  strerror(errno));
 		}
