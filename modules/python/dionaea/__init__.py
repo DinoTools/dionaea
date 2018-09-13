@@ -70,7 +70,26 @@ def load_config_from_files(filename_patterns):
     for filename_pattern in filename_patterns:
         for filename in glob.glob(filename_pattern):
             fp = open(filename)
-            file_configs = yaml.load(fp)
+            try:
+                file_configs = yaml.safe_load(fp)
+            except yaml.YAMLError as e:
+                if hasattr(e, 'problem_mark'):
+                    mark = e.problem_mark
+                    logger.error(
+                        "Error while parsing config file '%s' at line: %d column: %d message: '%s'",
+                        filename,
+                        mark.line + 1,
+                        mark.column + 1,
+                        e.problem
+                    )
+                    if e.context is not None:
+                        logger.debug("Parser(context): %s" % e.context)
+                else:
+                    logger.error("Unknown error while parsing config file '%s'", filename)
+
+                # Skip processing
+                continue
+
             if isinstance(file_configs, (tuple, list)):
                 configs += file_configs
     return configs
