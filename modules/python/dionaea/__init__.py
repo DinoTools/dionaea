@@ -71,7 +71,7 @@ def load_config_from_files(filename_patterns):
         for filename in glob.glob(filename_pattern):
             fp = open(filename)
             try:
-                file_configs = yaml.load(fp)
+                file_configs = yaml.safe_load(fp)
             except yaml.YAMLError as e:
                 if hasattr(e, 'problem_mark'):
                     mark = e.problem_mark
