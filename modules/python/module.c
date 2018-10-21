@@ -985,10 +985,8 @@ static char *pyobjectstring(PyObject *obj)
 		}
 	}
 
-	Py_ssize_t pysize = PyUnicode_GetSize(pyobjectstr);
-	wchar_t * str = (wchar_t *) malloc((pysize + 1) * sizeof(wchar_t));
-	PyUnicode_AsWideChar(pyobjectstr, str, pysize);
-	str[pysize] = '\0';
+	Py_ssize_t pysize;
+	wchar_t *str = PyUnicode_AsWideCharString(pyobjectstr, &pysize);
 
 	if( pyobjectstr != obj )
 		Py_DECREF(pyobjectstr);
@@ -1002,7 +1000,7 @@ static char *pyobjectstring(PyObject *obj)
 
 	// convert
 	wcstombs(cstr, str, csize + 1);
-	free(str);
+	PyMem_Free(str);
 	return cstr;
 }
 
