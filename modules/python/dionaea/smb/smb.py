@@ -81,6 +81,7 @@ class smbd(connection):
         self.printer = b'' # spoolss file "queue"
 
         self.config = None
+        self.trans = False
 
     def apply_config(self, config=None):
         # Avoid import loops
@@ -201,6 +202,8 @@ class smbd(connection):
         rstatus = 0
         smbh = p.getlayer(SMB_Header)
         Command = smbh.Command
+        if self.trans and Command != SMB_COM_TRANSACTION_SECONDARY and Command != SMB_COM_TRANSACTION2_SECONDARY:
+            self.trans = False
         if Command == SMB_COM_NEGOTIATE:
             # Negociate Protocol -> Send response that supports minimal features in NT LM 0.12 dialect
             # (could be randomized later to avoid detection - but we need more dialects/options support)
@@ -542,6 +545,7 @@ class smbd(connection):
             self.state['readcount'] = newreadcount
 
         elif Command == SMB_COM_TRANSACTION:
+            self.trans = True
             h = p.getlayer(SMB_Trans_Request)
             r = SMB_Trans_Response()
             rdata = SMB_Data()
@@ -639,6 +643,7 @@ class smbd(connection):
 
             r /= rdata
         elif Command == SMB_COM_TRANSACTION2:
+            self.trans = True
             h = p.getlayer(SMB_Trans2_Request)
             if h.Setup[0] == SMB_TRANS2_SESSION_SETUP:
                 smblog.info('Possible DoublePulsar connection attempts..')
@@ -722,8 +727,10 @@ class smbd(connection):
             r = SMB_Delete_Response()
         elif Command == SMB_COM_TRANSACTION2_SECONDARY:
             h = p.getlayer(SMB_Trans2_Secondary_Request)
+            if not self.trans:
+                r = SMB_Trans2_Response()
+                rstatus = 0xC000000D
             # TODO: need some extra works
-            pass
         elif Command == SMB_COM_NT_TRANSACT:
             h = p.getlayer(SMB_NT_Trans_Request)
             r = SMB_NT_Trans_Response()
