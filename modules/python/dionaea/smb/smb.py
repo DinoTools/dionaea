@@ -99,7 +99,19 @@ class smbd(connection):
 #		self._out.accounting.limit = 2000*1024
         self.processors()
 
-    def handle_io_in(self,data):
+    def handle_io_in(self, data):
+        data_length = len(data)
+        processed_length = 0
+        while True:
+            l = self.handle_io_in2(data)
+            if l == 0:
+                return data_length - processed_length
+            data = data[l:]
+            if len(data) == 0:
+                return data_length
+            processed_length += l
+
+    def handle_io_in2(self, data):
         try:
             p = NBTSession(data, _ctx=self)
         except:
