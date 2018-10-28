@@ -25,6 +25,6 @@ class SMBService(ServiceLoader):
         except ServiceConfigError as e:
             smblog.error(e.msg, *e.args)
             return
-        daemon.bind(addr, 445, iface=iface)
+        daemon.bind(addr, daemon.config.port, iface=iface)
         daemon.listen()
         return daemon
