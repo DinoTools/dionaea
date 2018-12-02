@@ -135,6 +135,7 @@ install_available_python_config(
         log_sqlite.yaml.in
         nfq.yaml
         p0f.yaml
+        s3.yaml
         store.yaml
         submit_http_post.yaml
         submit_http.yaml
