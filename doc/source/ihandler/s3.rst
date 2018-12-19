@@ -1,0 +1,11 @@
+s3
+==
+
+Upload unique captured binaries to Amazon S3 bucket
+
+Example config
+--------------
+
+.. literalinclude:: ../../../conf/ihandlers/s3.yaml
+   :language: yaml
+   :caption: ihandlers/s3.yaml
