@@ -33,6 +33,7 @@ List of available ihandlers
     log_sqlite
     nfq
     p0f
+    s3
     store
     submit_http
     submit_http_post
