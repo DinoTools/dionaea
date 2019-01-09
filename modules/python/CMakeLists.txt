@@ -200,6 +200,12 @@ foreach(filename ${item})
   )
 endforeach()
 
+### PRINTER
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/printer/root
+)
+
 ### SIP
 install(
   DIRECTORY
