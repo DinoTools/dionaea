@@ -60,10 +60,18 @@ class PrinterService(ServiceLoader):
         return daemon
 
 def convert_pjl_command_to_regex(command):
+    """Converts an underscore separated PJL command to a regex pattern.
+
+    The generated regex pattern captures the command's arguments in the first group.
+    """
     command_bytes = bytes(command, "utf-8")
     return re.compile(rb"^\@pjl\s+%s\s*(.*)" % command_bytes.replace(b"_", rb"\s+"), re.IGNORECASE)
 
 def convert_pjl_responses_to_regex(responses_dict):
+    """Converts all dictionary items to a (regex, command, response) triple.
+
+    The regex is generated using `convert_pjl_command_to_regex`, thus it can be used to capture arguements.
+    """
     return [
         (
             convert_pjl_command_to_regex(command),
@@ -74,6 +82,12 @@ def convert_pjl_responses_to_regex(responses_dict):
     ]
 
 def cut_bytes_before_last_crlf(text):
+    """Cuts the given text before the last line break.
+
+    Example:
+        cut_bytes_before_last_crlf(b"foo\r\nbar") => b"foo\r\n"
+        cut_bytes_before_last_crlf(b"foo\r\nbar\r\n") => b"foo\r\nbar\r\n"
+    """
     try:
         last_crlf_index = text.rindex(b"\r\n")
         return text[0:last_crlf_index + 2]
@@ -136,6 +150,8 @@ fsquery_command_regex = convert_pjl_command_to_regex("fsquery")
 path_regex = re.compile(r"\"([^\"]+)\"")
 
 class Printerd(connection):
+    """A PJL/PCL based printer daemon
+    """
     STATE_INIT, STATE_PJL, STATE_PCL = range(3)
 
     protocol_name = "printerd"
@@ -158,6 +174,8 @@ class Printerd(connection):
         self.pcl_file_handle = None
 
     def reply(self, msg):
+        """Sends the given message back to the client.
+        """
         msg_lf = "%s\n" % msg
         msg_crlf = msg_lf.replace("\n", "\r\n")
 
@@ -165,6 +183,8 @@ class Printerd(connection):
         self.send(msg_crlf)
 
     def apply_config(self, config):
+        """Applies the given configuration to this daemon
+        """
         dionaea_config = g_dionaea.config().get("dionaea")
         self.download_dir = dionaea_config.get("download.dir")
 
@@ -224,6 +244,13 @@ class Printerd(connection):
             return self.process_pcl(data)
 
     def process_pjl_program(self, program):
+        """Parses a PJL program, taking delimiters and chunk-split programs into account.
+
+        If the program starts with a delimiter, it will be removed and be expected in each
+        follow up chunk, until it appears. If a previous chunk started with a delimiter,
+        but the current chunk doesn't end with one, the last line will be preserved, to
+        wait for more data.
+        """
         processed_bytes = 0
         reset_delimiter = False
 
@@ -264,6 +291,13 @@ class Printerd(connection):
         return processed_bytes
     
     def process_pjl_line(self, line):
+        """Executes a line of PJL code.
+
+        Static PJL commands, as defined in `pjl_default_responses`, will be sent as is, whereas
+        "dynamic" commands like ECHO or FSQUERY will take their arguments into account.
+
+        If no matching command could be found, "?" will be sent.
+        """
         for regex, command, response in self.pjl_response_regexes:
             match = regex.match(line)
 
@@ -294,11 +328,15 @@ class Printerd(connection):
         self.reply("?")
 
     def pjl_ECHO(self, command):
+        """@PJL ECHO COMMAND
+        """
         logger.debug("echo %s", command)
         stripped_command = command.strip()
         self.reply(stripped_command)
 
     def extract_path_from_arguments(self, arguments):
+        """Extracts a path string from a command's arguments.
+        """
         paths = path_regex.findall(arguments)
 
         if len(paths) > 0:
@@ -306,6 +344,11 @@ class Printerd(connection):
             return self.normalize_path(path)
 
     def normalize_path(self, path):
+        """Normalizes the given PJL path to a regular path.
+
+        Example:
+            normalize_path(r"0:\\foo\\bar") => "0/foo/bar"
+        """
         volume, rest = path.split(":", 2)
         path_parts = [volume] + [part for part in re.split(r"(\\|/)", rest) if part.strip() not in ["", "/", "\\"]]
         full_path = os.path.join(*path_parts)
@@ -316,6 +359,12 @@ class Printerd(connection):
         return full_path
 
     def listdir(self, path):
+        """Sends the result similar to an `ls` call.
+
+        If the file doesn't exist, "FILEERROR=1" will be sent. If the path is a
+        directory, a directory listing will be sent, whereas a file will only yield
+        its name and size according to the PJL specification.
+        """
         actual_path = os.path.join(self.root, path)
 
         if not os.path.exists(actual_path):
@@ -352,16 +401,25 @@ class Printerd(connection):
             self.reply("\n".join(listing))
 
     def pjl_FSDIRLIST(self, arguments):
+        """@PJL FSDIRLIST NAME="PATH"
+        """
         path = self.extract_path_from_arguments(arguments)
         logger.debug("listdir '%s'", path)
         self.listdir(path)
 
     def pjl_FSQUERY(self, arguments):
+        """@PJL FSQUERY NAME="PATH"
+        """
         path = self.extract_path_from_arguments(arguments)
         logger.debug("fsquery '%s'", path)
         self.listdir(path)
 
     def process_pcl(self, data):
+        """Starts "printing" the given PCL to a new file.
+
+        The file name will be created using the current time, e.g. "print-1547056738.pcl".
+        Additionally, an incident "dionaea.modules.python.printer.print" will be created.
+        """
         if self.pcl_file_handle is None:
             filename = "print-%d.pcl" % time.time()
             path = os.path.join(self.download_dir, filename)
