@@ -1,0 +1,6 @@
+- name: printer
+  config:
+    pcl_output_dir: "@DIONAEA_STATEDIR@/printer/pcl"
+    pjl_fs_dir: "@DIONAEA_STATEDIR@/printer/root"
+    pjl_msgs:
+        info_id: "HP LASERJET 4ML"

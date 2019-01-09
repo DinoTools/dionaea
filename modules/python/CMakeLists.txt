@@ -90,6 +90,7 @@ install_available_python_config(
         mssql.yaml
         mysql.yaml
         pptp.yaml
+        printer.yaml.in
         sip.yaml.in
         smb.yaml
         tftp.yaml.in
@@ -111,6 +112,7 @@ install_enabled_python_config(
         mssql.yaml
         mysql.yaml
         pptp.yaml
+        printer.yaml
         sip.yaml
         smb.yaml
         tftp.yaml
