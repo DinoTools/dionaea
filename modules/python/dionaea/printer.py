@@ -31,7 +31,7 @@
 
 # pjl/pcl server (printer)
 from dionaea import ServiceLoader
-from dionaea.core import connection, g_dionaea
+from dionaea.core import connection, g_dionaea, incident
 from dionaea.exception import ServiceConfigError
 import logging
 import os
@@ -367,6 +367,11 @@ class Printerd(connection):
             path = os.path.join(self.download_dir, filename)
             logger.info("printing to '%s'", path)
             self.pcl_file_handle = open(path, "wb")
+
+            icd = incident("dionaea.modules.python.printer.print")
+            icd.con = self
+            icd.path = path
+            icd.report()
 
         self.pcl_file_handle.write(data)
         return len(data)
