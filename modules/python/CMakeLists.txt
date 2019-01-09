@@ -206,6 +206,11 @@ install(
   DESTINATION ${DIONAEA_STATEDIR}/printer/root
 )
 
+install(
+  DIRECTORY
+  DESTINATION ${DIONAEA_STATEDIR}/printer/root/0
+)
+
 ### SIP
 install(
   DIRECTORY
