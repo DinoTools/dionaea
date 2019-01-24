@@ -231,7 +231,7 @@ class Printerd(connection):
         logger.debug("received %s", str(data))
 
         if self.state == self.STATE_INIT:
-            if data.startswith(b"\x1bE\x1b&l"):
+            if data.startswith(b"\x1bE"):
                 logger.debug("entering PCL mode")
                 self.state = self.STATE_PCL
             else:
