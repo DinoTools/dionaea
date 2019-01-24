@@ -23,7 +23,7 @@ class TestPJLCommands:
         connection.send_pjl_commands(
             "@PJL FSDIRLIST NAME=\"0:\\\""
         )
-        assert connection.read_to_end() == b". TYPE=DIR\r\nmacros TYPE=DIR\r\n"
+        assert connection.read_to_end() == b". TYPE=DIR\r\n"
         connection.disconnect()
 
     def test_relative_paths(self):
