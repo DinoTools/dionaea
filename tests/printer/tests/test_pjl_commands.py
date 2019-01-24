@@ -6,8 +6,8 @@ class TestPJLCommands:
         connection = PrinterConnection()
         connection.send_pjl_commands(
             "@PJL INFO MEMORY",
-            "@PJL INFO STATUS",
         )
+        assert connection.read_to_end() == b"TOTAL=1494416\r\nLARGEST=1494176\r\n"
         connection.disconnect()
 
     def test_echo(self):
