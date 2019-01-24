@@ -349,8 +349,11 @@ class Printerd(connection):
         Example:
             normalize_path(r"0:\\foo\\bar") => "0/foo/bar"
         """
+        if ":" not in path:
+            path = "0:" + path
+
         volume, rest = path.split(":", 1)
-        path_parts = [volume] + [part for part in re.split(r"(\\|/)", rest) if part.strip() not in ["", "/", "\\"]]
+        path_parts = [volume] + [part for part in re.split(r"(\\|/)", rest) if part.strip() not in ["", "/", "\\"] and part.replace(".", " ").strip() != ""]
         full_path = os.path.join(*path_parts)
 
         while "../" in full_path:
