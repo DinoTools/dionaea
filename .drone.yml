@@ -135,3 +135,30 @@ steps:
   commands:
     - wget -O /dev/null -q --server-response http://dionaea/
     - wget -O /dev/null -q --server-response --no-check-certificate https://dionaea/
+
+---
+kind: pipeline
+name: Docs - Sphinx
+
+steps:
+- name: sphinx
+  image: alpine:3.10
+  commands:
+  - apk update
+  - apk add python3
+  - pip3 install sphinx doc8
+  - (cd doc/source && sphinx-build -W -b html . ../_build/html)
+  - (cd doc/source && sphinx-build -W -b latex . ../_build/latex)
+  - doc8 --verbose --allow-long-titles --max-line-length=9999 CHANGELOG.rst CONTRIBUTING.rst doc/source
+
+---
+kind: pipeline
+name: Docs - Doxygen
+
+steps:
+- name: doxygen
+  image: alpine:3.10
+  commands:
+  - apk update
+  - apk add doxygen
+  - (cd doc/api && doxygen Doxyfile)
