@@ -1,4 +1,4 @@
-#---
+---
 #kind: pipeline
 #name: Debian 10
 #
@@ -37,8 +37,8 @@
 #  - cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea ..
 #  - make
 #  - make install
-
----
+#
+#---
 kind: pipeline
 name: Ubuntu 18.04
 
