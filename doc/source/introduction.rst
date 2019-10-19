@@ -5,7 +5,7 @@ How it works
 ------------
 
 dionaea intention is to trap malware exploiting vulnerabilities exposed
-by services offerd to a network, the ultimate goal is gaining a copy of
+by services offered to a network, the ultimate goal is gaining a copy of
 the malware.
 
 
@@ -33,7 +33,7 @@ environment.
 Network Connectivity
 --------------------
 
-Given the softwares intented use, network io is crucial. All network io
+Given the softwares intended use, network io is crucial. All network io
 is within the main process in a so called non-blocking manner. To
 understand nonblocking, imagine you have many pipes infront of you, and
 these pipes can send you something, and you can put something into the
