@@ -10,7 +10,7 @@ Rotate bistream files
 Dionaea does not have and may never will have a function/option to rotate the bistream files.
 But you can do this by using a cron job and a simple shell script.
 
-Feel free to use and modify the script below. 
+Feel free to use and modify the script below.
 
 .. code-block:: bash
 

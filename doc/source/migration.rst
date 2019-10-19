@@ -23,10 +23,10 @@ Assuming dionaea 0.7.0 and 0.8.0 have been installed into ```/opt/dionaea```
 * /opt/dionaea/var/dionaea/bistreams/ -> /opt/dionaea/var/lib/dionaea/bistreams/
 * /opt/dionaea/var/dionaea/dionaea.db -> /opt/dionaea/var/lib/dionaea/dionaea.db
 * /opt/dionaea/var/dionaea/dionaea.json -> /opt/dionaea/var/lib/dionaea/dionaea.json
-* /opt/dionaea/var/dionaea/dionaea.log -> /opt/dionaea/var/log/dionaea/dionaea.log 
+* /opt/dionaea/var/dionaea/dionaea.log -> /opt/dionaea/var/log/dionaea/dionaea.log
 * /opt/dionaea/var/dionaea/dionaea.sqlite -> /opt/dionaea/var/lib/dionaea/dionaea.sqlite
 * /opt/dionaea/var/dionaea/dionaea_incident.json -> /opt/dionaea/var/lib/dionaea/dionaea_incident.json
-* /opt/dionaea/var/dionaea/dionaea-errors.log -> /opt/dionaea/var/log/dionaea/dionaea-errors.lorg 
+* /opt/dionaea/var/dionaea/dionaea-errors.log -> /opt/dionaea/var/log/dionaea/dionaea-errors.log
 * /opt/dionaea/var/dionaea/downloads.f2b -> /opt/dionaea/var/lib/dionaea/fail2ban/downloads.f2b
 * /opt/dionaea/var/dionaea/offers.f2b -> /opt/dionaea/var/lib/dionaea/fail2ban/offers.f2b
 * /opt/dionaea/var/dionaea/roots/ftp/ -> /opt/dionaea/var/lib/dionaea/ftp/root/

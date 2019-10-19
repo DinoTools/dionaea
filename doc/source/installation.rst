@@ -177,7 +177,7 @@ Install required build dependencies before configuring and building dionaea.
         python3-dev \
         python3-bson \
         python3-yaml \
-        python3-boto3 
+        python3-boto3
 
 After all dependencies have been installed successfully create a build directory and run :code:`cmake` to setup the build process.
 

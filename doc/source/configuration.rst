@@ -83,13 +83,15 @@ It is not recommended to analyse this files to track attacks.
 
     Examples:
 
+   Log only messages with level warning and error
+
     .. code-blocK:: ini
-        :caption: Log only messages with level warning and error
 
         errors.levels=warning,error
 
+    Log all log messages but exclude messages with log level debug
+
     .. code-blocK:: ini
-        :caption: Log all log messages but exclude messages with log level debug
 
         errors.levels=all,-debug
 
