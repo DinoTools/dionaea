@@ -77,7 +77,7 @@ class SipConfig(object):
 
         self.root_path = os.getcwd()
 
-        self.users = os.path.join(self.root_path, config.get("users", "var/dionaea/sipaccounts.sqlite"))
+        self.users = os.path.join(self.root_path, config.get("users", "var/lib/dionaea/sip/accounts.sqlite"))
 
         self._conn = sqlite3.connect(self.users)
         self._cur = self._conn.cursor()
