@@ -1,0 +1,244 @@
+---
+kind: pipeline
+name: Debian 9
+
+steps:
+- name: dionaea
+  image: buildpack-deps:stretch-scm
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  commands:
+  - apt-get update
+  - apt-get install -y --no-install-recommends
+      build-essential
+      cmake
+      check
+      cython3
+      libcurl4-openssl-dev
+      libemu-dev
+      libev-dev
+      libglib2.0-dev
+      libloudmouth1-dev
+      libnetfilter-queue-dev
+      libnl-3-dev
+      libpcap-dev
+      libssl-dev
+      libtool
+      libudns-dev
+      python3
+      python3-dev
+      python3-bson
+      python3-yaml
+      python3-boto3
+      fonts-liberation
+  - rm -rf build/
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea ..
+  - make
+  - make install
+
+---
+kind: pipeline
+name: Debian 10
+
+steps:
+- name: dionaea
+  image: buildpack-deps:buster-scm
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  commands:
+  - apt-get update
+  - apt-get install -y --no-install-recommends
+      build-essential
+      cmake
+      check
+      cython3
+      libcurl4-openssl-dev
+      libemu-dev
+      libev-dev
+      libglib2.0-dev
+      libloudmouth1-dev
+      libnetfilter-queue-dev
+      libnl-3-dev
+      libpcap-dev
+      libssl-dev
+      libtool
+      libudns-dev
+      python3
+      python3-dev
+      python3-bson
+      python3-yaml
+      python3-boto3
+      fonts-liberation
+  - rm -rf build/
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea ..
+  - make
+  - make install
+
+---
+kind: pipeline
+name: Ubuntu 16.04
+
+steps:
+- name: dionaea
+  image: buildpack-deps:16.04-scm
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  commands:
+  - apt-get update
+  - apt-get install -y --no-install-recommends
+      build-essential
+      cmake
+      check
+      cython3
+      libcurl4-openssl-dev
+      libemu-dev
+      libev-dev
+      libglib2.0-dev
+      libloudmouth1-dev
+      libnetfilter-queue-dev
+      libnl-3-dev
+      libpcap-dev
+      libssl-dev
+      libtool
+      libudns-dev
+      python3
+      python3-dev
+      python3-bson
+      python3-yaml
+      python3-boto3
+      fonts-liberation
+  - rm -rf build/
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea ..
+  - make
+  - make install
+
+---
+kind: pipeline
+name: Ubuntu 18.04
+
+steps:
+- name: dionaea
+  image: buildpack-deps:18.04-scm
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  commands:
+  - apt-get update
+  - apt-get install -y --no-install-recommends
+      build-essential
+      cmake
+      check
+      cython3
+      libcurl4-openssl-dev
+      libemu-dev
+      libev-dev
+      libglib2.0-dev
+      libloudmouth1-dev
+      libnetfilter-queue-dev
+      libnl-3-dev
+      libpcap-dev
+      libssl-dev
+      libtool
+      libudns-dev
+      python3
+      python3-dev
+      python3-bson
+      python3-yaml
+      python3-boto3
+      fonts-liberation
+  - rm -rf build/
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea ..
+  - make
+  - make install
+
+---
+kind: pipeline
+name: Ubuntu 18.04 with Tests
+
+steps:
+- name: dionaea
+  image: buildpack-deps:18.04-scm
+  # image: ubuntu:18.04
+  # pull: never
+  environment:
+    DEBIAN_FRONTEND: noninteractive
+  detach: true
+  commands:
+  - apt-get update
+  - apt-get install -y --no-install-recommends
+      build-essential
+      cmake
+      check
+      cython3
+      libcurl4-openssl-dev
+      libemu-dev
+      libev-dev
+      libglib2.0-dev
+      libloudmouth1-dev
+      libnetfilter-queue-dev
+      libnl-3-dev
+      libpcap-dev
+      libssl-dev
+      libtool
+      libudns-dev
+      python3
+      python3-dev
+      python3-bson
+      python3-yaml
+      python3-boto3
+      fonts-liberation
+  - rm -rf build/
+  - mkdir build
+  - cd build
+  - cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea ..
+  - make
+  - make install
+  - /opt/dionaea/bin/dionaea -w /opt/dionaea -p /tmp/dionaea.pid -D
+  - tail -f /opt/dionaea/var/log/dionaea/dionaea.log
+
+- name: wait
+  image: alpine
+  commands:
+    - timeout 600 /bin/sh -c 'while true; do sleep 1; ping -c 1 dionaea -W 1 > /dev/null || exit 1 && wget -O /dev/null http://dionaea/ 2> /dev/null && exit 0 || true; done'
+
+- name: test
+  image: alpine
+  depends_on:
+    - wait
+  commands:
+    - wget -O /dev/null -q --server-response http://dionaea/
+    - wget -O /dev/null -q --server-response --no-check-certificate https://dionaea/
+
+---
+kind: pipeline
+name: Docs - Sphinx
+
+steps:
+- name: sphinx
+  image: alpine:3.10
+  commands:
+  - apk update
+  - apk add python3
+  - pip3 install sphinx doc8
+  - (cd doc/source && sphinx-build -W -b html . ../_build/html)
+  - (cd doc/source && sphinx-build -W -b latex . ../_build/latex)
+  - doc8 --verbose --allow-long-titles --max-line-length=9999 CHANGELOG.rst CONTRIBUTING.rst doc/source
+
+---
+kind: pipeline
+name: Docs - Doxygen
+
+steps:
+- name: doxygen
+  image: alpine:3.10
+  commands:
+  - apk update
+  - apk add doxygen
+  - (cd doc/api && doxygen Doxyfile)
