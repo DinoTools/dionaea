@@ -972,23 +972,21 @@ static char *pyobjectstring(PyObject *obj)
 	if( PyType_Check(obj) )
 		return g_strdup(((PyTypeObject* ) obj)->tp_name);
 
-	if( PyUnicode_Check(obj) )
+	if( PyUnicode_Check(obj) ) {
 		pyobjectstr = obj;
-	else 
-	if( (pyobjectstr = PyObject_Repr(obj)) != NULL )
-	{
-		if( PyUnicode_Check(pyobjectstr) == 0 )
-		{
-			Py_XDECREF(pyobjectstr);
-			return g_strdup("<!utf8>");
+	} else {
+		if( (pyobjectstr = PyObject_Repr(obj)) != NULL ) {
+			if( PyUnicode_Check(pyobjectstr) == 0 ) {
+				Py_XDECREF(pyobjectstr);
+				return g_strdup("<!utf8>");
+			}
+		} else {
+			return g_strdup("<!repr>");
 		}
-	} else
-		return g_strdup("<!repr>");
+	}
 
-	Py_ssize_t pysize = PyUnicode_GetSize(pyobjectstr);
-	wchar_t * str = (wchar_t *) malloc((pysize + 1) * sizeof(wchar_t));
-	PyUnicode_AsWideChar(pyobjectstr, str, pysize);
-	str[pysize] = '\0';
+	Py_ssize_t pysize;
+	wchar_t *str = PyUnicode_AsWideCharString(pyobjectstr, &pysize);
 
 	if( pyobjectstr != obj )
 		Py_DECREF(pyobjectstr);
@@ -1002,7 +1000,7 @@ static char *pyobjectstring(PyObject *obj)
 
 	// convert
 	wcstombs(cstr, str, csize + 1);
-	free(str);
+	PyMem_Free(str);
 	return cstr;
 }
 
