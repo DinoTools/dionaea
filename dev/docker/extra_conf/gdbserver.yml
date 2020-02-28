@@ -1,0 +1,15 @@
+version: '3'
+services:
+  # dionaea service
+  dionaea:
+    environment:
+      - DIONAEA_BUILD_ENV=gdbserver
+  gdbgui:
+    build: gdbgui/
+    image: dionaea_gdbgui_dev
+    ports:
+      - "5000:5000"
+    volumes:
+      - ../..:/code
+    depends_on:
+      - dionaea
