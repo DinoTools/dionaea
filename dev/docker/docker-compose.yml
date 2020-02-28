@@ -1,7 +1,7 @@
 version: '3'
 services:
   # dionaea service
-  dionaea-srv:
+  dionaea:
     build: dionaea/
     image: dionaea_dev
     volumes:
