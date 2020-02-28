@@ -27,6 +27,7 @@ RUN apt-get install -y --no-install-recommends \
       fonts-liberation
 
 RUN apt-get install -y --no-install-recommends \
+      gdbserver \
       inotify-tools \
       supervisor
 

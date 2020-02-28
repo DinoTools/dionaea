@@ -1,0 +1,6 @@
+version: '3'
+services:
+  # dionaea service
+  dionaea:
+    environment:
+      - DIONAEA_BUILD_ENV=gdbserver
