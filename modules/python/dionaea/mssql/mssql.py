@@ -58,18 +58,18 @@ class mssqld(connection):
         l = 0
         chunk = b''
         while len(data) > l:
-            # logger.warn("len(data) %d l %s", len(data), l)
+            # logger.warning("len(data) %d l %s", len(data), l)
             p = None
             try:
                 if len(data) - l < 8:  # length of TDS_Header
-                    logger.warn("Incomplete TDS_Header")
+                    logger.warning("Incomplete TDS_Header")
                     return l
 
                 p = TDS_Header(data[l:l+8])
                 p.show()
 
                 if p.Length == 0:
-                    logger.warn("Bad TDS Header, Length = 0")
+                    logger.warning("Bad TDS Header, Length = 0")
                     return l
 
                 if len(data[l:]) < p.Length:
@@ -126,7 +126,7 @@ class mssqld(connection):
                 rp.show()
                 self.send(rp.build())
 
-        # logger.warn("return len(data) %d l %s", len(data), l)
+        # logger.warning("return len(data) %d l %s", len(data), l)
         return l
 
     def decode_password(self, password):
@@ -250,7 +250,7 @@ class mssqld(connection):
             ]
 
         else:
-            logger.warn("UNKNOWN PACKET TYPE FOR MSSQL %s", PacketType)
+            logger.warning("UNKNOWN PACKET TYPE FOR MSSQL %s", PacketType)
 
         return r
 
