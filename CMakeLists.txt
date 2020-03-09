@@ -112,6 +112,11 @@ find_package(EV REQUIRED)
 find_package(CURL)
 find_package(PCAP)
 
+include(CheckIncludeFile)
+if(CMAKE_SYSTEM_NAME STREQUAL "Linux")
+    check_include_file(linux/sockios.h HAVE_LINUX_SOCKIOS_H)
+endif()
+
 include(CheckCSourceRuns)
 include(CheckIPv4MappedIPv6)
 

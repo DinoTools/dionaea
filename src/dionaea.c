@@ -780,6 +780,9 @@ opt->stdOUT.filter);
 		{
 			g_error("Could not change user");
 		}
+#ifndef HAVE_LINUX_SOCKIOS_H
+		g_info("Dropping privileges and binding to ports < 1024 is only supported on Linux.");
+#endif
 	}
 
 	options_free(opt);

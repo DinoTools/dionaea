@@ -21,4 +21,6 @@
 
 #cmakedefine CAN_BIND_IPV4_MAPPED_IPV6
 
+#cmakedefine HAVE_LINUX_SOCKIOS_H 1
+
 #endif /* CONFIG_H */
