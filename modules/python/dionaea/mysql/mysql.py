@@ -239,6 +239,9 @@ class mysqld(connection):
                 r.append(x)
             r.append(MySQL_Result_EOF(ServerStatus=0x002))
 
+        elif re.match(b'attach', p.Query, re.I):
+            return MySQL_Result_Error(Message="#1064 - You have an error in your SQL syntax; check the manual that corresponds to your MySQL server version for the right syntax to use")
+
         else:
             p.show()
             try:
