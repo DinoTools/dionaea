@@ -56,6 +56,15 @@ def sha512file(filename):
     """
     return hashfile(filename, hashlib.sha512())
 
+def sha256file(filename):
+    """
+    Compute sha256 checksum of file.
+
+    :param str filename: File to read
+    :return: SHA256 checksum as hex string
+    :rtype: str
+    """
+    return hashfile(filename, hashlib.sha256())
 
 def hashfile(filename, digest):
     """
