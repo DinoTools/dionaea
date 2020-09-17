@@ -167,6 +167,7 @@ class hpclient(connection):
         self.msgqueue = []
         self.filehandle = None
         self.connected = False
+        self.authenticated = False
 
     def handle_established(self):
         self.connected = True
@@ -186,6 +187,7 @@ class hpclient(connection):
                     name, rand = strunpack8(data)
                     logger.debug('hpclient server name {0} rand {1}'.format(name, rand))
                     self.send(msgauth(rand, self.ident, self.secret))
+                    self.authenticated = True
 
                 elif opcode == OP_PUBLISH:
                     ident, data = strunpack8(data)
@@ -211,7 +213,7 @@ class hpclient(connection):
                 self.send(m)
 
     def publish(self, channel, **kwargs):
-        if self.filehandle:
+        if self.filehandle or not self.authenticated:
             self.msgqueue.append(
                 msgpublish(self.ident, channel, json.dumps(kwargs).encode('latin1'))
             )
@@ -222,7 +224,7 @@ class hpclient(connection):
 
     def sendfile(self, filepath):
         # does not read complete binary into memory, read and send chunks
-        if not self.filehandle:
+        if not self.filehandle or not self.authenticated:
             self.sendfileheader(filepath)
             self.sendfiledata()
         else:
@@ -253,11 +255,13 @@ class hpclient(connection):
     def handle_disconnect(self):
         logger.info('hpclient disconnect')
         self.connected = False
+        self.authenticated = False
         return 1
 
     def handle_error(self, err):
         logger.warn(str(err))
         self.connected = False
+        self.authenticated = False
         return 1
 
 
