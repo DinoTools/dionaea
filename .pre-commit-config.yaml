@@ -8,8 +8,13 @@ repos:
       - id: check-merge-conflict
       # Checks for symlinks which do not point to anything
       - id: check-symlinks
-      # # This hook checks yaml files for parseable syntax
-      # - id: check-yaml
+      # This hook checks yaml files for parseable syntax
+      - id: check-yaml
+        files: .drone.yml
+        # Drone CI config allows and requires multiple documents
+        args: [--allow-multiple-documents]
+      - id: check-yaml
+        exclude: .drone.yml
       # Detects the presence of private keys
       - id: detect-private-key
       # Ensures that a file is either empty, or ends with one newline
