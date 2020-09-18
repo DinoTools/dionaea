@@ -1,8 +1,57 @@
 Changelog
 =========
 
-0.8.0 - (`master`_)
--------------------
+0.10.0 - (`master`_)
+--------------------
+
+0.9.0 - (2020-09-18)
+--------------------
+
+**ci**
+
+* Replace Jenkins with Drone CI
+
+**development**
+
+* Add docker compose to setup development environment
+
+**dionaea**
+
+* Improve names of bistrem files (Thanks Aws0mus)
+* Fix reconnects with IP only
+* Fix dropping privileges (Thanks Michal Ambroz)
+* Fix bug to detect if linux/sockios.h is installed
+
+**python**
+
+* Add class to report more information about connection issues
+* Fix support Cython < 0.21
+* Add additional information if parsing a YAML file fails
+* Change YAML load to safe load
+* Replace deprecated API calls with new ones
+
+**python/hpfeeds**
+
+* Fix to show error message instead of id
+* Add option to set reconnect timeout
+* Change error handling to send authentication before sending messages (Thanks John Carr)
+
+**python/mssql**
+
+* Replace warn() with warning()
+
+**python/mysql**
+
+* Improve detection (Thanks Yorick Koster)
+
+**python/s3**
+
+* Add new ihandler to upload files to S3 storage (Thanks gento)
+
+**python/virustotal**
+
+* Add support for custom comments (Thanks Matteo Cantoni)
+
 
 0.8.0 - (2018-06-15)
 --------------------
