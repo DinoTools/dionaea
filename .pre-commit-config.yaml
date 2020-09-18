@@ -14,7 +14,7 @@ repos:
       - id: detect-private-key
       # Ensures that a file is either empty, or ends with one newline
       - id: end-of-file-fixer
-      # # Replaces or checks mixed line ending
-      # - id: mixed-line-ending
+      # Replaces or checks mixed line ending
+      - id: mixed-line-ending
       # # This hook trims trailing whitespace
       # - id: trailing-whitespace
