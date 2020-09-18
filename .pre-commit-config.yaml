@@ -23,3 +23,26 @@ repos:
       - id: mixed-line-ending
       # This hook trims trailing whitespace
       - id: trailing-whitespace
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.6.0
+    hooks:
+      # Enforce that `noqa` annotations always occur with specific codes
+      - id: python-check-blanket-noqa
+      # Prevent common mistakes of `assert mck.not_called()`, `assert mck.called_once_with(...)` and `mck.assert_called`
+      - id: python-check-mock-methods
+      # A quick check for the `eval()` built-in function
+      - id: python-no-eval
+      # ToDo: Fix code
+      # # A quick check for the deprecated `.warn()` method of python loggers
+      # - id: python-no-log-warn
+      # ToDo: Fix code
+      # # Enforce that python3.6+ type annotations are used instead of type comments
+      # - id: python-use-type-annotations
+      # ToDo: Fix doc if possible?
+      # # Detect common mistake of using single backticks when writing rst
+      # - id: rst-backticks
+      # Detect mistake of inline code touching normal text in rst
+      - id: rst-inline-touching-normal
+      # Forbid files which have a UTF-8 Unicode replacement character
+      - id: text-unicode-replacement-char
