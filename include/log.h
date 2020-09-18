@@ -134,4 +134,3 @@ void logger_stdout_log(const gchar *log_domain,
 					   const gchar *message,
 					   gpointer user_data);
 bool logger_file_flush(struct logger *l, void *data);
-

@@ -47,4 +47,3 @@ void sigsegv_cb(struct ev_loop *loop, struct ev_signal *w, int revents);
 
 int segv_handler(int sig);
 void sigsegv_backtrace_cb(int sig);
-

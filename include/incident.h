@@ -132,4 +132,3 @@ void incident_report(struct incident *i);
 	incident_report(e);
 	incident_free(e)
 */
-

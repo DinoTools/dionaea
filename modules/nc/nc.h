@@ -49,4 +49,3 @@ extern struct protocol proto_nc_http;
 extern struct protocol proto_nc_source;
 extern struct protocol proto_nc_sink;
 extern struct protocol proto_nc_redir;
-

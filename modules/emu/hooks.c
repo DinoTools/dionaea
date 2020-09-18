@@ -1535,4 +1535,3 @@ uint32_t user_hook__lclose(struct emu_env *env, struct emu_env_hook *hook, ...)
 	}
 	return 0;
 }
-

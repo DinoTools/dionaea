@@ -881,4 +881,3 @@ void connection_tls_error(struct connection *con)
 	if( con->transport.tls.ssl_error != 0 )
 		g_debug("SSL ERROR %s\t%s", con->transport.tls.ssl_error_string, SSL_state_string_long(con->transport.tls.ssl));
 }
-

@@ -836,4 +836,3 @@ void proc_filter_on_io_out(struct connection *con, struct processor_data *pd, vo
 //	g_debug("%s con %p pd %p data %p size %i", __PRETTY_FUNCTION__, con, pd, data, size);
 	proc_filter_on_io(con,pd,data,size,bistream_out);
 }
-

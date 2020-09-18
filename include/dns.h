@@ -40,6 +40,3 @@ struct dns
 void udns_io_in_cb(EV_P_ struct ev_io *w, int revents);
 void udns_timeout_cb(EV_P_ struct ev_timer *w, int revents);
 void udns_set_timeout_cb(struct dns_ctx *ctx, int timeout, void *data);
-
-
-

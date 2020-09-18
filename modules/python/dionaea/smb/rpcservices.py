@@ -3846,4 +3846,3 @@ class WKSSVC(RPCService):
     def handle_NetAddAlternateComputerName(cls, con, p):
         # MS03-039
         pass
-

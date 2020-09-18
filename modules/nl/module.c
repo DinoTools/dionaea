@@ -467,4 +467,3 @@ struct module_api *module_init(struct dionaea *d)
 
     return &nl_api;
 }
-

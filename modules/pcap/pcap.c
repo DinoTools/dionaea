@@ -413,4 +413,3 @@ struct module_api *module_init(struct dionaea *d)
 
     return &pcap_api;
 }
-

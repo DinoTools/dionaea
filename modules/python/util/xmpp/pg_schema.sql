@@ -2499,4 +2499,3 @@ GRANT ALL ON TABLE virustotalscans TO xmpp;
 --
 -- PostgreSQL database dump complete
 --
-

@@ -56,4 +56,3 @@ class s3handler(ihandler):
 
         except Exception as e:
             logger.warn("S3 exception: {0}".format(e))
-

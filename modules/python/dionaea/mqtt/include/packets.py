@@ -212,4 +212,3 @@ class MQTT_DisconnectReq(Packet):
 		ByteField("HeaderFlags",0x00),
 		ByteField("MessageLength",0x00),
 	]
-

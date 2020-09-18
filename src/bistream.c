@@ -327,4 +327,3 @@ int32_t bistream_get_stream(struct bistream *bs, enum bistream_direction dir, ui
 	g_mutex_unlock(&bs->streams[dir].mutex);
 	return end - start;
 }
-

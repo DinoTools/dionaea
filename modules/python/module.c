@@ -1088,4 +1088,3 @@ struct module_api *module_init(struct dionaea *dionaea)
 	};
     return &python_api;
 }
-

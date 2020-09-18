@@ -224,6 +224,3 @@ int pchild_sent_bind(int sx, struct sockaddr *s, socklen_t size)
 #endif
 	return 0;
 }
-
-
-

@@ -63,4 +63,3 @@ bool refcount_is_zero(struct refcount *rc)
 	g_mutex_unlock(&rc->mutex);
 	return ret;
 }
-

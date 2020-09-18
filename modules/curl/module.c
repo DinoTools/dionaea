@@ -703,4 +703,3 @@ struct module_api *module_init(struct dionaea *d)
 
     return &curl_api;
 }
-

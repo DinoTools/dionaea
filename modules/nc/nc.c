@@ -308,5 +308,3 @@ void proto_nc_ctx_free(void *context)
 {
 	g_debug("%s ctx %p ",__PRETTY_FUNCTION__, context);
 }
-
-

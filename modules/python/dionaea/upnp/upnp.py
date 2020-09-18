@@ -198,4 +198,3 @@ class upnpd(connection):
 	responses = {
 		200: ('OK', 'Request fulfilled, document follows'),
 		}
-

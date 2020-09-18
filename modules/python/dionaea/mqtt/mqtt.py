@@ -222,4 +222,3 @@ class mqttd(connection):
 
 	def handle_disconnect(self):
 		return False
-

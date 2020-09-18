@@ -267,7 +267,3 @@ static int nfqueue_cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nf
 	send(g_dionaea->pchild->fd, &nf, sizeof(nf), 0);
 	return 0;
 }
-
-
-
-

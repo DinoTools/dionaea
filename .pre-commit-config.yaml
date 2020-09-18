@@ -12,8 +12,8 @@ repos:
       # - id: check-yaml
       # Detects the presence of private keys
       - id: detect-private-key
-      # # Ensures that a file is either empty, or ends with one newline
-      # - id: end-of-file-fixer
+      # Ensures that a file is either empty, or ends with one newline
+      - id: end-of-file-fixer
       # # Replaces or checks mixed line ending
       # - id: mixed-line-ending
       # # This hook trims trailing whitespace
