@@ -1,6 +1,6 @@
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
-    rev: v2.3.0
+    rev: v3.2.0
     hooks:
       # Forbid files which have a UTF-8 byte-order marker
       - id: check-byte-order-marker
