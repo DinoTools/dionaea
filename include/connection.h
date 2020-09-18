@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -86,10 +86,10 @@ enum connection_transport
 enum connection_type
 {
 	connection_type_none,
-	connection_type_accept, 
-	connection_type_bind, 
-	connection_type_connect, 
-	connection_type_listen, 
+	connection_type_accept,
+	connection_type_bind,
+	connection_type_connect,
+	connection_type_listen,
 };
 
 enum connection_state
@@ -147,17 +147,17 @@ struct connection_stats_info
 struct connection
 {
 	enum connection_transport trans;
-	struct node_info local;     
-	struct node_info remote;    
+	struct node_info local;
+	struct node_info remote;
 
-	enum connection_type type; 
+	enum connection_type type;
 	enum connection_state state;
 
-	union 
+	union
 	{
 		struct
 		{
-			GList *io_in; 
+			GList *io_in;
 			GList *io_out;
 			union
 			{
@@ -183,7 +183,7 @@ struct connection
 		{
 			event_fn ev_read;
 			event_fn ev_write;
-			void *data; 
+			void *data;
 		} io;
 
 		struct
@@ -211,7 +211,7 @@ struct connection
 			BIO *writing;
 			unsigned long ssl_error;
 			char ssl_error_string[256];
-			GList *io_out; 
+			GList *io_out;
 			union
 			{
 				struct
@@ -237,7 +237,7 @@ struct connection
 
 	int socket;
 
-	struct 
+	struct
 	{
 		struct ev_io io_in;
 		struct ev_io io_out;
@@ -245,7 +245,7 @@ struct connection
 		struct ev_timer connecting_timeout;	// tcp-connect, ssl-connect
 		struct ev_timer sustain_timeout; // tcp&ssl (connect&accept)
 		struct ev_timer idle_timeout; // tcp&ssl (connect&accept)
-		struct ev_timer dns_timeout;    
+		struct ev_timer dns_timeout;
 		struct ev_timer handshake_timeout; // ssl connect & accept
 
 		struct ev_timer close_timeout; // ssl connect & accept
@@ -256,7 +256,7 @@ struct connection
 	}events;
 
 	/**
-	 * associate this socket with some specific data 
+	 * associate this socket with some specific data
 	 * which is not protocol related
 	 */
 	void *data;

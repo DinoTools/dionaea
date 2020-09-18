@@ -61,7 +61,7 @@ void processors_tree_dump(GNode *tree, int indent)
 			struct processor *p = it->data;
 			g_debug("%*s %s", indent*4, " ", p->name);
     	}
-#endif 
+#endif
 
 		if( it->children )
 			processors_tree_dump(g_node_first_child(it), indent+1);
@@ -111,8 +111,8 @@ void processors_init(struct connection *con)
 {
 	g_debug("%s con %p\n", __PRETTY_FUNCTION__, con);
 	con->processor_data = processor_data_new();
-	for( GNode *it = g_node_first_sibling(g_dionaea->processors->tree->children); 
-	   it != NULL; 
+	for( GNode *it = g_node_first_sibling(g_dionaea->processors->tree->children);
+	   it != NULL;
 	   it = it->next )
 	{
 		processor_data_creation(con, con->processor_data, it);
@@ -295,14 +295,14 @@ struct processor proc_streamdumper =
 {
 	.name = "streamdumper",
 	.cfg = proc_streamdumper_cfg_new,
-	.new = proc_streamdumper_ctx_new,  
+	.new = proc_streamdumper_ctx_new,
 	.free = proc_streamdumper_ctx_free,
 	.io_in = proc_streamdumper_on_io_in,
 	.io_out = proc_streamdumper_on_io_out,
 };
 
 
-struct streamdumper_ctx 
+struct streamdumper_ctx
 {
 	struct tempfile *file;
 	enum bistream_direction last_was;
@@ -335,7 +335,7 @@ void *proc_streamdumper_cfg_new(gchar *group_name)
 void *proc_streamdumper_ctx_new(void *cfg)
 {
 	struct streamdumper_ctx *ctx = g_malloc0(sizeof(struct streamdumper_ctx));
-	
+
 	return ctx;
 }
 
@@ -376,7 +376,7 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 //	g_warning("%s con %p pd %p data %p size %i dir %i", __PRETTY_FUNCTION__, con, pd, data, size, dir);
 	struct streamdumper_ctx *ctx = pd->ctx;
 
-	char *direction_helper[] = 
+	char *direction_helper[] =
 	{
 		"('in', ",
 		"('out', ",
@@ -413,7 +413,7 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 		{
 			g_warning("Could not create %s %s",  path, strerror(errno));
 		}
-		
+
 
 		if( (ctx->file = tempfile_new(path, prefix)) == NULL )
 			return;
@@ -424,13 +424,13 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 			g_warning("Could not write stream_start %s", strerror(errno));
 			return;
 		}
-		
+
 		if( fwrite(direction_helper[dir], strlen(direction_helper[dir]), 1, ctx->file->fh) != 1 )
 		{
 			g_warning("Could not write direction %s", strerror(errno));
 			return;
 		}
-		
+
 
 		if( fwrite(new_data, strlen(new_data), 1, ctx->file->fh) != 1 )
 		{
@@ -439,11 +439,11 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 		}
 		ctx->last_was = dir;
 	}
-	
+
 	if( ctx->last_was != dir )
 	{
 		const char *change_stream = "'),\n";
-		
+
 		if( fwrite(change_stream, strlen(change_stream), 1, ctx->file->fh) != 1 )
 		{
 			g_warning("Could not write change_stream %s",  strerror(errno));
@@ -491,7 +491,7 @@ void proc_streamdumper_on_io(struct connection *con, struct processor_data *pd, 
 	}
 }
 
-           
+
 
 
 void proc_streamdumper_on_io_in(struct connection *con, struct processor_data *pd, void *data, int size)
@@ -570,7 +570,7 @@ struct processor proc_filter =
 	.name = "filter",
 	.cfg = proc_filter_cfg,
 	.process = proc_filter_accept,
-	.new = proc_filter_ctx_new,  
+	.new = proc_filter_ctx_new,
 	.free = proc_filter_ctx_free,
 	.io_in = proc_filter_on_io_in,
 	.io_out = proc_filter_on_io_out,
@@ -595,11 +595,11 @@ struct proc_filter_ctx
 
 void proc_filter_dump_rules(struct proc_filter_config *cfg)
 {
-	struct 
+	struct
 	{
 		char *mode;
 		int offset;
-	} cfg_iter_help[] = 
+	} cfg_iter_help[] =
 	{
 		{ "allow", offsetof(struct proc_filter_config, allow) },
 		{ "deny", offsetof(struct proc_filter_config, deny) },
@@ -783,7 +783,7 @@ bool proc_filter_accept_match(struct connection *con, GList *list)
 bool proc_filter_accept(struct connection *con, void *config)
 {
 //	g_debug("%s con %p config %p",  __PRETTY_FUNCTION__, con, config);
-	
+
 	struct proc_filter_config *cfg = config;
 
 	bool allow = false;

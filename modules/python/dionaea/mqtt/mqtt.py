@@ -5,23 +5,23 @@
 #*
 #*
 #* Copyright (C) 2015  Tan Kean Siong
-#* 
+#*
 #* This program is free software; you can redistribute it and/or
 #* modify it under the terms of the GNU General Public License
 #* as published by the Free Software Foundation; either version 2
 #* of the License, or (at your option) any later version.
-#* 
+#*
 #* This program is distributed in the hope that it will be useful,
 #* but WITHOUT ANY WARRANTY; without even the implied warranty of
 #* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #* GNU General Public License for more details.
-#* 
+#*
 #* You should have received a copy of the GNU General Public License
 #* along with this program; if not, write to the Free Software
 #* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-#* 
-#* 
-#*             contact nepenthesdev@gmail.com  
+#*
+#*
+#*             contact nepenthesdev@gmail.com
 #*
 #*******************************************************************************/
 
@@ -51,7 +51,7 @@ class mqttd(connection):
 		l=0
 		size = 0
 		chunk = b''
-		
+
 		if len(data) > l:
 			p = None
 			x = None
@@ -66,12 +66,12 @@ class mqttd(connection):
 
 				if len(data) == 0:
 					logger.warn("Bad MQTT Packet, Length = 0")
-					
+
 			except:
 				t = traceback.format_exc()
 				logger.error(t)
 				return l
-	
+
 			if self.pendingPacketType == MQTT_CONTROLMESSAGE_TYPE_CONNECT:
 				x = MQTT_Connect(data)
 
@@ -83,7 +83,7 @@ class mqttd(connection):
 				i.username = x.Username
 				i.password = x.Password
 				i.report()
-				
+
 			elif (  ((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_PUBLISH) == 48) &
 				((self.pendingPacketType & MQTT_CONTROLMESSAGE_TYPE_QoS1) > 0) ) :
 				x = MQTT_Publish(data)
@@ -145,19 +145,19 @@ class mqttd(connection):
 			self.buf = b''
 			x.show()
 
-			r = None			
+			r = None
 			r = self.process( self.pendingPacketType, x)
 
 			if r:
 				r.show()
 				self.send(r.build())
-				
+
 		return len(data)
 
 	def process(self, PacketType, p):
 		r =''
 		rp = None
-		
+
 		if PacketType == MQTT_CONTROLMESSAGE_TYPE_CONNECT:
 			r = MQTT_ConnectACK()
 
@@ -214,9 +214,9 @@ class mqttd(connection):
 				r.HeaderFlags = MQTT_CONTROLMESSAGE_TYPE_PUBLISHCOM
 		else:
 			logger.warn("Unknown Packet Type for MQTT {}".format(PacketType))
-		
+
 		return r
-	
+
 	def handle_timeout_idle(self):
 		return False
 

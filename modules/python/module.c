@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -96,13 +96,13 @@ static struct python_runtime
 	struct termios read_termios;
 	struct termios poll_termios;
 	struct ihandler *mkshell_ihandler;
-	struct 
+	struct
 	{
 		PyObject *module;
 		PyObject *export_tb;
 	}traceback;
 
-	struct 
+	struct
 	{
 		struct protocol proto;
 		struct ihandler pyhandler;
@@ -160,7 +160,7 @@ static void python_mkshell_ihandler_cb(struct incident *i, void *ctx)
 		PyObject *r = PyEval_CallObject(func, arglist);
 		Py_DECREF(arglist);
 		g_debug("r %p", r);
-		struct head 
+		struct head
 		{
 			PyObject_HEAD
 		};
@@ -576,9 +576,9 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 		if( iface->ifa_addr == NULL )
 			continue;
 
-		if( iface->ifa_addr->sa_family != AF_INET && iface->ifa_addr->sa_family != AF_INET6 
+		if( iface->ifa_addr->sa_family != AF_INET && iface->ifa_addr->sa_family != AF_INET6
 #ifdef AF_PACKET
-			&& iface->ifa_addr->sa_family != AF_PACKET 
+			&& iface->ifa_addr->sa_family != AF_PACKET
 #endif
 			)
 			continue;
@@ -617,8 +617,8 @@ PyObject *pygetifaddrs(PyObject *self, PyObject *args)
 			pyaddr = PyUnicode_FromString(ip_string);
 			PyDict_SetItemString(pyafdetails, "addr", pyaddr);
 			Py_DECREF(pyaddr);
-		
-		} 
+
+		}
 #ifdef AF_PACKET
 		else
 		if( iface->ifa_addr->sa_family == AF_PACKET && PyList_Size(pyaflist) == 0 )
@@ -724,7 +724,7 @@ PyObject *pylcfgx_tree(struct lcfgx_tree_node *node)
 	{
 		obj = PyUnicode_FromStringAndSize(node->value.string.data, node->value.string.len);
 	}
-	return obj; 
+	return obj;
 }
 */
 
@@ -798,7 +798,7 @@ PyObject *py_config(PyObject *self, PyObject *args)
  * exception/traceback
  * therefore we proxy all calls to cython code, and ask cython to preserve
  * the exception flags, so we can take care in our proxy
- *  
+ *
  */
 
 
@@ -815,9 +815,9 @@ void traceable_ihandler_cb (struct incident *i, void *ctx)
 }
 
 /**
- * called from cython code, 
+ * called from cython code,
  * exports pointers to the cython protocol functions
- * 
+ *
  * @param p      the cython protocol
  */
 void set_protocol(struct protocol *p)
@@ -912,12 +912,12 @@ bool traceable_sustain_timeout_cb(struct connection *con, void *context)
 }
 
 /**
- * python bistreams are special 
- * we want to allow python to access the bistream dump as part 
- * of the connection object, therefore we create a dummy stream 
- * processor, which is only attached to python connections 
- *  
- *  
+ * python bistreams are special
+ * we want to allow python to access the bistream dump as part
+ * of the connection object, therefore we create a dummy stream
+ * processor, which is only attached to python connections
+ *
+ *
  */
 
 void set_processor(struct processor *p)
@@ -925,7 +925,7 @@ void set_processor(struct processor *p)
 	memcpy(&runtime.traceables.processor, p, sizeof(struct processor));
 }
 
-struct processor_data proc_python_bistream_processor_data = 
+struct processor_data proc_python_bistream_processor_data =
 {
 	.processor = &proc_python_bistream,
 };

@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -54,7 +54,7 @@ struct log_filter *log_filter_new(const char *domains, const char *levels)
 	int mask = 0;
 	if( levels != NULL )
 	{
-		static struct log_level_map log_level_mapping[] = 
+		static struct log_level_map log_level_mapping[] =
 		{
 			{"error",       G_LOG_LEVEL_ERROR},
 			{"critical",    G_LOG_LEVEL_CRITICAL},
@@ -138,14 +138,14 @@ bool log_filter_match(struct log_filter *filter, const char *log_domain, int log
 		char *x = strstr(log_domain_work, " ");
 		if( x != NULL )
 			*x = '\0';
-#else 
+#else
 		log_domain_work = (char *)log_domain;
 #endif
 
 		for( unsigned int i=0; filter->domains[i] != NULL; i++ )
 		{
-			if( g_pattern_match(filter->domains[i]->pattern, 
-								strlen(log_domain_work), 
+			if( g_pattern_match(filter->domains[i]->pattern,
+								strlen(log_domain_work),
 								log_domain_work,  NULL) == TRUE )
 				goto domain_matched;
 		}
@@ -166,7 +166,7 @@ bool log_filter_match(struct log_filter *filter, const char *log_domain, int log
 	return true;
 }
 
-void log_multiplexer(const gchar *log_domain, 
+void log_multiplexer(const gchar *log_domain,
 					 GLogLevelFlags log_level,
 					 const gchar *message,
 					 gpointer user_data)
@@ -180,7 +180,7 @@ void log_multiplexer(const gchar *log_domain,
 	g_mutex_unlock(&g_dionaea->logging->lock);
 }
 
-void logger_stdout_log(const gchar *log_domain, 
+void logger_stdout_log(const gchar *log_domain,
 					   GLogLevelFlags log_level,
 					   const gchar *message,
 					   gpointer user_data)
@@ -190,7 +190,7 @@ void logger_stdout_log(const gchar *log_domain,
 	if( user_data && log_filter_match(user_data, log_domain, log_level) == false )
 		return;
 
-	static struct log_level_map log_level_mapping[] = 
+	static struct log_level_map log_level_mapping[] =
 	{
 		/* Terminal Colors
 		 * Attribute codes:
@@ -198,9 +198,9 @@ void logger_stdout_log(const gchar *log_domain,
 		 * Text color codes:
 		 * 30=black 31=red 32=green 33=yellow 34=blue 35=magenta 36=cyan 37=white
 		 * Background color codes:
-		 * 40=black 41=red 42=green 43=yellow 44=blue 45=magenta 46=cyan 47=white 
-		 *  
-		 * 
+		 * 40=black 41=red 42=green 43=yellow 44=blue 45=magenta 46=cyan 47=white
+		 *
+		 *
 		 */
 		{"\033[31;1m",  G_LOG_LEVEL_ERROR},
 		{"\033[31;1m",  G_LOG_LEVEL_CRITICAL},
@@ -237,13 +237,13 @@ void logger_stdout_log(const gchar *log_domain,
 	if( (fileinfo = strstr(domain, " ")) != NULL )
 		*fileinfo++ = '\0';
 
-	printf("[%02d%02d%04d %02d:%02d:%02d] %s%s\033[0m %s: %s\n", 
-		   t.tm_mday, t.tm_mon + 1, t.tm_year + 1900, t.tm_hour, t.tm_min, t.tm_sec, 
+	printf("[%02d%02d%04d %02d:%02d:%02d] %s%s\033[0m %s: %s\n",
+		   t.tm_mday, t.tm_mon + 1, t.tm_year + 1900, t.tm_hour, t.tm_min, t.tm_sec,
 		   level, domain, fileinfo, message);
 	g_free(domain);
 #else
-	printf("[%02d%02d%04d %02d:%02d:%02d] %s%s\033[0m: %s\n", 
-		   t.tm_mday, t.tm_mon + 1, t.tm_year + 1900, t.tm_hour, t.tm_min, t.tm_sec, 
+	printf("[%02d%02d%04d %02d:%02d:%02d] %s%s\033[0m: %s\n",
+		   t.tm_mday, t.tm_mon + 1, t.tm_year + 1900, t.tm_hour, t.tm_min, t.tm_sec,
 		   level, log_domain, message);
 #endif
 }
@@ -271,7 +271,7 @@ bool logger_file_close(struct logger *l, void *data)
 		d->f = NULL;
 	}
 	l->fd = -1;
-	return true;    
+	return true;
 }
 
 bool logger_file_flush(struct logger *l, void *data)
@@ -292,7 +292,7 @@ bool logger_file_hup(struct logger *l, void *data)
 	return true;
 }
 
-void logger_file_log(const gchar *log_domain, 
+void logger_file_log(const gchar *log_domain,
 					 GLogLevelFlags log_level,
 					 const gchar *message,
 					 gpointer user_data)
@@ -307,7 +307,7 @@ void logger_file_log(const gchar *log_domain,
 	if( log_filter_match(data->filter, log_domain, log_level) == false )
 		return;
 
-	static struct log_level_map log_level_mapping[] = 
+	static struct log_level_map log_level_mapping[] =
 	{
 		{"error",       G_LOG_LEVEL_ERROR},
 		{"critical",    G_LOG_LEVEL_CRITICAL},
@@ -335,8 +335,8 @@ void logger_file_log(const gchar *log_domain,
 
 	struct tm t;
 	localtime_r(&stamp, &t);
-	fprintf(data->f, "[%02d%02d%04d %02d:%02d:%02d] %s-%s: %s\n", 
-			t.tm_mday, t.tm_mon + 1, t.tm_year + 1900, t.tm_hour, t.tm_min, t.tm_sec, 
+	fprintf(data->f, "[%02d%02d%04d %02d:%02d:%02d] %s-%s: %s\n",
+			t.tm_mday, t.tm_mon + 1, t.tm_year + 1900, t.tm_hour, t.tm_min, t.tm_sec,
 			log_domain, level, message);
 //	fflush(data->f);
 }

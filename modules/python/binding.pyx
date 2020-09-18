@@ -5,23 +5,23 @@
 #*
 #*
 #* Copyright (C) 2009  Paul Baecher & Markus Koetter
-#* 
+#*
 #* This program is free software; you can redistribute it and/or
 #* modify it under the terms of the GNU General Public License
 #* as published by the Free Software Foundation; either version 2
 #* of the License, or (at your option) any later version.
-#* 
+#*
 #* This program is distributed in the hope that it will be useful,
 #* but WITHOUT ANY WARRANTY; without even the implied warranty of
 #* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
 #* GNU General Public License for more details.
-#* 
+#*
 #* You should have received a copy of the GNU General Public License
 #* along with this program; if not, write to the Free Software
 #* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-#* 
-#* 
-#*             contact nepenthesdev@gmail.com  
+#*
+#*
+#*             contact nepenthesdev@gmail.com
 #*
 #*******************************************************************************/
 
@@ -45,7 +45,7 @@ cdef extern from "module.h":
 	cdef object c_pygetifaddrs "pygetifaddrs"(object self, object args)
 	cdef object c_py_config "py_config"(object self, object args)
 	cdef object c_version "pyversion"(object self, object args)
-	
+
 
 #cdef extern from "../../include/dionaea.h":
 	ctypedef struct c_dionaea "struct dionaea":
@@ -61,9 +61,9 @@ cdef class dionaea:
 		return c_pygetifaddrs(<object> None, <object> None)
 	def version(self):
 		return c_version(<object> None, <object> None)
-	
 
-g_dionaea = dionaea() 
+
+g_dionaea = dionaea()
 
 
 
@@ -164,7 +164,7 @@ cdef extern from "../../include/connection.h":
 	void c_connection_send "connection_send" (c_connection *, char *, int)
 	void c_connection_close "connection_close" 	(c_connection *)
 	void c_connection_process "connection_process" 	(c_connection *)
-	
+
 	void *c_cython_protocol_ctx_new "cython_protocol_ctx_new" (c_connection *)
 	void c_cython_protocol_ctx_free "cython_protocol_ctx_free" (void *)
 
@@ -186,7 +186,7 @@ cdef extern from "../../include/connection.h":
 
 	int c_connection_ref "connection_ref"(c_connection *)
 	int c_connection_unref "connection_unref"(c_connection *)
-	
+
 	void c_PyErr_Print "PyErr_Print"()
 
 
@@ -198,10 +198,10 @@ cdef class node_info:
 
 	def __init__(self):
 		pass
-	
+
 	property host:
 		"""the nodes address as string"""
-		def __get__(self): 
+		def __get__(self):
 			return bytes.decode(self.thisptr.ip_string, u'UTF-8')
 		def __set__(self, addr):
 			if isinstance(addr, unicode):
@@ -220,7 +220,7 @@ cdef class node_info:
 
 	property port:
 		"""the nodes port as integer in host byte order"""
-		def __get__(self): 
+		def __get__(self):
 			return c_ntohs(self.thisptr.port)
 		def __set__(self, port):
 			c_node_info_set_port(self.thisptr, port)
@@ -246,7 +246,7 @@ cdef class connection_speed:
 		"""the current speed in bytes per second"""
 		def __get__(self):
 			return c_connection_stats_speed_get(self.thisptr)
-               
+
 cdef connection_speed connection_speed_from(c_connection_stats *info):
 	cdef connection_speed instance
 	instance = NEW_C_NODE_INFO_CLASS(connection_speed)
@@ -275,7 +275,7 @@ cdef class connection_accounting:
 		"""the amount of bytes we already transferred"""
 		def __get__(self):
 			return c_connection_stats_accounting_get(self.thisptr)
-               
+
 cdef connection_accounting connection_accounting_from(c_connection_stats *info):
 	cdef connection_accounting instance
 	instance = NEW_C_NODE_INFO_CLASS(connection_accounting)
@@ -302,13 +302,13 @@ cdef class connection_stats:
 		"""access the connection_accounting informations for this connection"""
 		def __get__(self):
 			return connection_accounting_from(self.thisptr)
-			
+
 cdef connection_stats connection_stats_from(c_connection_stats *info):
 	cdef connection_stats instance
 	instance = NEW_C_NODE_INFO_CLASS(connection_stats)
 	instance.thisptr = info
 	return instance
-		
+
 cdef extern from "./module.h":
 	cdef node_info NEW_C_NODE_INFO_CLASS "PY_NEW"(object T)
 	cdef void INCREF "Py_INCREF"(object)
@@ -337,29 +337,29 @@ cdef class connection_timeouts:
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			return c_connection_idle_timeout_get(self.thisptr)
-		def __set__(self, to): 
+		def __set__(self, to):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			c_connection_idle_timeout_set(self.thisptr, to)
-			
+
 	property connecting:
 		"""timeout for connections in progress"""
 		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			return c_connection_connecting_timeout_get(self.thisptr)
-		def __set__(self, to): 
+		def __set__(self, to):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			c_connection_connecting_timeout_set(self.thisptr, to)
-			
+
 	property listen:
 		"""timeout for listeners"""
 		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			return c_connection_listen_timeout_get(self.thisptr)
-		def __set__(self, to): 
+		def __set__(self, to):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			c_connection_listen_timeout_set(self.thisptr, to)
@@ -370,7 +370,7 @@ cdef class connection_timeouts:
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			return c_connection_reconnect_timeout_get(self.thisptr)
-		def __set__(self, to): 
+		def __set__(self, to):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			c_connection_reconnect_timeout_set(self.thisptr, to)
@@ -381,7 +381,7 @@ cdef class connection_timeouts:
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			return c_connection_handshake_timeout_get(self.thisptr)
-		def __set__(self, to): 
+		def __set__(self, to):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			c_connection_handshake_timeout_set(self.thisptr, to)
@@ -392,7 +392,7 @@ cdef class connection_timeouts:
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			return c_connection_sustain_timeout_get(self.thisptr)
-		def __set__(self, to): 
+		def __set__(self, to):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			c_connection_sustain_timeout_set(self.thisptr, to)
@@ -457,11 +457,11 @@ cdef class connection:
 #		print "hello cinit"
 		self.thisptr = NULL
 		self.factory = False
-		
+
 
 	def __init__(self, con_type=None):
-		cdef c_connection_transport enum_type 
-		
+		cdef c_connection_transport enum_type
+
 		if self.thisptr == NULL:
 			if isinstance(con_type, unicode):
 				con_type_utf8 = con_type.encode(u'UTF-8')
@@ -495,11 +495,11 @@ cdef class connection:
 
 #	def __dealloc__(self):
 #		print "goodbye connection"
-	
+
 	# we want to be able to store connections in a dict
 	# therefore we need __richcmp__ and __hash__
 	# connection from the same c connection are equal
-	# if you store connections in a dict, 
+	# if you store connections in a dict,
 	# be aware to delete once the c-core free's them
 	# as you'd access invalid memory else
 	# could be addressed by making c_connection observeable
@@ -510,7 +510,7 @@ cdef class connection:
 		if not isinstance(a, connection) or not isinstance(b, connection):
 			if t == 2: # ==
 				return False
-			if t == 3: # != 
+			if t == 3: # !=
 				return True
 			return NotImplemented
 
@@ -520,10 +520,10 @@ cdef class connection:
 		if t == 1: # <=
 			return (<connection>a).thisptr <= (<connection>b).thisptr
 
-		if t == 2: # == 
+		if t == 2: # ==
 			return (<connection>a).thisptr == (<connection>b).thisptr
 
-		if t == 3: # != 
+		if t == 3: # !=
 			return (<connection>a).thisptr != (<connection>b).thisptr
 
 		if t == 4: # >
@@ -556,7 +556,7 @@ cdef class connection:
 	def handle_established(self):
 		"""callback once the connection is established"""
 		pass
-	
+
 	def handle_disconnect(self):
 		"""callback once the connection is disconnected
 		for outbound connections, returning 1 will try to restablish the connection
@@ -588,7 +588,7 @@ cdef class connection:
 	def handle_error(self, err):
 		"""callback for connection errors"""
 		pass
-	
+
 
 	def handle_io_in(self,data):
 		"""callback for incoming data"""
@@ -598,7 +598,7 @@ cdef class connection:
 	def handle_io_out(self):
 		"""callback for flushed out buffer"""
 		pass
-		
+
 	def bind(self, addr, port, iface=u''):
 		"""bind the connection to a given addr and  port, iface is optional (for ipv6 local scope)"""
 		if self.thisptr == NULL:
@@ -608,7 +608,7 @@ cdef class connection:
 			addr_utf8 = addr.encode(u'UTF-8')
 		else:
 			raise ValueError(u"addr requires text input, got %s" % type(addr))
-		
+
 		if isinstance(iface, unicode):
 			iface_utf8 = iface.encode(u'UTF-8')
 		elif not iface:
@@ -617,7 +617,7 @@ cdef class connection:
 			raise ValueError(u"iface requires text input, got %s" % type(iface))
 
 		return c_connection_bind(self.thisptr, addr_utf8, port, iface_utf8)
-	
+
 	def listen(self, size=20):
 		"""listen on the bound connection, queuesize is optional (default is 20)"""
 		if self.thisptr == NULL:
@@ -688,25 +688,25 @@ cdef class connection:
 
 	property remote:
 		"""access the node_info for the remote part of this connection"""
-		def __get__(self): 
+		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			return node_info_from(&self.thisptr.remote)
 
 	property local:
 		"""access the node_info for the local part of this connection"""
-		def __get__(self): 
+		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			return node_info_from(&self.thisptr.local)
 
 	property timeouts:
 		"""access the connection_timeouts for the connection"""
-		def __get__(self): 
+		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
 			return connection_timeouts_from(self.thisptr)
-		
+
 	property transport:
 		"""connection transport as string, (tcp|udp|tls)"""
 		def __get__(self):
@@ -732,7 +732,7 @@ cdef class connection:
 		def __get__(self):
 			if self.thisptr == NULL:
 				raise ReferenceError(u'the object requested does not exist')
-			return connection_stats_from(&self.thisptr.stats.io_in)	
+			return connection_stats_from(&self.thisptr.stats.io_in)
 
 	property _out:
 		"""access the connection_stats for the egress part of the connection"""
@@ -757,7 +757,7 @@ cdef extern from "./module.h":
 	cdef connection NEW_C_CONNECTION_CLASS "PY_NEW"(object T)
 	cdef void INIT_C_CONNECTION_CLASS "PY_INIT" (object P, object O)
 #	cdef int PRINT_REFCOUNT "REFCOUNT"(object T)
-	
+
 
 cdef connection _factory(c_connection *con):
 	cdef connection instance
@@ -802,7 +802,7 @@ cdef int handle_io_in_cb(c_connection *con, void *context, void *data, int size)
 		instance.close()
 		return len(bdata)
 	return l
-	
+
 cdef void handle_io_out_cb(c_connection *con, void *context) except *:
 #	print "io_out_cb"
 	cdef connection instance
@@ -812,7 +812,7 @@ cdef void handle_io_out_cb(c_connection *con, void *context) except *:
 	except BaseException as e:
 		logging.error("There was an error in the Python service", exc_info=True)
 		instance.close()
-	
+
 cdef c_bool handle_disconnect_cb(c_connection *con, void *context) except *:
 #	print "disconnect_cb"
 	cdef connection instance
@@ -913,9 +913,9 @@ def dlhfn(name, number, path, line, msg):
 	if isinstance(msg, unicode):
 		msg = msg.encode(u'UTF-8')
 	c_log_wrap(name, number, path, line, msg)
-	
 
-cdef extern from "glib.h": 
+
+cdef extern from "glib.h":
 	ctypedef struct c_GString "GString":
 		char *str
 		int len
@@ -1164,7 +1164,7 @@ cdef class incident:
 		cdef connection con
 		if isinstance(key, unicode):
 			key = key.encode(u'UTF-8')
-		
+
 		if isinstance(value, connection) :
 			con = <connection>value
 			c_incident_value_con_set(self.thisptr, key, con.thisptr)
@@ -1261,7 +1261,7 @@ cdef void c_python_ihandler_cb (c_incident *i, void *ctx) except *:
 		method(pi)
 	except BaseException as e:
 		logging.error("There was an error while handling the incident", exc_info=True)
-	
+
 
 cdef class ihandler:
 	cdef c_ihandler *thisptr
@@ -1323,6 +1323,5 @@ def init_traceables():
 	p.io_out = <processor_io>process_io_out
 	p.process = <processor_process>process_process
 	c_set_processor(&p)
-	
+
 ###
-	

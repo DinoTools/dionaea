@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -78,13 +78,13 @@ void dump_sockets(gpointer key, gpointer value, gpointer user_data)
 
 /**
  * callback function for connection_established
- * we do not call this function in the callback itself, 
+ * we do not call this function in the callback itself,
  * as the POP_* macros return, and the callback returns nothing
- * 
+ *
  * @param con    The connection
- * 
- * @return 0 on success 
- * @see proto_emu_accept_established 
+ *
+ * @return 0 on success
+ * @see proto_emu_accept_established
  */
 int32_t hook_connection_accept_cb(struct connection *con)
 {
@@ -122,13 +122,13 @@ int32_t hook_connection_accept_cb(struct connection *con)
 
 /**
  * callback funtion for protocol.origin
- * we stop the listening callback on the parent connection 
+ * we stop the listening callback on the parent connection
  * after we accepted a new connection
- * 
+ *
  * @param parent The listening connection
- * @param con    The accepted connection 
- * @see async_connection_accept 
- * @see protocol.origin 
+ * @param con    The accepted connection
+ * @see async_connection_accept
+ * @see protocol.origin
  */
 void proto_emu_origin(struct connection *con, struct connection *parent)
 {
@@ -138,14 +138,14 @@ void proto_emu_origin(struct connection *con, struct connection *parent)
 
 /**
  * Callback for accepting connections for protocol.established
- *  
- * If a connection is established, the blocking accept() call 
- * can continue, and we can continue running the emulation 
- *  
- * @param con    The connection 
- * @see ll_win_hook_accept  
- * @see hook_connection_accept_cb 
- * @see protocol.established 
+ *
+ * If a connection is established, the blocking accept() call
+ * can continue, and we can continue running the emulation
+ *
+ * @param con    The connection
+ * @see ll_win_hook_accept
+ * @see hook_connection_accept_cb
+ * @see protocol.established
  */
 void proto_emu_accept_established(struct connection *con)
 {
@@ -160,15 +160,15 @@ void proto_emu_accept_established(struct connection *con)
 
 /**
  * Callback for connecting connections for protocol.established
- *  
- * If a connection is established after a blocking call to 
- * connect(), we can remove all events for the connection and 
+ *
+ * If a connection is established after a blocking call to
+ * connect(), we can remove all events for the connection and
  * continue the emulation.
- *  
- * @param con    The connection 
- * @see async_connection_connect 
- * @see user_hook_connect 
- * @see protocol.established 
+ *
+ * @param con    The connection
+ * @see async_connection_connect
+ * @see user_hook_connect
+ * @see protocol.established
  */
 void proto_emu_connect_established(struct connection *con)
 {
@@ -183,17 +183,17 @@ void proto_emu_connect_established(struct connection *con)
 
 /**
  * Callback for connect errors for protocol.error
- *  
- * Only possible when we connect somewhere blocking 
- * we already halted emulation and wait for the connection to 
- * finish 
- * in this case establishing the connection failed 
- *  
+ *
+ * Only possible when we connect somewhere blocking
+ * we already halted emulation and wait for the connection to
+ * finish
+ * in this case establishing the connection failed
+ *
  * @param con    The connection
- * @param error 
- * @see user_hook_connect 
- * @see async_connection_connect 
- */ 
+ * @param error
+ * @see user_hook_connect
+ * @see async_connection_connect
+ */
 bool proto_emu_error(struct connection *con, enum connection_error error)
 {
 	g_debug("%s con %p error %i",__PRETTY_FUNCTION__, con, error);
@@ -208,17 +208,17 @@ bool proto_emu_error(struct connection *con, enum connection_error error)
 
 /**
  * Callback for protocol.io_in
- * Once we received something, 
+ * Once we received something,
  * we disable all events for the connection
  * and continue the emulation
- * 
+ *
  * @param con     The connection
  * @param context The protocol context
  * @param data    The data we received
  * @param size    Size of the data we received
- * 
- * @return 0, as the shellcode will consume the data by itself 
- * @see protocol.io_in 
+ *
+ * @return 0, as the shellcode will consume the data by itself
+ * @see protocol.io_in
  */
 uint32_t proto_emu_io_in(struct connection *con, void *context, unsigned char *data, uint32_t size)
 {
@@ -233,23 +233,23 @@ uint32_t proto_emu_io_in(struct connection *con, void *context, unsigned char *d
 
 
 /**
- * Callback for protocol.io_out 
- *  
- * This callback is called if we wanted to send something, and 
- * our send buffer got flushed. 
- *  
+ * Callback for protocol.io_out
+ *
+ * This callback is called if we wanted to send something, and
+ * our send buffer got flushed.
+ *
  * We stop all events on the connection, and continue emulation.
- *  
- * This callback is required, as it is possible other api calls 
- * to the same connection may be done, and suspend all events 
- * for the connection, so the io_out buffer is never flushed. 
- *  
- * Currently send() is only used for the 4byte cookie during 
- * session negotiation of the 'link' protocol.<p> 
- * These 4 bytes which fits into a tcp buffer without problems, 
- * and can not cause problems therefore, but ... things may 
+ *
+ * This callback is required, as it is possible other api calls
+ * to the same connection may be done, and suspend all events
+ * for the connection, so the io_out buffer is never flushed.
+ *
+ * Currently send() is only used for the 4byte cookie during
+ * session negotiation of the 'link' protocol.<p>
+ * These 4 bytes which fits into a tcp buffer without problems,
+ * and can not cause problems therefore, but ... things may
  * change.
- *  
+ *
  * @param con     The connection
  * @param context The protocol context
  */
@@ -266,15 +266,15 @@ void proto_emu_io_out(struct connection *con, void *context)
 
 /**
  * Callback for protocol.disconnect
- * This callback can only occur if the connection is waiting for io, 
+ * This callback can only occur if the connection is waiting for io,
  * like recv.
  * Therefore we can continue the emulation
- * 
+ *
  * @param con     The connection
  * @param context The protocol context
- * 
- * @return 0 
- * @see protocol.disconnect 
+ *
+ * @return 0
+ * @see protocol.disconnect
  */
 bool proto_emu_disconnect(struct connection *con, void *context)
 {
@@ -288,13 +288,13 @@ bool proto_emu_disconnect(struct connection *con, void *context)
 /**
  * Callback for protocol.idle_timeout
  * Not used yet
- * 
+ *
  * @param con
  * @param context
- * 
- * @return 
- *  
- * @see protocol.idle_timeout 
+ *
+ * @return
+ *
+ * @see protocol.idle_timeout
  */
 bool proto_emu_idle_timeout(struct connection *con, void *context)
 {
@@ -308,18 +308,18 @@ bool proto_emu_idle_timeout(struct connection *con, void *context)
 
 /**
  * Callback for protocol.sustain_timeout
- * 
+ *
  * Sustain timeouts can only happen if the connection is waiting for io,
  * like recv.
- * But we do not continue the emulation, 
+ * But we do not continue the emulation,
  * as the return value will trigger the disconnect callback,
  * which will continue the emulation.
- * 
+ *
  * @param con     The connection
  * @param context
- * 
- * @return false, we do not want to reset the sustain timeout, we want to see this connection dead 
- * @see protocol.sustain_timeout 
+ *
+ * @return false, we do not want to reset the sustain timeout, we want to see this connection dead
+ * @see protocol.sustain_timeout
  */
 bool proto_emu_sustain_timeout(struct connection *con, void *context)
 {
@@ -333,17 +333,17 @@ bool proto_emu_sustain_timeout(struct connection *con, void *context)
 
 /**
  * Callback for protocol.listen_timeout
- * 
- * This callback can only occur if the connection is waiting for action, 
+ *
+ * This callback can only occur if the connection is waiting for action,
  * like accept().
  * Therefore it is safe to continue the emulation.
- * 
+ *
  * @param con     The connection
  * @param context The procotol context
- * 
- * @return false, this connection will be closed 
- * @see async_connection_accept 
- * @see ll_win_hook_accept 
+ *
+ * @return false, this connection will be closed
+ * @see async_connection_accept
+ * @see ll_win_hook_accept
  * @see protocol.listen_timeout
  */
 bool proto_emu_listen_timeout(struct connection *con, void *context)
@@ -360,14 +360,14 @@ bool proto_emu_listen_timeout(struct connection *con, void *context)
 
 /**
  * Callback for protocol.ctx_new
- * 
- * Does not create a new ctx, 
+ *
+ * Does not create a new ctx,
  * but returns the already created ctx instead
- * 
+ *
  * @param con    The connection
- * 
- * @return con->protocol.ctx 
- * @see protocol.ctx_new 
+ *
+ * @return con->protocol.ctx
+ * @see protocol.ctx_new
  */
 void *proto_emu_ctx_new(struct connection *con)
 {
@@ -377,18 +377,18 @@ void *proto_emu_ctx_new(struct connection *con)
 
 /**
  * Callback for protocol.ctx_free
- * 
+ *
  * Does nothing
- * 
- * @param context The context we shall free 
- * @see protocol.ctx_free 
+ *
+ * @param context The context we shall free
+ * @see protocol.ctx_free
  */
 void proto_emu_ctx_free(void *context)
 {
 	g_debug("%s ctx %p ",__PRETTY_FUNCTION__, context);
 }
 
-struct protocol proto_emu = 
+struct protocol proto_emu =
 {
 	.name = "emulation",
 	.ctx_new = proto_emu_ctx_new,
@@ -413,13 +413,13 @@ struct protocol proto_emu =
  *  * proto_emu_origin removes this connection from ev_loop
  *  * the emulation is continued by
  *    proto_emu_accept_established<p>
- * 
- * on timeout 
+ *
+ * on timeout
  *  * proto_emu_listen_timeout gets called, and the emulation
  *    is discarded<p>
- * 
+ *
  * @param data   The connection we want to listen for incoming connection
- * 
+ *
  * @see ll_win_hook_accept
  * @see proto_emu_origin
  * @see proto_emu_listen_timeout
@@ -470,14 +470,14 @@ void async_connection_accept(void *data)
  * async_connection_accept puts the connection into the ev_loop
  *  * io_in to accept new connections
  *  * listen_timeout to die when idle for too long
- * 
+ *
  * once the a new connection gets accepted
  *  * proto_emu_origin	removes the connection from the ev_loop
  *  * proto_emu_accept_established continues the emulation
- * 
+ *
  * @param env
  * @param hook
- * 
+ *
  * @return 0
  * @see async_connection_accept
  * @see proto_emu_accept_established
@@ -536,11 +536,11 @@ int32_t ll_win_hook_accept(struct emu_env *env, struct emu_env_hook *hook)
  * the final call to connection_connect or connection_listen, it
  * just stores the arguments in the connection<p>
  * therefore we bind in user_hook_listen
- * 
+ *
  * @param env
  * @param hook
- * 
- * @return 
+ *
+ * @return
  * @see user_hook_listen
  */
 uint32_t user_hook_bind(struct emu_env *env, struct emu_env_hook *hook, ...)
@@ -565,7 +565,7 @@ uint32_t user_hook_bind(struct emu_env *env, struct emu_env_hook *hook, ...)
 
 	struct sockaddr_in *si = (struct sockaddr_in *)addr;
 	char addrstr[128] = "::";
-	inet_ntop(si->sin_family, &si->sin_addr, addrstr, 128); 
+	inet_ntop(si->sin_family, &si->sin_addr, addrstr, 128);
 	int port = ntohs(si->sin_port);
 	connection_bind(con, addrstr, port, NULL);
 
@@ -583,9 +583,9 @@ struct async_connect_helper
 /**
  * Helper function for async_cmd
  * sets a connection into the ev_loop by calling connection_connect
- * 
- * @param data the required async_helper information 
- * @see user_hook_connect 
+ *
+ * @param data the required async_helper information
+ * @see user_hook_connect
  */
 void async_connection_connect(void *data)
 {
@@ -596,7 +596,7 @@ void async_connection_connect(void *data)
 
 	// bind to parent address
 	connection_bind(help->con, help->parent->local.ip_string, 0, NULL);
-	
+
 
 	connection_connect(con, help->hostname, help->port, NULL);
 //	connection_connect(con, "127.0.0.1", 4444, NULL);
@@ -613,17 +613,17 @@ void async_connection_connect(void *data)
 
 /**
  * libemu callback for connect()
- *  
+ *
  * halts the emulation,
  * connects the socket,
  * puts it into the ev_loop<p>
  * waits for the callbacks
- * 
+ *
  * @param env
  * @param hook
- * 
- * @return 
- * @see async_connection_connect 
+ *
+ * @return
+ * @see async_connection_connect
  * @see proto_emu_connect_established
  * @see proto_emu_error
  */
@@ -676,15 +676,15 @@ uint32_t user_hook_connect(struct emu_env *env, struct emu_env_hook *hook, ...)
 
 /**
  * libemu hook for close()
- * 
+ *
  * closes the connection
- * Does not remove the connection from our tracking, as we will 
- * cleanup later on. 
- *  
+ * Does not remove the connection from our tracking, as we will
+ * cleanup later on.
+ *
  * @param env
  * @param hook
- * 
- * @return 
+ *
+ * @return
  */
 uint32_t user_hook_close(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
@@ -711,7 +711,7 @@ uint32_t user_hook_close(struct emu_env *env, struct emu_env_hook *hook, ...)
 		g_async_queue_unref(aq);
 		ev_async_send(g_dionaea->loop, &g_dionaea->threads->trigger);
 	}
-	
+
 	return 0;
 }
 
@@ -742,17 +742,17 @@ void async_connection_listen(void *a)
 
 /**
  * libemu hook for listen()
- *  
- * we can not use connection_listen, as this would make the 
- * connection accepting connections directly. 
- *  
- * therefore we bind&listen here too 
- *  
+ *
+ * we can not use connection_listen, as this would make the
+ * connection accepting connections directly.
+ *
+ * therefore we bind&listen here too
+ *
  * @param env
  * @param hook
- * 
- * @return 
- * @see user_hook_bind 
+ *
+ * @return
+ * @see user_hook_bind
  */
 uint32_t user_hook_listen(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
@@ -827,7 +827,7 @@ uint32_t user_hook_listen(struct emu_env *env, struct emu_env_hook *hook, ...)
 /**
  * Helper function for ll_win_hook_recv
  * adds the connection to the ev_loop
- * 
+ *
  * @param data   the connection
  */
 void async_connection_io_in(void *data)
@@ -864,7 +864,7 @@ void async_connection_io_in(void *data)
 
 
 /**
- * libemu callback for recv() 
+ * libemu callback for recv()
  * if the underlying connection has
  *  * some bytes spare, use them
  *  * no bytes spare and
@@ -877,10 +877,10 @@ void async_connection_io_in(void *data)
  * the ev_loop, we wait for io_in and sustain_timeout In case of
  * any, the callback will continue, and maybe finish the
  * emulation.
- * 
+ *
  * @param env
  * @param hook
- * 
+ *
  * @return 0
  * @see proto_emu_io_in
  * @see proto_emu_sustain_timeout
@@ -929,7 +929,7 @@ int recv(
 	int returnvalue = 0;
 	if( con->transport.tcp.io_in->len > 0 )
 	{
-		/** 
+		/**
 		 *  Case 1:
 		 *  we still have data pending, so we can provide it to the
 		 *  shellcode
@@ -946,18 +946,18 @@ int recv(
 	}
 
 	/**
-	 * Case 2: 
+	 * Case 2:
 	 * No data avalible
-	 *  
+	 *
 	 */
 	g_debug("recv connection state %s", connection_state_to_string(con->state));
 	if( con->state == connection_state_close )
 	{
 		/**
-		 * Case 2a: 
-		 * Connection was closed, notify the shellcode about it by 
-		 * returning 0 to recv() 
-		 *  
+		 * Case 2a:
+		 * Connection was closed, notify the shellcode about it by
+		 * returning 0 to recv()
+		 *
 		 */
 		emu_cpu_reg32_set(c, eax, 0);
 		emu_cpu_eip_set(c, eip_save);
@@ -965,11 +965,11 @@ int recv(
 	}
 
 	/**
-	 * Case 2b: 
-	 * Connection is still alive, 
-	 * discard emulation, 
+	 * Case 2b:
+	 * Connection is still alive,
+	 * discard emulation,
 	 * poll for data
-	 *  
+	 *
 	 */
 
 	RESTORE_ESP(env);
@@ -994,9 +994,9 @@ struct async_send_helper
 /**
  * Helper function for connection_send
  * calls connection_send within the main loop
- * 
- * @param data   async_send_helper 
- * @see user_hook_send 
+ *
+ * @param data   async_send_helper
+ * @see user_hook_send
  */
 void async_connection_send(void *data)
 {
@@ -1009,21 +1009,21 @@ void async_connection_send(void *data)
 
 /**
  * libemu hook for send()
- * 
- * send the data, enqueue in async_cmd, send from main loop, as 
- * sending may change the events of the connection 
- *  
- * Discards emulation and waits for	protocol.io_out to make sure 
+ *
+ * send the data, enqueue in async_cmd, send from main loop, as
+ * sending may change the events of the connection
+ *
+ * Discards emulation and waits for	protocol.io_out to make sure
  * the queue is flushed before proceeding, as more calls to the
- * connection may call connection_stop, preventing it from 
- * sending data. 
- *  
+ * connection may call connection_stop, preventing it from
+ * sending data.
+ *
  * @param env
  * @param hook
- * 
- * @return 
- * @see async_connection_send 
- * @see async_cmd 
+ *
+ * @return
+ * @see async_connection_send
+ * @see async_cmd
  */
 uint32_t user_hook_send(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
@@ -1065,20 +1065,20 @@ uint32_t user_hook_send(struct emu_env *env, struct emu_env_hook *hook, ...)
 
 /**
  * libemu hook for socket()
- * 
- * create a new connection with the apropriate type, 
+ *
+ * create a new connection with the apropriate type,
  * for now only tcp.
- * 
- * Set the connections free.repeat timeout to 0., 
+ *
+ * Set the connections free.repeat timeout to 0.,
  * so the connection is never! free'd, and we can rely on the pointers beeing valid all time
- * 
- * Create a 'fake' socket as protocol data, has to be uniq, therefore we use a serial. 
- * Associate the 'fake' socket with the connection in the 
- * hashtable. 
- * 
+ *
+ * Create a 'fake' socket as protocol data, has to be uniq, therefore we use a serial.
+ * Associate the 'fake' socket with the connection in the
+ * hashtable.
+ *
  * @param env
  * @param hook
- * 
+ *
  * @return the fake socket
  */
 uint32_t user_hook_socket(struct emu_env *env, struct emu_env_hook *hook, ...)
@@ -1127,14 +1127,14 @@ uint32_t user_hook_socket(struct emu_env *env, struct emu_env_hook *hook, ...)
 /**
  * libemu hook for CreateFile()<p>
  * Creates a tempfile.
- * 
+ *
  * @param env
  * @param hook
- * 
- * @return 
+ *
+ * @return
  * @see user_hook_WriteFile
- * @see user_hook_CloseHandle 
- * @see tempdownload_new 
+ * @see user_hook_CloseHandle
+ * @see tempdownload_new
  */
 uint32_t user_hook_CreateFile(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
@@ -1181,11 +1181,11 @@ HANDLE CreateFile(
 /**
  * libemu hook for WriteFile()<p>
  * Writes to the tempfile
- * 
+ *
  * @param env
  * @param hook
- * 
- * @return 
+ *
+ * @return
  * @see user_hook_CreateFile
  * @see user_hook_CloseHandle
  */
@@ -1241,20 +1241,20 @@ BOOL WriteFile(
 /**
  * libemu hook for CloseHandle<p>
  * Closes the tempfile
- * 
+ *
  * @param env
  * @param hook
- * 
- * @return 
+ *
+ * @return
  * @see user_hook_CreateFile
- * @see user_hook_WriteFile 
- * @see tempfile_close 
+ * @see user_hook_WriteFile
+ * @see tempfile_close
  */
 uint32_t user_hook_CloseHandle(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
 	g_debug("%s env %p emu_env_hook %p ...", __PRETTY_FUNCTION__, env, hook);
 	struct emu_emulate_ctx *ctx = env->userdata;
-/*	
+/*
 BOOL CloseHandle(
   HANDLE hObject
 );
@@ -1277,7 +1277,7 @@ BOOL CloseHandle(
 		 * the shellcode emulation to finish, and report done files from
 		 * the emulation_ctx_free function which is run from the
 		 * main-process
-		 * 
+		 *
 		 */
 		tempfile_close(tf);
 		return 0;
@@ -1289,11 +1289,11 @@ BOOL CloseHandle(
  * libemu hook for CreateProcess<p>
  * If a cmd redirect is requested, the 'fake' socket is used as
  * threadid for later use in WaitForSingleObject
- * 
+ *
  * @param env
  * @param hook
- * 
- * @return 
+ *
+ * @return
  * @see user_hook_WaitForSingleObject
  */
 uint32_t user_hook_CreateProcess(struct emu_env *env, struct emu_env_hook *hook, ...)
@@ -1305,7 +1305,7 @@ uint32_t user_hook_CreateProcess(struct emu_env *env, struct emu_env_hook *hook,
 	va_start(vl, hook);
 
 	/* char *pszImageName				  = */ (void)va_arg(vl, char *);
-	char *pszCmdLine                   = va_arg(vl, char *);               
+	char *pszCmdLine                   = va_arg(vl, char *);
 	/* void *psaProcess, 				  = */ (void)va_arg(vl, void *);
 	/* void *psaThread,  				  = */ (void)va_arg(vl, void *);
 	/* bool fInheritHandles,              = */ (void)va_arg(vl, char *);
@@ -1313,7 +1313,7 @@ uint32_t user_hook_CreateProcess(struct emu_env *env, struct emu_env_hook *hook,
 	/* void *pvEnvironment             	  = */ (void)va_arg(vl, void *);
 	/* char *pszCurDir                 	  = */ (void)va_arg(vl, char *);
 	STARTUPINFO *psiStartInfo          = va_arg(vl, STARTUPINFO *);
-	PROCESS_INFORMATION *pProcInfo     = va_arg(vl, PROCESS_INFORMATION *); 
+	PROCESS_INFORMATION *pProcInfo     = va_arg(vl, PROCESS_INFORMATION *);
 	va_end(vl);
 
 	if( pszCmdLine != NULL && strncasecmp(pszCmdLine, "cmd", 3) == 0 )
@@ -1348,11 +1348,11 @@ uint32_t user_hook_CreateProcess(struct emu_env *env, struct emu_env_hook *hook,
 /**
  * libemu hook for WaitForSingleObject<p>
  * halts the emulation if the processid is known
- * 
+ *
  * @param env
  * @param hook
- * 
- * @return 
+ *
+ * @return
  * @see user_hook_CreateProcess
  */
 uint32_t user_hook_WaitForSingleObject(struct emu_env *env, struct emu_env_hook *hook, ...)
@@ -1387,15 +1387,15 @@ uint32_t user_hook_WaitForSingleObject(struct emu_env *env, struct emu_env_hook 
 
 /**
  * libemu hook for WSASocket()
- * 
+ *
  * calls user_hook_socket
- * 
+ *
  * @param env
  * @param hook
- *  
- * @see user_hook_socket 
- *  
- * @return 
+ *
+ * @see user_hook_socket
+ *
+ * @return
  */
 uint32_t user_hook_WSASocket(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
@@ -1422,14 +1422,14 @@ uint32_t user_hook_WSASocket(struct emu_env *env, struct emu_env_hook *hook, ...
 /**
  * libemu hook for _lcreat()<p>
  * Creates a tempfile.
- * 
+ *
  * @param env
  * @param hook
- * 
- * @return 
+ *
+ * @return
  * @see user_hook__lwrite
  * @see user_hook__lclose
- * @see tempdownload_new 
+ * @see tempdownload_new
  */
 uint32_t user_hook__lcreat(struct emu_env *env, struct emu_env_hook *hook, ...)
 {
@@ -1459,11 +1459,11 @@ uint32_t user_hook__lcreat(struct emu_env *env, struct emu_env_hook *hook, ...)
 /**
  * libemu hook for _lwrite()<p>
  * Writes to the tempfile
- * 
+ *
  * @param env
  * @param hook
- * 
- * @return 
+ *
+ * @return
  * @see user_hook__lcreat
  * @see user_hook__lclose
  */
@@ -1508,14 +1508,14 @@ uint32_t user_hook__lwrite(struct emu_env *env, struct emu_env_hook *hook, ...)
 /**
  * libemu hook for _lclose<p>
  * Closes the tempfile
- * 
+ *
  * @param env
  * @param hook
- * 
- * @return 
+ *
+ * @return
  * @see user_hook__lcreat
  * @see user_hook__lwrite
- * @see tempfile_close 
+ * @see tempfile_close
  */
 uint32_t user_hook__lclose(struct emu_env *env, struct emu_env_hook *hook, ...)
 {

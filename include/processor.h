@@ -16,10 +16,10 @@ struct processors
 };
 
 
-enum processor_state 
+enum processor_state
 {
-	processor_done, 
-	processor_continue 
+	processor_done,
+	processor_continue
 };
 
 struct processor_data;
@@ -37,8 +37,8 @@ struct processor
 {
 	const char *name;
 	processor_cfg_new cfg;
-	processor_process process;  
-	processor_ctx_new new;  
+	processor_process process;
+	processor_ctx_new new;
 	processor_ctx_free free;
 	processor_io io_in;
 	processor_io io_out;

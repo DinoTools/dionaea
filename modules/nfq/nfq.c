@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -72,7 +72,7 @@ static int nfqueue_cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nf
 // iptables -t mangle -A PREROUTING -i eth0 -p tcp -m socket -j ACCEPT
 // iptables -t mangle -A PREROUTING -i eth0 -p tcp --syn -m state --state NEW -j NFQUEUE --queue-num 30
 
-static struct 
+static struct
 {
 	struct nfq_handle *h;
 	struct nfq_q_handle *qh;
@@ -116,7 +116,7 @@ bool nfq_prepare(void)
 			g_warning("error during nfq_unbind_pf() family %i", family);
 			return false;
 		}
-	
+
 		if( nfq_bind_pf(nfq_runtime.h, family) < 0 )
 		{
 			g_warning("Error during nfq_bind_pf() family %i", family);
@@ -172,7 +172,7 @@ static void nfq_backend(int fd)
 	g_debug("%s fd %i", __PRETTY_FUNCTION__, fd);
 	int id;
 	int nf;
-	if( recv(fd, &id, sizeof(int), 0) > 0  && 
+	if( recv(fd, &id, sizeof(int), 0) > 0  &&
 		recv(fd, &nf, sizeof(int), 0) > 0)
 	{
 		g_debug("allowing packet %i", id);
@@ -253,7 +253,7 @@ static int nfqueue_cb(struct nfq_q_handle *qh, struct nfgenmsg *nfmsg, struct nf
 
 			connection_free_cb(g_dionaea->loop, &con->events.free, 0, true);
 		}
-	
+
 	}else
 	{ /* IPv6 needs some love */
 		g_warning("FIXME: nfq is not implemented for IPv6.");

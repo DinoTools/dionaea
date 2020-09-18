@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -45,7 +45,7 @@
 
 #define D_LOG_DOMAIN "curl"
 
-static struct 
+static struct
 {
 	struct ev_timer timer_event;
 	CURLM *multi;
@@ -56,7 +56,7 @@ static struct
 	char *download_dir;
 } curl_runtime;
 
-enum session_type 
+enum session_type
 {
 	session_type_download,
 	session_type_upload
@@ -86,9 +86,9 @@ struct session
 			char 					*username;
 			char 					*password;
 
-			
+
 			char 					*callback;
-			char					*userdata; 
+			char					*userdata;
 			struct tempfile 		*file;
 		}upload;
 	}action;
@@ -221,7 +221,7 @@ static void check_run_count(void)
 
 						if( session->action.upload.callback == NULL )
 							break;
-						
+
 						tempfile_close(session->action.upload.file);
 						// if we have a callback, call the callback
 						struct incident *i = incident_new(session->action.upload.callback);
@@ -423,7 +423,7 @@ void session_upload_new(struct incident *i)
 	struct session *session = NULL;
 	char *url = NULL;
 
-			
+
 	if (incident_value_string_get(i, "_url", &gstemp) == false )
 	{
 		g_debug("dionaea.upload.request got no _url in incident!");
@@ -539,9 +539,9 @@ static void session_download_new(struct incident *i, char *url)
 	struct session *session = session_new();
 	session->type = session_type_download;
 
-	
+
 	session->url = g_strdup(url);
-		
+
 
 	struct connection *con = NULL;
 	if( incident_value_con_get(i, "con", &con) )
@@ -564,7 +564,7 @@ static void session_download_new(struct incident *i, char *url)
 	curl_easy_setopt(session->easy, CURLOPT_PROGRESSDATA, session);
 	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_TIME, 3L);
 	curl_easy_setopt(session->easy, CURLOPT_LOW_SPEED_LIMIT, 10L);
-	curl_easy_setopt(session->easy, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");  
+	curl_easy_setopt(session->easy, CURLOPT_USERAGENT, "Mozilla/4.0 (compatible; MSIE 6.0; Windows NT 5.0)");
 
 	session->action.download.file = tempfile_new(curl_runtime.download_dir, "http-");
 	session->action.download.ctxcon = con;

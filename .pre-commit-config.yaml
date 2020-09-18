@@ -16,5 +16,5 @@ repos:
       - id: end-of-file-fixer
       # Replaces or checks mixed line ending
       - id: mixed-line-ending
-      # # This hook trims trailing whitespace
-      # - id: trailing-whitespace
+      # This hook trims trailing whitespace
+      - id: trailing-whitespace

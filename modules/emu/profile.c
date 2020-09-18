@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -140,7 +140,7 @@ static int json_escape_bytea(GString *target, unsigned char *str, unsigned int s
 	} while( pos < size );
 	if( pos - start_offset > 0 )
 		g_string_append_len(target, (char *)str + start_offset, pos - start_offset);
-	
+
 	return 0;
 }
 
@@ -158,8 +158,8 @@ void json_profile_argument_debug(struct emu_profile_argument *argument, int inde
 
 
 		struct emu_profile_argument *argumentit;
-		for( argumentit = emu_profile_arguments_first(argument->value.tstruct.arguments); 
-		   !emu_profile_arguments_istail(argumentit); 
+		for( argumentit = emu_profile_arguments_first(argument->value.tstruct.arguments);
+		   !emu_profile_arguments_istail(argumentit);
 		   argumentit = emu_profile_arguments_next(argumentit) )
 		{
 			if( argumentit != emu_profile_arguments_first(argument->value.tstruct.arguments) )
@@ -180,8 +180,8 @@ void json_profile_argument_debug(struct emu_profile_argument *argument, int inde
 		else
 			g_string_append_printf(str, "[\n");
 //			printf("[\n");
-		for( argumentit = emu_profile_arguments_first(argument->value.tstruct.arguments); 
-		   !emu_profile_arguments_istail(argumentit); 
+		for( argumentit = emu_profile_arguments_first(argument->value.tstruct.arguments);
+		   !emu_profile_arguments_istail(argumentit);
 		   argumentit = emu_profile_arguments_next(argumentit) )
 		{
 			if( argumentit != emu_profile_arguments_first(argument->value.tstruct.arguments) )
@@ -315,8 +315,8 @@ void json_profile_function_debug(struct emu_profile_function *function, int inde
 	g_string_append_printf(str, "%*s\"args\" : [ \n", indent*4, " ");
 //	printf("%*s\"args\" : [ \n", indent*4, " ");
 	struct emu_profile_argument *argument;
-	for( argument = emu_profile_arguments_first(function->arguments); 
-	   !emu_profile_arguments_istail(argument); 
+	for( argument = emu_profile_arguments_first(function->arguments);
+	   !emu_profile_arguments_istail(argument);
 	   argument = emu_profile_arguments_next(argument) )
 	{
 		if( argument != emu_profile_arguments_first(function->arguments) )

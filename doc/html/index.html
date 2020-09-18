@@ -156,14 +156,14 @@ SELECT
         COUNT(*),
         dcerpcrequests.dcerpcrequest_uuid,
         dcerpcservice_name,
-        dcerpcrequest_opnum 
+        dcerpcrequest_opnum
 FROM
-        dcerpcrequests 
-        JOIN dcerpcservices ON(dcerpcrequests.dcerpcrequest_uuid == dcerpcservices.dcerpcservice_uuid) 
-        LEFT OUTER JOIN dcerpcserviceops ON(dcerpcserviceops.dcerpcserviceop_opnum = dcerpcrequest_opnum AND dcerpcservices.dcerpcservice = dcerpcserviceops.dcerpcservice )  
+        dcerpcrequests
+        JOIN dcerpcservices ON(dcerpcrequests.dcerpcrequest_uuid == dcerpcservices.dcerpcservice_uuid)
+        LEFT OUTER JOIN dcerpcserviceops ON(dcerpcserviceops.dcerpcserviceop_opnum = dcerpcrequest_opnum AND dcerpcservices.dcerpcservice = dcerpcserviceops.dcerpcservice )
 WHERE
         dcerpcserviceop_name IS NULL
-GROUP BY        
+GROUP BY
         dcerpcrequests.dcerpcrequest_uuid,dcerpcservice_name,dcerpcrequest_opnum
 ORDER BY
         COUNT(*) DESC;
@@ -223,9 +223,9 @@ for more information.<br />
 
     <h4>MySQL</h4>
     <div class="level4">
-      This module implements the MySQL wire stream protocol - backed up by 
-      sqlite as database. Please refer to <a 
-      href="http://carnivore.it/2011/05/15/extending_dionaea">2011-05-15 
+      This module implements the MySQL wire stream protocol - backed up by
+      sqlite as database. Please refer to <a
+      href="http://carnivore.it/2011/05/15/extending_dionaea">2011-05-15
       Extending Dionaea</a> for more information.
     </div>
 
@@ -547,7 +547,7 @@ a=rtpmap:97 H263-N800/90000
 connection 610 smbd tcp accept 10.69.53.52:445 &lt;- 10.65.34.231:2010
  dcerpc request: uuid '3919286a-b10c-11d0-9ba8-00c04fd92ef5' opnum 9
  p0f: genre:'Windows' detail:'XP SP1+, 2000 SP3' uptime:'-1' tos:'' dist:'11' nat:'0' fw:'0'
- profile: [{'return': '0x7c802367', 'args': ['', 'CreateProcessA'], 'call': 'GetProcAddress'}, 
+ profile: [{'return': '0x7c802367', 'args': ['', 'CreateProcessA'], 'call': 'GetProcAddress'},
             ...., {'return': '0', 'args': ['0'], 'call': 'ExitThread'}]
  service: bindshell://1957
  connection 611 remoteshell tcp listen 10.69.53.52:1957
@@ -753,8 +753,8 @@ make
 make install
 </pre>
 
-    <h4 id="install_cython">Cython (all)</h4> We have to use cython >= 0.15 as 
-    previous releases do not support Python3.2 __hash__'s Py_Hash_type for x86. 
+    <h4 id="install_cython">Cython (all)</h4> We have to use cython >= 0.15 as
+    previous releases do not support Python3.2 __hash__'s Py_Hash_type for x86.
     <pre>wget http://cython.org/release/Cython-0.15.tar.gz
 tar xfz Cython-0.15.tar.gz
 cd Cython-0.15
@@ -811,7 +811,7 @@ cd ..
 cvs -d anonymous@cvs.openssl.org:/openssl-cvs co openssl
 cd openssl
 ./Configure shared --prefix=/opt/dionaea linux-x86_64
-make SHARED_LDFLAGS=-Wl,-rpath,/opt/dionaea/lib   
+make SHARED_LDFLAGS=-Wl,-rpath,/opt/dionaea/lib
 make install
 </pre>
 
@@ -837,9 +837,9 @@ autoreconf -vi
       --with-nl-lib=/opt/dionaea/lib/ \
       --with-curl-config=/usr/bin/ \
       --with-pcap-include=/opt/dionaea/include \
-      --with-pcap-lib=/opt/dionaea/lib/ <!-- \ 
+      --with-pcap-lib=/opt/dionaea/lib/ <!-- \
      - -with-ssl-include=/opt/dionaea/include \
-      - -with-ssl-lib=/opt/dionaea/lib/ \ 
+      - -with-ssl-lib=/opt/dionaea/lib/ \
       - -with-glib=/opt/dionaea -->
 make
 make install
@@ -881,14 +881,14 @@ date, you can use
   -D, --daemonize                 run as daemon
   -g, --group=GROUP               switch to GROUP after startup (use with -u)
                                     Default value/behaviour: keep current group
-  -G, --garbage=[collect|debug]   garbage collect,  usefull to debug memory leaks, 
+  -G, --garbage=[collect|debug]   garbage collect,  usefull to debug memory leaks,
                                   does NOT work with valgrind
   -h, --help                      display help
   -H, --large-help                display help with default values
-  -l, --log-levels=WHAT           which levels to log, valid values 
+  -l, --log-levels=WHAT           which levels to log, valid values
                                   all, debug, info, message, warning, critical, error
                                   combine using ',', exclude with - prefix
-  -L, --log-domains=WHAT          which domains use * and ? wildcards, combine using ',', 
+  -L, --log-domains=WHAT          which domains use * and ? wildcards, combine using ',',
                                   exclude using -
   -u, --user=USER                 switch to USER after startup
                                     Default value/behaviour: keep current user
@@ -1335,7 +1335,7 @@ already.<br />
    offer: http://208.53.183.158/m.exe
    download: 3eab379ddac7d80d3e38399fd273ddd4 http://208.53.183.158/m.exe
      virustotal 2010-10-07 04:59:07 5/38 (13%) http://www.virustotal.com/file-scan/report.html?id=265e39edcba9d9004451601544e625f2d3d04f837d0aaf1f8464cb2c819c1939-1286420347
-       names 'High Risk Fraudulent Security Program' 'Suspicious file' 'Trojan.DownLoader1.27100' 'Worm.Win32.Rimecud' 'Worm:Win32/Rimecud.B' 
+       names 'High Risk Fraudulent Security Program' 'Suspicious file' 'Trojan.DownLoader1.27100' 'Worm.Win32.Rimecud' 'Worm:Win32/Rimecud.B'
 </pre><br />
       To create such report for your own honeypots activities for
       the last 24 hours run:
@@ -1555,7 +1555,7 @@ from dionaea.core import incident
 i = incident("dionaea.download.offer")
 i.set("url", "http://www.honeynet.org")
 i.report()
-      
+
 </pre>
       </div>
 
@@ -1731,7 +1731,7 @@ env_w32_hook_GetProcAddress (env=0x629a30, hook=&lt;value optimized out&gt;) at 
         <pre>
 #0  0xb70b0b57 in emu_queue_enqueue (eq=0xb3da0918, data=0x4724ab) at emu_queue.c:63
         eqi = (struct emu_queue_item *) 0x0
-#1  0xb70b15d1 in emu_shellcode_run_and_track (e=0xb4109cd0, data=0xb411c698 "", datasize=&lt;value optimized out&gt;, eipoffset=&lt;value optimized out&gt;, 
+#1  0xb70b15d1 in emu_shellcode_run_and_track (e=0xb4109cd0, data=0xb411c698 "", datasize=&lt;value optimized out&gt;, eipoffset=&lt;value optimized out&gt;,
     steps=256, etas=0xb410cd60, known_positions=0xb3d7a810, stats_tested_positions_list=0xb3da3bf0, brute_force=true) at emu_shellcode.c:408
         current_pos_ti_diff = (struct emu_tracking_info *) 0x88c3c88
         current_pos_ht = &lt;value optimized out&gt;
@@ -1830,18 +1830,18 @@ bt full
         first_instr = (unsigned char *) 0x812f918 "t"
         names = (PyObject *) 0xb723f50c
         consts = (PyObject *) 0xb71c9f7c
-        opcode_targets = {0xb765d202, 0xb765f60a, 0xb766133a, 0xb76612db, 0xb7661285, 0xb7661222, 0xb765d202, 0xb765d202, 0xb765d202, 0xb76611dd, 
-  0xb766114b, 0xb76610b9, 0xb766100f, 0xb765d202, 0xb765d202, 0xb7660f7d, 0xb765d202, 0xb765d202, 0xb765d202, 0xb7660eb7, 0xb7660dfb, 0xb765d202, 
-  0xb7660d30, 0xb7660c65, 0xb7660ba9, 0xb7660aed, 0xb7660a31, 0xb7660975, 0xb76608b9, 0xb76607fd, 0xb765d202 &lt;repeats 24 times&gt;, 0xb7660736, 0xb766066b, 
-  0xb76605af, 0xb76604f3, 0xb765d202, 0xb7660437, 0xb766035d, 0xb76602ad, 0xb7661aba, 0xb76619fe, 0xb7661942, 0xb7661886, 0xb7661b76, 0xb76614a8, 
-  0xb7661413, 0xb766138e, 0xb766171f, 0xb76616e6, 0xb765d202, 0xb765d202, 0xb765d202, 0xb766162a, 0xb766156e, 0xb76601f1, 0xb7660135, 0xb76617ca, 
-  0xb7660120, 0xb765fff7, 0xb765d202, 0xb765fd72, 0xb765fc6e, 0xb765d202, 0xb765fc1d, 0xb765fe17, 0xb765fd90, 0xb765fec0, 0xb765fb41, 0xb765fadc, 
-  0xb765f9ed, 0xb765f94d, 0xb765f8be, 0xb765f7e3, 0xb765f779, 0xb765f6bd, 0xb765f66c, 0xb765ef1d, 0xb765eea2, 0xb765ede1, 0xb765ed1a, 0xb765ec35, 
-  0xb765ebc3, 0xb765eb30, 0xb765ea69, 0xb765f1c7, 0xb765f027, 0xb765f560, 0xb765efc1, 0xb76630e3, 0xb766310c, 0xb765e64c, 0xb765e592, 0xb765f49a, 
-  0xb765f3de, 0xb765d202, 0xb765d202, 0xb765f39e, 0xb7663135, 0xb766315f, 0xb765e9cb, 0xb765d202, 0xb765e948, 0xb765e8bb, 0xb765e817, 0xb765d202, 
-  0xb765d202, 0xb765d202, 0xb765d2ae, 0xb765e3e0, 0xb7663275, 0xb765e1a2, 0xb766324e, 0xb765e0ba, 0xb765e01e, 0xb765df74, 0xb765d202, 0xb765d202, 
+        opcode_targets = {0xb765d202, 0xb765f60a, 0xb766133a, 0xb76612db, 0xb7661285, 0xb7661222, 0xb765d202, 0xb765d202, 0xb765d202, 0xb76611dd,
+  0xb766114b, 0xb76610b9, 0xb766100f, 0xb765d202, 0xb765d202, 0xb7660f7d, 0xb765d202, 0xb765d202, 0xb765d202, 0xb7660eb7, 0xb7660dfb, 0xb765d202,
+  0xb7660d30, 0xb7660c65, 0xb7660ba9, 0xb7660aed, 0xb7660a31, 0xb7660975, 0xb76608b9, 0xb76607fd, 0xb765d202 &lt;repeats 24 times&gt;, 0xb7660736, 0xb766066b,
+  0xb76605af, 0xb76604f3, 0xb765d202, 0xb7660437, 0xb766035d, 0xb76602ad, 0xb7661aba, 0xb76619fe, 0xb7661942, 0xb7661886, 0xb7661b76, 0xb76614a8,
+  0xb7661413, 0xb766138e, 0xb766171f, 0xb76616e6, 0xb765d202, 0xb765d202, 0xb765d202, 0xb766162a, 0xb766156e, 0xb76601f1, 0xb7660135, 0xb76617ca,
+  0xb7660120, 0xb765fff7, 0xb765d202, 0xb765fd72, 0xb765fc6e, 0xb765d202, 0xb765fc1d, 0xb765fe17, 0xb765fd90, 0xb765fec0, 0xb765fb41, 0xb765fadc,
+  0xb765f9ed, 0xb765f94d, 0xb765f8be, 0xb765f7e3, 0xb765f779, 0xb765f6bd, 0xb765f66c, 0xb765ef1d, 0xb765eea2, 0xb765ede1, 0xb765ed1a, 0xb765ec35,
+  0xb765ebc3, 0xb765eb30, 0xb765ea69, 0xb765f1c7, 0xb765f027, 0xb765f560, 0xb765efc1, 0xb76630e3, 0xb766310c, 0xb765e64c, 0xb765e592, 0xb765f49a,
+  0xb765f3de, 0xb765d202, 0xb765d202, 0xb765f39e, 0xb7663135, 0xb766315f, 0xb765e9cb, 0xb765d202, 0xb765e948, 0xb765e8bb, 0xb765e817, 0xb765d202,
+  0xb765d202, 0xb765d202, 0xb765d2ae, 0xb765e3e0, 0xb7663275, 0xb765e1a2, 0xb766324e, 0xb765e0ba, 0xb765e01e, 0xb765df74, 0xb765d202, 0xb765d202,
   0xb7663189, 0xb76631d3, 0xb7663220, 0xb765e149, 0xb765d202, 0xb765de09, 0xb765dec0, 0xb765f2c0, 0xb765d202 &lt;repeats 108 times&gt;}
-#13 0xb7664ac0 in PyEval_EvalCodeEx (co=0xb717b800, globals=0xb7160b54, locals=0x0, args=0x84babb8, argcount=9, kws=0x0, kwcount=0, defs=0xb719e978, 
+#13 0xb7664ac0 in PyEval_EvalCodeEx (co=0xb717b800, globals=0xb7160b54, locals=0x0, args=0x84babb8, argcount=9, kws=0x0, kwcount=0, defs=0xb719e978,
     defcount=1, kwdefs=0x0, closure=0x0) at Python/ceval.c:3198
         f = (PyFrameObject *) 0x825998c
         retval = &lt;value optimized out&gt;

@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -145,7 +145,7 @@ bool options_parse(struct options* options, int argc, char* argv[])
 			break;
 
 		case 'D':
-			options->daemon = true; 
+			options->daemon = true;
 			break;
 
 		case 'g':
@@ -224,7 +224,7 @@ bool options_validate(struct options *opt)
 	if( opt->user.name != NULL )
 	{
 
-		struct passwd *pass;                                
+		struct passwd *pass;
 
 		if( isdigit(*opt->user.name) != 0 )
 		{
@@ -322,9 +322,9 @@ void show_version(struct version *ver)
 #elif defined(__arm__)
 	#if defined(__ARMEB__)
 		#define MY_ARCH "ARMeb"
-	#else 
+	#else
 		#define MY_ARCH "ARM"
-	#endif 
+	#endif
 #elif defined(i386) || defined(__i386__) || defined(__i386) || defined(_M_IX86) || defined(_X86_) || defined(__THW_INTEL)
 	#define MY_ARCH "x86"
 #elif defined(__x86_64__) || defined(__amd64__)
@@ -334,9 +334,9 @@ void show_version(struct version *ver)
 #elif defined(__mips__) || defined(__mips) || defined(__MIPS__)
 	#if defined(__mips32__) || defined(__mips32)
 		#define MY_ARCH "MIPS32"
-	#else 
+	#else
 		#define MY_ARCH "MIPS"
-	#endif 
+	#endif
 #elif defined(__hppa__) || defined(__hppa)
 	#define MY_ARCH "PA RISC"
 #elif defined(__powerpc) || defined(__powerpc__) || defined(__POWERPC__) || defined(__ppc__) || defined(_M_PPC) || defined(__PPC) || defined(__PPC__)
@@ -375,7 +375,7 @@ void show_version(struct version *ver)
 	printf("Compiled on %s/%s at %s %s with %s %s \n",
 		   ver->compiler.os,
 		   ver->compiler.arch,
-		   ver->compiler.date, 
+		   ver->compiler.date,
 		   ver->compiler.time,
 		   ver->compiler.name,
 		   ver->compiler.version);
@@ -384,7 +384,7 @@ void show_version(struct version *ver)
 	{
 		printf("Started on %s running %s/%s release %s\n",
 			   ver->info.node,
-			   ver->info.sys, 
+			   ver->info.sys,
 			   ver->info.machine,
 			   ver->info.release
 			  );
@@ -400,7 +400,7 @@ void show_version(struct version *ver)
 
 void show_help(bool defaults)
 {
-	typedef struct 
+	typedef struct
 	{
 		const char *info;
 		const char *verbose;
@@ -555,14 +555,14 @@ int main (int argc, char *argv[])
 		return EXIT_FAILURE;
 	}
 
-	// logging 
+	// logging
 	d->logging = g_malloc0(sizeof(struct logging));
 
 
 	// no daemon logs to stdout by default
 	if( opt->daemon == false )
 	{
-		struct logger *l = logger_new(logger_stdout_log, NULL, NULL, NULL, NULL, 
+		struct logger *l = logger_new(logger_stdout_log, NULL, NULL, NULL, NULL,
 opt->stdOUT.filter);
 		logger_stdout_open(l, NULL);
 		d->logging->loggers = g_list_append(d->logging->loggers, l);
@@ -605,7 +605,7 @@ opt->stdOUT.filter);
 	{
 		int b = ev_backend(d->loop);
 
-		const char *backend[] = 
+		const char *backend[] =
 		{
 			"select",
 			"poll",
@@ -630,7 +630,7 @@ opt->stdOUT.filter);
 	init_dh_params();
 
 
-	// udns 
+	// udns
 	d->dns = g_malloc0(sizeof(struct dns));
 	dns_init(NULL , 0);
 	d->dns->dns = dns_new(NULL);
@@ -741,7 +741,7 @@ opt->stdOUT.filter);
 				   x & S_IROTH ? "r" : "-",\
 				   x & S_IWOTH ? "w" : "-",\
 				   x & S_IXOTH ? "x" : "-")
-	   
+
 	print_umask("old umask", oldu);
 	print_umask("new umask", newu);
 #undef print_umask
@@ -761,7 +761,7 @@ opt->stdOUT.filter);
 	g_info("Using %i as limit for fds", g_dionaea->limits.fds);
 
 	// drop
-	if( opt->group.name != NULL && 
+	if( opt->group.name != NULL &&
 		setresgid(opt->group.id, opt->group.id, opt->group.id) < 0 )
 	{
 		g_error("Could not change group");
@@ -803,17 +803,17 @@ opt->stdOUT.filter);
 	ev_signal_start(d->loop, &d->signals->sighup);
 	signal(SIGSEGV, sigsegv_backtrace_cb);
 
-	/* 
-	 * SIGPIPE 
-	 *  
+	/*
+	 * SIGPIPE
+	 *
 	 * Preventing the signal is hard.
 	 * From what I know, sigpipe can be raised issued by write/send
-	 * read/write, maybe even accept?, I do not know. 
-	 *  
-	 * Linux provides send(MSG_NOSIGNAL), 
-	 * Freebsd requires a setsockopt(SO_NOSIGPIPE) 
-	 * some documentation list MSG_NOSIGNAL as flag for recv too 
-	 * Therefore, to make things easy, we simply ignore SIGPIPE 
+	 * read/write, maybe even accept?, I do not know.
+	 *
+	 * Linux provides send(MSG_NOSIGNAL),
+	 * Freebsd requires a setsockopt(SO_NOSIGPIPE)
+	 * some documentation list MSG_NOSIGNAL as flag for recv too
+	 * Therefore, to make things easy, we simply ignore SIGPIPE
 	 * Given the alternatives I consider ignoring the best option
 	 */
 	signal(SIGPIPE, SIG_IGN);
@@ -840,7 +840,7 @@ opt->stdOUT.filter);
 	ev_periodic_start(d->loop, &d->threads->surveillance);
 
 
-	// loop	
+	// loop
 	g_debug("looping");
 	ev_run(d->loop,0);
 

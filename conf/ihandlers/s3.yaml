@@ -6,10 +6,10 @@
     secret_access_key: "6WVE5LkETVL91nTKgGnm/YxJ+EXAMPLE"
     bucket_name: "my-dionaea-bucket"
     region_name: "eu-west-1"
-    # Alternate endpoint URL 
+    # Alternate endpoint URL
     # Normally Boto 3 will automatically construct appropriate URL
     # By default, we can leave this value to blank
-    endpoint_url: 
+    endpoint_url:
     # Whether or not to validate the S3 certificate
     verify: True
     # Specify the destination folder in S3 for the upload

@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -56,7 +56,7 @@
 
 
 /**
- * I hate compatibility defines, but defining ETHERTYPE_IPV6 
+ * I hate compatibility defines, but defining ETHERTYPE_IPV6
  * seems optional, and we really need it.
  */
 #ifndef ETHERTYPE_IPV6
@@ -64,7 +64,7 @@
 #endif
 
 
-struct pcap_device 
+struct pcap_device
 {
 	pcap_t *pcap;
 	char *name;
@@ -74,7 +74,7 @@ struct pcap_device
 
 #define PDEVOFF_IO_IN(x)  					((struct pcap_device *)(((void *)x) - offsetof (struct pcap_device, io_in)))
 
-static struct 
+static struct
 {
 	GHashTable *devices;
 } pcap_runtime;
@@ -86,10 +86,10 @@ static void pcap_io_in_cb(struct ev_loop *loop, struct ev_io *w, int revents)
 	struct pcap_pkthdr *pkt_header;
 	const u_char *pkt_data;
 	int retval;
-	
+
 	struct pcap_device *dev = PDEVOFF_IO_IN(w);
 	retval = pcap_next_ex(dev->pcap,&pkt_header, &pkt_data);
-	
+
 	if ( retval != 1 )
 		return;
 

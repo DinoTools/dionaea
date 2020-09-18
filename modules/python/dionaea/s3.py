@@ -38,7 +38,7 @@ class s3handler(ihandler):
 
     def handle_incident_dionaea_download_complete_unique(self, icd):
 
-        # Dionaea will upload unique samples to Amazon S3 bucket with Boto3 (AWS SDK Python)        
+        # Dionaea will upload unique samples to Amazon S3 bucket with Boto3 (AWS SDK Python)
         # Create an S3 client
         try:
             self.s3 = boto3.client(

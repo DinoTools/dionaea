@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -100,8 +100,8 @@ void *PORTOFFSET(const void *x)
 
 int ipv6_addr_any(struct in6_addr const * const a)
 {
-	return((a->s6_addr32[0] | a->s6_addr32[1] | 
-			a->s6_addr32[2] | a->s6_addr32[3] ) == 0); 
+	return((a->s6_addr32[0] | a->s6_addr32[1] |
+			a->s6_addr32[2] | a->s6_addr32[3] ) == 0);
 }
 
 int ipv6_addr_loopback(struct in6_addr const * const a)
@@ -263,7 +263,7 @@ struct tempfile *tempfile_new(char *path, char *prefix)
 
 struct tempfile *tempdownload_new(char *prefix)
 {
-	/* ToDo: replace 
+	/* ToDo: replace
   struct lcfgx_tree_node *node;
 	if( lcfgx_get_string(g_dionaea->config.root, &node, "downloads.dir") != LCFGX_PATH_FOUND_TYPE_OK )
 	{

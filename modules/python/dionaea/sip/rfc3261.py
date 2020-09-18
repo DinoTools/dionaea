@@ -282,10 +282,10 @@ class Header(object):
         name = name.lower()
         if name in self._exception:
             return self._exception[name]
-        
+
         names = name.split(b"-")
         names = [n.capitalize() for n in names]
-        
+
         return b"-".join(names)
 
     def get_raw(self):
@@ -563,7 +563,7 @@ class Message(object):
             pos = re.search(b"\r?\n\r?\n", data)
         else:
             pos = re.search("\r?\n\r?\n", data)
-            
+
         if pos is None:
             return (0, {})
 
@@ -592,7 +592,7 @@ class Message(object):
             response_code, protocol, status_message = int(h2), h1, h3
         except:
             method, uri, protocol = h1, rfc2396.Address.froms(h2), h3
-        
+
         # ToDo: check protocol
         headers = Headers()
         for h in headers_data:

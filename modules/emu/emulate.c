@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -193,7 +193,7 @@ void emulate_ctx_free(void *data)
 	while( g_hash_table_iter_next (&iter, &key, &value) )
 	{
 		struct connection *con = value;
-		g_debug("connection key %p %i value %p type %s state %s socket %i\n", key, *(int *)key, value, 
+		g_debug("connection key %p %i value %p type %s state %s socket %i\n", key, *(int *)key, value,
 				connection_type_to_string(con->type),
 				connection_state_to_string(con->state),
 				con->socket);
@@ -297,7 +297,7 @@ void emulate_thread(gpointer data, gpointer user_data)
 					{
 						hook->hook.lin->fnhook(env, hook);
 						if( ctx->state == waiting )
-							/* stop 
+							/* stop
 							 * as mentioned previously
 							 */
 							goto unlock_and_return;
