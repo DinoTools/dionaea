@@ -52,3 +52,11 @@ repos:
       - id: rst-inline-touching-normal
       # Forbid files which have a UTF-8 Unicode replacement character
       - id: text-unicode-replacement-char
+
+  # ToDo: Fix code
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v0.782
+  #   hooks:
+  #     - id: mypy
+  #       args: [--no-strict-optional, --ignore-missing-imports, --allow-untyped-global]
+  #       exclude: ^(doc/)
