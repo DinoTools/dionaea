@@ -2,6 +2,12 @@ repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v2.3.0
     hooks:
+      # Forbid files which have a UTF-8 byte-order marker
+      - id: check-byte-order-marker
+      # Require literal syntax when initializing empty or zero Python builtin types
+      - id: check-builtin-literals
+      # Check for files that would conflict in case-insensitive filesystems
+      - id: check-case-conflict
       # Ensures that (non-binary) executables have a shebang
       - id: check-executables-have-shebangs
       # Check for files that contain merge conflict strings
