@@ -53,6 +53,14 @@ repos:
       # Forbid files which have a UTF-8 Unicode replacement character
       - id: text-unicode-replacement-char
 
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 3.8.2
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-bugbear
+          - flake8-implicit-str-concat
+
   # ToDo: Fix code
   # - repo: https://github.com/pre-commit/mirrors-mypy
   #   rev: v0.782
