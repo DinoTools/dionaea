@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -78,22 +78,22 @@ void module_free(struct module *m)
 {
 	g_debug("%s module %p name %s", __PRETTY_FUNCTION__, m, m->name);
 
-	/** 
-	 *  
-	 * Modules may leak memory, we want to be able to use Valgrind 
-	 * to debug, therefore we do not run dlclose for the module 
-	 * 
-	 * Citing 'The Valgrind FAQ': 
-	 *  
+	/**
+	 *
+	 * Modules may leak memory, we want to be able to use Valgrind
+	 * to debug, therefore we do not run dlclose for the module
+	 *
+	 * Citing 'The Valgrind FAQ':
+	 *
 	 * 4.2. The stack traces given by Memcheck (or another tool)
 	 * aren't helpful. How can I improve them?
-	 *  
-	 * ... 
-	 * Also, for leak reports involving shared objects, if the 
-	 * shared object is unloaded before the program terminates, 
-	 * Valgrind will discard the debug information and the error 
-	 * message will be full of ??? entries. The workaround here is 
-	 * to avoid calling dlclose on these shared objects. 
+	 *
+	 * ...
+	 * Also, for leak reports involving shared objects, if the
+	 * shared object is unloaded before the program terminates,
+	 * Valgrind will discard the debug information and the error
+	 * message will be full of ??? entries. The workaround here is
+	 * to avoid calling dlclose on these shared objects.
 	 * ...
 	 */
 #ifndef DEBUG
@@ -146,7 +146,7 @@ void modules_load(gchar **names)
 	{
 		struct module *m = lit->data;
 
-		g_message("loaded module %s name %s module %p gmodule %p config %p start %p new %p free %p", 
+		g_message("loaded module %s name %s module %p gmodule %p config %p start %p new %p free %p",
 				  g_module_name(m->module),
 				  m->name,
 				  m,

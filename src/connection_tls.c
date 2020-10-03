@@ -285,9 +285,9 @@ void connection_tls_io_out_cb(EV_P_ struct ev_io *w, int revents)
 			{
 				processors_io_out(con, con->transport.tls.io_out_again->str, size);
 			}
-			
+
 			connection_throttle_update(con, &con->stats.io_out.throttle, size);
-			
+
 			g_string_erase(con->transport.tls.io_out_again, 0 , con->transport.tls.io_out_again_size);
 			con->transport.tls.io_out_again_size = 0;
 
@@ -586,7 +586,7 @@ void connection_tls_io_in_cb(EV_P_ struct ev_io *w, int revents)
                 {
                     processors_io_in(con, con->transport.tls.io_in->str, con->transport.tls.io_in->len);
                 }
-		
+
 		con->protocol.io_in(con, con->protocol.ctx, (unsigned char *)con->transport.tls.io_in->str, con->transport.tls.io_in->len);
 		con->transport.tls.io_in->len = 0;
 
@@ -881,4 +881,3 @@ void connection_tls_error(struct connection *con)
 	if( con->transport.tls.ssl_error != 0 )
 		g_debug("SSL ERROR %s\t%s", con->transport.tls.ssl_error_string, SSL_state_string_long(con->transport.tls.ssl));
 }
-

@@ -533,7 +533,7 @@ class logsqlhandler(ihandler):
 #            )""")
 #
 #        for idx in ["headerkey","headervalue"]:
-#            self.cursor.execute("""CREATE INDEX IF NOT EXISTS httpheaders_%s_idx 
+#            self.cursor.execute("""CREATE INDEX IF NOT EXISTS httpheaders_%s_idx
 #            ON httpheaders (httpheader_%s)""" % (idx, idx))
 
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS
@@ -549,7 +549,7 @@ class logsqlhandler(ihandler):
             )""")
 
         for idx in ["clientid","willtopic","willmessage", "username", "password"]:
-            self.cursor.execute("""CREATE INDEX IF NOT EXISTS mqtt_fingerprints_%s_idx 
+            self.cursor.execute("""CREATE INDEX IF NOT EXISTS mqtt_fingerprints_%s_idx
             ON mqtt_fingerprints (mqtt_fingerprint_%s)""" % (idx, idx))
 
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS
@@ -562,7 +562,7 @@ class logsqlhandler(ihandler):
             )""")
 
         for idx in ["topic", "message"]:
-            self.cursor.execute("""CREATE INDEX IF NOT EXISTS mqtt_publish_commands_%s_idx 
+            self.cursor.execute("""CREATE INDEX IF NOT EXISTS mqtt_publish_commands_%s_idx
             ON mqtt_publish_commands (mqtt_publish_command_%s)""" % (idx, idx))
 
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS
@@ -575,7 +575,7 @@ class logsqlhandler(ihandler):
             )""")
 
         for idx in ["messageid", "topic"]:
-            self.cursor.execute("""CREATE INDEX IF NOT EXISTS mqtt_subscribe_commands_%s_idx 
+            self.cursor.execute("""CREATE INDEX IF NOT EXISTS mqtt_subscribe_commands_%s_idx
             ON mqtt_subscribe_commands (mqtt_subscribe_command_%s)""" % (idx, idx))
 
         # connection index for all

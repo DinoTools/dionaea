@@ -20,4 +20,3 @@ LHOST=10.0.0.1 RHOST=10.0.0.2 ./run-bt4.sh run
 BackTrack 5:
 
 LHOST=10.0.0.1 RHOST=10.0.0.2 ./run-bt5.sh run
-

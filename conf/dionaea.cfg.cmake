@@ -76,4 +76,3 @@ ihandler_configs=@DIONAEA_CONFDIR@/ihandlers-enabled/*.yaml
 
 [module.pcap]
 any.interface=any
-

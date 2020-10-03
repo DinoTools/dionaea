@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -69,12 +69,12 @@ void trigger_cb(struct ev_loop *loop, struct ev_async *w, int revents)
 
 void surveillance_cb(struct ev_loop *loop, struct ev_periodic *w, int revents)
 {
-/*	g_debug("%s %i %i", 
+/*	g_debug("%s %i %i",
 			__PRETTY_FUNCTION__,
 			g_thread_pool_unprocessed(g_dionaea->threads->pool),
 			g_thread_pool_get_max_threads(g_dionaea->threads->pool));
 */
-	while( g_thread_pool_unprocessed(g_dionaea->threads->pool) > 
+	while( g_thread_pool_unprocessed(g_dionaea->threads->pool) >
 		   g_thread_pool_get_max_threads(g_dionaea->threads->pool) )
 	{
 		g_critical("Threadpool is crowded %i/%i, suspending *all* activity",

@@ -25,9 +25,9 @@ typedef bool (*module_free_function)(void);
  *  * prepare
  *  * new
  * after prepare privs are dropped
- * 
+ *
  * hup is meant to support SIGHUP in modules
- * 
+ *
  * shutdown order
  *  * free
  */
@@ -63,19 +63,19 @@ void modules_load(gchar **);
 void modules_unload(void);
 
 /**
- * module bootstrapping order 
- *  
- * config: ... 
- *  
- * prepare: initialize shared memory for pchild (if required) 
- *  
- * ->fork pchild 
- *  
- * new: bind & do things 
- *  
- * drop privs & chroot 
- *  
- * start: run in your chroot, open db handles 
+ * module bootstrapping order
+ *
+ * config: ...
+ *
+ * prepare: initialize shared memory for pchild (if required)
+ *
+ * ->fork pchild
+ *
+ * new: bind & do things
+ *
+ * drop privs & chroot
+ *
+ * start: run in your chroot, open db handles
  */
 
 

@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -74,7 +74,7 @@ struct nlattr;
         uint32_t                ce_mask;
 #endif
 
-static struct 
+static struct
 {
 	struct nl_sock  *sock;
 	struct nl_cache *link_cache;
@@ -132,7 +132,7 @@ static void nl_obj_input(struct nl_object *obj, void *arg)
 
 	struct _obj *o = (struct _obj *)obj;
 
-	if( o->ce_msgtype == RTM_NEWLINK  || o->ce_msgtype == RTM_DELLINK ) 
+	if( o->ce_msgtype == RTM_NEWLINK  || o->ce_msgtype == RTM_DELLINK )
 	{
 		struct rtnl_link *link = (struct rtnl_link *)obj;
 		struct nl_addr *a = rtnl_link_get_addr(link);
@@ -141,7 +141,7 @@ static void nl_obj_input(struct nl_object *obj, void *arg)
 		int ifindex = rtnl_link_get_ifindex(link);
 		bool active = rtnl_link_get_flags(link) & IFF_UP;
 		char *iface = rtnl_link_get_name(link);
-		if( o->ce_msgtype == RTM_NEWLINK ) 
+		if( o->ce_msgtype == RTM_NEWLINK )
 		{
 			struct link_addr *nla = g_hash_table_lookup(nl_runtime.link_addr_cache, &ifindex);
 			if( nla == NULL )
@@ -179,7 +179,7 @@ static void nl_obj_input(struct nl_object *obj, void *arg)
 				}
 			}
 		}else
-		if( o->ce_msgtype == RTM_DELLINK ) 
+		if( o->ce_msgtype == RTM_DELLINK )
 		{
 			g_critical("LINK DEL %s %i", iface, ifindex);
 			struct link_addr *nla = g_hash_table_lookup(nl_runtime.link_addr_cache, &ifindex);
@@ -187,14 +187,14 @@ static void nl_obj_input(struct nl_object *obj, void *arg)
 			link_addr_free(nla);
 		}
 	}else
-	if( o->ce_msgtype == RTM_NEWADDR  || o->ce_msgtype == RTM_DELADDR ) 
+	if( o->ce_msgtype == RTM_NEWADDR  || o->ce_msgtype == RTM_DELADDR )
 	{
 		char buf[128];
 		struct rtnl_addr *addr = (struct rtnl_addr *)obj;
 		struct nl_addr *a = rtnl_addr_get_local(addr);
 		int ifindex = rtnl_addr_get_ifindex(addr);
 		nl_addr2str(a, buf, 128);
-		char *slash; 
+		char *slash;
 		if( (slash = strstr(buf, "/")) != NULL)
 			*slash = '\0';
 		char *saddr = NULL;
@@ -203,7 +203,7 @@ static void nl_obj_input(struct nl_object *obj, void *arg)
 		if( !nla )
 			return;
 
-		if( o->ce_msgtype == RTM_NEWADDR ) 
+		if( o->ce_msgtype == RTM_NEWADDR )
 		{
 			if( g_hash_table_lookup(nla->addrs, buf) == NULL )
 			{
@@ -300,19 +300,19 @@ static void nl_ihandler_cb(struct incident *i, void *ctx)
 	{
 		g_debug("local addr %s remote addr %s", local, remote);
 		struct rtnl_addr *addr = rtnl_addr_alloc();
-	
+
 		struct nl_addr *a;
 
 		if ( ( err = nl_addr_parse(local, AF_UNSPEC, &a)) != 0 )
 			g_critical("could not parse addr %s (%s)", local, nl_geterror(err));
 		rtnl_addr_set_local(addr, a);
 		nl_addr_put(a);
-	
+
 		struct rtnl_addr *res = NULL;
 		nl_cache_foreach_filter(nl_runtime.addr_cache, OBJ_CAST(addr), cache_lookup_cb, &res);
-	
+
 		g_critical("LOCAL RTNL_ADDR %p", res);
-	
+
 	/*	struct nl_dump_params params = {
 			.dp_type = NL_DUMP_LINE,
 			.dp_fd = stdout,
@@ -321,7 +321,7 @@ static void nl_ihandler_cb(struct incident *i, void *ctx)
 	*/
 		ifindex = rtnl_addr_get_ifindex(res);
 	}
-	
+
 
 	struct rtnl_neigh *res = NULL;
 	{
@@ -365,7 +365,7 @@ static bool nl_new(struct dionaea *d)
 	nl_socket_modify_cb(sock, NL_CB_VALID, NL_CB_CUSTOM, nl_event_input, NULL);
 	nl_join_groups(sock, RTMGRP_LINK);
 	int err;
-	if ( (err = nl_connect(sock, NETLINK_ROUTE)) < 0) 
+	if ( (err = nl_connect(sock, NETLINK_ROUTE)) < 0)
 	{
 		g_error("Could not connect netlink (%s)", nl_geterror(err));
 	}
@@ -467,4 +467,3 @@ struct module_api *module_init(struct dionaea *d)
 
     return &nl_api;
 }
-

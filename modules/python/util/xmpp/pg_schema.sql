@@ -76,7 +76,7 @@ SET default_tablespace = '';
 SET default_with_oids = false;
 
 --
--- Name: connections; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: connections; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE connections (
@@ -115,7 +115,7 @@ ALTER SEQUENCE connections_connection_seq OWNED BY connections.connection;
 
 
 --
--- Name: dcerpcbinds; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcbinds; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE dcerpcbinds (
@@ -146,7 +146,7 @@ ALTER SEQUENCE dcerpcbinds_dcerpcbind_seq OWNED BY dcerpcbinds.dcerpcbind;
 
 
 --
--- Name: dcerpcrequests; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcrequests; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE dcerpcrequests (
@@ -177,7 +177,7 @@ ALTER SEQUENCE dcerpcrequests_dcerpcrequest_seq OWNED BY dcerpcrequests.dcerpcre
 
 
 --
--- Name: dcerpcserviceops; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcserviceops; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE dcerpcserviceops (
@@ -209,7 +209,7 @@ ALTER SEQUENCE dcerpcserviceops_dcerpcserviceop_seq OWNED BY dcerpcserviceops.dc
 
 
 --
--- Name: dcerpcservices; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcservices; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE dcerpcservices (
@@ -239,7 +239,7 @@ ALTER SEQUENCE dcerpcservices_dcerpcservice_seq OWNED BY dcerpcservices.dcerpcse
 
 
 --
--- Name: downloads; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: downloads; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE downloads (
@@ -270,7 +270,7 @@ ALTER SEQUENCE downloads_download_seq OWNED BY downloads.download;
 
 
 --
--- Name: emu_profiles; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: emu_profiles; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE emu_profiles (
@@ -300,7 +300,7 @@ ALTER SEQUENCE emu_profiles_emu_profile_seq OWNED BY emu_profiles.emu_profile;
 
 
 --
--- Name: emu_services; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: emu_services; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE emu_services (
@@ -330,7 +330,7 @@ ALTER SEQUENCE emu_services_emu_service_seq OWNED BY emu_services.emu_service;
 
 
 --
--- Name: heatpoints; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: heatpoints; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE heatpoints (
@@ -361,7 +361,7 @@ ALTER SEQUENCE heatpoints_heatpoint_seq OWNED BY heatpoints.heatpoint;
 
 
 --
--- Name: logins; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: logins; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE logins (
@@ -392,7 +392,7 @@ ALTER SEQUENCE logins_login_seq OWNED BY logins.login;
 
 
 --
--- Name: mssql_commands; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: mssql_commands; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE mssql_commands (
@@ -423,7 +423,7 @@ ALTER SEQUENCE mssql_commands_mssql_command_seq OWNED BY mssql_commands.mssql_co
 
 
 --
--- Name: mssql_fingerprints; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: mssql_fingerprints; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE mssql_fingerprints (
@@ -455,7 +455,7 @@ ALTER SEQUENCE mssql_fingerprints_mssql_fingerprint_seq OWNED BY mssql_fingerpri
 
 
 --
--- Name: mysql_command_args; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: mysql_command_args; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE mysql_command_args (
@@ -486,7 +486,7 @@ ALTER SEQUENCE mysql_command_args_mysql_command_arg_seq OWNED BY mysql_command_a
 
 
 --
--- Name: mysql_commands; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: mysql_commands; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE mysql_commands (
@@ -516,7 +516,7 @@ ALTER SEQUENCE mysql_commands_mysql_command_seq OWNED BY mysql_commands.mysql_co
 
 
 --
--- Name: offers; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: offers; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE offers (
@@ -546,7 +546,7 @@ ALTER SEQUENCE offers_offer_seq OWNED BY offers.offer;
 
 
 --
--- Name: p0fs; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: p0fs; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE p0fs (
@@ -583,7 +583,7 @@ ALTER SEQUENCE p0fs_p0f_seq OWNED BY p0fs.p0f;
 
 
 --
--- Name: sip_addrs; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: sip_addrs; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE sip_addrs (
@@ -620,7 +620,7 @@ ALTER SEQUENCE sip_addrs_sip_addr_seq OWNED BY sip_addrs.sip_addr;
 
 
 --
--- Name: sip_commands; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: sip_commands; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE sip_commands (
@@ -653,7 +653,7 @@ ALTER SEQUENCE sip_commands_sip_command_seq OWNED BY sip_commands.sip_command;
 
 
 --
--- Name: sip_sdp_connectiondatas; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: sip_sdp_connectiondatas; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE sip_sdp_connectiondatas (
@@ -687,7 +687,7 @@ ALTER SEQUENCE sip_sdp_connectiondatas_sip_sdp_connectiondata_seq OWNED BY sip_s
 
 
 --
--- Name: sip_sdp_medias; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: sip_sdp_medias; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE sip_sdp_medias (
@@ -720,7 +720,7 @@ ALTER SEQUENCE sip_sdp_medias_sip_sdp_media_seq OWNED BY sip_sdp_medias.sip_sdp_
 
 
 --
--- Name: sip_sdp_origins; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: sip_sdp_origins; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE sip_sdp_origins (
@@ -755,7 +755,7 @@ ALTER SEQUENCE sip_sdp_origins_sip_sdp_origin_seq OWNED BY sip_sdp_origins.sip_s
 
 
 --
--- Name: sip_vias; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: sip_vias; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE sip_vias (
@@ -787,7 +787,7 @@ ALTER SEQUENCE sip_vias_sip_via_seq OWNED BY sip_vias.sip_via;
 
 
 --
--- Name: virustotals; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: virustotals; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE virustotals (
@@ -818,7 +818,7 @@ ALTER SEQUENCE virustotals_virustotal_seq OWNED BY virustotals.virustotal;
 
 
 --
--- Name: virustotalscans; Type: TABLE; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: virustotalscans; Type: TABLE; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE TABLE virustotalscans (
@@ -863,7 +863,7 @@ CREATE SEQUENCE asns_asn_seq
 
 
 --
--- Name: auths; Type: TABLE; Schema: kippo; Owner: -; Tablespace: 
+-- Name: auths; Type: TABLE; Schema: kippo; Owner: -; Tablespace:
 --
 
 CREATE TABLE auths (
@@ -896,7 +896,7 @@ ALTER SEQUENCE auths_auth_seq OWNED BY auths.auth;
 
 
 --
--- Name: clients; Type: TABLE; Schema: kippo; Owner: -; Tablespace: 
+-- Name: clients; Type: TABLE; Schema: kippo; Owner: -; Tablespace:
 --
 
 CREATE TABLE clients (
@@ -926,7 +926,7 @@ ALTER SEQUENCE clients_client_seq OWNED BY clients.client;
 
 
 --
--- Name: inputs; Type: TABLE; Schema: kippo; Owner: -; Tablespace: 
+-- Name: inputs; Type: TABLE; Schema: kippo; Owner: -; Tablespace:
 --
 
 CREATE TABLE inputs (
@@ -959,7 +959,7 @@ ALTER SEQUENCE inputs_input_seq OWNED BY inputs.input;
 
 
 --
--- Name: sessions; Type: TABLE; Schema: kippo; Owner: -; Tablespace: 
+-- Name: sessions; Type: TABLE; Schema: kippo; Owner: -; Tablespace:
 --
 
 CREATE TABLE sessions (
@@ -993,7 +993,7 @@ ALTER SEQUENCE sessions_session_seq OWNED BY sessions.session;
 SET search_path = malware, pg_catalog;
 
 --
--- Name: anubi; Type: TABLE; Schema: malware; Owner: -; Tablespace: 
+-- Name: anubi; Type: TABLE; Schema: malware; Owner: -; Tablespace:
 --
 
 CREATE TABLE anubi (
@@ -1028,7 +1028,7 @@ ALTER SEQUENCE anubi_anubis_seq OWNED BY anubi.anubis;
 
 
 --
--- Name: cwsandboxs; Type: TABLE; Schema: malware; Owner: -; Tablespace: 
+-- Name: cwsandboxs; Type: TABLE; Schema: malware; Owner: -; Tablespace:
 --
 
 CREATE TABLE cwsandboxs (
@@ -1062,7 +1062,7 @@ ALTER SEQUENCE cwsandboxs_cwsandbox_seq OWNED BY cwsandboxs.cwsandbox;
 
 
 --
--- Name: malwares; Type: TABLE; Schema: malware; Owner: -; Tablespace: 
+-- Name: malwares; Type: TABLE; Schema: malware; Owner: -; Tablespace:
 --
 
 CREATE TABLE malwares (
@@ -1094,7 +1094,7 @@ ALTER SEQUENCE malwares_malware_seq OWNED BY malwares.malware;
 
 
 --
--- Name: normans; Type: TABLE; Schema: malware; Owner: -; Tablespace: 
+-- Name: normans; Type: TABLE; Schema: malware; Owner: -; Tablespace:
 --
 
 CREATE TABLE normans (
@@ -1125,7 +1125,7 @@ ALTER SEQUENCE normans_norman_seq OWNED BY normans.norman;
 
 
 --
--- Name: virustotals; Type: TABLE; Schema: malware; Owner: -; Tablespace: 
+-- Name: virustotals; Type: TABLE; Schema: malware; Owner: -; Tablespace:
 --
 
 CREATE TABLE virustotals (
@@ -1157,7 +1157,7 @@ ALTER SEQUENCE virustotals_virustotal_seq OWNED BY virustotals.virustotal;
 
 
 --
--- Name: virustotalscans; Type: TABLE; Schema: malware; Owner: -; Tablespace: 
+-- Name: virustotalscans; Type: TABLE; Schema: malware; Owner: -; Tablespace:
 --
 
 CREATE TABLE virustotalscans (
@@ -1434,7 +1434,7 @@ ALTER TABLE virustotalscans ALTER COLUMN virustotalscan SET DEFAULT nextval('vir
 SET search_path = dionaea, pg_catalog;
 
 --
--- Name: connections_connection_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: connections_connection_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY connections
@@ -1442,7 +1442,7 @@ ALTER TABLE ONLY connections
 
 
 --
--- Name: dcerpcbinds_dcerpcbind_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcbinds_dcerpcbind_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY dcerpcbinds
@@ -1450,7 +1450,7 @@ ALTER TABLE ONLY dcerpcbinds
 
 
 --
--- Name: dcerpcrequests_dcerpcrequest_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcrequests_dcerpcrequest_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY dcerpcrequests
@@ -1458,7 +1458,7 @@ ALTER TABLE ONLY dcerpcrequests
 
 
 --
--- Name: dcerpcserviceops_dcerpcserviceop_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcserviceops_dcerpcserviceop_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY dcerpcserviceops
@@ -1466,7 +1466,7 @@ ALTER TABLE ONLY dcerpcserviceops
 
 
 --
--- Name: dcerpcservices_dcerpcservice_uuid_uniq; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcservices_dcerpcservice_uuid_uniq; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY dcerpcservices
@@ -1474,7 +1474,7 @@ ALTER TABLE ONLY dcerpcservices
 
 
 --
--- Name: dcerpcservices_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcservices_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY dcerpcservices
@@ -1482,7 +1482,7 @@ ALTER TABLE ONLY dcerpcservices
 
 
 --
--- Name: downloads_download_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: downloads_download_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY downloads
@@ -1490,7 +1490,7 @@ ALTER TABLE ONLY downloads
 
 
 --
--- Name: emu_profiles_emu_profile_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: emu_profiles_emu_profile_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY emu_profiles
@@ -1498,7 +1498,7 @@ ALTER TABLE ONLY emu_profiles
 
 
 --
--- Name: emu_services_emu_service_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: emu_services_emu_service_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY emu_services
@@ -1506,7 +1506,7 @@ ALTER TABLE ONLY emu_services
 
 
 --
--- Name: heatpoints_heatpoint_pk; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: heatpoints_heatpoint_pk; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY heatpoints
@@ -1514,7 +1514,7 @@ ALTER TABLE ONLY heatpoints
 
 
 --
--- Name: logins_login_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: logins_login_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY logins
@@ -1522,7 +1522,7 @@ ALTER TABLE ONLY logins
 
 
 --
--- Name: mssql_commands_mssql_command_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: mssql_commands_mssql_command_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY mssql_commands
@@ -1530,7 +1530,7 @@ ALTER TABLE ONLY mssql_commands
 
 
 --
--- Name: mssql_fingerprints_mssql_fingerprint_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: mssql_fingerprints_mssql_fingerprint_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY mssql_fingerprints
@@ -1538,7 +1538,7 @@ ALTER TABLE ONLY mssql_fingerprints
 
 
 --
--- Name: mysql_command_args_mysql_command_arg_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: mysql_command_args_mysql_command_arg_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY mysql_command_args
@@ -1546,7 +1546,7 @@ ALTER TABLE ONLY mysql_command_args
 
 
 --
--- Name: mysql_commands_mysql_command_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: mysql_commands_mysql_command_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY mysql_commands
@@ -1554,7 +1554,7 @@ ALTER TABLE ONLY mysql_commands
 
 
 --
--- Name: offers_offer_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: offers_offer_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY offers
@@ -1562,7 +1562,7 @@ ALTER TABLE ONLY offers
 
 
 --
--- Name: p0fs_p0f_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: p0fs_p0f_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY p0fs
@@ -1570,7 +1570,7 @@ ALTER TABLE ONLY p0fs
 
 
 --
--- Name: sip_addrs_sip_addr_fkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: sip_addrs_sip_addr_fkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY sip_addrs
@@ -1578,7 +1578,7 @@ ALTER TABLE ONLY sip_addrs
 
 
 --
--- Name: sip_commands_sip_command_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: sip_commands_sip_command_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY sip_commands
@@ -1586,7 +1586,7 @@ ALTER TABLE ONLY sip_commands
 
 
 --
--- Name: sip_sdp_connectiondatas_sip_sdp_connectiondata_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: sip_sdp_connectiondatas_sip_sdp_connectiondata_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY sip_sdp_connectiondatas
@@ -1594,7 +1594,7 @@ ALTER TABLE ONLY sip_sdp_connectiondatas
 
 
 --
--- Name: sip_sdp_medias_sip_sdp_media_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: sip_sdp_medias_sip_sdp_media_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY sip_sdp_medias
@@ -1602,7 +1602,7 @@ ALTER TABLE ONLY sip_sdp_medias
 
 
 --
--- Name: sip_sdp_origins_sip_sdp_origin_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: sip_sdp_origins_sip_sdp_origin_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY sip_sdp_origins
@@ -1610,7 +1610,7 @@ ALTER TABLE ONLY sip_sdp_origins
 
 
 --
--- Name: sip_vias_sip_via_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: sip_vias_sip_via_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY sip_vias
@@ -1618,7 +1618,7 @@ ALTER TABLE ONLY sip_vias
 
 
 --
--- Name: virustotals_virustotal_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: virustotals_virustotal_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY virustotals
@@ -1629,11 +1629,11 @@ ALTER TABLE ONLY virustotals
 -- Name: FIXME; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
-ALTER TABLE virustotals 
+ALTER TABLE virustotals
 	ADD UNIQUE(virustotal_md5_hash, virustotal_timestamp);
 
 --
--- Name: virustotalscans_virustotalscan_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: virustotalscans_virustotalscan_pkey; Type: CONSTRAINT; Schema: dionaea; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY virustotalscans
@@ -1643,7 +1643,7 @@ ALTER TABLE ONLY virustotalscans
 SET search_path = kippo, pg_catalog;
 
 --
--- Name: auths_pkey; Type: CONSTRAINT; Schema: kippo; Owner: -; Tablespace: 
+-- Name: auths_pkey; Type: CONSTRAINT; Schema: kippo; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY auths
@@ -1651,7 +1651,7 @@ ALTER TABLE ONLY auths
 
 
 --
--- Name: clients_pkey; Type: CONSTRAINT; Schema: kippo; Owner: -; Tablespace: 
+-- Name: clients_pkey; Type: CONSTRAINT; Schema: kippo; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY clients
@@ -1659,7 +1659,7 @@ ALTER TABLE ONLY clients
 
 
 --
--- Name: inputs_pkey; Type: CONSTRAINT; Schema: kippo; Owner: -; Tablespace: 
+-- Name: inputs_pkey; Type: CONSTRAINT; Schema: kippo; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY inputs
@@ -1667,7 +1667,7 @@ ALTER TABLE ONLY inputs
 
 
 --
--- Name: sessions_pkey; Type: CONSTRAINT; Schema: kippo; Owner: -; Tablespace: 
+-- Name: sessions_pkey; Type: CONSTRAINT; Schema: kippo; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY sessions
@@ -1677,7 +1677,7 @@ ALTER TABLE ONLY sessions
 SET search_path = malware, pg_catalog;
 
 --
--- Name: anubi_pkey; Type: CONSTRAINT; Schema: malware; Owner: -; Tablespace: 
+-- Name: anubi_pkey; Type: CONSTRAINT; Schema: malware; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY anubi
@@ -1685,7 +1685,7 @@ ALTER TABLE ONLY anubi
 
 
 --
--- Name: cwsandbox_pkey; Type: CONSTRAINT; Schema: malware; Owner: -; Tablespace: 
+-- Name: cwsandbox_pkey; Type: CONSTRAINT; Schema: malware; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY cwsandboxs
@@ -1693,7 +1693,7 @@ ALTER TABLE ONLY cwsandboxs
 
 
 --
--- Name: malware_pkey; Type: CONSTRAINT; Schema: malware; Owner: -; Tablespace: 
+-- Name: malware_pkey; Type: CONSTRAINT; Schema: malware; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY malwares
@@ -1701,7 +1701,7 @@ ALTER TABLE ONLY malwares
 
 
 --
--- Name: norman_pkey; Type: CONSTRAINT; Schema: malware; Owner: -; Tablespace: 
+-- Name: norman_pkey; Type: CONSTRAINT; Schema: malware; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY normans
@@ -1709,7 +1709,7 @@ ALTER TABLE ONLY normans
 
 
 --
--- Name: virustotals_pkey; Type: CONSTRAINT; Schema: malware; Owner: -; Tablespace: 
+-- Name: virustotals_pkey; Type: CONSTRAINT; Schema: malware; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY virustotals
@@ -1717,7 +1717,7 @@ ALTER TABLE ONLY virustotals
 
 
 --
--- Name: virustotalscans_pkey; Type: CONSTRAINT; Schema: malware; Owner: -; Tablespace: 
+-- Name: virustotalscans_pkey; Type: CONSTRAINT; Schema: malware; Owner: -; Tablespace:
 --
 
 ALTER TABLE ONLY virustotalscans
@@ -1727,252 +1727,252 @@ ALTER TABLE ONLY virustotalscans
 SET search_path = dionaea, pg_catalog;
 
 --
--- Name: connections_local_host_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: connections_local_host_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX connections_local_host_idx ON connections USING btree (local_host);
 
 
 --
--- Name: connections_local_port_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: connections_local_port_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX connections_local_port_idx ON connections USING btree (local_port);
 
 
 --
--- Name: connections_parent_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: connections_parent_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX connections_parent_idx ON connections USING btree (connection_parent);
 
 
 --
--- Name: connections_remote_host_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: connections_remote_host_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX connections_remote_host_idx ON connections USING btree (remote_host);
 
 
 --
--- Name: connections_root_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: connections_root_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX connections_root_idx ON connections USING btree (connection_root);
 
 
 --
--- Name: connections_timestamp_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: connections_timestamp_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX connections_timestamp_idx ON connections USING btree (connection_timestamp);
 
 
 --
--- Name: connections_type_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: connections_type_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX connections_type_idx ON connections USING btree (connection_type);
 
 
 --
--- Name: dcerpcbinds_connection_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcbinds_connection_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX dcerpcbinds_connection_idx ON dcerpcbinds USING btree (connection);
 
 
 --
--- Name: dcerpcbinds_transfersyntax_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcbinds_transfersyntax_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX dcerpcbinds_transfersyntax_idx ON dcerpcbinds USING btree (dcerpcbind_transfersyntax);
 
 
 --
--- Name: dcerpcbinds_uuid_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcbinds_uuid_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX dcerpcbinds_uuid_idx ON dcerpcbinds USING btree (dcerpcbind_uuid);
 
 
 --
--- Name: dcerpcrequests_connection_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcrequests_connection_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX dcerpcrequests_connection_idx ON dcerpcrequests USING btree (connection);
 
 
 --
--- Name: dcerpcrequests_opnum_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcrequests_opnum_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX dcerpcrequests_opnum_idx ON dcerpcrequests USING btree (dcerpcrequest_opnum);
 
 
 --
--- Name: dcerpcrequests_uuid_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: dcerpcrequests_uuid_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX dcerpcrequests_uuid_idx ON dcerpcrequests USING btree (dcerpcrequest_uuid);
 
 
 --
--- Name: downloads_connection_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: downloads_connection_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX downloads_connection_idx ON downloads USING btree (connection);
 
 
 --
--- Name: downloads_md5_hash_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: downloads_md5_hash_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX downloads_md5_hash_idx ON downloads USING btree (download_md5_hash);
 
 
 --
--- Name: downloads_url_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: downloads_url_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX downloads_url_idx ON downloads USING btree (download_url);
 
 
 --
--- Name: fki_dcerpcbinds_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: fki_dcerpcbinds_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX fki_dcerpcbinds_connection_fkey ON dcerpcbinds USING btree (connection);
 
 
 --
--- Name: fki_dcerpcrequests_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: fki_dcerpcrequests_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX fki_dcerpcrequests_connection_fkey ON dcerpcrequests USING btree (connection);
 
 
 --
--- Name: fki_downloads_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: fki_downloads_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX fki_downloads_connection_fkey ON downloads USING btree (connection);
 
 
 --
--- Name: fki_emu_profiles_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: fki_emu_profiles_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX fki_emu_profiles_connection_fkey ON emu_profiles USING btree (connection);
 
 
 --
--- Name: fki_emu_services_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: fki_emu_services_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX fki_emu_services_connection_fkey ON emu_services USING btree (connection);
 
 
 --
--- Name: fki_logins_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: fki_logins_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX fki_logins_connection_fkey ON logins USING btree (connection);
 
 
 --
--- Name: fki_mssql_commands_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: fki_mssql_commands_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX fki_mssql_commands_connection_fkey ON mssql_commands USING btree (connection);
 
 
 --
--- Name: fki_mssql_fingerprints_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: fki_mssql_fingerprints_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX fki_mssql_fingerprints_connection_fkey ON mssql_fingerprints USING btree (connection);
 
 
 --
--- Name: fki_offers_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: fki_offers_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX fki_offers_connection_fkey ON offers USING btree (connection);
 
 
 --
--- Name: fki_p0fs_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: fki_p0fs_connection_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX fki_p0fs_connection_fkey ON p0fs USING btree (connection);
 
 
 --
--- Name: fki_virustotalscans_virustotal_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: fki_virustotalscans_virustotal_fkey; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX fki_virustotalscans_virustotal_fkey ON virustotalscans USING btree (virustotal);
 
 
 --
--- Name: heatpoints_connection_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: heatpoints_connection_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX heatpoints_connection_idx ON heatpoints USING btree (connection);
 
 
 --
--- Name: heatpoints_lat_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: heatpoints_lat_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX heatpoints_lat_idx ON heatpoints USING btree (lat);
 
 
 --
--- Name: heatpoints_lng_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: heatpoints_lng_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX heatpoints_lng_idx ON heatpoints USING btree (lng);
 
 
 --
--- Name: offers_connection_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: offers_connection_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX offers_connection_idx ON offers USING btree (connection);
 
 
 --
--- Name: offers_url_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: offers_url_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX offers_url_idx ON offers USING btree (offer_url);
 
 
 --
--- Name: p0fs_connection_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: p0fs_connection_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX p0fs_connection_idx ON p0fs USING btree (connection);
 
 
 --
--- Name: p0fs_detail_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: p0fs_detail_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX p0fs_detail_idx ON p0fs USING btree (p0f_detail);
 
 
 --
--- Name: p0fs_genre_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: p0fs_genre_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX p0fs_genre_idx ON p0fs USING btree (p0f_genre);
 
 
 --
--- Name: p0fs_uptime_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace: 
+-- Name: p0fs_uptime_idx; Type: INDEX; Schema: dionaea; Owner: -; Tablespace:
 --
 
 CREATE INDEX p0fs_uptime_idx ON p0fs USING btree (p0f_uptime);
@@ -1981,35 +1981,35 @@ CREATE INDEX p0fs_uptime_idx ON p0fs USING btree (p0f_uptime);
 SET search_path = malware, pg_catalog;
 
 --
--- Name: anubi_malware_idx; Type: INDEX; Schema: malware; Owner: -; Tablespace: 
+-- Name: anubi_malware_idx; Type: INDEX; Schema: malware; Owner: -; Tablespace:
 --
 
 CREATE INDEX anubi_malware_idx ON anubi USING btree (malware);
 
 
 --
--- Name: cwsandboxs_malware_idx; Type: INDEX; Schema: malware; Owner: -; Tablespace: 
+-- Name: cwsandboxs_malware_idx; Type: INDEX; Schema: malware; Owner: -; Tablespace:
 --
 
 CREATE INDEX cwsandboxs_malware_idx ON cwsandboxs USING btree (malware);
 
 
 --
--- Name: malwares_malware_m5_idx; Type: INDEX; Schema: malware; Owner: -; Tablespace: 
+-- Name: malwares_malware_m5_idx; Type: INDEX; Schema: malware; Owner: -; Tablespace:
 --
 
 CREATE INDEX malwares_malware_m5_idx ON malwares USING btree (malware_md5);
 
 
 --
--- Name: normans_malware_idx; Type: INDEX; Schema: malware; Owner: -; Tablespace: 
+-- Name: normans_malware_idx; Type: INDEX; Schema: malware; Owner: -; Tablespace:
 --
 
 CREATE INDEX normans_malware_idx ON normans USING btree (malware);
 
 
 --
--- Name: virustotalscans_virustotal_idx; Type: INDEX; Schema: malware; Owner: -; Tablespace: 
+-- Name: virustotalscans_virustotal_idx; Type: INDEX; Schema: malware; Owner: -; Tablespace:
 --
 
 CREATE INDEX virustotalscans_virustotal_idx ON virustotalscans USING btree (virustotal);
@@ -2499,4 +2499,3 @@ GRANT ALL ON TABLE virustotalscans TO xmpp;
 --
 -- PostgreSQL database dump complete
 --
-

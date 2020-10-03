@@ -51,16 +51,16 @@ class RoomHandler(MucRoomHandler):
         self.setns = False
 
     def user_joined(self, user, stanza):
-        print 'User %s joined room' % user.room_jid.as_unicode()
+        print('User %s joined room' % user.room_jid.as_unicode())
         user.attacks = {}
 
     def user_left(self, user, stanza):
-        print 'User %s left room' % user.room_jid.as_unicode()
+        print('User %s left room' % user.room_jid.as_unicode())
         user.attacks = None
         user = None
 
     def subject_changed(self, user, stanza):
-        print 'subject: %s' % stanza
+        print('subject: %s' % stanza)
 
     def message_received(self, user, stanza):
 
@@ -852,7 +852,7 @@ class Client(JabberClient):
         """This one is called when the state of stream connecting the component
         to a server changes. This will usually be used to let the user
         know what is going on."""
-        print "*** State changed: %s %r ***" % (state,arg)
+        print("*** State changed: %s %r ***" % (state,arg))
 
     def session_started(self):
         """This is called when the IM session is successfully started
@@ -878,7 +878,7 @@ class Client(JabberClient):
         self.stream.set_message_handler("normal",self.message)
         print(self.stream)
 
-        print u"joining..."
+        print(u"joining...")
         self.roommgr = MucRoomManager(self.stream)
         self.roommgr.set_handlers()
         nick = self.jid.node + '-' + self.jid.resource
@@ -918,7 +918,7 @@ class Client(JabberClient):
         subject=stanza.get_subject()
         body=stanza.get_body()
         t=stanza.get_type()
-        print u'Message from %s received.' % (unicode(stanza.get_from(),)),
+        print(u'Message from %s received.' % (unicode(stanza.get_from(),)))
         return True
 
     def presence(self,stanza):
@@ -937,7 +937,7 @@ class Client(JabberClient):
         status=stanza.get_status()
         if status:
             msg+=u": "+status
-        print msg
+        print(msg)
 
     def presence_control(self,stanza):
         """Handle subscription control <presence/> stanzas -- acknowledge
@@ -953,7 +953,7 @@ class Client(JabberClient):
         elif t=="unsubscribed":
             msg+=u" has canceled our subscription of his presence."
 
-        print msg
+        print(msg)
         p=stanza.make_accept_response()
         self.stream.send(p)
         return True
@@ -963,17 +963,17 @@ class Client(JabberClient):
             name=item.name
         else:
             name=u""
-        print (u'%s "%s" subscription=%s groups=%s'
+        print(u'%s "%s" subscription=%s groups=%s'
                % (unicode(item.jid), name, item.subscription,
                   u",".join(item.groups)) )
 
     def roster_updated(self,item=None):
         if not item:
-            print u"My roster:"
+            print(u"My roster:")
             for item in self.roster.get_items():
                 self.print_roster_item(item)
             return
-        print u"Roster item updated:"
+        print(u"Roster item updated:")
         self.print_roster_item(item)
 
 # XMPP protocol is Unicode-based to properly display data received
@@ -1025,13 +1025,13 @@ if not options.files:
     print("Not storing files, are you sure?")
 
 while True:
-    print u"creating client... %s" % options.resource
+    print(u"creating client... %s" % options.resource)
     c=Client(JID(options.username + '/' + options.resource),options.password)
 
-    print u"connecting..."
+    print(u"connecting...")
     c.connect()
 
-    print u"looping..."
+    print(u"looping...")
     try:
         # Component class provides basic "main loop" for the applitation
         # Though, most applications would need to have their own loop and call
@@ -1040,11 +1040,11 @@ while True:
         c.loop(1)
         c.idle()
     except KeyboardInterrupt:
-        print u"disconnecting..."
+        print(u"disconnecting...")
         c.disconnect()
-        print u"exiting..."
+        print(u"exiting...")
         break
-    except Exception,e:
+    except Exception as e:
         import traceback
         traceback.print_exc()
         continue

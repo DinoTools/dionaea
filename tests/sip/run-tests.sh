@@ -83,7 +83,7 @@ function print_ok() {
 function print_warning() {
 	print_msg "$1" "orange"
 }
-	
+
 function print_msg() {
 	TXTBLUE="\e[0;34m"
 	TXTGREEN="\e[0;32m"
@@ -156,7 +156,7 @@ function sipp_run() {
 	CMD="cd sipp && ${TOOL_SIPP} -sf uac.xml -s 500 -m 1 -l 1 -d 500 ${SIPP_PARAMS} -i ${LHOST} -max_retrans 0 ${RHOST}"
 	print_debug "$CMD"
 	(eval $CMD &> /dev/null)
-	if [ $? == 0 ]; then 
+	if [ $? == 0 ]; then
 		print_ok "OK"
 	else
 		print_error "Failed"
@@ -243,4 +243,3 @@ case $1 in
 		help_print
 		;;
 esac
-

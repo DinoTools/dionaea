@@ -5,23 +5,23 @@
  *
  *
  * Copyright (C) 2009  Paul Baecher & Markus Koetter
- * 
+ *
  * This program is free software; you can redistribute it and/or
  * modify it under the terms of the GNU General Public License
  * as published by the Free Software Foundation; either version 2
  * of the License, or (at your option) any later version.
- * 
+ *
  * This program is distributed in the hope that it will be useful,
  * but WITHOUT ANY WARRANTY; without even the implied warranty of
  * MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
  * GNU General Public License for more details.
- * 
+ *
  * You should have received a copy of the GNU General Public License
  * along with this program; if not, write to the Free Software
  * Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
- * 
- * 
- *             contact nepenthesdev@gmail.com  
+ *
+ *
+ *             contact nepenthesdev@gmail.com
  *
  *******************************************************************************/
 
@@ -106,7 +106,7 @@ struct logger
 struct logger *logger_new(GLogFunc log, log_util_fn xopen, log_util_fn hup, log_util_fn xclose, log_util_fn xflush, void *data);
 
 
-void log_multiplexer(const gchar *log_domain, 
+void log_multiplexer(const gchar *log_domain,
 					 GLogLevelFlags log_level,
 					 const gchar *message,
 					 gpointer user_data);
@@ -119,7 +119,7 @@ struct logger_file_data
 	struct log_filter *filter;
 };
 
-void logger_file_log(const gchar *log_domain, 
+void logger_file_log(const gchar *log_domain,
 					 GLogLevelFlags log_level,
 					 const gchar *message,
 					 gpointer user_data);
@@ -129,9 +129,8 @@ bool logger_file_hup(struct logger *l, void *data);
 
 
 bool logger_stdout_open(struct logger *l, void *data);
-void logger_stdout_log(const gchar *log_domain, 
+void logger_stdout_log(const gchar *log_domain,
 					   GLogLevelFlags log_level,
 					   const gchar *message,
 					   gpointer user_data);
 bool logger_file_flush(struct logger *l, void *data);
-

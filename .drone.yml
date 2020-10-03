@@ -242,3 +242,15 @@ steps:
   - apk update
   - apk add doxygen
   - (cd doc/api && doxygen Doxyfile)
+
+---
+kind: pipeline
+name: Style
+
+steps:
+- name: Style
+  image: python:3.8-slim
+  commands:
+  - apt-get update
+  - apt-get install -y --no-install-recommends git tox
+  - tox -e style

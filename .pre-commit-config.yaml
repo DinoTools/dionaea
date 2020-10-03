@@ -1,0 +1,70 @@
+repos:
+  - repo: https://github.com/pre-commit/pre-commit-hooks
+    rev: v3.2.0
+    hooks:
+      # Forbid files which have a UTF-8 byte-order marker
+      - id: check-byte-order-marker
+      # Require literal syntax when initializing empty or zero Python builtin types
+      - id: check-builtin-literals
+      # Check for files that would conflict in case-insensitive filesystems
+      - id: check-case-conflict
+      # Ensures that (non-binary) executables have a shebang
+      - id: check-executables-have-shebangs
+      # Check for files that contain merge conflict strings
+      - id: check-merge-conflict
+      # Checks for symlinks which do not point to anything
+      - id: check-symlinks
+      # This hook checks yaml files for parseable syntax
+      - id: check-yaml
+        files: .drone.yml
+        # Drone CI config allows and requires multiple documents
+        args: [--allow-multiple-documents]
+      - id: check-yaml
+        exclude: .drone.yml
+      # Detects the presence of private keys
+      - id: detect-private-key
+      # Ensures that a file is either empty, or ends with one newline
+      - id: end-of-file-fixer
+      # Replaces or checks mixed line ending
+      - id: mixed-line-ending
+      # This hook trims trailing whitespace
+      - id: trailing-whitespace
+
+  - repo: https://github.com/pre-commit/pygrep-hooks
+    rev: v1.6.0
+    hooks:
+      # Enforce that `noqa` annotations always occur with specific codes
+      - id: python-check-blanket-noqa
+      # Prevent common mistakes of `assert mck.not_called()`, `assert mck.called_once_with(...)` and `mck.assert_called`
+      - id: python-check-mock-methods
+      # A quick check for the `eval()` built-in function
+      - id: python-no-eval
+      # ToDo: Fix code
+      # # A quick check for the deprecated `.warn()` method of python loggers
+      # - id: python-no-log-warn
+      # ToDo: Fix code
+      # # Enforce that python3.6+ type annotations are used instead of type comments
+      # - id: python-use-type-annotations
+      # ToDo: Fix doc if possible?
+      # # Detect common mistake of using single backticks when writing rst
+      # - id: rst-backticks
+      # Detect mistake of inline code touching normal text in rst
+      - id: rst-inline-touching-normal
+      # Forbid files which have a UTF-8 Unicode replacement character
+      - id: text-unicode-replacement-char
+
+  - repo: https://gitlab.com/pycqa/flake8
+    rev: 3.8.2
+    hooks:
+      - id: flake8
+        additional_dependencies:
+          - flake8-bugbear
+          - flake8-implicit-str-concat
+
+  # ToDo: Fix code
+  # - repo: https://github.com/pre-commit/mirrors-mypy
+  #   rev: v0.782
+  #   hooks:
+  #     - id: mypy
+  #       args: [--no-strict-optional, --ignore-missing-imports, --allow-untyped-global]
+  #       exclude: ^(doc/)
