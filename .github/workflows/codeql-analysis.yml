@@ -51,9 +51,10 @@ jobs:
         # Prefix the list here with "+" to use these queries and those in the config file.
         # queries: ./path/to/local/query, your-org/your-repo/queries@main
 
-    - run: |
-       apt-get update
-       apt-get install -y --no-install-recommends
+    - name: Install additional packages
+      run: |
+       sudo apt-get update
+       sudo apt-get install -y --no-install-recommends
          build-essential
          cmake
          check
