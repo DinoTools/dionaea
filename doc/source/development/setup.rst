@@ -25,54 +25,12 @@ To connect to the :code:`gdbserver` just select 'Connect to gdbserver' and enter
 
 All source files are monitored with :code:`inotifywait` and if a source file changes dionaea is automatically rebuild and restarted.
 
-Vagrant
--------
-
-Vagrant can be used to setup a development environment for dionaea within minutes.
-
-
-Install
-^^^^^^^
-
-First install `Vagrant`_ and `VirtualBox`_.
-
-If everything has been setup correctly clone the git repository and use vagrant to bootstrap and start the environment.
-
-.. code-block:: console
-
-    $ git clone https://github.com/DinoTools/dionaea.git
-    $ cd dionaea/vagrant
-    $ vagrant up
-
-
-All files will be installed in the :code:`/opt/dionaea` directory.
-
-
-Run
-^^^
-
-Access the development environment, edit the config files and start dionaea with the following command.
-
-.. code-block:: console
-
-    $ sudo /opt/dionaea/bin/dionaea -c /opt/dionaea/etc/dionaea/dionaea.cfg -l all,-debug -L '*'
-
-Rebuild and test
-^^^^^^^^^^^^^^^^
-
-To rebuild and install dionaea run the flowing commands.
-
-.. code-block:: console
-
-    $ cd /vagrant
-    $ make
-    $ sudo make install
-
-See `Run`_ for more information on how to start dionaea.
-
-
 Ubuntu 14.04
 ------------
+
+.. todo::
+
+    This section is deprecated and should be updated.
 
 Instead of using Vagrant you can use a Ubuntu 14.04 system to setup your development environment.
 In this section we will use the scripts used to setup the Vagrant environment to bootstrap a fresh Ubuntu system.
@@ -136,8 +94,6 @@ It is also possible to use `asan_symbolize.py python2 script`_ to extract additi
 
     /opt/dionaea/bin/dionaea -c /opt/dionaea/etc/dionaea/dionaea.cfg  2>&1 | python asan_symbolize.py
 
-.. _Vagrant: https://www.vagrantup.com/
-.. _VirtualBox: https://www.virtualbox.org/
 .. _Ubuntu: https://ubuntu.com/
 .. _asan_symbolize.py python2 script: https://llvm.org/svn/llvm-project/compiler-rt/trunk/lib/asan/scripts/asan_symbolize.py
 .. _docker-compose: https://docs.docker.com/compose/
