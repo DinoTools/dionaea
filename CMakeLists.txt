@@ -1,3 +1,9 @@
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2018 PhiBo (DinoTools)
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 if(${CMAKE_SOURCE_DIR} STREQUAL ${CMAKE_BINARY_DIR})
     if(NOT DEFINED WITH_IN_SOURCE_BUILD)
         message(FATAL_ERROR
