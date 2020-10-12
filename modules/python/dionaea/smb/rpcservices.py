@@ -2,6 +2,9 @@
 #
 # SPDX-FileCopyrightText: 2009 Paul Baecher & Markus Koetter & Mark Schloesser
 # SPDX-FileCopyrightText: 2010 Markus Koetter & Tan Kean Siong
+# SPDX-FileCopyrightText: 2015 Katarina Durechova
+# SPDX-FileCopyrightText: 2017 Tan Kean Siong
+# SPDX-FileCopyrightText: 2016-2017 PhiBo (DinoTools)
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 

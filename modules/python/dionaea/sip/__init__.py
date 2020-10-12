@@ -1,35 +1,14 @@
-#################################################################################
-#                                Dionaea
-#                            - catches bugs -
+# This file is part of the dionaea honeypot
 #
+# SPDX-FileCopyrightText: 2010 Tobias Wulff (twu200 at gmail)
+# SPDX-FileCopyrightText: 2011-2020 PhiBo (DinoTools)
 #
-#
-#  Copyright (c) 2010 Tobias Wulff (twu200 at gmail)
-#  Copyright (c) 2011- PhiBo
-#
-#  This program is free software; you can redistribute it and/or
-#  modify it under the terms of the GNU General Public License
-#  as published by the Free Software Foundation; either version 2
-#  of the License, or (at your option) any later version.
-#
-#  This program is distributed in the hope that it will be useful,
-#  but WITHOUT ANY WARRANTY; without even the implied warranty of
-#  MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#  GNU General Public License for more details.
-#
-#  You should have received a copy of the GNU General Public License
-#  along with this program; if not, write to the Free Software
-#  Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-#
-#
-#              contact nepenthesdev@gmail.com
-#
+# SPDX-License-Identifier: GPL-2.0-or-later
 ################################################################################
-#
+# ToDo: Check if this is still in use
 #  The hash calculation for SIP authentication has been copied from SIPvicious
 #  Sipvicious (c) Sandro Gaucci: http://code.google.com/p/sipvicious
 ################################################################################
-
 
 import logging
 import random
