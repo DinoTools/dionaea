@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: none
+# SPDX-License-Identifier: CC0-1.0
+
 - name: hpfeeds
   config:
     # fqdn/ip and port of the hpfeeds broker

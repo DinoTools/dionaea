@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: none
+# SPDX-License-Identifier: CC0-1.0
+
 - name: nfq
   # nfq can intercept incoming tcp connections during the tcp handshake
   # giving your honeypot the possibility to provide service on

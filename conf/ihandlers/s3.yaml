@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: none
+# SPDX-License-Identifier: CC0-1.0
+
 - name: s3
   config:
     # Upload dionaea captured samples to Amazon AWS S3 bucket
