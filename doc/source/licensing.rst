@@ -1,6 +1,5 @@
-.. SPDX-FileCopyrightText: 2020 PhiBo <phibo@dinotools.org>
-
-.. SPDX-License-Identifier:
+..
+    This file is part of the dionaea honeypot
 
 Licensing rules
 ===============
@@ -66,9 +65,12 @@ License identifier syntax
 
     .rst::
 
-        .. SPDX-FileCopyrightText: 2019 John Doe <john@example.org>
+        ..
+            This file is part of the dionaea honeypot
 
-        .. SPDX-License-Identifier: <SPDX License Expression>
+            SPDX-FileCopyrightText: 2019 John Doe <john@example.org>
+
+            SPDX-License-Identifier: <SPDX License Expression>
 
 
    If a specific tool cannot handle the standard comment style, then the appropriate comment mechanism which the tool accepts shall be used.
