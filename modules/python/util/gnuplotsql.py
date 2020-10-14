@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2010 Markus Koetter
+# SPDX-FileCopyrightText: 2011-2018 PhiBo (DinoTools)
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 import sqlite3
 import os

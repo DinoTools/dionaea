@@ -1,4 +1,10 @@
 #!/usr/bin/env python3
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2009-2011 Markus Koetter
+# SPDX-FileCopyrightText: 2010 Tobias Wulff (twu200 at gmail)
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 from __future__ import print_function
 from optparse import OptionParser

@@ -1,4 +1,9 @@
 #!/usr/bin/env python
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2011 Markus Koetter
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
 #
 # create a sqlite database from a csv file
 # creates table schema and inserts rows
