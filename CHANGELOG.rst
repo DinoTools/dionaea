@@ -11,6 +11,28 @@ Changelog
 0.10.0 - (`master`_)
 --------------------
 
+0.9.1 - (2020-10-15)
+--------------------
+
+**ci**
+
+* Add pre-commit config and fix code
+* Add flake8 checks
+* Add GitHub workflow to scan for vulnerabilities using CodeQL
+
+**dev**
+
+* Remove vagrant config
+
+**dionaea**
+
+* Add licensing information
+* Add SPDX header to all files
+
+**doc**
+
+* Add info about first time setup
+
 0.9.0 - (2020-09-18)
 --------------------
 
