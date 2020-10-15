@@ -11,17 +11,17 @@ It doesn't replace dionaeas license.
 
 The license described in the LICENSE file applies to the dionaea source as a whole, though individual source files can have a different license which is required to be compatible with the GPL-2.0::
 
-    GPL-3.0+  :  GNU General Public License v2.0 or later
+    GPL-3.0+  :  GNU General Public License v3.0 or later
     LGPL-2.0  :  GNU Library General Public License v2 only
     LGPL-2.0+ :  GNU Library General Public License v2 or later
     LGPL-2.1  :  GNU Lesser General Public License v2.1 only
     LGPL-2.1+ :  GNU Lesser General Public License v2.1 or later
 
-Aside from that, individual files can be provided under a dual license, e.g. one of the compatible GPL variants and alternatively under a permissive license like BSD, MIT etc.
+Aside from that, individual files can be provided under one of the compatible GPL variants and alternatively under a permissive license like BSD, MIT etc.
 
 A common way of expressing the license of a source file is to add the matching boilerplate text into the top comment of the file. Due to formatting, typos etc. these "boilerplates" are hard to validate for tools which are used in the context of license compliance.
 
-A replacement to the boilerplate text is the use of Software Package Data Exchange (SPDX) license identifiers in each source file.  SPDX license identifiers are machine parsable and precise shorthands for the license under which the content of the file is contributed. SPDX license identifiers are managed by the SPDX Workgroup at the Linux Foundation and have been agreed on by partners throughout the industry, tool vendors, and legal teams.  For further information see https://spdx.org/
+A replacement to the boilerplate text is the use of Software Package Data Exchange (SPDX) license identifiers in each source file. SPDX license identifiers are machine parsable and precise shorthands for the license under which the content of the file is contributed. SPDX license identifiers are managed by the SPDX Workgroup at the Linux Foundation and have been agreed on by partners throughout the industry, tool vendors, and legal teams.  For further information see https://spdx.org/
 
 The dionaea honeypot requires the precise SPDX identifier in all source files. The REUSE tool from the FSFE is used to check if all required information are set. For additional information and formatting see https://reuse.software/
 
@@ -74,6 +74,7 @@ License identifier syntax
 
 
    If a specific tool cannot handle the standard comment style, then the appropriate comment mechanism which the tool accepts shall be used.
+   For binary files or files you don't want to change use an additional file with the same name and :code:`.license` as suffix.
 
 Compliance check
 ----------------
