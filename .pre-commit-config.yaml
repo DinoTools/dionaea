@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: none
+# SPDX-License-Identifier: CC0-1.0
+
 repos:
   - repo: https://github.com/pre-commit/pre-commit-hooks
     rev: v3.2.0
@@ -68,3 +71,11 @@ repos:
   #     - id: mypy
   #       args: [--no-strict-optional, --ignore-missing-imports, --allow-untyped-global]
   #       exclude: ^(doc/)
+
+  # Check for missing licensing and copyright information.
+  # The REUSE helper tool assists with achieving and confirming REUSE compliance.
+  # See: https://reuse.software/
+  - repo: https://github.com/fsfe/reuse-tool
+    rev: v0.11.1
+    hooks:
+      - id: reuse

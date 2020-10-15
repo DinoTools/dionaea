@@ -1,3 +1,9 @@
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2018 Tan Kean Siong
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from dionaea.core import ihandler, incident, g_dionaea
 from dionaea import pyev, IHandlerLoader
 

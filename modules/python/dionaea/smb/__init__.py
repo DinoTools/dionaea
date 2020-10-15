@@ -1,3 +1,10 @@
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2009 Paul Baecher & Markus Koetter & Mark Schloesser
+# SPDX-FileCopyrightText: 2016 PhiBo (DinoTools)
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 from dionaea import ServiceLoader
 from dionaea.exception import ServiceConfigError
 from .smb import epmapper, smbd, smblog

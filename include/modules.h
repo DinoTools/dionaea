@@ -1,3 +1,12 @@
+/**
+ * This file is part of the dionaea honeypot
+ *
+ * SPDX-FileCopyrightText: 2009-2011 Markus Koetter
+ * SPDX-FileCopyrightText: 2016 PhiBo (DinoTools)
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
+
 #ifndef HAVE_MODULES_H
 #define HAVE_MODULES_H
 

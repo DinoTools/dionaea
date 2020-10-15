@@ -1,3 +1,9 @@
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2018 PhiBo (DinoTools)
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 if (PYTHONINTERP_FOUND)
     #set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py")
     set(SETUP_PY_IN "${CMAKE_CURRENT_SOURCE_DIR}/setup.py.in2")

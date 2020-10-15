@@ -1,4 +1,9 @@
 #!/usr/bin/env python3
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2010 Markus Koetter
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
 
 # sudo su postgres
 # createdb --owner=xmpp logsql

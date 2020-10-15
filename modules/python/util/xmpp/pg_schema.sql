@@ -1,4 +1,10 @@
 --
+-- This file is part of the dionaea honeypot
+--
+-- SPDX-FileCopyrightText: 2011-2013 Markus Koetter
+--
+-- SPDX-License-Identifier: GPL-2.0-or-later
+--
 -- PostgreSQL database dump
 --
 

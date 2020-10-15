@@ -1,4 +1,9 @@
 #!/usr/bin/python -u
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2010-2013 Markus Koetter
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
 #
 # aptitude install python-pyxmpp python-pgsql
 #

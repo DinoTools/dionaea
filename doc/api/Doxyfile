@@ -1,4 +1,8 @@
 # Doxyfile 1.8.13
+#
+# SPDX-FileCopyrightText: none
+#
+# SPDX-License-Identifier: CC0-1.0
 
 # This file describes the settings to be used by the documentation system
 # doxygen (www.doxygen.org) for a project.

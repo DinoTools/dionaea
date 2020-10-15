@@ -1,40 +1,19 @@
-#*************************************************************************
-#*                               Dionaea
-#*                           - catches bugs -
-#*
-#*
-#*
-#* Copyright (C) 2009  Paul Baecher & Markus Koetter
-#* Copyright (c) 2006-2009 Michael P. Soulier
-#*
-#* This program is free software; you can redistribute it and/or
-#* modify it under the terms of the GNU General Public License
-#* as published by the Free Software Foundation; either version 2
-#* of the License, or (at your option) any later version.
-#*
-#* This program is distributed in the hope that it will be useful,
-#* but WITHOUT ANY WARRANTY; without even the implied warranty of
-#* MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE.  See the
-#* GNU General Public License for more details.
-#*
-#* You should have received a copy of the GNU General Public License
-#* along with this program; if not, write to the Free Software
-#* Foundation, Inc., 51 Franklin Street, Fifth Floor, Boston, MA  02110-1301, USA.
-#*
-#*
-#*             contact nepenthesdev@gmail.com
-#*
-#*******************************************************************************/
-#* The whole logic is taken from tftpy
-#* http://tftpy.sourceforge.net/
-#* tftpy is licensed using CNRI Python License
-#* which is claimed to be incompatible with the gpl
-#* http://www.gnu.org/philosophy/license-list.html
+# This file is part of the dionaea honeypot
 #
-#* Nevertheless, the tftpy author Michael P. Soulier
-#* gave us a non exclusive permission to use his code in
-#* our gpl project
-#*************************************************************************
+# SPDX-FileCopyrightText: 2006-2009 Michael P. Soulier
+# SPDX-FileCopyrightText: 2009 Paul Baecher & Markus Koetter
+# SPDX-FileCopyrightText: 2009-2011 Markus Koetter
+# SPDX-FileCopyrightText: 2015-2016 PhiBo (DinoTools)
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+#
+# The whole logic is taken from tftpy - http://tftpy.sourceforge.net/
+# tftpy is licensed using CNRI Python License which is claimed to be incompatible with the GPL
+# http://www.gnu.org/philosophy/license-list.html
+#
+# Nevertheless, the tftpy author Michael P. Soulier
+# gave us a non exclusive permission to use his code in
+# our gpl project
 
 from dionaea import IHandlerLoader, ServiceLoader
 from dionaea.core import connection, ihandler, g_dionaea, incident

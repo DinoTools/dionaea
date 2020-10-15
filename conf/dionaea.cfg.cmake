@@ -1,3 +1,6 @@
+# SPDX-FileCopyrightText: none
+# SPDX-License-Identifier: CC0-1.0
+
 [dionaea]
 download.dir=@DIONAEA_STATEDIR@/binaries/
 #modules=curl,python,nfq,emu,pcap

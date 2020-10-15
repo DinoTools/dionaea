@@ -1,5 +1,9 @@
 @ECHO OFF
 
+REM SPDX-FileCopyrightText: none
+REM
+REM SPDX-License-Identifier: CC0-1.0
+REM
 REM Command file for Sphinx documentation
 
 if "%SPHINXBUILD%" == "" (

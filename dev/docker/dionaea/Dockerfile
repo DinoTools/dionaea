@@ -1,3 +1,9 @@
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: none
+#
+# SPDX-License-Identifier: CC0-1.0
+
 FROM ubuntu:18.04
 
 ARG DEBIAN_FRONTEND=noninteractive

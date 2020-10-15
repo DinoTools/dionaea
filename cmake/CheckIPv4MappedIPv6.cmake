@@ -1,3 +1,10 @@
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2009 Markus Koetter
+# SPDX-FileCopyrightText: 2018 PhiBo (DinoTools)
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 check_c_source_runs("
     #include <sys/types.h>
     #include <sys/socket.h>
