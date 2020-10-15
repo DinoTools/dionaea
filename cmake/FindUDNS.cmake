@@ -1,3 +1,9 @@
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2018 PhiBo (DinoTools)
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 find_path(UDNS_INCLUDE_DIR udns.h)
 find_library(UDNS_LIBRARY NAMES udns)
 

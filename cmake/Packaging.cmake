@@ -1,3 +1,9 @@
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2018 PhiBo (DinoTools)
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
 include(InstallRequiredSystemLibraries)
 set(CPACK_PACKAGE_DESCRIPTION_SUMMARY "Dionaea is meant to be a nepenthes successor, embedding python as scripting language, using libemu to detect shellcodes, supporting ipv6 and tls.")
 set(CPACK_PACKAGE_VENDOR "dionaea team")
