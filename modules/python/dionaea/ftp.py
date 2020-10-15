@@ -1,12 +1,12 @@
-#*************************************************************************
-#*                               Dionaea
-#*                           - catches bugs -
-#*
-#*
-#*
-# Copyright (c) 2016 PhiBo
-# Copyright (c) 2009 Markus Koetter
-# Copyright (c) 2001-2007 Twisted Matrix Laboratories.
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2001-2007 Twisted Matrix Laboratories
+# SPDX-FileCopyrightText: 2009 Paul Baecher & Markus Koetter
+# SPDX-FileCopyrightText: 2009-2011 Markus Koetter
+# SPDX-FileCopyrightText: 2015-2016 PhiBo (DinoTools)
+#
+# SPDX-License-Identifier: GPL-2.0-or-later AND MIT
+#
 # Copyright (c) 2001-2009
 #
 # Allen Short
@@ -60,12 +60,6 @@
 # LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
 # OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
 # WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
-#*
-#*             contact nepenthesdev@gmail.com
-#*
-#*******************************************************************************/
-
-
 
 # ftp server
 from dionaea import ServiceLoader
