@@ -44,6 +44,10 @@ RUN apt-get update && \
       adduser --system --no-create-home --shell /bin/bash --uid 1000 --disabled-password --disabled-login --gid 1000 dionaea && \
       # Set permissions
       chown -R dionaea:dionaea /opt/dionaea/var && \
+      # Prepare additional stuff
+      cp /code/docker/entrypoint.sh /usr/local/sbin/entrypoint.sh && \
+      mkdir -p /opt/dionaea/template && \
+      (cd /opt/dionaea && mv var/lib template/ && mv var/log template/ && mv etc template/) && \
       # Remove dev packages
       apt-get purge -y \
             build-essential \
@@ -77,4 +81,4 @@ RUN apt-get update && \
       apt-get clean && \
       rm -rf /code/ /var/lib/apt/lists/* /tmp/* /var/tmp/*
 
-ENTRYPOINT ["/opt/dionaea/bin/dionaea", "-u", "dionaea", "-g", "dionaea", "-c", "/opt/dionaea/etc/dionaea/dionaea.cfg"]
+ENTRYPOINT ["/usr/local/sbin/entrypoint.sh"]
