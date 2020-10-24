@@ -6,6 +6,13 @@
 - **Where to get help**:
   [dionaea GitHub issues](https://github.com/DinoTools/dionaea/issues)
 
+# Tags
+
+- nightly - Build every night from the default branch
+- edge - Build when pushed to default branch
+- x.y.z - Specific version (Example: 0.9.2)
+- latest - The latest specific version
+
 # What is dionaea?
 
 dionaea is a low interaction honeypot.
