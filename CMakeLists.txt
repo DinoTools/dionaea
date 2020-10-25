@@ -24,7 +24,7 @@ cmake_minimum_required(VERSION 3.4 FATAL_ERROR)
 
 project(
     dionaea
-    VERSION 0.9.1
+    VERSION 0.9.2
     LANGUAGES C
 )
 
