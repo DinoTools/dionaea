@@ -20,6 +20,7 @@ import time
 logger = logging.getLogger("printer")
 logger.setLevel(logging.DEBUG)
 
+
 class PrinterService(ServiceLoader):
     name = "printer"
 
@@ -38,6 +39,7 @@ class PrinterService(ServiceLoader):
         daemon.listen()
         return daemon
 
+
 def convert_pjl_command_to_regex(command):
     """Converts an underscore separated PJL command to a regex pattern.
 
@@ -45,6 +47,7 @@ def convert_pjl_command_to_regex(command):
     """
     command_bytes = bytes(command, "utf-8")
     return re.compile(rb"^\@pjl\s+%s\s*(.*)" % command_bytes.replace(b"_", rb"\s+"), re.IGNORECASE)
+
 
 def convert_pjl_responses_to_regex(responses_dict):
     """Converts all dictionary items to a (regex, command, response) triple.
@@ -60,6 +63,7 @@ def convert_pjl_responses_to_regex(responses_dict):
         for command, response in responses_dict.items()
     ]
 
+
 def cut_bytes_before_last_crlf(text):
     """Cuts the given text before the last line break.
 
@@ -72,6 +76,7 @@ def cut_bytes_before_last_crlf(text):
         return text[0:last_crlf_index + 2]
     except ValueError:
         return text
+
 
 pjl_default_responses = {
     "comment": "",
@@ -100,13 +105,161 @@ pjl_default_responses = {
     "dinquire_lparm:pcl_ptsize": "12.00",
     "dinquire_lparm:pcl_symset": "ROMAN8",
     "info_id": "HP LASERJET 4ML",
-    "info_config": "IN TRAYS [3 ENUMERATED]\n\tINTRAY1 MP\n\tINTRAY2 PC\n\tINTRAY3 LC\nENVELOPE TRAY\nOUT TRAYS [1 ENUMERATED]\n\tNORMAL FACEDOWN\nPAPERS [9 ENUMERATED]\n\tLETTER\n\tLEGAL\n\tA4\n\tEXECUTIVE\n\tMONARCH\n\tCOM10\n\tDL\n\tC5\n\tB5\nLANGUAGES [2 ENUMERATED]\n\tPCL\n\tPOSTSCRIPT\nUSTATUS [4 ENUMERATED]\n\tDEVICE\n\tJOB\n\tPAGE\n\tTIMED\nFONT CARTRIDGE SLOTS [1 ENUMERATED]\n\tCARTRIDGE\nMEMORY=2097152\nDISPLAY LINES=1\nDISPLAY CHARACTER SIZE=16",
-    "info_filesys": "VOLUME TOTAL SIZE FREE SPACE LOCATION LABEL STATUS\n0:     1755136    1718272    <HT>     <HT>  READ-WRITE",
+    "info_config": "IN TRAYS [3 ENUMERATED]\n"
+                   "\tINTRAY1 MP\n"
+                   "\tINTRAY2 PC\n"
+                   "\tINTRAY3 LC\n"
+                   "ENVELOPE TRAY\n"
+                   "OUT TRAYS [1 ENUMERATED]\n"
+                   "\tNORMAL FACEDOWN\n"
+                   "PAPERS [9 ENUMERATED]\n"
+                   "\tLETTER\n"
+                   "\tLEGAL\n"
+                   "\tA4\n"
+                   "\tEXECUTIVE\n"
+                   "\tMONARCH\n"
+                   "\tCOM10\n"
+                   "\tDL\n"
+                   "\tC5\n"
+                   "\tB5\n"
+                   "LANGUAGES [2 ENUMERATED]\n"
+                   "\tPCL\n"
+                   "\tPOSTSCRIPT\n"
+                   "USTATUS [4 ENUMERATED]\n"
+                   "\tDEVICE\n"
+                   "\tJOB\n"
+                   "\tPAGE\n"
+                   "\tTIMED\n"
+                   "FONT CARTRIDGE SLOTS [1 ENUMERATED]\n"
+                   "\tCARTRIDGE\n"
+                   "MEMORY=2097152\n"
+                   "DISPLAY LINES=1\n"
+                   "DISPLAY CHARACTER SIZE=16",
+    "info_filesys": "VOLUME TOTAL SIZE FREE SPACE LOCATION LABEL STATUS\n"
+                    "0:     1755136    1718272    <HT>     <HT>  READ-WRITE",
     "info_memory": "TOTAL=1494416\nLARGEST=1494176",
     "info_pagecount": "PAGECOUNT=183933",
     "info_status": "CODE=10001\nDISPLAY=\"Non HP supply in use\"\nONLINE=TRUE",
-    "info_variables": "COPIES=1 [2 RANGE]\n\t1\n\t999\nPAPER=LETTER [3 ENUMERATED]\n\tLETTER\n\tLEGAL\n\tA4\nORIENTATION=PORTRAIT [2 ENUMERATED]\n\tPORTRAIT\n\tLANDSCAPE\nFORMLINES=60 [2 RANGE]\n\t5\n\t128\nMANUALFEED=OFF [2 ENUMERATED]\n\tOFF\n\tON\nRET=MEDIUM [4 ENUMERATED]\n\tOFF\n\tLIGHT\n\tMEDIUM\n\tDARK\nPAGEPROTECT=OFF [4 ENUMERATED]\n\tOFF\n\tLETTER\n\tLEGAL\n\tA4\nRESOLUTION=600 [2 ENUMERATED]\n\t300\n\t600\nPERSONALITY=AUTO [3 ENUMERATED]\n\tAUTO\n\tPCL\n\tPOSTSCRIPT\nTIMEOUT=15 [2 RANGE]\n\t5\n\t300\nMPTRAY=CASSETTE [3 ENUMERATED]\n\tMANUAL\n\tCASSETTE\n\tFIRST\nINTRAY1=UNLOCKED [2 ENUMERATED]\n\tUNLOCKED\n\tLOCKED\nINTRAY2=UNLOCKED [2 ENUMERATED]\n\tUNLOCKED\n\tLOCKED\nINTRAY3=UNLOCKED [2 ENUMERATED]\n\tUNLOCKED\n\tLOCKED\nCLEARABLEWARNINGS=ON [2 ENUMERATED READONLY]\n\tJOB\n\tON\nAUTOCONT=OFF [2 ENUMERATED READONLY]\n\tOFF\n\tON\n\nDENSITY=3 [2 RANGE READONLY]\n\t1\n\t5\nLOWTONER=ON [2 ENUMERATED READONLY]\n\tOFF\n\tON\nINTRAY1SIZE=LETTER [9 ENUMERATED READONLY]\n\tLETTER\n\tLEGAL\n\tA4\n\tEXECUTIVE\n\tCOM10\n\tMONARCH\n\tC5\n\tDL\n\tB5\nINTRAY2SIZE=LETTER [4 ENUMERATED READONLY]\n\tLETTER\n\tLEGAL\n\tA4\n\tEXECUTIVE\nINTRAY3SIZE=LETTER [4 ENUMERATED READONLY]\n\tLETTER\n\tLEGAL\n\tA4\n\tEXECUTIVE\nINTRAY4SIZE=COM10 [5 ENUMERATED READONLY]\n\tCOM10\n\tMONARCH\n\tC5\n\tDL\n\tB5\nLPARM:PCL FONTSOURCE=I [1 ENUMERATED]\n\tI\nLPARM:PCL FONTNUMBER=0 [2 RANGE]\n\t0\n\t50\nLPARM:PCL PITCH=10.00 [2 RANGE]\n\t0.44\n\t99.99\nLPARM:PCL PTSIZE=12.00 [2 RANGE]\n\t4.00\n\t999.75\nLPARM:PCL SYMSET=ROMAN8 [4 ENUMERATED]\n\tROMAN8\n\tISOL1\n\tISOL2\n\tWIN30\nLPARM:POSTSCRIPT PRTPSERRS=OFF [2 ENUMERATED]\n\tOFF\n\tON",
-    "info_ustatus": "DEVICE=OFF [3 ENUMERATED]\n\tOFF\n\tON\n\tVERBOSE\nJOB=OFF [2 ENUMERATED]\n\tOFF\n\tON\nPAGE=OFF [2 ENUMERATED]\n\tOFF\n\tON\nTIMED=0 [2 RANGE]\n\t5\n\t300",
+    "info_variables": "COPIES=1 [2 RANGE]\n"
+                      "\t1\n"
+                      "\t999\n"
+                      "PAPER=LETTER [3 ENUMERATED]\n"
+                      "\tLETTER\n"
+                      "\tLEGAL\n"
+                      "\tA4\n"
+                      "ORIENTATION=PORTRAIT [2 ENUMERATED]\n"
+                      "\tPORTRAIT\n"
+                      "\tLANDSCAPE\n"
+                      "FORMLINES=60 [2 RANGE]\n"
+                      "\t5\n"
+                      "\t128\n"
+                      "MANUALFEED=OFF [2 ENUMERATED]\n"
+                      "\tOFF\n"
+                      "\tON\n"
+                      "RET=MEDIUM [4 ENUMERATED]\n"
+                      "\tOFF\n"
+                      "\tLIGHT\n"
+                      "\tMEDIUM\n"
+                      "\tDARK\n"
+                      "PAGEPROTECT=OFF [4 ENUMERATED]\n"
+                      "\tOFF\n"
+                      "\tLETTER\n"
+                      "\tLEGAL\n"
+                      "\tA4\n"
+                      "RESOLUTION=600 [2 ENUMERATED]\n"
+                      "\t300\n"
+                      "\t600\n"
+                      "PERSONALITY=AUTO [3 ENUMERATED]\n"
+                      "\tAUTO\n"
+                      "\tPCL\n"
+                      "\tPOSTSCRIPT\n"
+                      "TIMEOUT=15 [2 RANGE]\n"
+                      "\t5\n"
+                      "\t300\n"
+                      "MPTRAY=CASSETTE [3 ENUMERATED]\n"
+                      "\tMANUAL\n"
+                      "\tCASSETTE\n"
+                      "\tFIRST\n"
+                      "INTRAY1=UNLOCKED [2 ENUMERATED]\n"
+                      "\tUNLOCKED\n"
+                      "\tLOCKED\n"
+                      "INTRAY2=UNLOCKED [2 ENUMERATED]\n"
+                      "\tUNLOCKED\n"
+                      "\tLOCKED\n"
+                      "INTRAY3=UNLOCKED [2 ENUMERATED]\n"
+                      "\tUNLOCKED\n"
+                      "\tLOCKED\n"
+                      "CLEARABLEWARNINGS=ON [2 ENUMERATED READONLY]\n"
+                      "\tJOB\n"
+                      "\tON\n"
+                      "AUTOCONT=OFF [2 ENUMERATED READONLY]\n"
+                      "\tOFF\n"
+                      "\tON\n"
+                      "\n"
+                      "DENSITY=3 [2 RANGE READONLY]\n"
+                      "\t1\n"
+                      "\t5\n"
+                      "LOWTONER=ON [2 ENUMERATED READONLY]\n"
+                      "\tOFF\n"
+                      "\tON\n"
+                      "INTRAY1SIZE=LETTER [9 ENUMERATED READONLY]\n"
+                      "\tLETTER\n"
+                      "\tLEGAL\n"
+                      "\tA4\n"
+                      "\tEXECUTIVE\n"
+                      "\tCOM10\n"
+                      "\tMONARCH\n"
+                      "\tC5\n"
+                      "\tDL\n"
+                      "\tB5\n"
+                      "INTRAY2SIZE=LETTER [4 ENUMERATED READONLY]\n"
+                      "\tLETTER\n"
+                      "\tLEGAL\n"
+                      "\tA4\n"
+                      "\tEXECUTIVE\n"
+                      "INTRAY3SIZE=LETTER [4 ENUMERATED READONLY]\n"
+                      "\tLETTER\n"
+                      "\tLEGAL\n"
+                      "\tA4\n"
+                      "\tEXECUTIVE\n"
+                      "INTRAY4SIZE=COM10 [5 ENUMERATED READONLY]\n"
+                      "\tCOM10\n"
+                      "\tMONARCH\n"
+                      "\tC5\n"
+                      "\tDL\n"
+                      "\tB5\n"
+                      "LPARM:PCL FONTSOURCE=I [1 ENUMERATED]\n"
+                      "\tI\n"
+                      "LPARM:PCL FONTNUMBER=0 [2 RANGE]\n"
+                      "\t0\n"
+                      "\t50\n"
+                      "LPARM:PCL PITCH=10.00 [2 RANGE]\n"
+                      "\t0.44\n"
+                      "\t99.99\n"
+                      "LPARM:PCL PTSIZE=12.00 [2 RANGE]\n"
+                      "\t4.00\n"
+                      "\t999.75\n"
+                      "LPARM:PCL SYMSET=ROMAN8 [4 ENUMERATED]\n"
+                      "\tROMAN8\n"
+                      "\tISOL1\n"
+                      "\tISOL2\n"
+                      "\tWIN30\n"
+                      "LPARM:POSTSCRIPT PRTPSERRS=OFF [2 ENUMERATED]\n"
+                      "\tOFF\n"
+                      "\tON",
+    "info_ustatus": "DEVICE=OFF [3 ENUMERATED]\n"
+                    "\tOFF\n"
+                    "\tON\n"
+                    "\tVERBOSE\n"
+                    "JOB=OFF [2 ENUMERATED]\n"
+                    "\tOFF\n"
+                    "\tON\n"
+                    "PAGE=OFF [2 ENUMERATED]\n"
+                    "\tOFF\n"
+                    "\tON\n"
+                    "TIMED=0 [2 RANGE]\n"
+                    "\t5\n"
+                    "\t300",
     "ustatusoff": "",
     "ustatus_device": "CODE=10001\nDISPLAY=\"Non HP supply in use\"\nONLINE=TRUE",
     "ustatus_job": "",
@@ -127,6 +280,7 @@ echo_command_regex = convert_pjl_command_to_regex("echo")
 fsdirlist_command_regex = convert_pjl_command_to_regex("fsdirlist")
 fsquery_command_regex = convert_pjl_command_to_regex("fsquery")
 path_regex = re.compile(r"\"([^\"]+)\"")
+
 
 class Printerd(connection):
     """A PJL/PCL based printer daemon
@@ -332,7 +486,8 @@ class Printerd(connection):
             path = "0:" + path
 
         volume, rest = path.split(":", 1)
-        path_parts = [volume] + [part for part in re.split(r"(\\|/)", rest) if part.strip() not in ["", "/", "\\"] and part.replace(".", " ").strip() != ""]
+        path_parts = [volume] + [part for part in re.split(r"(\\|/)", rest) if
+                                 part.strip() not in ["", "/", "\\"] and part.replace(".", " ").strip() != ""]
         full_path = os.path.join(*path_parts)
 
         while "../" in full_path:

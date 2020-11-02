@@ -6,6 +6,7 @@
 
 from . import PrinterConnection
 
+
 class TestPCLCommands:
     def test_print_hello_world(self):
         connection = PrinterConnection()
