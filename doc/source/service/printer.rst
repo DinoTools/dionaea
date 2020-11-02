@@ -1,5 +1,12 @@
+..
+    This file is part of the dionaea honeypot
+
+    SPDX-FileCopyrightText: 2019 Michael Neu
+
+    SPDX-License-Identifier: GPL-2.0-or-later
+
 Printer
-===
+=======
 
 Dionaea provides a basic PJL/PCL printer server on port 9100. It can
 receive prints and `PRET <https://github.com/RUB-NDS/PRET/>`_ works
