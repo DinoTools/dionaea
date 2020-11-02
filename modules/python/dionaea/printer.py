@@ -206,10 +206,10 @@ class Printerd(connection):
 
         self.pjl_responses.update(config.get("pjl_msgs", {}))
         self.pjl_response_regexes = convert_pjl_responses_to_regex(self.pjl_responses)
-    
+
     def chroot(self, p):
         self.root = p
-    
+
     def handle_origin(self, parent):
         logger.debug("setting download_dir to '%s' from parent" % parent.download_dir)
         self.download_dir = parent.download_dir
@@ -219,7 +219,7 @@ class Printerd(connection):
 
         logger.debug("setting root from parent")
         self.root = parent.root
-    
+
     def handle_established(self):
         self.processors()
 
@@ -259,7 +259,7 @@ class Printerd(connection):
                 program_start = program.index(b"@")
             except ValueError:
                 program_start = 0
-            
+
             if program_start != 0:
                 self.pjl_program_delimiter = program[0:program_start]
                 program = program[len(self.pjl_program_delimiter):]
@@ -289,7 +289,7 @@ class Printerd(connection):
             self.pjl_program_delimiter = None
 
         return processed_bytes
-    
+
     def process_pjl_line(self, line):
         """Executes a line of PJL code.
 
@@ -311,13 +311,13 @@ class Printerd(connection):
             command = echo_match.group(0).decode("utf-8")
             self.pjl_ECHO(command)
             return
-        
+
         fsdirlist_match = fsdirlist_command_regex.match(line)
         if fsdirlist_match:
             arguments = fsdirlist_match.group(1).decode("utf-8")
             self.pjl_FSDIRLIST(arguments)
-            return 
-        
+            return
+
         fsquery_match = fsquery_command_regex.match(line)
         if fsquery_match:
             arguments = fsquery_match.group(1).decode("utf-8")
@@ -390,7 +390,7 @@ class Printerd(connection):
 
             if "/" in path:
                 directories.append(template_directory % "..")
-            
+
             for entry in directory_entries:
                 entry_path = os.path.join(actual_path, entry)
 
@@ -399,7 +399,7 @@ class Printerd(connection):
                     files.append(template_file % (entry, stat.st_size))
                 elif os.path.isdir(entry_path):
                     directories.append(template_directory % entry)
-            
+
             listing = directories + files
             self.reply("\n".join(listing))
 
