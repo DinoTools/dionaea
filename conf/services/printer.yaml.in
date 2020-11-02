@@ -1,0 +1,5 @@
+- name: printer
+  config:
+    root: "@DIONAEA_STATEDIR@/printer/root"
+    pjl_msgs:
+        info_id: "HP LASERJET 4ML"
