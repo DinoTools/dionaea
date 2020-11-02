@@ -46,6 +46,7 @@ List of available services
     mysql
     nfq
     pptp
+    printer
     sip
     smb
     tftp
