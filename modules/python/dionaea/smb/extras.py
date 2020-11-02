@@ -28,6 +28,7 @@ class SmbConfig(object):
         self.primary_domain = "WORKGROUP"
         self.server_name = "HOMEUSER-3AF6FE"
         self.shares = {}
+        self.port = 445
 
         default_shares = {
             "ADMIN$" : {
@@ -58,7 +59,8 @@ class SmbConfig(object):
             "oem_domain_name",
             "os_type",
             "primary_domain",
-            "server_name"
+            "server_name",
+            "port"
         ]
         for name in value_names:
             value = config.get(name)

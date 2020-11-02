@@ -47,6 +47,8 @@ appreciated.
 Example config
 --------------
 
+The default port is `445`; it can be changed via the `port` stanza.
+
 .. literalinclude:: ../../../conf/services/smb.yaml
     :language: yaml
     :caption: services/smb.yaml
