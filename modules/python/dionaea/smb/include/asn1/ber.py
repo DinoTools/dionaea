@@ -287,8 +287,8 @@ class BERcodec_Object(metaclass=BERcodec_metaclass):
             return BERcodec_INTEGER.enc(int(s))
 
 
-
-ASN1_Codecs.BER.register_stem(BERcodec_Object)
+# ToDo: BER is an integer
+ASN1_Codecs.BER.register_stem(BERcodec_Object)  # type: ignore
 
 
 class BERcodec_INTEGER(BERcodec_Object):
