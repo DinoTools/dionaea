@@ -1,6 +1,7 @@
 # This file is part of the dionaea honeypot
 #
 # SPDX-FileCopyrightText: 2009 Paul Baecher & Markus Koetter & Mark Schloesser
+# SPDX-FileCopyrightText: 2016-2020 PhiBo (DinoTools)
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
