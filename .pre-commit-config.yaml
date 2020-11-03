@@ -64,13 +64,12 @@ repos:
           - flake8-bugbear
           - flake8-implicit-str-concat
 
-  # ToDo: Fix code
-  # - repo: https://github.com/pre-commit/mirrors-mypy
-  #   rev: v0.782
-  #   hooks:
-  #     - id: mypy
-  #       args: [--no-strict-optional, --ignore-missing-imports, --allow-untyped-global]
-  #       exclude: ^(doc/)
+  - repo: https://github.com/pre-commit/mirrors-mypy
+    rev: v0.782
+    hooks:
+      - id: mypy
+        args: [--no-strict-optional, --ignore-missing-imports, --allow-untyped-global]
+        exclude: ^(doc/|tests/|modules/python/dionaea/((submit_http|hpfeeds|virustotal|s3)\.py|(log_db_sql|mqtt|pptp|sip)/)|modules/python/util/(csv2sqlite.py|xmpp/pg_backend.py))
 
   # Check for missing licensing and copyright information.
   # The REUSE helper tool assists with achieving and confirming REUSE compliance.
