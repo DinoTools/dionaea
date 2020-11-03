@@ -6,7 +6,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from dionaea import ServiceLoader
-from dionaea.core import connection, g_dionaea, incident, ihandler
+from dionaea.core import connection, g_dionaea, incident
 from dionaea.util import detect_shellshock
 from dionaea.exception import ServiceConfigError
 from collections import OrderedDict
@@ -120,7 +120,7 @@ class httpreq:
             self.version = self.version[:r]
         self.headers = {}
         for hline in hlines[1:]:
-            if hline[len(hline)-1] == 13: # \r
+            if hline[len(hline)-1] == 13:  # \r
                 hline = hline[:len(hline)-1]
             hset = hline.split(b":", 1)
             self.headers[hset[0].lower()] = hset[1].strip()
@@ -171,7 +171,7 @@ class Headers(object):
         for n, v in self.headers.items():
             try:
                 yield (n, v.format(**values))
-            except KeyError as e:
+            except KeyError:
                 logger.warning("Key error in header: %s: %s" % (n, v), exc_info=True)
 
     def send(self, connection, values):
@@ -301,7 +301,7 @@ class httpd(connection):
 
         try:
             template = self.global_template.get_template(self.template_autoindex.get("filename"))
-        except jinja2.exceptions.TemplateNotFound as e:
+        except jinja2.exceptions.TemplateNotFound:
             logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
             return None
 
@@ -330,7 +330,7 @@ class httpd(connection):
                         code=code
                     )
                 )
-            except jinja2.exceptions.TemplateNotFound as e:
+            except jinja2.exceptions.TemplateNotFound:
                 logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
                 return None
             if template:
@@ -433,7 +433,7 @@ class httpd(connection):
             data = data[soc:]
             self.header = httpreq(header)
             self.header.log_req()
-            for n, v in self.header.headers.items():
+            for _n, v in self.header.headers.items():
                 detect_shellshock(self, v)
 
             if self.header.type == b'GET':
@@ -460,13 +460,14 @@ class httpd(connection):
                         'CONTENT_LENGTH': self.header.headers[b'content-length'].decode("utf-8"),
                         'CONTENT_TYPE': self.header.headers[b'content-type'].decode("utf-8")
                     }
-                except:
+                except Exception:
                     # ignore decode() errors
+                    logger.warning("Ignoring decode errors", exc_info=True)
                     self.handle_POST()
                     return len(data)
 
                 m = re.compile(
-                    "multipart/form-data;\s*boundary=(?P<boundary>.*)",
+                    r"multipart/form-data;\s*boundary=(?P<boundary>.*)",
                     re.IGNORECASE
                 ).match(self.env['CONTENT_TYPE'])
 
@@ -514,10 +515,10 @@ class httpd(connection):
             length = len(data)
             if pos < 0:
                 # boundary not found
-                l = length - len(self.boundary)
-                if l < 0:
-                    l = 0
-                self.cur_length = self.cur_length + l
+                length_processed = length - len(self.boundary)
+                if length_processed < 0:
+                    length_processed = 0
+                self.cur_length = self.cur_length + length_processed
 
                 if self.cur_length > self.max_request_size:
                     # Close connection if request is to large.
@@ -527,8 +528,8 @@ class httpd(connection):
                     if x:
                         self.copyfile(x)
                     return length
-                self.fp_tmp.write(data[:l])
-                return l
+                self.fp_tmp.write(data[:length_processed])
+                return length_processed
 
             # boundary found
             self.fp_tmp.write(data[:pos+len(self.boundary)])
@@ -626,7 +627,7 @@ class httpd(connection):
             return 0
 
         if soap_action == b"urn:dslforum-org:service:Time:1#SetNTPServers":
-            regex = re.compile(b"<(?P<tag_name>NewNTPServer\d)[^>]*>(?P<data>.*?)</(?P=tag_name)\s*>")
+            regex = re.compile(rb"<(?P<tag_name>NewNTPServer\d)[^>]*>(?P<data>.*?)</(?P=tag_name)\s*>")
             for d in regex.finditer(data[:content_length], re.I):
                 from .util import find_shell_download
                 find_shell_download(self, d.group("data"))
