@@ -114,7 +114,17 @@ class httpreq:
         req = hlines[0]
         reqparts = req.split(b" ")
         self.type = reqparts[0]
-        self.path = urllib.parse.unquote(reqparts[1].decode('utf-8'))
+        path_parsed = urllib.parse.urlsplit(reqparts[1].decode('utf-8'))
+        self.path = urllib.parse.unquote_plus(path_parsed.path)
+        self.values = {}
+        try:
+            self.values = urllib.parse.parse_qs(path_parsed.query)
+        except Exception:
+            logger.warning("Unable to parse query string", exc_info=True)
+
+        logger.debug("Extracted path %s", self.path)
+        logger.debug("Found %d url value(s)", len(self.values))
+
         self.version = reqparts[2]
         r = self.version.find(b"\r")
         if r:
