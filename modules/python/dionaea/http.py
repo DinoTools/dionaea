@@ -356,7 +356,7 @@ class httpd(connection):
             "default_content_type",
             self.default_content_type
         )
-        self.detect_mimetypes = dionaea_config.get(
+        self.detect_content_type = dionaea_config.get(
             "detect_content_type",
             self.detect_content_type
         )
