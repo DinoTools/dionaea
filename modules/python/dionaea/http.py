@@ -218,6 +218,7 @@ class httpd(connection):
             ("Content-Length", "{content_length}"),
             ("Connection", "{connection}")
         ]
+        self.default_content_type = "text/html; charset=utf-8"
         self.default_headers = Headers(self._default_headers)
         self.root = None
         self.global_template = None
@@ -344,6 +345,10 @@ class httpd(connection):
         dionaea_config = g_dionaea.config().get("dionaea")
         self.download_dir = dionaea_config.get("download.dir")
         self.download_suffix = dionaea_config.get("download.suffix", ".tmp")
+        self.default_content_type = dionaea_config.get(
+            "default_content_type",
+            self.default_content_type
+        )
 
         default_headers = config.get("default_headers", self._default_headers)
         global_headers = config.get('global_headers', [])
@@ -708,13 +713,16 @@ class httpd(connection):
                 f = io.open(apath, "rb")
                 content_length = os.stat(apath).st_size
 
+            content_type = self.default_content_type
+
             self.send_response(200)
             headers = self._get_headers(code=200, filename=apath)
             headers.send(
                 self,
                 {
                     "connection": "close",
-                    "content_length": content_length
+                    "content_length": content_length,
+                    "content_type": content_type
                 }
             )
             self.end_headers()
