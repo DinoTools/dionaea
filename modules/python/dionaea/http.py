@@ -352,11 +352,11 @@ class httpd(connection):
         dionaea_config = g_dionaea.config().get("dionaea")
         self.download_dir = dionaea_config.get("download.dir")
         self.download_suffix = dionaea_config.get("download.suffix", ".tmp")
-        self.default_content_type = dionaea_config.get(
+        self.default_content_type = config.get(
             "default_content_type",
             self.default_content_type
         )
-        self.detect_content_type = dionaea_config.get(
+        self.detect_content_type = config.get(
             "detect_content_type",
             self.detect_content_type
         )
@@ -410,7 +410,7 @@ class httpd(connection):
 
         self.root = config.get("root")
         if self.root is None:
-            logger.warningfigError("Root directory not configured")
+            logger.warning("Root directory not configured")
         else:
             if not os.path.isdir(self.root):
                 logger.warning("Root path '%s' is not a directory", self.root)
