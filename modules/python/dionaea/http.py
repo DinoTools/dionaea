@@ -16,6 +16,7 @@ import sys
 import io
 import cgi
 import html
+import mimetypes
 import urllib.parse
 import re
 import tempfile
@@ -182,6 +183,8 @@ class Headers(object):
 class httpd(connection):
     shared_config_values = [
         "default_headers",
+        "default_content_type",
+        "detect_content_type",
         "download_dir",
         "download_suffix",
         "file_template",
@@ -220,6 +223,7 @@ class httpd(connection):
         ]
         self.default_content_type = "text/html; charset=utf-8"
         self.default_headers = Headers(self._default_headers)
+        self.detect_content_type = True
         self.root = None
         self.global_template = None
         self.file_template = None
@@ -228,6 +232,9 @@ class httpd(connection):
         self.template_error_pages = None
         self.template_file_extension = ".j2"
         self.template_values = {}
+
+        # Use own class so we can add additional files later
+        self._mimetypes = mimetypes.MimeTypes()
 
     def _apply_template_config(self, config):
         """
@@ -348,6 +355,10 @@ class httpd(connection):
         self.default_content_type = dionaea_config.get(
             "default_content_type",
             self.default_content_type
+        )
+        self.detect_mimetypes = dionaea_config.get(
+            "detect_content_type",
+            self.detect_content_type
         )
 
         default_headers = config.get("default_headers", self._default_headers)
@@ -714,6 +725,12 @@ class httpd(connection):
                 content_length = os.stat(apath).st_size
 
             content_type = self.default_content_type
+            if self.detect_content_type:
+                # Try to detect Content-Type of a file
+                detected_mimetype = self._mimetypes.guess_type(apath)
+                logger.debug("Detected mimetype %s", detected_mimetype)
+                if detected_mimetype[0]:
+                    content_type = detected_mimetype[0]
 
             self.send_response(200)
             headers = self._get_headers(code=200, filename=apath)
