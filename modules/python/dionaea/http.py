@@ -321,6 +321,7 @@ class httpd(connection):
             return None
 
         return template.render(
+            connection=self,
             values=self.template_values
         )
 
