@@ -210,6 +210,7 @@ class httpd(connection):
         "root",
         "soap_enabled",
         "template_autoindex",
+        "template_enabled",
         "template_error_pages",
         "template_file_extension",
         "template_values"
@@ -244,6 +245,7 @@ class httpd(connection):
         self.file_template = None
         self.soap_enabled = False
         self.template_autoindex = None
+        self.template_enabled = False
         self.template_error_pages = None
         self.template_file_extension = ".j2"
         self.template_values = {}
@@ -258,8 +260,8 @@ class httpd(connection):
         :param dict config: Template config
         :return: True = Success | False = Failure
         """
-        enabled = config.get("enabled")
-        if not enabled:
+        self.template_enabled = config.get("enabled")
+        if not self.template_enabled:
             return True
 
         if jinja2 is None:
@@ -301,16 +303,21 @@ class httpd(connection):
         return self.default_headers
 
     def _render_file_template(self, filename):
-        filename = filename[len(self.root):] + self.template_file_extension
-        filename = filename.lstrip("/")
+        if not self.template_enabled:
+            return None
+
         if self.file_template is None:
-            logger.error("Need to render template, but template engine not loaded. Check install dependencies.")
+            logger.error("Need to render file template, but template engine not loaded.")
             raise DionaeaHTTPError(code=500)
+
+        logger.debug("%s %s", filename, self.root)
+
+        filename = filename[len(os.path.abspath(self.root)):] + self.template_file_extension
+        filename = filename.lstrip("/")
         try:
             template = self.file_template.get_template(filename)
         except jinja2.exceptions.TemplateNotFound:
-            # ToDo: Do we need this?
-            # logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
+            logger.debug("Template file '%s' not found", filename)
             return None
 
         return template.render(
@@ -318,9 +325,13 @@ class httpd(connection):
         )
 
     def _render_global_autoindex(self, files):
+        if not self.template_enabled:
+            return None
         if self.global_template is None:
+            logger.warning("Template Engine for global templates not found.")
             return None
         if self.template_autoindex is None:
+            logger.warning("Template for auto index not set")
             return None
 
         try:
@@ -335,11 +346,17 @@ class httpd(connection):
             values=self.template_values
         )
 
-    def _render_global_template(self, code, message):
+    def _render_global_error_page(self, code: int, message: str):
+        if not self.template_enabled:
+            return None
+
         if self.global_template is None:
+            logger.warning("Template Engine for global templates not found.")
             return None
         if self.template_error_pages is None:
+            logger.warning("List with error pages not set.")
             return None
+
         for tpl in self.template_error_pages:
             tpl_codes = tpl.get("codes")
             if tpl_codes and code not in tpl_codes:
@@ -348,21 +365,23 @@ class httpd(connection):
             if not tpl_filename:
                 logger.warning("Template filename not set")
                 continue
+
+            template = None
             try:
                 template = self.global_template.get_template(
-                    name=tpl_filename.format(
-                        code=code
-                    )
+                    tpl_filename.format(code=code)
                 )
             except jinja2.exceptions.TemplateNotFound:
-                logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
-                return None
+                pass
+
             if template:
                 return template.render(
                     code=code,
                     message=message,
                     values=self.template_values
                 )
+
+        return None
 
     def apply_config(self, config):
         dionaea_config = g_dionaea.config().get("dionaea")
@@ -873,7 +892,7 @@ class httpd(connection):
                 message = ''
         enc = sys.getfilesystemencoding()
 
-        content = self._render_global_template(
+        content = self._render_global_error_page(
             code=code,
             message=message
         )
