@@ -34,6 +34,11 @@ logger.setLevel(logging.DEBUG)
 STATE_HEADER, STATE_SENDFILE, STATE_POST, STATE_PUT = range(0, 4)
 
 
+class DionaeaHTTPError(Exception):
+    def __init__(self, code: int):
+        self.code = code
+
+
 class FileListItem(object):
     def __init__(self, path, name):
         self.path = path
@@ -299,7 +304,8 @@ class httpd(connection):
         filename = filename[len(self.root):] + self.template_file_extension
         filename = filename.lstrip("/")
         if self.file_template is None:
-            return None
+            logger.error("Need to render template, but template engine not loaded. Check install dependencies.")
+            raise DionaeaHTTPError(code=500)
         try:
             template = self.file_template.get_template(filename)
         except jinja2.exceptions.TemplateNotFound:
@@ -720,7 +726,10 @@ class httpd(connection):
                 # Don't return raw template files
                 return self.send_error(404)
 
-            content = self._render_file_template(apath)
+            try:
+                content = self._render_file_template(apath)
+            except DionaeaHTTPError as e:
+                return self.send_error(code=e.code)
 
             if isinstance(content, str):
                 content = content.encode("utf-8")
