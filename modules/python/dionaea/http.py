@@ -114,7 +114,7 @@ class HTTPService(ServiceLoader):
 
 
 class httpreq:
-    def __init__(self, header):
+    def __init__(self, header: bytes, connection):
         hlines = header.split(b'\n')
         req = hlines[0]
         reqparts = req.split(b" ")
@@ -123,7 +123,14 @@ class httpreq:
         self.path = urllib.parse.unquote_plus(path_parsed.path)
         self.values = {}
         try:
-            self.values = urllib.parse.parse_qs(path_parsed.query)
+            if sys.version_info[1] >= 8:
+                self.values = urllib.parse.parse_qs(
+                    path_parsed.query,
+                    max_num_fields=connection.get_max_num_fields
+                )
+            else:
+                logger.warning("max_num_fields is only supported with Python >= 3.8")
+                self.values = urllib.parse.parse_qs(path_parsed.query)
         except Exception:
             logger.warning("Unable to parse query string", exc_info=True)
 
@@ -203,6 +210,7 @@ class httpd(connection):
         "download_dir",
         "download_suffix",
         "file_template",
+        "get_max_num_fields",
         "global_template",
         "headers",
         "root",
@@ -240,6 +248,7 @@ class httpd(connection):
         self.default_content_type = "text/html; charset=utf-8"
         self.default_headers = Headers(self._default_headers)
         self.detect_content_type = True
+        self.get_max_num_fields = 100
         self.root = None
         self.global_template = None
         self.file_template = None
@@ -396,6 +405,10 @@ class httpd(connection):
             "detect_content_type",
             self.detect_content_type
         )
+        self.get_max_num_fields = config.get(
+            "get_max_num_fields",
+            self.get_max_num_fields
+        )
 
         default_headers = config.get("default_headers", self._default_headers)
         global_headers = config.get('global_headers', [])
@@ -483,7 +496,7 @@ class httpd(connection):
 
             header = data[0:eoh]
             data = data[soc:]
-            self.header = httpreq(header)
+            self.header = httpreq(header, self)
             self.header.log_req()
             for _n, v in self.header.headers.items():
                 detect_shellshock(self, v)

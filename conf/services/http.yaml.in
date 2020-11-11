@@ -12,6 +12,8 @@
     max_request_size: 32768 # maximum size in kbytes of the request (32MB)
     # Set default Content-Type if unable to detect
     # default_content_type: text/html; charset=utf-8
+    # Max number of fields to extract from GET request (Python >= 3.8)
+    # get_max_num_fields: 100
     # List of default headers
     # default_headers:
     #   - ["Content-Type", "{content_type}"]
