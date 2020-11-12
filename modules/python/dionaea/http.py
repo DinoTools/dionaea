@@ -21,6 +21,7 @@ import urllib.parse
 import re
 import tempfile
 from datetime import datetime
+from typing import Optional
 
 try:
     import jinja2
@@ -121,21 +122,21 @@ class httpreq:
         self.type = reqparts[0]
         path_parsed = urllib.parse.urlsplit(reqparts[1].decode('utf-8'))
         self.path = urllib.parse.unquote_plus(path_parsed.path)
-        self.values = {}
+        self.fields = {}
         try:
             if sys.version_info[1] >= 8:
-                self.values = urllib.parse.parse_qs(
+                self.fields = urllib.parse.parse_qs(
                     path_parsed.query,
                     max_num_fields=connection.get_max_num_fields
                 )
             else:
                 logger.warning("max_num_fields is only supported with Python >= 3.8")
-                self.values = urllib.parse.parse_qs(path_parsed.query)
+                self.fields = urllib.parse.parse_qs(path_parsed.query)
         except Exception:
             logger.warning("Unable to parse query string", exc_info=True)
 
         logger.debug("Extracted path %s", self.path)
-        logger.debug("Found %d url value(s)", len(self.values))
+        logger.debug("Found %d url value(s)", len(self.fields))
 
         self.version = reqparts[2]
         r = self.version.find(b"\r")
@@ -228,7 +229,7 @@ class httpd(connection):
         logger.debug("http test")
         connection.__init__(self, proto)
         self.state = STATE_HEADER
-        self.header = None
+        self.header: Optional[httpreq] = None
         self.rwchunksize = 64*1024
         self._out.speed.limit = 16*1024
         self.env = None
@@ -261,6 +262,14 @@ class httpd(connection):
 
         # Use own class so we can add additional files later
         self._mimetypes = mimetypes.MimeTypes()
+
+        self.request_form: Optional[cgi.FieldStorage] = None
+
+    @property
+    def request_fields(self):
+        if self.header:
+            return self.header.fields
+        return None
 
     def _apply_template_config(self, config):
         """
@@ -646,13 +655,21 @@ class httpd(connection):
         """
         if self.fp_tmp is not None:
             self.fp_tmp.seek(0)
-            form = cgi.FieldStorage(fp=self.fp_tmp, environ=self.env)
-            for field_name in form.keys():
+            if sys.version_info[1] >= 8:
+                self.request_form = cgi.FieldStorage(
+                    fp=self.fp_tmp,
+                    environ=self.env,
+                    max_num_fields=self.get_max_num_fields
+                )
+            else:
+                logger.warning("max_num_fields is only supported with Python >= 3.8")
+                self.request_form = cgi.FieldStorage(fp=self.fp_tmp, environ=self.env)
+            for field_name in self.request_form.keys():
                 # dump only files
-                if form[field_name].filename is None:
+                if self.request_form[field_name].filename is None:
                     continue
 
-                fp_post = form[field_name].file
+                fp_post = self.request_form[field_name].file
 
                 data = fp_post.read(4096)
 
