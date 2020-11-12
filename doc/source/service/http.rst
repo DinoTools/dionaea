@@ -78,3 +78,38 @@ Define headers to use if the filename matches a pattern.
               - ["Content-Length", "{content_length}"]
               - ["Connection", "{connection}"]
               - ["X-Powered-By", "PHP/5.5.9-1ubuntu4.5"]
+
+Templates
+---------
+
+It is possible to use Jinja_ templates to customise the content returned by dionaea.
+
+Requirements:
+
+- Jinja
+
+Before any template is used the template processing has to be enabled in the config file.
+Some global templates (e.g. for error pages) are specified in the config file.
+To use the template function in a static file just place it under the content root directory and add the template file extension as specified with the ``file_extension``.
+
+Example:
+
+- you have a file called ``my-app.html``
+- to enabled template processing rename the file to ``my-app.html.j2``
+- now you can use template strings
+
+Template values:
+
+- ``connection`` is an instance of HTTP connection class
+- ``values`` is a Dictionary of additional template values specified in the config
+
+Demo:
+
+
+Have a look at our demo template and play with it in your test lab before releasing it into the wild.
+
+.. literalinclude:: ../../../share/python/http/template/example/form.html.j2
+    :language: jinja
+    :caption: http/root/form.html.j2
+
+.. _Jinja: https://palletsprojects.com/p/jinja/
