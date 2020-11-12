@@ -143,11 +143,14 @@ class httpreq:
         if r:
             self.version = self.version[:r]
         self.headers = {}
-        for hline in hlines[1:]:
-            if hline[len(hline)-1] == 13:  # \r
-                hline = hline[:len(hline)-1]
-            hset = hline.split(b":", 1)
-            self.headers[hset[0].lower()] = hset[1].strip()
+        for header_line in hlines[1:]:
+            if header_line[len(header_line)-1] == 13:  # \r
+                header_line = header_line[:len(header_line)-1]
+            header_name, _, header_value = header_line.partition(b":")
+            if header_value is None:
+                logger.warning("Header without value '%s'", header_name)
+                continue
+            self.headers[header_name.lower()] = header_value.strip()
 
     def log_req(self):
         logger.debug(
