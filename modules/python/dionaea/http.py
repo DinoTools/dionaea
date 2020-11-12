@@ -239,6 +239,8 @@ class httpd(connection):
         self.boundary = None
         self.fp_tmp = None
         self.cur_length = 0
+        self.content_length: Optional[int] = None
+        self.content_type: Optional[str] = None
 
         self.headers = []
         self.max_request_size = 32768 * 1024
@@ -316,6 +318,17 @@ class httpd(connection):
         if not self.template_values:
             self.template_values = {}
         return True
+
+    def _check_max_request_size_reached(self) -> bool:
+        if self.cur_length > self.max_request_size:
+            # Close connection if request is to large.
+            # RFC2616: "The server MAY close the connection to prevent the client from continuing the request."
+            # http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.14
+            x = self.send_error(413)
+            if x:
+                self.copyfile(x)
+            return True
+        return False
 
     def _get_headers(self, code=None, filename=None, method=None):
         for header in self.headers:
@@ -496,18 +509,18 @@ class httpd(connection):
     def handle_io_in(self, data):
         if self.state == STATE_HEADER:
             # End Of Head
-            eoh = data.find(b'\r\n\r\n')
+            end_of_head = data.find(b'\r\n\r\n')
             # Start Of Content
-            soc = eoh + 4
+            start_of_content = end_of_head + 4
 
-            if eoh == -1:
-                eoh = data.find(b'\n\n')
-                soc = eoh + 2
-            if eoh == -1:
+            if end_of_head == -1:
+                end_of_head = data.find(b'\n\n')
+                start_of_content = end_of_head + 2
+            if end_of_head == -1:
                 return 0
 
-            header = data[0:eoh]
-            data = data[soc:]
+            header = data[0:end_of_head]
+            data = data[start_of_content:]
             self.header = httpreq(header, self)
             self.header.log_req()
             for _n, v in self.header.headers.items():
@@ -530,32 +543,25 @@ class httpd(connection):
                     return self.handle_POST_SOAP(data)
 
                 try:
-                    # at least this information are needed for
-                    # cgi.FieldStorage() to parse the content
-                    self.env = {
-                        'REQUEST_METHOD': 'POST',
-                        'CONTENT_LENGTH': self.header.headers[b'content-length'].decode("utf-8"),
-                        'CONTENT_TYPE': self.header.headers[b'content-type'].decode("utf-8")
-                    }
+                    self.content_length = int(self.header.headers[b'content-length'].decode("utf-8"))
+                    self.content_type = self.header.headers[b'content-type'].decode("utf-8")
                 except Exception:
                     # ignore decode() errors
                     logger.warning("Ignoring decode errors", exc_info=True)
                     self.handle_POST()
                     return len(data)
 
+                self.state = STATE_POST
+
                 m = re.compile(
                     r"multipart/form-data;\s*boundary=(?P<boundary>.*)",
                     re.IGNORECASE
-                ).match(self.env['CONTENT_TYPE'])
+                ).match(self.content_type)
 
-                if not m:
-                    self.handle_POST()
-                    return len(data)
-
-                self.state = STATE_POST
-                # More on boundaries see:
-                # http://www.apps.ietf.org/rfc/rfc2046.html#sec-5.1.1
-                self.boundary = bytes("--" + m.group("boundary") + "--\r\n", "utf-8")
+                if m:
+                    # More on boundaries see:
+                    # http://www.apps.ietf.org/rfc/rfc2046.html#sec-5.1.1
+                    self.boundary = bytes("--" + m.group("boundary") + "--\r\n", "utf-8")
 
                 # dump post content to file
                 self.fp_tmp = tempfile.NamedTemporaryFile(
@@ -565,15 +571,23 @@ class httpd(connection):
                     suffix=self.download_suffix
                 )
 
-                pos = data.find(self.boundary)
-                # ending boundary not found
-                if pos < 0:
-                    self.cur_length = soc
-                    return soc
+                self.cur_length = start_of_content
 
-                self.fp_tmp.write(data[:pos])
+                if self.boundary:
+                    pos = data.find(self.boundary)
+                    # ending boundary not found
+                    if pos < 0:
+                        return start_of_content
+                    self.fp_tmp.write(data[:pos])
+                    self.handle_POST()
+                    return start_of_content + pos
+
+                if len(data) < self.content_length:
+                    return start_of_content
+                self.fp_tmp.write(data[:self.content_length])
+
                 self.handle_POST()
-                return soc + pos
+                return start_of_content + self.content_length
 
             elif self.header.type == b'OPTIONS':
                 self.handle_OPTIONS()
@@ -588,30 +602,40 @@ class httpd(connection):
             return len(data)
 
         elif self.state == STATE_POST:
-            pos = data.find(self.boundary)
-            length = len(data)
-            if pos < 0:
-                # boundary not found
-                length_processed = length - len(self.boundary)
-                if length_processed < 0:
-                    length_processed = 0
-                self.cur_length = self.cur_length + length_processed
+            data_length = len(data)
+            if self.boundary:
+                pos = data.find(self.boundary)
 
-                if self.cur_length > self.max_request_size:
-                    # Close connection if request is to large.
-                    # RFC2616: "The server MAY close the connection to prevent the client from continuing the request."
-                    # http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.14
-                    x = self.send_error(413)
-                    if x:
-                        self.copyfile(x)
-                    return length
-                self.fp_tmp.write(data[:length_processed])
-                return length_processed
+                if pos < 0:
+                    # boundary not found
+                    length_processed = data_length - len(self.boundary)
+                    if length_processed < 0:
+                        length_processed = 0
+                    self.cur_length = self.cur_length + length_processed
 
-            # boundary found
-            self.fp_tmp.write(data[:pos+len(self.boundary)])
-            self.handle_POST()
-            return pos + len(self.boundary)
+                    if self._check_max_request_size_reached():
+                        return data_length
+                    self.fp_tmp.write(data[:length_processed])
+                    return length_processed
+
+                # boundary found
+                self.fp_tmp.write(data[:pos+len(self.boundary)])
+                self.handle_POST()
+                return pos + len(self.boundary)
+
+            self.cur_length += data_length
+            if self._check_max_request_size_reached():
+                return data_length
+            if self.fp_tmp.tell() + data_length > self.content_length:
+                logger.warning("More data send as specified in the Content-Length header")
+                self.fp_tmp.write(data[:self.content_length - self.fp_tmp.tell()])
+                self.handle_POST()
+                return data_length
+
+            self.fp_tmp.write(data)
+            if self.fp_tmp.tell() == self.content_length:
+                self.handle_POST()
+            return data_length
 
         elif self.state == STATE_PUT:
             logger.debug("putting to me")
@@ -658,15 +682,25 @@ class httpd(connection):
         """
         if self.fp_tmp is not None:
             self.fp_tmp.seek(0)
+            # at least this information are needed for
+            # cgi.FieldStorage() to parse the content
+            tmp_environ = {
+                'REQUEST_METHOD': 'POST',
+                'CONTENT_LENGTH': self.content_length,
+                'CONTENT_TYPE': self.content_type
+            }
             if sys.version_info[1] >= 8:
                 self.request_form = cgi.FieldStorage(
                     fp=self.fp_tmp,
-                    environ=self.env,
+                    environ=tmp_environ,
                     max_num_fields=self.get_max_num_fields
                 )
             else:
                 logger.warning("max_num_fields is only supported with Python >= 3.8")
-                self.request_form = cgi.FieldStorage(fp=self.fp_tmp, environ=self.env)
+                self.request_form = cgi.FieldStorage(
+                    fp=self.fp_tmp,
+                    environ=tmp_environ
+                )
             for field_name in self.request_form.keys():
                 # dump only files
                 if self.request_form[field_name].filename is None:
