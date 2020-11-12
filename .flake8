@@ -17,7 +17,6 @@ extend-exclude =
     modules/python/dionaea/ftp.py
     modules/python/dionaea/ftp_download.py
     modules/python/dionaea/hpfeeds.py
-    modules/python/dionaea/http.py
     modules/python/dionaea/ihandlers.py
     modules/python/dionaea/log_db_sql/controller.py
     modules/python/dionaea/log_incident.py

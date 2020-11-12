@@ -1,11 +1,12 @@
 # This file is part of the dionaea honeypot
 #
 # SPDX-FileCopyrightText: 2009 Paul Baecher & Markus Koetter & Mark Schloesser
+# SPDX-FileCopyrightText: 2016-2020 PhiBo (DinoTools)
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from dionaea import ServiceLoader
-from dionaea.core import connection, g_dionaea, incident, ihandler
+from dionaea.core import connection, g_dionaea, incident
 from dionaea.util import detect_shellshock
 from dionaea.exception import ServiceConfigError
 from collections import OrderedDict
@@ -15,10 +16,12 @@ import sys
 import io
 import cgi
 import html
+import mimetypes
 import urllib.parse
 import re
 import tempfile
 from datetime import datetime
+from typing import Optional
 
 try:
     import jinja2
@@ -30,6 +33,11 @@ logger = logging.getLogger('http')
 logger.setLevel(logging.DEBUG)
 
 STATE_HEADER, STATE_SENDFILE, STATE_POST, STATE_PUT = range(0, 4)
+
+
+class DionaeaHTTPError(Exception):
+    def __init__(self, code: int):
+        self.code = code
 
 
 class FileListItem(object):
@@ -107,22 +115,42 @@ class HTTPService(ServiceLoader):
 
 
 class httpreq:
-    def __init__(self, header):
+    def __init__(self, header: bytes, connection):
         hlines = header.split(b'\n')
         req = hlines[0]
         reqparts = req.split(b" ")
         self.type = reqparts[0]
-        self.path = urllib.parse.unquote(reqparts[1].decode('utf-8'))
+        path_parsed = urllib.parse.urlsplit(reqparts[1].decode('utf-8'))
+        self.path = urllib.parse.unquote_plus(path_parsed.path)
+        self.fields = {}
+        try:
+            if sys.version_info[1] >= 8:
+                self.fields = urllib.parse.parse_qs(
+                    path_parsed.query,
+                    max_num_fields=connection.get_max_num_fields
+                )
+            else:
+                logger.warning("max_num_fields is only supported with Python >= 3.8")
+                self.fields = urllib.parse.parse_qs(path_parsed.query)
+        except Exception:
+            logger.warning("Unable to parse query string", exc_info=True)
+
+        logger.debug("Extracted path %s", self.path)
+        logger.debug("Found %d url value(s)", len(self.fields))
+
         self.version = reqparts[2]
         r = self.version.find(b"\r")
         if r:
             self.version = self.version[:r]
         self.headers = {}
-        for hline in hlines[1:]:
-            if hline[len(hline)-1] == 13: # \r
-                hline = hline[:len(hline)-1]
-            hset = hline.split(b":", 1)
-            self.headers[hset[0].lower()] = hset[1].strip()
+        for header_line in hlines[1:]:
+            if header_line[len(header_line)-1] == 13:  # \r
+                header_line = header_line[:len(header_line)-1]
+            header_name, _, header_value = header_line.partition(b":")
+            if header_value is None:
+                logger.warning("Header without value '%s'", header_name)
+                continue
+            self.headers[header_name.lower()] = header_value.strip()
 
     def log_req(self):
         logger.debug(
@@ -170,7 +198,7 @@ class Headers(object):
         for n, v in self.headers.items():
             try:
                 yield (n, v.format(**values))
-            except KeyError as e:
+            except KeyError:
                 logger.warning("Key error in header: %s: %s" % (n, v), exc_info=True)
 
     def send(self, connection, values):
@@ -181,9 +209,12 @@ class Headers(object):
 class httpd(connection):
     shared_config_values = [
         "default_headers",
+        "default_content_type",
+        "detect_content_type",
         "download_dir",
         "download_suffix",
         "file_template",
+        "get_max_num_fields",
         "global_template",
         "headers",
         "root",
@@ -191,6 +222,7 @@ class httpd(connection):
         "root",
         "soap_enabled",
         "template_autoindex",
+        "template_enabled",
         "template_error_pages",
         "template_file_extension",
         "template_values"
@@ -200,13 +232,15 @@ class httpd(connection):
         logger.debug("http test")
         connection.__init__(self, proto)
         self.state = STATE_HEADER
-        self.header = None
+        self.header: Optional[httpreq] = None
         self.rwchunksize = 64*1024
         self._out.speed.limit = 16*1024
         self.env = None
         self.boundary = None
         self.fp_tmp = None
         self.cur_length = 0
+        self.content_length: Optional[int] = None
+        self.content_type: Optional[str] = None
 
         self.headers = []
         self.max_request_size = 32768 * 1024
@@ -217,15 +251,30 @@ class httpd(connection):
             ("Content-Length", "{content_length}"),
             ("Connection", "{connection}")
         ]
+        self.default_content_type = "text/html; charset=utf-8"
         self.default_headers = Headers(self._default_headers)
+        self.detect_content_type = True
+        self.get_max_num_fields = 100
         self.root = None
         self.global_template = None
         self.file_template = None
         self.soap_enabled = False
         self.template_autoindex = None
+        self.template_enabled = False
         self.template_error_pages = None
         self.template_file_extension = ".j2"
         self.template_values = {}
+
+        # Use own class so we can add additional files later
+        self._mimetypes = mimetypes.MimeTypes()
+
+        self.request_form: Optional[cgi.FieldStorage] = None
+
+    @property
+    def request_fields(self):
+        if self.header:
+            return self.header.fields
+        return None
 
     def _apply_template_config(self, config):
         """
@@ -234,8 +283,8 @@ class httpd(connection):
         :param dict config: Template config
         :return: True = Success | False = Failure
         """
-        enabled = config.get("enabled")
-        if not enabled:
+        self.template_enabled = config.get("enabled")
+        if not self.template_enabled:
             return True
 
         if jinja2 is None:
@@ -270,6 +319,17 @@ class httpd(connection):
             self.template_values = {}
         return True
 
+    def _check_max_request_size_reached(self) -> bool:
+        if self.cur_length > self.max_request_size:
+            # Close connection if request is to large.
+            # RFC2616: "The server MAY close the connection to prevent the client from continuing the request."
+            # http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.14
+            x = self.send_error(413)
+            if x:
+                self.copyfile(x)
+            return True
+        return False
+
     def _get_headers(self, code=None, filename=None, method=None):
         for header in self.headers:
             if header.match(code=code, filename=filename, method=method):
@@ -277,30 +337,41 @@ class httpd(connection):
         return self.default_headers
 
     def _render_file_template(self, filename):
-        filename = filename[len(self.root):] + self.template_file_extension
-        filename = filename.lstrip("/")
-        if self.file_template is None:
+        if not self.template_enabled:
             return None
+
+        if self.file_template is None:
+            logger.error("Need to render file template, but template engine not loaded.")
+            raise DionaeaHTTPError(code=500)
+
+        logger.debug("%s %s", filename, self.root)
+
+        filename = filename[len(os.path.abspath(self.root)):] + self.template_file_extension
+        filename = filename.lstrip("/")
         try:
             template = self.file_template.get_template(filename)
         except jinja2.exceptions.TemplateNotFound:
-            # ToDo: Do we need this?
-            # logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
+            logger.debug("Template file '%s' not found", filename)
             return None
 
         return template.render(
+            connection=self,
             values=self.template_values
         )
 
     def _render_global_autoindex(self, files):
+        if not self.template_enabled:
+            return None
         if self.global_template is None:
+            logger.warning("Template Engine for global templates not found.")
             return None
         if self.template_autoindex is None:
+            logger.warning("Template for auto index not set")
             return None
 
         try:
             template = self.global_template.get_template(self.template_autoindex.get("filename"))
-        except jinja2.exceptions.TemplateNotFound as e:
+        except jinja2.exceptions.TemplateNotFound:
             logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
             return None
 
@@ -310,11 +381,17 @@ class httpd(connection):
             values=self.template_values
         )
 
-    def _render_global_template(self, code, message):
+    def _render_global_error_page(self, code: int, message: str):
+        if not self.template_enabled:
+            return None
+
         if self.global_template is None:
+            logger.warning("Template Engine for global templates not found.")
             return None
         if self.template_error_pages is None:
+            logger.warning("List with error pages not set.")
             return None
+
         for tpl in self.template_error_pages:
             tpl_codes = tpl.get("codes")
             if tpl_codes and code not in tpl_codes:
@@ -323,15 +400,15 @@ class httpd(connection):
             if not tpl_filename:
                 logger.warning("Template filename not set")
                 continue
+
+            template = None
             try:
                 template = self.global_template.get_template(
-                    name=tpl_filename.format(
-                        code=code
-                    )
+                    tpl_filename.format(code=code)
                 )
-            except jinja2.exceptions.TemplateNotFound as e:
-                logger.warning("Template file not found. See stacktrace for additional information", exc_info=True)
-                return None
+            except jinja2.exceptions.TemplateNotFound:
+                pass
+
             if template:
                 return template.render(
                     code=code,
@@ -339,10 +416,24 @@ class httpd(connection):
                     values=self.template_values
                 )
 
+        return None
+
     def apply_config(self, config):
         dionaea_config = g_dionaea.config().get("dionaea")
         self.download_dir = dionaea_config.get("download.dir")
         self.download_suffix = dionaea_config.get("download.suffix", ".tmp")
+        self.default_content_type = config.get(
+            "default_content_type",
+            self.default_content_type
+        )
+        self.detect_content_type = config.get(
+            "detect_content_type",
+            self.detect_content_type
+        )
+        self.get_max_num_fields = config.get(
+            "get_max_num_fields",
+            self.get_max_num_fields
+        )
 
         default_headers = config.get("default_headers", self._default_headers)
         global_headers = config.get('global_headers', [])
@@ -393,7 +484,7 @@ class httpd(connection):
 
         self.root = config.get("root")
         if self.root is None:
-            logger.warningfigError("Root directory not configured")
+            logger.warning("Root directory not configured")
         else:
             if not os.path.isdir(self.root):
                 logger.warning("Root path '%s' is not a directory", self.root)
@@ -418,21 +509,21 @@ class httpd(connection):
     def handle_io_in(self, data):
         if self.state == STATE_HEADER:
             # End Of Head
-            eoh = data.find(b'\r\n\r\n')
+            end_of_head = data.find(b'\r\n\r\n')
             # Start Of Content
-            soc = eoh + 4
+            start_of_content = end_of_head + 4
 
-            if eoh == -1:
-                eoh = data.find(b'\n\n')
-                soc = eoh + 2
-            if eoh == -1:
+            if end_of_head == -1:
+                end_of_head = data.find(b'\n\n')
+                start_of_content = end_of_head + 2
+            if end_of_head == -1:
                 return 0
 
-            header = data[0:eoh]
-            data = data[soc:]
-            self.header = httpreq(header)
+            header = data[0:end_of_head]
+            data = data[start_of_content:]
+            self.header = httpreq(header, self)
             self.header.log_req()
-            for n, v in self.header.headers.items():
+            for _n, v in self.header.headers.items():
                 detect_shellshock(self, v)
 
             if self.header.type == b'GET':
@@ -452,31 +543,25 @@ class httpd(connection):
                     return self.handle_POST_SOAP(data)
 
                 try:
-                    # at least this information are needed for
-                    # cgi.FieldStorage() to parse the content
-                    self.env = {
-                        'REQUEST_METHOD': 'POST',
-                        'CONTENT_LENGTH': self.header.headers[b'content-length'].decode("utf-8"),
-                        'CONTENT_TYPE': self.header.headers[b'content-type'].decode("utf-8")
-                    }
-                except:
+                    self.content_length = int(self.header.headers[b'content-length'].decode("utf-8"))
+                    self.content_type = self.header.headers[b'content-type'].decode("utf-8")
+                except Exception:
                     # ignore decode() errors
-                    self.handle_POST()
-                    return len(data)
-
-                m = re.compile(
-                    "multipart/form-data;\s*boundary=(?P<boundary>.*)",
-                    re.IGNORECASE
-                ).match(self.env['CONTENT_TYPE'])
-
-                if not m:
+                    logger.warning("Ignoring decode errors", exc_info=True)
                     self.handle_POST()
                     return len(data)
 
                 self.state = STATE_POST
-                # More on boundaries see:
-                # http://www.apps.ietf.org/rfc/rfc2046.html#sec-5.1.1
-                self.boundary = bytes("--" + m.group("boundary") + "--\r\n", "utf-8")
+
+                m = re.compile(
+                    r"multipart/form-data;\s*boundary=(?P<boundary>.*)",
+                    re.IGNORECASE
+                ).match(self.content_type)
+
+                if m:
+                    # More on boundaries see:
+                    # http://www.apps.ietf.org/rfc/rfc2046.html#sec-5.1.1
+                    self.boundary = bytes("--" + m.group("boundary") + "--\r\n", "utf-8")
 
                 # dump post content to file
                 self.fp_tmp = tempfile.NamedTemporaryFile(
@@ -486,15 +571,23 @@ class httpd(connection):
                     suffix=self.download_suffix
                 )
 
-                pos = data.find(self.boundary)
-                # ending boundary not found
-                if pos < 0:
-                    self.cur_length = soc
-                    return soc
+                self.cur_length = start_of_content
 
-                self.fp_tmp.write(data[:pos])
+                if self.boundary:
+                    pos = data.find(self.boundary)
+                    # ending boundary not found
+                    if pos < 0:
+                        return start_of_content
+                    self.fp_tmp.write(data[:pos])
+                    self.handle_POST()
+                    return start_of_content + pos
+
+                if len(data) < self.content_length:
+                    return start_of_content
+                self.fp_tmp.write(data[:self.content_length])
+
                 self.handle_POST()
-                return soc + pos
+                return start_of_content + self.content_length
 
             elif self.header.type == b'OPTIONS':
                 self.handle_OPTIONS()
@@ -509,30 +602,40 @@ class httpd(connection):
             return len(data)
 
         elif self.state == STATE_POST:
-            pos = data.find(self.boundary)
-            length = len(data)
-            if pos < 0:
-                # boundary not found
-                l = length - len(self.boundary)
-                if l < 0:
-                    l = 0
-                self.cur_length = self.cur_length + l
+            data_length = len(data)
+            if self.boundary:
+                pos = data.find(self.boundary)
 
-                if self.cur_length > self.max_request_size:
-                    # Close connection if request is to large.
-                    # RFC2616: "The server MAY close the connection to prevent the client from continuing the request."
-                    # http://www.w3.org/Protocols/rfc2616/rfc2616-sec10.html#sec10.4.14
-                    x = self.send_error(413)
-                    if x:
-                        self.copyfile(x)
-                    return length
-                self.fp_tmp.write(data[:l])
-                return l
+                if pos < 0:
+                    # boundary not found
+                    length_processed = data_length - len(self.boundary)
+                    if length_processed < 0:
+                        length_processed = 0
+                    self.cur_length = self.cur_length + length_processed
 
-            # boundary found
-            self.fp_tmp.write(data[:pos+len(self.boundary)])
-            self.handle_POST()
-            return pos + len(self.boundary)
+                    if self._check_max_request_size_reached():
+                        return data_length
+                    self.fp_tmp.write(data[:length_processed])
+                    return length_processed
+
+                # boundary found
+                self.fp_tmp.write(data[:pos+len(self.boundary)])
+                self.handle_POST()
+                return pos + len(self.boundary)
+
+            self.cur_length += data_length
+            if self._check_max_request_size_reached():
+                return data_length
+            if self.fp_tmp.tell() + data_length > self.content_length:
+                logger.warning("More data send as specified in the Content-Length header")
+                self.fp_tmp.write(data[:self.content_length - self.fp_tmp.tell()])
+                self.handle_POST()
+                return data_length
+
+            self.fp_tmp.write(data)
+            if self.fp_tmp.tell() == self.content_length:
+                self.handle_POST()
+            return data_length
 
         elif self.state == STATE_PUT:
             logger.debug("putting to me")
@@ -579,13 +682,31 @@ class httpd(connection):
         """
         if self.fp_tmp is not None:
             self.fp_tmp.seek(0)
-            form = cgi.FieldStorage(fp=self.fp_tmp, environ=self.env)
-            for field_name in form.keys():
+            # at least this information are needed for
+            # cgi.FieldStorage() to parse the content
+            tmp_environ = {
+                'REQUEST_METHOD': 'POST',
+                'CONTENT_LENGTH': self.content_length,
+                'CONTENT_TYPE': self.content_type
+            }
+            if sys.version_info[1] >= 8:
+                self.request_form = cgi.FieldStorage(
+                    fp=self.fp_tmp,
+                    environ=tmp_environ,
+                    max_num_fields=self.get_max_num_fields
+                )
+            else:
+                logger.warning("max_num_fields is only supported with Python >= 3.8")
+                self.request_form = cgi.FieldStorage(
+                    fp=self.fp_tmp,
+                    environ=tmp_environ
+                )
+            for field_name in self.request_form.keys():
                 # dump only files
-                if form[field_name].filename is None:
+                if self.request_form[field_name].filename is None:
                     continue
 
-                fp_post = form[field_name].file
+                fp_post = self.request_form[field_name].file
 
                 data = fp_post.read(4096)
 
@@ -625,7 +746,7 @@ class httpd(connection):
             return 0
 
         if soap_action == b"urn:dslforum-org:service:Time:1#SetNTPServers":
-            regex = re.compile(b"<(?P<tag_name>NewNTPServer\d)[^>]*>(?P<data>.*?)</(?P=tag_name)\s*>")
+            regex = re.compile(rb"<(?P<tag_name>NewNTPServer\d)[^>]*>(?P<data>.*?)</(?P=tag_name)\s*>")
             for d in regex.finditer(data[:content_length], re.I):
                 from .util import find_shell_download
                 find_shell_download(self, d.group("data"))
@@ -692,7 +813,10 @@ class httpd(connection):
                 # Don't return raw template files
                 return self.send_error(404)
 
-            content = self._render_file_template(apath)
+            try:
+                content = self._render_file_template(apath)
+            except DionaeaHTTPError as e:
+                return self.send_error(code=e.code)
 
             if isinstance(content, str):
                 content = content.encode("utf-8")
@@ -706,13 +830,22 @@ class httpd(connection):
                 f = io.open(apath, "rb")
                 content_length = os.stat(apath).st_size
 
+            content_type = self.default_content_type
+            if self.detect_content_type:
+                # Try to detect Content-Type of a file
+                detected_mimetype = self._mimetypes.guess_type(apath)
+                logger.debug("Detected mimetype %s", detected_mimetype)
+                if detected_mimetype[0]:
+                    content_type = detected_mimetype[0]
+
             self.send_response(200)
             headers = self._get_headers(code=200, filename=apath)
             headers.send(
                 self,
                 {
                     "connection": "close",
-                    "content_length": content_length
+                    "content_length": content_length,
+                    "content_type": content_type
                 }
             )
             self.end_headers()
@@ -827,7 +960,7 @@ class httpd(connection):
                 message = ''
         enc = sys.getfilesystemencoding()
 
-        content = self._render_global_template(
+        content = self._render_global_error_page(
             code=code,
             message=message
         )
