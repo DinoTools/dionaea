@@ -9,8 +9,24 @@
 Installation
 ============
 
-At the time of writing the best choice to install dionaea on a server is to use `Ubuntu 16.04`_,
-but below you can find how to install it (from source) on other distributions/operating systems.
+Requirements
+------------
+
+For best performance and functionality we have documented some recommendations for running dionaea.
+
++------------------+--------------------------------------------------------------+
+| Platform         | Options                                                      |
++==================+==============================================================+
+| Operating System | - **Ubuntu 18.04 LTS** (recommended) (used for development)  |
+|                  | - **Debian 10** (recommended)                                |
++------------------+--------------------------------------------------------------+
+| Python Runtime   | - **3.9** (*recommended*)                                    |
+|                  | - **3.8** (*recommended*)                                    |
+|                  | - 3.7                                                        |
+|                  | - 3.6                                                        |
++------------------+--------------------------------------------------------------+
+
+At the moment we do not recommend using Ubtuntu 20.04 or Debian 11 because libemu has been dropped from the package repository. Feel free to have a look at `Future of shellcode emulation (libemu)?`_ for more information and to help use.
 
 Basic stuff
 -----------
@@ -25,40 +41,17 @@ You can download the source code from the `release page`_ or by using the git co
 .. code-block:: console
 
     git clone https://github.com/DinoTools/dionaea.git
-    cd  dionaea
+    cd dionaea
 
 
 .. _release page: https://github.com/DinoTools/dionaea/releases
 
-Arch Linux
-----------
+Docker
+------
 
-Packages for dionaea are available from the Arch User Repository (AUR).
-Use a package manager like yaourt that can handle and install packages from the AUR.
+We provide an official docker image. For detailed instructions please have a look at the `dinotools/dionaea docker hub`_ page
 
-Before you start install the required build tools.
-
-.. code-block:: console
-
-    $ yaourt -S base-devel
-
-After the requirements have been installed successfully you can install dionaea.
-This will checkout the latest sources from the git repository, run the build process and install the package.
-
-.. code-block:: console
-
-    $ yaourt -S dionaea-git
-
-After the installation has been completed you may want to edit the config file /etc/dionaea/dionaea.conf.
-If everything looks fine the dionaea service can bee started by using the following command.
-
-.. code-block:: console
-
-    $ sudo systemctl start dionaea
-
-The log files and everything captured can be found in the directory /var/lib/dionaea/.
-
-Ubuntu 16.04
+Ubuntu 18.04
 ------------
 
 From Source
@@ -91,101 +84,7 @@ Install required build dependencies before configuring and building dionaea. ('t
         python3-bson \
         python3-yaml \
         python3-boto3 \
-        ttf-liberation
-
-After all dependencies have been installed successfully create a build directory and run :code:`cmake` to setup the build process.
-
-.. code-block:: console
-
-    mkdir build
-    cd build
-    cmake -DCMAKE_INSTALL_PREFIX:PATH=/opt/dionaea ..
-
-Now you should be able to run :code:`make` to build and run :code:`make install` to install the honeypot.
-
-.. code-block:: console
-
-    make
-    sudo make install
-
-The new honeypot can be found in the directory :code:`/opt/dionaea`.
-
-.. _Ubuntu 14.04:
-
-Ubuntu 14.04
-------------
-
-Package based
-^^^^^^^^^^^^^
-
-Nightly packages are provided in a Personal Package Archive (PPA).
-Before you start you should update all packages to get the latest security updates.
-
-.. code-block:: console
-
-    $ sudo apt-get update
-    $ sudo apt-get dist-upgrade
-
-
-First of all install the tools to easily manage PPA resources.
-
-.. code-block:: console
-
-    $ sudo apt-get install software-properties-common
-
-After the required tools have been installed you can add the PPA and update the package cache.
-
-.. code-block:: console
-
-    $ sudo add-apt-repository ppa:honeynet/nightly
-    $ sudo apt-get update
-
-If everything worked without any errors you should be able to install the dionaea package.
-
-
-.. code-block:: console
-
-    $ sudo apt-get install dionaea
-
-After the installation has been completed you may want to edit the config file /etc/dionaea/dionaea.conf.
-If everything looks fine the dionaea service can bee started by using the following command.
-
-.. code-block:: console
-
-    $ sudo service dionaea start
-
-The log files can be found in the directory /var/log/dionaea/ and everything else captured and logged by the honeypot can be found in the directory /var/lib/dionaea/.
-
-From Source
-^^^^^^^^^^^
-
-Before you start `download the source code`_ of dionaea.
-
-Install required build dependencies before configuring and building dionaea.
-
-.. code-block:: console
-
-    $ sudo apt-get install \
-        build-essential \
-        check \
-        cmake3 \
-        cython3 \
-        libcurl4-openssl-dev \
-        libemu-dev \
-        libev-dev \
-        libglib2.0-dev \
-        libloudmouth1-dev \
-        libnetfilter-queue-dev \
-        libnl-dev \
-        libpcap-dev \
-        libssl-dev \
-        libtool \
-        libudns-dev \
-        python3 \
-        python3-dev \
-        python3-bson \
-        python3-yaml \
-        python3-boto3
+        fonts-liberation
 
 After all dependencies have been installed successfully create a build directory and run :code:`cmake` to setup the build process.
 
@@ -209,3 +108,10 @@ The new honeypot can be found in the directory :code:`/opt/dionaea`.
 
 The packages below are 3rd party provided, which is appreciated.
 If you have compiled a package for your own distribution, just send me the link or make a pull request.
+
+.. note:: Before you use 3rd party packages please check if you get the latest version of dionaea.
+
+.. note:: We are not responsible and it is hard to debug if you use 3rd party packages. If you have any issues with the packages please also contact the package maintainer.
+
+.. _dinotools/dionaea docker hub: https://hub.docker.com/r/dinotools/dionaea
+.. _Future of shellcode emulation (libemu)?: https://github.com/DinoTools/dionaea/issues/306
