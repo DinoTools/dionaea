@@ -112,13 +112,12 @@ DH *ssl_callback_TmpDH(SSL *ssl, int export, int keylen)
 	return(DH *)c->transport.tls.pTmpKeys[idx];
 }
 
-bool connection_tls_set_certificate(struct connection *con, const char *path, int type)
+bool connection_tls_set_certificate(struct connection *con, const char *path)
 {
-	g_debug("%s con %p path %s type %i",__PRETTY_FUNCTION__, con, path, type);
-	int ret = SSL_CTX_use_certificate_file(con->transport.tls.ctx, path, type);
-	if( ret != 1 )
-	{
-		perror("SSL_CTX_use_certificate_file");
+	g_debug("%s con %p path %s",__PRETTY_FUNCTION__, con, path);
+	int ret = SSL_CTX_use_certificate_chain_file(con->transport.tls.ctx, path);
+	if( ret != 1 ) {
+		perror("SSL_CTX_use_certificate_chain_file");
 		return false;
 	}
 	return true;

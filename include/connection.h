@@ -356,7 +356,7 @@ void connection_tls_io_out_cb(struct ev_loop *loop, struct ev_io *w, int revents
 void connection_tls_shutdown_cb(struct ev_loop *loop, struct ev_io *w, int revents);
 void connection_tls_disconnect(struct connection *con);
 void connection_tls_error(struct connection *con);
-bool connection_tls_set_certificate(struct connection *con, const char *path, int type);
+bool connection_tls_set_certificate(struct connection *con, const char *path);
 bool connection_tls_set_key(struct connection *con, const char *path, int type);
 bool connection_tls_mkcert(struct connection *con);
 
