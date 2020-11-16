@@ -112,6 +112,15 @@ DH *ssl_callback_TmpDH(SSL *ssl, int export, int keylen)
 	return(DH *)c->transport.tls.pTmpKeys[idx];
 }
 
+/*
+ * Loads a certificate chain from a file and adds it to the SSL context of the connection.
+ * The certificates must be in the PEM format.
+ *
+ * @param con The connection
+ * @param path The filepath of the certificate chain.
+ *
+ * @return true on success | false if something went wrong
+ */
 bool connection_tls_set_certificate(struct connection *con, const char *path)
 {
 	g_debug("%s con %p path %s",__PRETTY_FUNCTION__, con, path);
@@ -123,6 +132,15 @@ bool connection_tls_set_certificate(struct connection *con, const char *path)
 	return true;
 }
 
+/*
+ * Loads the first private key from a file and adds it to the SSL context of the connection.
+ *
+ * @param con The connection
+ * @param path The filepath of the certificate chain
+ * @param type The type of the key. SSL_FILETYPE_PEM or SSL_FILETYPE_ASN1.
+ *
+ * @return true on success | false if something went wrong
+ */
 bool connection_tls_set_key(struct connection *con, const char *path, int type)
 {
 	g_debug("%s con %p path %s type %i",__PRETTY_FUNCTION__, con, path, type);
