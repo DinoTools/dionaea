@@ -8,8 +8,51 @@
 Changelog
 =========
 
-0.10.0 - (`master`_)
+0.11.0 - (`master`_)
 --------------------
+
+0.10.0 - (2020-11-16)
+---------------------
+
+**ci**
+
+* Add mypy check
+
+**dionaea**
+
+* Add support for certificate chain files
+* Add documentation for touched code
+
+**doc**
+
+* Update install instructions
+
+**python**
+
+* Drop Support for Python < 3.6
+
+**python/http**
+
+* Fix flake8 errors
+* Fix issue with default Content-Type (Fixes #252)
+* Add support to detect Content-Type by filename
+* Add documentation to config
+* Add new function to split path and query string (Refs #203)
+* Add warnings if Jinja is not available
+* Fix issues with template rendering
+* Add connection context to template context
+* Add improvements to POST request handling
+* Add function to add GET vars to template context
+* Add example how to use HTML forms in templates
+
+**python/printer**
+
+* Add initial release of the new printer service (Thanks Michael Neu)
+* Add tests for printer service (Thanks Michael Neu)
+
+**python/smb**
+
+* Add config value to specify port
 
 0.9.2 - (2020-10-25)
 --------------------
