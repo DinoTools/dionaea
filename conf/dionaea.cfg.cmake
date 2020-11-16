@@ -25,6 +25,15 @@ listen.mode=getifaddrs
 # Organizational Unit
 # ssl.default.ou=
 
+# Provide certificate files
+# The provided certificate must be in the PEM format.
+# The certificates must be sorted starting with the server certificate
+# followed by intermediate CA certificates if applicable and ending at
+# the highest level CA.
+# ssl.default.cert=@DIONAEA_CONFDIR@/ssl/your-certificate-with-chain.crt
+# The provided key must be in the PEM format.
+# ssl.default.key=@DIONAEA_CONFDIR@/ssl/your-private-key.key
+
 [logging]
 default.filename=@DIONAEA_LOGDIR@/dionaea.log
 default.levels=all

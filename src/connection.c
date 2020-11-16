@@ -417,7 +417,7 @@ bool connection_listen(struct connection *con, int len)
 		}
 		if(cert_filename != NULL && key_filename != NULL) {
 			g_info("Use '%s' as key and '%s' as cert file", key_filename, cert_filename);
-			connection_tls_set_certificate(con, cert_filename, SSL_FILETYPE_PEM);
+			connection_tls_set_certificate(con, cert_filename);
 			connection_tls_set_key(con, key_filename, SSL_FILETYPE_PEM);
 		} else {
 			connection_tls_mkcert(con);
