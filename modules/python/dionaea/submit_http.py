@@ -7,7 +7,7 @@
 
 from dionaea.core import ihandler, incident, g_dionaea
 from dionaea.util import md5file, sha512file
-from dionaea import pyev, IHandlerLoader
+from dionaea import IHandlerLoader
 
 import logging
 import uuid
@@ -70,7 +70,6 @@ class handler(ihandler):
         #    dinfo['compiler']['date'],
         #    dinfo['compiler']['time'],
         #)
-        self.loop = pyev.default_loop()
 
     def handle_incident(self, icd):
         pass
