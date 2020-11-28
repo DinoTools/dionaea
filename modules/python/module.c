@@ -291,6 +291,8 @@ static bool freepy(void)
 static bool start(void)
 {
 	g_info("%s %s", __PRETTY_FUNCTION__, __FILE__);
+	PyGILState_STATE gil_state = PyGILState_Ensure();
+
 	GHashTableIter iter;
 	gpointer key, value;
 	g_hash_table_iter_init (&iter, runtime.imports);
@@ -312,6 +314,8 @@ static bool start(void)
 			PyErr_Clear();
 		traceback();
 	}
+	PyGILState_Release(gil_state);
+	PyEval_SaveThread();
 	return true;
 }
 
@@ -328,6 +332,9 @@ static bool new(struct dionaea *dionaea)
 	Py_SetProgramName(pybin);
 
 	Py_Initialize();
+	PyEval_InitThreads();
+
+	PyGILState_STATE gil_state = PyGILState_Ensure();
 
 	runtime.sys_path = g_string_new(DIONAEA_PYTHON_SITELIBDIR);
 
@@ -432,6 +439,8 @@ static bool new(struct dionaea *dionaea)
 	runtime.mkshell_ihandler = ihandler_new("dionaea.*.mkshell", python_mkshell_ihandler_cb, NULL);
 
 	g_hash_table_insert(g_dionaea->processors->names, (void *)proc_python_bistream.name, &proc_python_bistream);
+	PyGILState_Release(gil_state);
+	// save = PyEval_SaveThread();
 	return true;
 }
 
@@ -471,6 +480,7 @@ void log_wrap(char *name, int number, char *file, int line, char *msg)
 	}
 	g_log(log_domain, log_level, "%s", msg);
 	free(log_domain);
+
 #endif
 }
 
@@ -733,6 +743,7 @@ PyObject *py_config_string_list(gchar *group, gchar *key)
 	if (values == NULL) {
 		return Py_None;
 	}
+	PyGILState_STATE gil_state = PyGILState_Ensure();
 	obj_values = PyList_New(0);
 
 	for(value = values; *value; value++) {
@@ -740,7 +751,7 @@ PyObject *py_config_string_list(gchar *group, gchar *key)
 		PyList_Append(obj_values, obj_value);
 		Py_DECREF(obj_value);
 	}
-
+	PyGILState_Release(gil_state);
 	return obj_values;
 }
 
@@ -943,15 +954,22 @@ void python_processor_bistream_free(void *data)
 static char *pyobjectstring(PyObject *obj)
 {
 	PyObject *pyobjectstr;
+	PyGILState_STATE gil_state = PyGILState_Ensure();
 
-	if( obj == NULL )
+	if( obj == NULL ) {
+	PyGILState_Release(gil_state);
 		return g_strdup("<null>");
+	}
 
-	if( obj == Py_None )
+	if( obj == Py_None ) {
+	PyGILState_Release(gil_state);
 		return g_strdup("None");
+	}
 
-	if( PyType_Check(obj) )
+	if( PyType_Check(obj) ) {
+	PyGILState_Release(gil_state);
 		return g_strdup(((PyTypeObject* ) obj)->tp_name);
+	}
 
 	if( PyUnicode_Check(obj) ) {
 		pyobjectstr = obj;
@@ -959,9 +977,11 @@ static char *pyobjectstring(PyObject *obj)
 		if( (pyobjectstr = PyObject_Repr(obj)) != NULL ) {
 			if( PyUnicode_Check(pyobjectstr) == 0 ) {
 				Py_XDECREF(pyobjectstr);
+				PyGILState_Release(gil_state);
 				return g_strdup("<!utf8>");
 			}
 		} else {
+		PyGILState_Release(gil_state);
 			return g_strdup("<!repr>");
 		}
 	}
@@ -974,22 +994,27 @@ static char *pyobjectstring(PyObject *obj)
 
 	// measure size
 	size_t csize = wcstombs(0, str, 0);
-	if( csize == (size_t) -1 )
+	if( csize == (size_t) -1 ) {
+	PyGILState_Release(gil_state);
 		return g_strdup("<!wcstombs>");
+	}
 
 	char *cstr = (char *) g_malloc(csize + 1);
 
 	// convert
 	wcstombs(cstr, str, csize + 1);
 	PyMem_Free(str);
+	PyGILState_Release(gil_state);
 	return cstr;
 }
 
 
 void traceback(void)
 {
+	PyGILState_STATE gil_state = PyGILState_Ensure();
 	if( !PyErr_Occurred() )
 	{
+		PyGILState_Release(gil_state);
 		return;
 	}
 
@@ -1018,6 +1043,7 @@ void traceback(void)
 
 	if( traceback == NULL )
 	{
+		PyGILState_Release(gil_state);
 		g_warning("traceback is NULL, good luck!");
 		return;
 	}
@@ -1053,12 +1079,12 @@ void traceback(void)
 	Py_XDECREF(type);
 	Py_XDECREF(value);
 	Py_XDECREF(traceback);
-
+	PyGILState_Release(gil_state);
 }
 
 struct module_api *module_init(struct dionaea *dionaea)
 {
-    g_debug("%s:%i %s dionaea %p",__FILE__, __LINE__, __PRETTY_FUNCTION__, dionaea);
+	g_debug("%s:%i %s dionaea %p",__FILE__, __LINE__, __PRETTY_FUNCTION__, dionaea);
 	static struct module_api python_api =
 	{
 		.config = &config,
@@ -1067,5 +1093,5 @@ struct module_api *module_init(struct dionaea *dionaea)
 		.free = &freepy,
 		.hup = &hupy
 	};
-    return &python_api;
+	return &python_api;
 }

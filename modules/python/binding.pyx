@@ -226,7 +226,7 @@ cdef class connection_speed:
 		def __get__(self):
 			return c_connection_stats_speed_get(self.thisptr)
 
-cdef connection_speed connection_speed_from(c_connection_stats *info):
+cdef connection_speed connection_speed_from(c_connection_stats *info) with gil:
 	cdef connection_speed instance
 	instance = NEW_C_NODE_INFO_CLASS(connection_speed)
 	instance.thisptr = info
@@ -255,7 +255,7 @@ cdef class connection_accounting:
 		def __get__(self):
 			return c_connection_stats_accounting_get(self.thisptr)
 
-cdef connection_accounting connection_accounting_from(c_connection_stats *info):
+cdef connection_accounting connection_accounting_from(c_connection_stats *info) with gil:
 	cdef connection_accounting instance
 	instance = NEW_C_NODE_INFO_CLASS(connection_accounting)
 	instance.thisptr = info
@@ -282,7 +282,7 @@ cdef class connection_stats:
 		def __get__(self):
 			return connection_accounting_from(self.thisptr)
 
-cdef connection_stats connection_stats_from(c_connection_stats *info):
+cdef connection_stats connection_stats_from(c_connection_stats *info) with gil:
 	cdef connection_stats instance
 	instance = NEW_C_NODE_INFO_CLASS(connection_stats)
 	instance.thisptr = info
@@ -294,7 +294,7 @@ cdef extern from "./module.h":
 	cdef void DECREF "Py_DECREF"(object)
 	void c_log_wrap "log_wrap" (char *, int, char *, int, char *)
 
-cdef node_info node_info_from(c_node_info *node):
+cdef node_info node_info_from(c_node_info *node) with gil:
 	cdef node_info instance
 	instance = NEW_C_NODE_INFO_CLASS(node_info)
 	instance.thisptr = node
@@ -380,7 +380,7 @@ cdef class connection_timeouts:
 cdef extern from "./module.h":
 	cdef connection_timeouts NEW_C_CONNECTION_TIMEOUTS_CLASS "PY_NEW"(object T)
 
-cdef connection_timeouts connection_timeouts_from(c_connection *con):
+cdef connection_timeouts connection_timeouts_from(c_connection *con) with gil:
 	cdef connection_timeouts instance
 	instance = NEW_C_CONNECTION_TIMEOUTS_CLASS(connection_timeouts)
 	instance.thisptr = con
@@ -738,7 +738,7 @@ cdef extern from "./module.h":
 #	cdef int PRINT_REFCOUNT "REFCOUNT"(object T)
 
 
-cdef connection _factory(c_connection *con):
+cdef connection _factory(c_connection *con) with gil:
 	cdef connection instance
 	cdef connection parent = <object>c_connection_protocol_ctx_get(con)
 	instance = CLONE_C_CONNECTION_CLASS(parent)
@@ -749,27 +749,27 @@ cdef connection _factory(c_connection *con):
 	instance.apply_parent_config(parent)
 	return instance
 
-cdef void _garbage(void *context):
+cdef void _garbage(void *context) with gil:
 #	print "get out the garbage !"
 	cdef connection instance
 	instance = <connection>context;
 	instance.thisptr = NULL
 	DECREF(instance)
 
-cdef void handle_origin_cb(c_connection *con, c_connection *origin) except *:
+cdef void handle_origin_cb(c_connection *con, c_connection *origin) except * with gil:
 #	print "origin_cb"
 	cdef connection instance
 	instance = <connection>c_connection_protocol_ctx_get(con)
 	parent = <connection>c_connection_protocol_ctx_get(origin)
 	instance.handle_origin(parent)
 
-cdef void handle_established_cb(c_connection *con) except *:
+cdef void handle_established_cb(c_connection *con) except * with gil:
 #	print "established_cb"
 	cdef connection instance
 	instance = <connection>c_connection_protocol_ctx_get(con)
 	instance.handle_established()
 
-cdef int handle_io_in_cb(c_connection *con, void *context, void *data, int size) except *:
+cdef int handle_io_in_cb(c_connection *con, void *context, void *data, int size) except * with gil:
 #	print "io_in_cb"
 	cdef connection instance
 	instance = <connection>context
@@ -782,7 +782,7 @@ cdef int handle_io_in_cb(c_connection *con, void *context, void *data, int size)
 		return len(bdata)
 	return l
 
-cdef void handle_io_out_cb(c_connection *con, void *context) except *:
+cdef void handle_io_out_cb(c_connection *con, void *context) except * with gil:
 #	print "io_out_cb"
 	cdef connection instance
 	instance = <connection>context
@@ -792,7 +792,7 @@ cdef void handle_io_out_cb(c_connection *con, void *context) except *:
 		logging.error("There was an error in the Python service", exc_info=True)
 		instance.close()
 
-cdef c_bool handle_disconnect_cb(c_connection *con, void *context) except *:
+cdef c_bool handle_disconnect_cb(c_connection *con, void *context) except * with gil:
 #	print "disconnect_cb"
 	cdef connection instance
 	instance = <connection>context
@@ -801,7 +801,7 @@ cdef c_bool handle_disconnect_cb(c_connection *con, void *context) except *:
 		instance.thisptr = NULL
 	return <bint>r
 
-cdef c_bool handle_error_cb(c_connection *con, c_connection_error err) except *:
+cdef c_bool handle_error_cb(c_connection *con, c_connection_error err) except * with gil:
 #	print "connect_error_cb"
 	cdef connection instance
 	instance = <connection>c_connection_protocol_ctx_get(con)
@@ -836,27 +836,27 @@ cdef c_bool handle_error_cb(c_connection *con, c_connection_error err) except *:
 	r = instance.handle_error(i)
 	return <bint>r
 
-cdef c_bool handle_timeout_sustain_cb(c_connection *con, void *ctx) except *:
+cdef c_bool handle_timeout_sustain_cb(c_connection *con, void *ctx) except * with gil:
 #	print "timeout_sustain_cb"
 	cdef connection instance
 	instance = <connection>ctx
 	return <bint> instance.handle_timeout_sustain()
 
-cdef c_bool handle_timeout_listen_cb(c_connection *con, void *ctx) except *:
+cdef c_bool handle_timeout_listen_cb(c_connection *con, void *ctx) except * with gil:
 #	print "timeout_listen_cb"
 	cdef connection instance
 	instance = <connection>ctx
 	return <bint> instance.handle_timeout_listen()
 
 
-cdef c_bool handle_timeout_idle_cb(c_connection *con, void *ctx) except *:
+cdef c_bool handle_timeout_idle_cb(c_connection *con, void *ctx) except * with gil:
 #	print "timeout_idle_cb"
 	cdef connection instance
 	instance = <connection>ctx
 	return <bint> instance.handle_timeout_idle()
 
 
-cdef void process_io_in(c_connection *con, c_processor_data *pd, void *data, int size) except *:
+cdef void process_io_in(c_connection *con, c_processor_data *pd, void *data, int size) except * with gil:
 	bdata = bytesfrom(<char *>data, size)
 	cdef connection instance
 	instance = <connection>c_connection_protocol_ctx_get(con)
@@ -868,7 +868,7 @@ cdef void process_io_in(c_connection *con, c_processor_data *pd, void *data, int
 			instance.bistream.append((u'in',bdata))
 	return
 
-cdef void process_io_out(c_connection *con, c_processor_data *pd, void *data, int size) except *:
+cdef void process_io_out(c_connection *con, c_processor_data *pd, void *data, int size) except * with gil:
 	cdef connection instance
 	instance = <connection>c_connection_protocol_ctx_get(con)
 	if instance.thisptr.processor_data != NULL:
@@ -879,7 +879,7 @@ cdef void process_io_out(c_connection *con, c_processor_data *pd, void *data, in
 			instance.bistream.append((u'out',bdata))
 	return
 
-cdef c_bool process_process(c_connection *con, void *config) except *:
+cdef c_bool process_process(c_connection *con, void *config) except * with gil:
 	cdef connection instance
 	instance = <connection>c_connection_protocol_ctx_get(con)
 	instance.bistream = []
@@ -1001,7 +1001,7 @@ cdef extern from "../../include/incident.h":
 
 
 
-cdef c_GList *py_to_glist(l):
+cdef c_GList *py_to_glist(l) with gil:
 	cdef c_GList *gl
 	cdef c_opaque_data *op
 	gl = NULL
@@ -1010,7 +1010,7 @@ cdef c_GList *py_to_glist(l):
 		gl = c_g_list_append(gl, op)
 	return gl
 
-cdef py_from_glist(c_GList *l):
+cdef py_from_glist(c_GList *l) with gil:
 	cdef c_GList *it
 	it = c_g_list_first(l)
 	pl = []
@@ -1019,7 +1019,7 @@ cdef py_from_glist(c_GList *l):
 		it = c_g_list_next(it)
 	return pl
 
-cdef GHashTable *py_to_ghashtable(d):
+cdef GHashTable *py_to_ghashtable(d) with gil:
 	cdef GHashTable *gd
 	cdef char *kn
 	cdef c_opaque_data *op
@@ -1032,7 +1032,7 @@ cdef GHashTable *py_to_ghashtable(d):
 		g_hash_table_insert(gd, op.name, op)
 	return gd
 
-cdef py_from_ghashtable(GHashTable *h):
+cdef py_from_ghashtable(GHashTable *h) with gil:
 	cdef GHashTableIter iter
 	cdef gpointer key
 	cdef gpointer value
@@ -1044,7 +1044,7 @@ cdef py_from_ghashtable(GHashTable *h):
 		a[skey] = py_from_opaque(<c_opaque_data *>value)
 	return a
 
-cdef c_opaque_data *py_to_opaque(value):
+cdef c_opaque_data *py_to_opaque(value) with gil:
 	cdef c_opaque_data *o
 	o = c_opaque_data_new()
 	if isinstance(value, connection):
@@ -1073,7 +1073,7 @@ cdef c_opaque_data *py_to_opaque(value):
 		return NULL
 	return o
 
-cdef py_from_opaque(c_opaque_data *value):
+cdef py_from_opaque(c_opaque_data *value) with gil:
 	cdef c_uintptr_t x
 	cdef connection c
 	cdef c_connection *cc
@@ -1217,7 +1217,7 @@ cdef extern from "../../include/incident.h":
 cdef extern from "module.h":
 	void c_traceable_ihandler_cb "traceable_ihandler_cb" (c_incident *, void *)
 
-cdef void c_python_ihandler_cb (c_incident *i, void *ctx) except *:
+cdef void c_python_ihandler_cb (c_incident *i, void *ctx) except * with gil:
 	cdef ihandler handler
 	cdef incident pi
 	handler = <ihandler>ctx
