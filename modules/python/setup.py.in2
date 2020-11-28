@@ -1,6 +1,7 @@
 # This file is part of the dionaea honeypot
 #
 # SPDX-FileCopyrightText: 2009 Paul Baecher & Markus Koetter
+# SPDX-FileCopyrightText: 2018-2020 PhiBo (DinoTools)
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
@@ -10,8 +11,6 @@ from distutils.util import convert_path
 import os
 from Cython.Distutils import build_ext
 
-pyev_version = "0.9.0"
-PYEV_VERSION = "\"{0}\"".format(pyev_version)
 
 def find_packages(base_path):
     base_path = convert_path(base_path)
@@ -68,18 +67,7 @@ ext_modules=[
         library_dirs=list(core_library_dirs),
         extra_link_args=list(core_library_other_flags),
         undef_macros=[('NDEBUG')],
-        define_macros=[('_GNU_SOURCE',None), ("PYEV_VERSION", PYEV_VERSION)],
-    ),
-    Extension("dionaea.pyev",
-        ['${CMAKE_CURRENT_SOURCE_DIR}/pyev/pyev.c'],
-        language="c",
-        include_dirs=['${CMAKE_CURRENT_SOURCE_DIR}/../../include', '${CMAKE_CURRENT_SOURCE_DIR}/../../'],
-        extra_compile_args=[],
-        libraries=[],
-        library_dirs=[],
-        extra_link_args=[],
-        undef_macros=[('NDEBUG')],
-        define_macros=[('_GNU_SOURCE',None), ("PYEV_VERSION", PYEV_VERSION)],
+        define_macros=[('_GNU_SOURCE',None)],
     ),
 ]
 
