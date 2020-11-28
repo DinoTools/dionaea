@@ -4,14 +4,13 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from dionaea import IHandlerLoader
+from dionaea import IHandlerLoader, Timer
 from dionaea.core import ihandler, incident, g_dionaea
 
 import logging
 import json
 import uuid
 import sqlite3
-from dionaea import pyev
 
 logger = logging.getLogger('virustotal')
 logger.setLevel(logging.DEBUG)
@@ -42,10 +41,13 @@ class virustotalhandler(ihandler):
             comment = "This sample was captured in the wild and uploaded by the dionaea honeypot.\n#honeypot #malware #networkworm"
         self.comment = comment
         self.cookies = {}
-        self.loop = pyev.default_loop()
 
-        self.backlog_timer = pyev.Timer(
-            0, 20, self.loop, self.__handle_backlog_timeout)
+        self.backlog_timer = Timer(
+            interval=20,
+            delay=0,
+            function=self.__handle_backlog_timeout,
+            repeat=True,
+        )
         self.backlog_timer.start()
         p = config.get("file")
         self.dbh = sqlite3.connect(p)
