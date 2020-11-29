@@ -4,7 +4,7 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
-from dionaea import IHandlerLoader
+from dionaea import IHandlerLoader, Timer
 from dionaea.core import ihandler, incident, g_dionaea, connection
 from dionaea.util import sha512file
 
@@ -16,10 +16,6 @@ import json
 import datetime
 from time import gmtime, strftime
 
-try:
-    from dionaea import pyev
-except ImportError:
-    pyev = None
 
 logger = logging.getLogger('hpfeeds')
 logger.setLevel(logging.DEBUG)
@@ -281,22 +277,22 @@ class hpfeedihandler(ihandler):
         self.dynip_timer = None
         self.ownip = None
         if isinstance(self.dynip_resolve, str) and self.dynip_resolve.startswith("http"):
-            if pyev is None:
-                logger.debug('You are missing the python pyev binding in your dionaea installation.')
-            else:
-                logger.debug('hpfeedihandler will use dynamic IP resolving!')
-                self.loop = pyev.default_loop()
-                self.dynip_timer = pyev.Timer(2., 300, self.loop, self._dynip_resolve)
-                self.dynip_timer.start()
+            logger.debug('hpfeedihandler will use dynamic IP resolving!')
+            self.dynip_timer = Timer(
+                300,
+                self._dynip_resolve,
+                delay=2,
+                repeat=True,
+            )
+            self.dynip_timer.start()
 
     def stop(self):
         if self.dynip_timer:
             self.dynip_timer.stop()
             self.dynip_timer = None
-            self.loop = None
 
     def _ownip(self, icd):
-        if self.dynip_resolve and 'http' in self.dynip_resolve and pyev is not None:
+        if self.dynip_resolve and 'http' in self.dynip_resolve:
             if self.ownip:
                 return self.ownip
             else:

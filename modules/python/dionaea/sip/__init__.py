@@ -17,7 +17,7 @@ import datetime
 import tempfile
 
 from dionaea.core import connection, g_dionaea, incident
-from dionaea import pyev, ServiceLoader
+from dionaea import Timer, ServiceLoader
 
 from dionaea.sip.extras import msg_to_icd, SipConfig, ErrorWithResponse
 
@@ -25,7 +25,7 @@ from dionaea.sip import rfc3261
 from dionaea.sip import rfc4566
 from dionaea.sip import rfc2617 # auth
 
-g_default_loop = pyev.default_loop()
+
 g_timer_cleanup = None
 
 logger = logging.getLogger('sip')
@@ -36,11 +36,13 @@ _SipCall_sustain_timeout = 20
 class AuthenticationError(Exception):
     """Exception class for errors occuring during SIP authentication"""
 
+
 # Dictionary with SIP sessions (key is Call-ID)
 g_call_ids = {}
 
-def cleanup(watcher, events):
-    logger.debug("Cleanup")
+
+def cleanup(*args):
+    logger.warning("Cleanup")
 
     # remove closed calls
     for key in list(g_call_ids.keys()):
@@ -73,7 +75,12 @@ class SIPService(ServiceLoader):
         if len(daemons) > 0:
             global g_timer_cleanup
             if g_timer_cleanup is None:
-                g_timer_cleanup = pyev.Timer(60.0, 60.0, g_default_loop, cleanup)
+                logger.warning("Starting cleanup loop")
+                g_timer_cleanup = Timer(
+                    60,
+                    cleanup,
+                    repeat=True,
+                )
                 g_timer_cleanup.start()
             else:
                 logger.debug("Cleanup loop already started!")
@@ -263,8 +270,8 @@ class SipCall(connection):
 
         # Global timers
         self._timers = {
-            "idle": pyev.Timer(60.0, 60.0, g_default_loop, self.__handle_timeout_idle),
-            "invite_handler": pyev.Timer(5.0, 0.0, g_default_loop, self.__handle_invite),
+            "idle": Timer(60.0, self.__handle_timeout_idle, repeat=True),
+            "invite_handler": None,
         }
 
         self._timers["idle"].start()
@@ -281,7 +288,7 @@ class SipCall(connection):
         # no active rtp stream, close call
         self.close()
 
-    def __handle_invite(self, watcher, events):
+    def __handle_invite(self):
         logger.debug("{!s} __handle_invite".format(self))
 
         logger.info("Handle invite")
@@ -302,7 +309,10 @@ class SipCall(connection):
 
             self.__state = SipCall.INVITE_TRYING
             # Wait up to two seconds
-            self._timers["invite_handler"].set(random.random() * 2, 0)
+            self._timers["invite_handler"] = Timer(
+                random.random() * 2,
+                self.__handle_invite,
+            )
             self._timers["invite_handler"].start()
             return
 
@@ -316,7 +326,10 @@ class SipCall(connection):
             delay = random.randint(self._user.pickup_delay_min, self._user.pickup_delay_max)
             logger.info("Choosing ring delay between {} and {} seconds: {}".format(self._user.pickup_delay_min, self._user.pickup_delay_max, delay))
             self.__state = SipCall.INVITE_RINGING
-            self._timers["invite_handler"].set(delay, 0)
+            self._timers["invite_handler"] = Timer(
+                delay,
+                self.__handle_invite,
+            )
             self._timers["invite_handler"].start()
             return
 
@@ -404,7 +417,7 @@ class SipCall(connection):
         logger.debug("{!s} handle_timeout_sustain".format(self))
         return False
 
-    def __handle_invite_timeout(self, watcher, events):
+    def __handle_invite_timeout(self):
         msg = self.__msg.create_response(rfc3261.OK)
         self.send(msg)
 
@@ -500,7 +513,8 @@ class SipCall(connection):
 
         self.__state = SipCall.INVITE_CANCEL
 
-        self._timers["invite_handler"].stop()
+        if self._timers["invite_handler"]:
+            self._timers["invite_handler"].cancel()
 
         # RFC3261 send 487 Request Terminated after cancel
         # old RFC2543 don't send 487
@@ -514,8 +528,12 @@ class SipCall(connection):
         logger.debug("{!s} handle_INVITE".format(self))
 
         self.__state = SipCall.INVITE
-        self._timers["invite_handler"].set(0.1, 0)
-        self._timers["invite_handler"].data = msg
+        self._timers["invite_handler"] = Timer(
+            0.1,
+            self.__handle_invite,
+        )
+        # ToDo: the data isn't used in the callback at the moment
+        # self._timers["invite_handler"].data = msg
         self._timers["invite_handler"].start()
         return True
 

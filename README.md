@@ -42,6 +42,5 @@ Licenses
 --------
 
 * dionaea: GPLv2+
-* pyev(modules/python/pyev): GPLv3+
 * tftp service(modules/python/tftp.py): CNRI Python License (incompatible with GPL)
 * parts of ftp service(modules/python/ftp.py): MIT (compatible with GPL)

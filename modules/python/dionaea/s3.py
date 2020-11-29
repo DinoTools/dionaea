@@ -5,7 +5,7 @@
 # SPDX-License-Identifier: GPL-2.0-or-later
 
 from dionaea.core import ihandler, incident, g_dionaea
-from dionaea import pyev, IHandlerLoader
+from dionaea import IHandlerLoader
 
 import logging
 import socket
@@ -37,7 +37,6 @@ class s3handler(ihandler):
         self.s3_dest_folder = config.get("s3_dest_folder")
         self.s3 = ''
 
-        self.loop = pyev.default_loop()
 
     def handle_incident(self, icd):
         pass
