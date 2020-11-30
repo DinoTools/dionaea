@@ -11,6 +11,13 @@ Migration
 We try to provide some information on how to upgrade from one version to the next.
 Please also have a look at the :doc:`changelog` for additional information.
 
+0.10.x -> 0.11.0
+----------------
+
+**pyev**
+
+The pyev functions used in the shipped modules have been replaced with new classes. This effects the Timer() class.
+If you have custom code and it uses the pyev Timer() class, please upgrade your code before running it in production.
 
 0.7.0 -> 0.8.0
 --------------

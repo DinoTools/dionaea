@@ -8,8 +8,23 @@
 Changelog
 =========
 
-0.11.0 - (`master`_)
+0.12.0 - (`master`_)
 --------------------
+
+0.11.0 - (2020-11-30)
+---------------------
+
+**python**
+
+* Add function calls to enable Python thread handling
+* Add GIL handling and only ensure the lock if dionaea runs Python code
+* Add Timer class and use Python threading
+
+**python/pyev**
+
+* Remove all source files and build steps from the source tree
+  * pyev seems to be abandoned, no official repo
+  * Use new Timer class
 
 0.10.0 - (2020-11-16)
 ---------------------
