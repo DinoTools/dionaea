@@ -38,4 +38,4 @@ if [ "x$DIONAEA_FORCE_INIT_DATA" = "x1" ]; then
 fi
 
 echo "Starting dionaea ..."
-exec /opt/dionaea/bin/dionaea -u dionaea -g dionaea -c /opt/dionaea/etc/dionaea/dionaea.cfg $@
+exec /opt/dionaea/bin/dionaea -u dionaea -g dionaea -c /opt/dionaea/etc/dionaea/dionaea.cfg "$@"
