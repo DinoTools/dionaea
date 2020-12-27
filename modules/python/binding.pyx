@@ -4,8 +4,10 @@
 #
 # SPDX-License-Identifier: GPL-2.0-or-later
 
+import inspect
 import logging
 import weakref
+from dionaea.exception import LoaderError
 
 
 logger = logging.getLogger("binding")
@@ -439,8 +441,22 @@ cdef class connection:
 
 
 	def __init__(self, con_type=None):
-		cdef c_connection_transport enum_type
+		_sig = inspect.signature(self.__init__)
+		for n, v in _sig.parameters.items():
+			if n == "self" and v.default == v.empty:
+				continue
+			if v.kind in (v.VAR_POSITIONAL, v.VAR_KEYWORD):
+				# Skip *args and **kwargs type vars
+				continue
+			if v.default == v.empty:
+				msg = "All arguments of __init__ must have a default value. class: '{}', arg: '{}'".format(
+					self.__class__.__name__,
+					n
+				)
+				logger.warning(msg)
+				raise LoaderError(msg)
 
+		cdef c_connection_transport enum_type
 		if self.thisptr == NULL:
 			if isinstance(con_type, unicode):
 				con_type_utf8 = con_type.encode(u'UTF-8')
