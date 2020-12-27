@@ -57,7 +57,7 @@ class BlackholeService(ServiceLoader):
 
 
 class Blackhole(connection):
-    def __init__(self, proto):
+    def __init__(self, proto=None):
         logger.debug("start blackhole")
         connection.__init__(self, proto)
 
