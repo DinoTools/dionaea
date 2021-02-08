@@ -104,6 +104,9 @@ class FeedUnpack(object):
     def __init__(self):
         self.buf = bytearray()
 
+    def reset(self):
+        self.buf = bytearray()
+
     def __iter__(self):
         return self
 
@@ -163,6 +166,7 @@ class hpclient(connection):
                     logger.debug('hpclient server name {0} rand {1}'.format(name, rand))
                     self.send(msgauth(rand, self.ident, self.secret))
                     self.authenticated = True
+                    self.handle_io_out()
 
                 elif opcode == OP_PUBLISH:
                     ident, data = strunpack8(data)
@@ -180,6 +184,9 @@ class hpclient(connection):
         return len(indata)
 
     def handle_io_out(self):
+        if not self.authenticated:
+            return
+
         if self.filehandle:
             self.sendfiledata()
         else:
@@ -227,16 +234,20 @@ class hpclient(connection):
     def handle_timeout_idle(self):
         pass
 
-    def handle_disconnect(self):
-        logger.info('hpclient disconnect')
+    def _reset_connection_state(self):
         self.connected = False
         self.authenticated = False
+        self.filehandle = None
+        self.unpacker.reset()
+
+    def handle_disconnect(self):
+        logger.info('hpclient disconnect')
+        self._reset_connection_state()
         return 1
 
     def handle_error(self, err):
         logger.warn(str(err))
-        self.connected = False
-        self.authenticated = False
+        self._reset_connection_state()
         return 1
 
 
