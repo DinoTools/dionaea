@@ -209,7 +209,7 @@ class logsqlhandler(ihandler):
         try:
             logger.debug("Trying to update table: emu_services")
             self.cursor.execute(
-                """SELECT emu_serivce FROM emu_services LIMIT 1""")
+                """SELECT emu_service FROM emu_services LIMIT 1""")
             self.cursor.execute(
                 """ALTER TABLE emu_services RENAME TO emu_services_old""")
             update = True
@@ -219,7 +219,7 @@ class logsqlhandler(ihandler):
 
         self.cursor.execute("""CREATE TABLE IF NOT EXISTS
             emu_services (
-                emu_serivce INTEGER PRIMARY KEY,
+                emu_service INTEGER PRIMARY KEY,
                 connection INTEGER,
                 emu_service_url TEXT
                 -- CONSTRAINT emu_services_connection_fkey FOREIGN KEY (connection) REFERENCES connections (connection)
@@ -232,7 +232,7 @@ class logsqlhandler(ihandler):
                     INSERT INTO
                         emu_services (emu_service, connection, emu_service_url)
                     SELECT
-                        emu_serivce, connection, emu_service_url
+                        emu_service, connection, emu_service_url
                     FROM emu_services_old""")
                 self.cursor.execute("""DROP TABLE emu_services_old""")
                 logger.debug("... done")
