@@ -710,7 +710,7 @@ class FTPDataCon(connection):
 class FTPDataConnect(FTPDataCon):
     protocol_name = "ftpdataconnect"
 
-    def __init__(self, host, port, ctrl):
+    def __init__(self, host=None, port=None, ctrl=None):
         FTPDataCon.__init__(self, ctrl)
         self.connect(host, port)
 
