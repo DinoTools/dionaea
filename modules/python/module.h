@@ -9,9 +9,9 @@
 #include <stdbool.h>
 #include "connection.h"
 
-#define PY_CLONE(T)  (T)->ob_type->tp_new((T)->ob_type, __pyx_empty_tuple, NULL)
-#define PY_NEW(T) (((PyTypeObject*)(T))->tp_new( (PyTypeObject*)(T), __pyx_empty_tuple, NULL))
-#define PY_INIT(P, O) (P)->ob_type->tp_init((O), __pyx_empty_tuple, NULL)
+#define PY_CLONE(T)  (T)->ob_type->tp_new((T)->ob_type, PyTuple_New(0), NULL)
+#define PY_NEW(T) (((PyTypeObject*)(T))->tp_new( (PyTypeObject*)(T), PyTuple_New(0), NULL))
+#define PY_INIT(P, O) (P)->ob_type->tp_init((O), PyTuple_New(0), NULL)
 #define REFCOUNT(T) printf("obj refcount %i\n", (int)(T)->ob_refcnt)
 
 #define REMOTE(C) (C)->remote
