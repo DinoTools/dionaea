@@ -1,0 +1,53 @@
+# SPDX-FileCopyrightText: none
+# SPDX-License-Identifier: CC0-1.0
+
+- name: http
+  config:
+    # Root directory to look for files
+    root: "@DIONAEA_STATEDIR@/http/root"
+    ports:
+      - 80
+    ssl_ports:
+      - 443
+    max_request_size: 32768 # maximum size in kbytes of the request (32MB)
+    # Set default Content-Type if unable to detect
+    # default_content_type: text/html; charset=utf-8
+    # Max number of fields to extract from GET request (Python >= 3.8)
+    # get_max_num_fields: 100
+    # List of default headers
+    # default_headers:
+    #   - ["Content-Type", "{content_type}"]
+    #   - ["Content-Length", "{content_length}""]
+    #   - ["Connection", "{connection}"]
+    # Try to detect the Content-Type by using the filename
+    # detect_content_type: true
+    global_headers:
+      - ["Server", "nginx"]
+    # Add additional headers to the response. First match wins.
+    # filename_pattern - is a regex if matched the headers are set
+    # headers - a list of HTTP headers to set
+    #           the order matters, use to simulate your webserver as good as possible
+    headers:
+      - filename_pattern: ".*\\.php"
+        headers:
+          - ["Content-Type", "text/html; charset=utf-8"]
+          - ["Content-Length", "{content_length}"]
+          - ["Connection", "{connection}"]
+          - ["X-Powered-By", "PHP/5.5.9-1ubuntu4.5"]
+    # If enabled, try to handle some SOAP requests
+    # soap_enabled: false
+    template:
+      # set to true to enable template processing
+      # this feature requires jinja2 template engine http://jinja.pocoo.org/
+      enabled: false
+      file_extension: .j2
+      path: "@DIONAEA_STATEDIR@/http/template/nginx"
+      templates:
+        autoindex:
+          filename: autoindex.html.j2
+        error_pages:
+          - filename: error.html.j2
+          # - filename: error/{code}.html.j2
+      # used to specify additional template values
+      values:
+        # full_name: nginx/1.1

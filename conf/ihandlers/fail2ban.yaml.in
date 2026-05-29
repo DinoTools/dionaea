@@ -1,0 +1,7 @@
+# SPDX-FileCopyrightText: none
+# SPDX-License-Identifier: CC0-1.0
+
+- name: fail2ban
+  config:
+    downloads: "@DIONAEA_STATEDIR@/fail2ban/downloads.f2b"
+    offers: "@DIONAEA_STATEDIR@/fail2ban/offers.f2b"

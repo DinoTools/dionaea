@@ -1,0 +1,34 @@
+/**
+ * This file is part of the dionaea honeypot
+ *
+ * SPDX-FileCopyrightText: 2018 PhiBo (DinoTools)
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
+
+#ifndef CONFIG_H
+#define CONFIG_H
+
+#cmakedefine DIONAEA_USER "@DIONAEA_USER@"
+#cmakedefine DIONAEA_GROUP "@DIONAEA_GROUP@"
+#cmakedefine DIONAEA_GIT_REVISION "@DIONAEA_GIT_REVISION@"
+
+#define DIONAEA_CONFDIR "${DIONAEA_CONFDIR}"
+#define DIONAEA_MODDIR "${DIONAEA_MODDIR}"
+#define DIONAEA_PYTHON_SITELIBDIR "${DIONAEA_PYTHON_SITELIBDIR}"
+#define DIONAEA_RUNDIR "${DIONAEA_RUNDIR}"
+
+#define DIONAEA_VERSION "${DIONAEA_VERSION}"
+
+#define DEBUG "${DEBUG}"
+
+#define PREFIX "${CMAKE_INSTALL_PREFIX}"
+#define LOCALSTATEDIR "${CMAKE_INSTALL_LOCALSTATEDIR}"
+#define LOCALESTATEDIR "${CMAKE_INSTALL_LOCALSTATEDIR}"
+#define PYTHON_PATH "${PYTHON_EXECUTABLE}"
+
+#cmakedefine CAN_BIND_IPV4_MAPPED_IPV6
+
+#cmakedefine HAVE_LINUX_SOCKIOS_H 1
+
+#endif /* CONFIG_H */

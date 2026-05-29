@@ -1,0 +1,13 @@
+# SPDX-FileCopyrightText: none
+# SPDX-License-Identifier: CC0-1.0
+
+- name: submit_http_post
+  config:
+    submit:
+      file_upload:
+        urls:
+          - http://example.org/upload
+          - http://example.com/file.php
+        field_values:
+          submit: "Upload file"
+        file_fieldname: upload_file

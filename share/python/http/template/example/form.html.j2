@@ -1,0 +1,58 @@
+<html>
+    <head>
+        <title>Demo</title>
+    </head>
+    <body>
+        <h1>Form GET</h1>
+        <form action="{{ connection.header.path }}" method="get">
+            <label for="text1">Text</label>
+            <input type="text" name="text" id="text1"/>
+
+            <label for="password1">Password</label>
+            <input type="password" name="password" id="password1"/>
+
+            <button type="submit">Send</button>
+        </form>
+        <h1>Form POST</h1>
+        <form action="{{ connection.header.path }}" method="post">
+            <label for="text2">Text</label>
+            <input type="text" name="text" id="text2"/>
+
+            <label for="password2">Password</label>
+            <input type="password" name="password" id="password2"/>
+
+            <button type="submit">Send</button>
+        </form>
+        <h1>Form POST - multipart/form-data</h1>
+        <form action="{{ connection.header.path }}" enctype="multipart/form-data" method="post">
+            <label for="text3">Text</label>
+            <input type="text" name="text" id="text3"/>
+
+            <label for="password3">Password</label>
+            <input type="password" name="password" id="password3"/>
+
+            <label for="file3">File</label>
+            <input type="file" name="file" id="file3"/>
+
+            <button type="submit">Send</button>
+        </form>
+        <h1>Results</h1>
+        <pre>
+Get Values
+{% for name, value in connection.request_fields|dictsort %}
+{{ name }} = {{ value[0] }}
+{% endfor %}
+Form values
+{% if connection.request_form %}
+{% for name in connection.request_form.keys() %}
+{% if connection.request_form[name].filename %}
+{{ name }} = file with name '{{ connection.request_form[name].filename }}'
+{% else %}
+{{ name }} = {{ connection.request_form[name].value }}
+{% endif %}
+{% endfor %}
+{% endif %}
+        </pre>
+
+    </body>
+</html>

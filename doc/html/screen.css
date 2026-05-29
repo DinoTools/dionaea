@@ -1,0 +1,129 @@
+/**
+ * This file is part of the dionaea honeypot
+ *
+ * SPDX-FileCopyrightText: 2011-2012 Markus Koetter
+ *
+ * SPDX-License-Identifier: GPL-2.0-or-later
+ */
+body {
+	margin: auto;
+	width: 50em;
+	font-family: "Verdana";
+	line-height: 140%;
+}
+
+h2 {
+	font-variant: small-caps;
+	border-bottom: 1px solid #888;
+	color: #333;
+}
+
+a {
+	color: #7ea419;
+	text-decoration: none;
+	border-bottom: 1px solid black;
+}
+
+a:hover {
+	background-color: #fffdf1;
+	border-bottom: 1px solid #2cbd44;
+}
+
+pre, kbd {
+	color: #6e009e;
+}
+
+pre {
+	margin-left: 3em;
+	line-height: 1.2em;
+	overflow:auto;
+}
+
+code {
+	margin-left: 3em;
+	color: #33a19e;
+	white-space: wrap;
+}
+
+ul {
+	list-style-type: square;
+}
+
+p, dl, ul {
+	margin-left: 1em;
+}
+
+dt {
+	font-weight: bold;
+}
+
+dl.faq dt:before {
+	content: "Q: ";
+}
+
+dl.faq dt {
+	margin-top: 1em;
+}
+
+dl.faq dd:before {
+	content: "A: ";
+	font-weight: bold;
+}
+
+#header {
+	background-color: #7ea419;
+	padding: 1em;
+}
+
+#header h1, #header h3 {
+	color: white;
+	margin: 0;
+}
+
+h1 {font-size: 160%; margin-left: 0px; font-weight: bold;}
+h2 {font-size: 150%; margin-left: 10px;}
+h3 {font-size: 140%; margin-left: 20px; border-bottom: none; font-weight: bold;}
+h4 {font-size: 120%; margin-left: 30px; border-bottom: none; font-weight: bold;}
+h5 {font-size: 100%; margin-left: 40px; border-bottom: none; font-weight: bold;}
+
+
+div.level1 {margin-left: 3px;}
+div.level2 {margin-left: 13px;}
+div.level3 {margin-left: 23px;}
+div.level4 {margin-left: 33px;}
+div.level5 {margin-left: 43px;}
+
+
+#nav {
+	float: left;
+	list-style-type: none;
+	padding: 0;
+}
+
+#nav li a {
+	border: none;
+	font-weight: bold;
+	text-decoration: none;
+	color: black;
+	padding: 3px 10px 3px 10px;
+}
+
+#content {
+	background-color: white;
+	color: black;
+	padding: 2em;
+	border-left: 4px solid #ddd;
+	border-right: 4px solid #ddd;
+}
+
+#about {
+	font-style: italic;
+	float: left;
+	width: 50%;
+}
+
+#separator {
+	clear: left;
+	visibility: hidden;
+	padding-top: 1em;
+}

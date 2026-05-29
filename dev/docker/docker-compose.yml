@@ -1,0 +1,33 @@
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: none
+#
+# SPDX-License-Identifier: CC0-1.0
+
+version: '3'
+services:
+  # dionaea service
+  dionaea:
+    build: dionaea/
+    image: dionaea_dev
+    volumes:
+      - ../..:/code
+      - log-volume:/var/log/dionaea_dev/
+    depends_on:
+      - dionaea-log
+      - rebuild-log
+    # network_mode: host
+  # Output logs
+  dionaea-log:
+    image: alpine:3.11
+    volumes:
+      - log-volume:/var/log/dionaea_dev/
+    entrypoint: /bin/sh -c 'touch /var/log/dionaea_dev/dionaea.log; tail -n 0 -f /var/log/dionaea_dev/dionaea.log'
+  rebuild-log:
+    image: alpine:3.11
+    volumes:
+      - log-volume:/var/log/dionaea_dev/
+    entrypoint: /bin/sh -c 'touch /var/log/dionaea_dev/rebuild.log; tail -n 0 -f /var/log/dionaea_dev/rebuild.log'
+
+volumes:
+  log-volume:

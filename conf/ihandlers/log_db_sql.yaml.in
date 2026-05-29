@@ -1,0 +1,6 @@
+# SPDX-FileCopyrightText: none
+# SPDX-License-Identifier: CC0-1.0
+
+- name: log_db_sql
+  config:
+    url: sqlite:///@DIONAEA_STATEDIR@/dionaea.db

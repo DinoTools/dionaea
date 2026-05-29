@@ -1,0 +1,81 @@
+# This file is part of the dionaea honeypot
+#
+# SPDX-FileCopyrightText: 2009 Paul Baecher & Markus Koetter
+# SPDX-FileCopyrightText: 2018-2020 PhiBo (DinoTools)
+#
+# SPDX-License-Identifier: GPL-2.0-or-later
+
+from distutils.core import setup
+from distutils.extension import Extension
+from distutils.util import convert_path
+import os
+from Cython.Distutils import build_ext
+
+
+def find_packages(base_path):
+    base_path = convert_path(base_path)
+    found = []
+    for root, dirs, files in os.walk(base_path, followlinks=True):
+        dirs[:] = [d for d in dirs if d[0] != '.' and d not in ('ez_setup', '__pycache__')]
+        relpath = os.path.relpath(root, base_path)
+        parent = relpath.replace(os.sep, '.').lstrip('.')
+        if relpath != '.' and parent not in found:
+            continue
+        for dir in dirs:
+            if os.path.isfile(os.path.join(root, dir, '__init__.py')):
+                package = '.'.join((parent, dir)) if parent else dir
+                found.append(package)
+    return found
+
+core_cflags = '${GLIB2_CFLAGS};' # glib
+core_cflags += '${GMODULE2_CFLAGS}' # gmodule
+
+core_ldflags = '${GLIB2_LDFLAGS};' # glib
+core_ldflags += '${GMODULE2_LDFLAGS}' # gmodule
+
+core_include_dirs = set()
+core_extra_compile_flags = set()
+for i in core_cflags.split(';'):
+    if i == '':
+        continue
+    elif i.startswith('-I'):
+        core_include_dirs.add(i[2:])
+    else:
+        core_extra_compile_flags.add(i)
+
+core_libraries = set()
+core_library_dirs = set()
+core_library_other_flags = set()
+
+for i in core_ldflags.split(';'):
+    if i == '':
+        continue
+    elif i.startswith('-l'):
+        core_libraries.add(i[2:])
+    elif i.startswith('-L'):
+        core_library_dirs.add(i[2:])
+    else:
+        core_library_other_flags.add(i)
+
+ext_modules=[
+    Extension("dionaea.core",
+        ['${CMAKE_CURRENT_SOURCE_DIR}/binding.pyx'],
+        language="c",
+        include_dirs=['${CMAKE_CURRENT_SOURCE_DIR}/../../include', '${CMAKE_CURRENT_SOURCE_DIR}/../../'] + list(core_include_dirs),
+        extra_compile_args=list(core_extra_compile_flags),
+        libraries=list(core_libraries),
+        library_dirs=list(core_library_dirs),
+        extra_link_args=list(core_library_other_flags),
+        undef_macros=[('NDEBUG')],
+        define_macros=[('_GNU_SOURCE',None)],
+    ),
+]
+
+setup(
+    name = 'dionaea',
+    version="${DIONAEA_VERSION}",
+    cmdclass = {'build_ext': build_ext},
+    ext_modules = ext_modules,
+    packages=find_packages(base_path='${CMAKE_CURRENT_SOURCE_DIR}'),
+    package_dir={'': '${CMAKE_CURRENT_SOURCE_DIR}'}
+)

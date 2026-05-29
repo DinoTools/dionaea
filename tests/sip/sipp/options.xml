@@ -1,0 +1,28 @@
+<?xml version="1.0" encoding="utf-8" ?>
+
+<scenario name="newmethod">
+  <send retrans="500">
+    <![CDATA[
+      OPTIONS sip:[remote_ip] SIP/2.0
+      Via: SIP/2.0/[transport] [local_ip]:[local_port];branch=[branch]
+      From: <sip:[field0]@[local_ip]>;tag=[call_number]
+      To: <sip:[field0]@[remote_ip]>
+      Call-ID: [call_id]
+      CSeq: [cseq] OPTIONS
+      Contact: sip:sipp@[local_ip]:[local_port]
+      Max-Forwards: 10
+      User-Agent: SIPp/Linux
+      Content-Length: 0
+      Accept: text/plain
+    ]]>
+   </send>
+
+   <recv response="200">
+   </recv>
+
+  <!-- response time repartition table (ms)   -->
+  <ResponseTimeRepartition value="10, 20, 30, 40, 50, 100, 150, 200"/>
+
+  <!-- call length repartition table (ms)     -->
+  <CallLengthRepartition value="10, 50, 100, 500, 1000, 5000, 10000"/>
+</scenario>

